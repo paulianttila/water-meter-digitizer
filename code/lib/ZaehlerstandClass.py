@@ -13,9 +13,14 @@ import time
 from datetime import datetime
 import json
 from pathlib import Path
+import logging
+
+logger = logging.getLogger(__name__)
 
 class Zaehlerstand:
     def __init__(self):
+        
+
         basedir = Path(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
         conf_path = Path(os.path.join(basedir, 'config'))
         self.readConfig = lib.ReadConfig.ReadConfig(conf_path)
@@ -24,7 +29,7 @@ class Zaehlerstand:
         config = configparser.ConfigParser()
         config.read('./config/config.ini')
 
-        print('Start Init Zaehlerstand')
+        logger.debug('Start Init Meter Reader')
 
         self.AnalogReadOutEnabled = True
         if config.has_option('AnalogReadOut', 'Enabled'):
@@ -45,9 +50,9 @@ class Zaehlerstand:
                 LogNames = config.get(zw, 'LogNames')
 
             self.readAnalogNeedle = lib.UseAnalogCounterCNNClass.UseAnalogCounterCNN(model_file, in_dx, in_dy, log_Image, LogNames)
-            print('Analog Model Init Done')
+            logger.debug('Analog Model Init Done')
         else:
-            print('Analog Model Disabled')
+            logger.debug('Analog Model Disabled')
 
         zw = "Digital_Digit"
         log_Image = ''
@@ -62,10 +67,10 @@ class Zaehlerstand:
             LogNames = config.get(zw, 'LogNames')
 
         self.readDigitalDigit = lib.UseClassificationCNNClass.UseClassificationCNN(model_file, in_dx, in_dy, in_numberclasses, log_Image, LogNames)
-        print('Digital Model Init Done')
+        logger.debug('Digital Model Init Done')
 
         self.CutImage = lib.CutImageClass.CutImage(self.readConfig)
-        print('Digital Model Init Done')
+        logger.debug('Digital Model Init Done')
         self.LoadFileFromHTTP = lib.LoadFileFromHTTPClass.LoadFileFromHttp()
 
         self.ConsistencyEnabled = False        
@@ -144,6 +149,8 @@ class Zaehlerstand:
         config['PreValue']['LastVorkomma'] = self.LastVorkomma
         if self.AnalogReadOutEnabled:
             config['PreValue']['LastNachkomma'] = self.LastNachkomma
+        else:
+            config['PreValue']['LastNachkomma'] = '0'
         config['PreValue']['Time'] = logtime
         with open('./config/prevalue.ini', 'w') as cfg:
             config.write(cfg)
@@ -165,20 +172,20 @@ class Zaehlerstand:
             self.LastVorkomma = config['PreValue']['LastVorkomma']
             self.LastNachkomma = config['PreValue']['LastNachkomma']
             zw = 'Prevalue loaded from file: ' + self.LastVorkomma + '.' + self.LastNachkomma
-            print(zw)
+            logger.debug(zw)
         else:
             zw = 'Prevalue not loaded from file - value too old (' + str(unterschied) + ' minutes).'
-            print(zw)
+            logger.debug(zw)
 
     def getROI(self, url):
         txt, logtime = self.LoadFileFromHTTP.LoadImageFromURL(url, './image_tmp/original.jpg')
 
         if len(txt) == 0:
             self.CutImage.Cut('./image_tmp/original.jpg')
-            print('Start ROI')
+            logger.debug('Start ROI')
             self.CutImage.DrawROI('./image_tmp/alg.jpg')
             txt = '<p>ROI Image: <p><img src=/image_tmp/roi.jpg></img><p>'
-            print('Get ROI done')
+            logger.debug('Get ROI done')
         return txt
 
 
@@ -189,9 +196,9 @@ class Zaehlerstand:
 
         if len(txt) == 0:
             if self.AnalogReadOutEnabled:
-                print('Start CutImage, AnalogReadout, DigitalReadout')
+                logger.debug('Start CutImage, AnalogReadout, DigitalReadout')
             else:
-                print('Start CutImage, DigitalReadout')            
+                logger.debug('Start CutImage, DigitalReadout')            
             resultcut = self.CutImage.Cut('./image_tmp/original.jpg')
             self.CutImage.DrawROI('./image_tmp/alg.jpg')  # update ROI
 
@@ -207,7 +214,7 @@ class Zaehlerstand:
             self.akt_vorkomma = self.DigitalReadoutToValue(resultdigital, UsePreValue, self.LastNachkomma, self.akt_nachkomma)
             self.LoadFileFromHTTP.PostProcessLogImageProcedure(True)
 
-            print('Start Making Zaehlerstand')
+            logger.debug('Start Making Zaehlerstand')
             (error, errortxt) = self.checkConsistency(ignoreConsistencyCheck)
             self.UpdateLastValues(error)
             txt = self.MakeReturnValue(error, errortxt, single)
@@ -227,7 +234,7 @@ class Zaehlerstand:
                     for i in range(len(resultanalog)):
                         txt += '<img src=/image_tmp/'+  str(resultcut[0][i][0]) + '.jpg></img>' + "{:.1f}".format(resultanalog[i])
                     txt = txt + '<p>'
-            print('Get Zaehlerstand done')
+            logger.debug('Get Zaehlerstand done')
         return txt
 
     
@@ -253,9 +260,9 @@ class Zaehlerstand:
 
         if len(txt) == 0:
             if self.AnalogReadOutEnabled:
-                print('Start CutImage, AnalogReadout, DigitalReadout')
+                logger.debug('Start CutImage, AnalogReadout, DigitalReadout')
             else:
-                print('Start CutImage, DigitalReadout')            
+                logger.debug('Start CutImage, DigitalReadout')            
             resultcut = self.CutImage.Cut('./image_tmp/original.jpg')
             self.CutImage.DrawROI('./image_tmp/alg.jpg')  # update ROI
 
@@ -271,7 +278,7 @@ class Zaehlerstand:
             self.akt_vorkomma = self.DigitalReadoutToValue(resultdigital, UsePreValue, self.LastNachkomma, self.akt_nachkomma)
             self.LoadFileFromHTTP.PostProcessLogImageProcedure(True)
 
-            print('Start Making Zaehlerstand')
+            logger.debug('Start Making Zaehlerstand')
             (error, errortxt) = self.checkConsistency(ignoreConsistencyCheck)
             self.UpdateLastValues(error)
 
@@ -420,9 +427,9 @@ class Zaehlerstand:
 
     def DigitalReadoutToValue(self, res_digital, UsePreValue, lastnachkomma, aktnachkomma):
         erg = ''
-        if UsePreValue and (len(self.LastVorkomma) > 0) and (len(self.LastNachkomma) > 0):
-            last = int(lastnachkomma[0:1])
-            aktu = int(aktnachkomma[0:1])
+        if UsePreValue and (len(str(self.LastVorkomma)) > 0) and (len(str(self.LastNachkomma)) > 0):
+            last = int(str(lastnachkomma)[0:1])
+            aktu = int(str(aktnachkomma)[0:1])
             if aktu < last:
                 overZero = 1
             else:

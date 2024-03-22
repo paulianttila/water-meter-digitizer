@@ -5,6 +5,9 @@ import os
 from shutil import copyfile
 import shutil
 from PIL import Image
+import logging
+
+logger = logging.getLogger(__name__)
 
 class ReadConfig:
     def __init__(self, _path, _pathdefault="./config_default/", _configreroute = './config/', copydummyconfig = True):
@@ -133,7 +136,7 @@ class ReadConfig:
                 self.Cut_FastMode = False    
 
         self.Cut_rotateAngle = float(config['alignment']['initial_rotation_angle'])
-        print(self.Cut_rotateAngle)
+        logger.debug(self.Cut_rotateAngle)
 
 
         self.Cut_reference_name = []

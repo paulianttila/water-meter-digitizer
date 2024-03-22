@@ -1,48 +1,111 @@
-from http.server import HTTPServer, BaseHTTPRequestHandler
+from http.server import BaseHTTPRequestHandler
 from urllib import parse
 import lib.ZaehlerstandClass
 import os
-import subprocess
-
 import socketserver
-
 import gc
+from dataclasses import dataclass
+import logging
+import sys
+
+version = "Version 8.0.0 (2024-03-22)"
+
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.INFO)
+
+index_page = '''
+<!DOCTYPE html>
+<html>
+<body>
+    Watermeter {0}
+    <h1>Links</h1>
+    <a href="watermeter.html?single">Watermeter value (single)</a><br>
+    <a href="watermeter.html?usePreValue">Watermeter value with previous value</a><br>
+    <a href="watermeter.html?full">Watermeter value with full details</a><br>
+    <a href="watermeter.html?usePreValue&full">Watermeter value with previous value and full details</a><br>
+    <a href="roi.html">ROI image</a><br>
+    <br><br>
+    <a href="watermeter.json?single">Watermeter value (single) in JSON format</a><br>
+        <a href="watermeter.json?usePreValue">Watermeter value with previous value in JSON format</a><br>
+    <h1>Set previous value</h1>
+    Set previous value by &lt;ip&gt;:&lt;port&gt;/setPreValue.html?value=&lt;value&gt;
+    <br><br>
+    Example: 192.168.10.23:3000/setPreValue.html?value=452.0124
+    <h1>Reload configuration</h1>
+    <a href="reload.html">Reload</a><br>
+</body>
+</html>'''
+
+@dataclass
+class Params:
+    simple: bool = True
+    single: bool = True
+    usePrevalue: bool = False
+    url: str = ''
+    value: str = ''
+
+logging.basicConfig(stream=sys.stdout, level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(name)s - %(message)s')
 
 class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
     
-    def do_GET(self):
-        global wasserzaehler
-        url_parse = parse.urlparse(self.path)
-        query_parse = parse.parse_qs(url_parse.query)
+    def log_message(self, format, *args):
+        logger.debug(format, *args)
 
-        if 'reload' in url_parse.path:
-            self.send_response(200)
-            self.send_header('Content-type', 'text/html')
-            self.end_headers()
-            result = 'Konfiguration wird neu geladen'
-            self.wfile.write(bytes(result, 'UTF-8'))             
-            del wasserzaehler
-            gc.collect()
-            wasserzaehler = lib.ZaehlerstandClass.Zaehlerstand()
+    def showMessage(self, message, content_type = 'text/html') -> None:
+        self.send_response(200)
+        self.send_header('Content-type', content_type)
+        self.end_headers()
+        self.wfile.write(bytes(message, 'UTF-8'))             
+
+    def parseQueryParams(self, path, query) -> Params:
+        simple = True
+        if ('&full' in path) or ('?full' in path):
+            simple = False
+
+        single = False
+        if ('&single' in path) or ('?single' in path):
+            single = True
+
+        usePrevalue = False
+        if ('&useprevalue' in path.lower()) or ('?useprevalue' in path.lower()):
+            usePrevalue = True
+
+        url = ''
+        if 'url' in query:
+            url = query['url'][0]
+
+        value = ''
+        if 'value' in query:
+            value = query['value'][0]
+        
+        return Params(simple, single, usePrevalue, url, value)
+        
+    def do_GET(self):
+        global watermeter
+
+        url_parse = parse.urlparse(self.path)
+        query = parse.parse_qs(url_parse.query)
+        args = self.parseQueryParams(self.path, query)
+
+        if self.path == "/" or '/index.html' in url_parse.path:
+            self.showMessage(index_page.format(version))
             return
 
-        if ('version' in url_parse.path) or ('ROI' in url_parse.path):
-            result = "Version 7.5.0 (2020-07-12)"
-            self.send_response(200)
-            self.send_header('Content-type', 'text/html')
-            self.end_headers()
-            self.wfile.write(bytes(result, 'UTF-8'))
+        if '/reload' in url_parse.path:
+            self.showMessage('Reload configuration')
+            del watermeter
+            gc.collect()
+            watermeter = lib.ZaehlerstandClass.Zaehlerstand()
+            return
+
+        if ('/version' in url_parse.path):
+            self.showMessage(version)
             return            
 
-        GlobalError = wasserzaehler.CheckError()
+        GlobalError = watermeter.CheckError()
         if GlobalError is not None:
-            self.send_response(200)
-            self.send_header('Content-type', 'text/html')
-            self.end_headers()
-            self.wfile.write(bytes(GlobalError, 'UTF-8'))
-
+            self.showMessage(GlobalError)
             return
-           
 
         if "/image_tmp/" in url_parse.path:
             self.send_response(200)
@@ -54,81 +117,50 @@ class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
                 self.wfile.write(file.read()) # Read the file and send the contents
             return
 
-        url = ''
-        if 'url' in query_parse:
-            url = query_parse['url'][0]
-
-        simple = True
-        if ('&full' in self.path) or ('?full' in self.path):
-            simple = False
-
-        single = False
-        if ('&single' in self.path) or ('?single' in self.path):
-            single = True
-
-        usePrevalue = False
-        if ('&usePreValue' in self.path) or ('?usePreValue' in self.path) or ('&usePrevalue' in self.path) or ('?usePrevalue' in self.path):
-            usePrevalue = True
-
-        value = ''
-        if 'value' in query_parse:
-            value = query_parse['value'][0]
-
-        if ('crash' in url_parse.path):
-            a = 1
-            b = 0
-            c = a / b
-            return
-
-        if ('crash' in url_parse.path):
-            result = "Crash in a second"
-            self.send_response(200)
-            self.send_header('Content-type', 'text/html')
-            self.end_headers()
-            self.wfile.write(bytes(result, 'UTF-8'))
-            print('Crash with division by zero!')
+        if ('/crash' in url_parse.path):
+            self.showMessage('Crash in a second')
+            logger.info('Crash with division by zero!')
             a = 1
             b = 0
             c = a/b
             return
 
-        if ('roi' in url_parse.path) or ('ROI' in url_parse.path):
-            result = wasserzaehler.getROI(url)
-            self.send_response(200)
-            self.send_header('Content-type', 'text/html')
-            self.end_headers()
-            self.wfile.write(bytes(result, 'UTF-8'))
+        if ('/roi' in url_parse.path.lower()):
+            result = watermeter.getROI(args.url)
+            self.showMessage(result)
             return
 
-        if 'setPreValue' in url_parse.path:
-            result = wasserzaehler.setPreValue(value)
-            self.send_response(200)
-            self.send_header('Content-type', 'text/html')
-            self.end_headers()
-            self.wfile.write(bytes(result, 'UTF-8'))
+        if '/setprevalue' in url_parse.path.lower():
+            result = watermeter.setPreValue(args.value)
+            self.showMessage(result)
             return
 
-        if 'wasserzaehler.json' in url_parse.path:
-            result = wasserzaehler.getZaehlerstandJSON(url, simple, usePrevalue, single)
-            self.send_response(200)
-            self.send_header('Content-type', 'application/json')
-            self.end_headers()
-            self.wfile.write(bytes(result, 'UTF-8'))
+        if '/watermeter.json' in url_parse.path:
+            result = watermeter.getZaehlerstandJSON(args.url, args.simple, args.usePrevalue, args.single)
+            self.showMessage(result, 'application/json')
             return
 
-        if 'wasserzaehler' in url_parse.path:
-            result = wasserzaehler.getZaehlerstand(url, simple, usePrevalue, single)
-            self.send_response(200)
-            self.send_header('Content-type', 'text/html')
-            self.end_headers()
-            self.wfile.write(bytes(result, 'UTF-8'))
+        if '/watermeter' in url_parse.path:
+            result = watermeter.getZaehlerstand(args.url, args.simple, args.usePrevalue, args.single)
+            self.showMessage(result)
             return
 
 if __name__ == '__main__':
 
-    wasserzaehler = lib.ZaehlerstandClass.Zaehlerstand()
+    logLevel = os.environ.get('LOG_LEVEL')
+    if logLevel is not None:
+        logger.setLevel(logLevel)
+
+    logging.getLogger("lib.CutImageClass").setLevel(logger.level)
+    logging.getLogger("lib.LoadFileFromHTTPClass").setLevel(logger.level)
+    logging.getLogger("lib.ReadConfig").setLevel(logger.level)
+    logging.getLogger("lib.UseAnalogCounterCNNClass").setLevel(logger.level)
+    logging.getLogger("lib.UseClassificationCNNClass").setLevel(logger.level)
+    logging.getLogger("lib.ZaehlerstandClass").setLevel(logger.level)
+
+    watermeter = lib.ZaehlerstandClass.Zaehlerstand()
 
     PORT = 3000
     with socketserver.TCPServer(("", PORT), SimpleHTTPRequestHandler) as httpd:
-        print("Wasserzaehler is serving at port", PORT)
+        logger.info("Watermeter is serving at port %s", PORT)
         httpd.serve_forever()

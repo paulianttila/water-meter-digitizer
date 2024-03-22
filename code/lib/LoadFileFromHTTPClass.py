@@ -5,7 +5,9 @@ from PIL import Image
 from shutil import copyfile
 import time
 import os
+import logging
 
+logger = logging.getLogger(__name__)
 
 class LoadFileFromHttp:
     def __init__(self):

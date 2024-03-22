@@ -6,6 +6,9 @@ from shutil import copyfile
 from PIL import Image
 from pathlib import Path
 import threading
+import logging
+
+logger = logging.getLogger(__name__)
 
 class CutImage():
     def __init__(self, readconfig, zwpath='./image_tmp/'):
@@ -105,19 +108,19 @@ class CutImage():
         return target
 
     def CalculateAffineTransform(self, source):
-        print("Cut CalcAffineTransformation")
+        logger.debug("Cut CalcAffineTransformation")
         h, w, ch = source.shape
         if debug: 
-            print(self.gettimestring() + " Align 01a")        
+            logger.debug("Align 01a")        
         p0 = self.getRefCoordinate(source, self.reference_image[0])
         if debug: 
-            print(self.gettimestring() + " Align 01b")  
+            logger.debug("Align 01b")  
         p1 = self.getRefCoordinate(source, self.reference_image[1])
         if debug: 
-            print(self.gettimestring() + " Align 01c")  
+            logger.debug("Align 01c")  
         p2 = self.getRefCoordinate(source, self.reference_image[2])
         if debug: 
-            print(self.gettimestring() + " Align 02")  
+            logger.debug("Align 02")  
 
         pts1 = np.float32([p0, p1, p2])
         pts2 = np.float32([self.reference_pos[0], self.reference_pos[1], self.reference_pos[2]])
@@ -133,7 +136,7 @@ class CutImage():
             self.master.CalculateAffineTransform(self.master.targetrot)
 
     def CutAfter(self):
-        print("Cut After")
+        logger.debug("Cut After")
         if self.FastMode:
             CalcAffTransOffline = self.CalcAffTransOfflineClass(self)
             CalcAffTransOffline.start()        

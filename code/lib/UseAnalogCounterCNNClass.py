@@ -19,6 +19,9 @@ import time
 from shutil import copyfile
 from PIL import Image 
 from datetime import datetime
+import logging
+
+logger = logging.getLogger(__name__)
 
 debug = True
 
@@ -44,7 +47,7 @@ class UseAnalogCounterCNN:
 
         filename, file_extension = os.path.splitext(self.model_file)
         if file_extension != ".tflite":
-            print("ERROR - only TFLite-Model (*.tflite) are support since version 7.0.0 and higher")
+            logger.error("Only TFLite-Model (*.tflite) are support since version 7.0.0 and higher")
             self.GlobalError = True
             self.GlobalErrorText = "AnalogCNN-File for Analog Neural Network is not tflite-Format. If you want to use h5-files you need to downgrade to v6.1.1. This is not recommended."
             return
@@ -88,19 +91,19 @@ class UseAnalogCounterCNN:
 
     def ReadoutSingleImage(self, image):
         if debug: 
-            print(self.gettimestring() + " Validity 01")
+            logger.debug("Validity 01")
         test_image = image.resize((self.dx,  self.dy), Image.NEAREST)
         if debug: 
-            print(self.gettimestring() + " Validity 02")
+            logger.debug("Validity 02")
         test_image.save('./image_tmp/resize.jpg', "JPEG")
         if debug: 
-            print(self.gettimestring() + " Validity 03")
+            logger.debug("Validity 03")
         test_image = np.array(test_image, dtype="float32")
         if debug: 
-            print(self.gettimestring() + " Validity 04")
+            logger.debug("Validity 04")
         img = np.reshape(test_image,[1, self.dy, self.dx,3])
         if debug: 
-            print(self.gettimestring() + " Validity 05")
+            logger.debug("Validity 05")
 
         input_data = img
         self.interpreter.set_tensor(self.input_details[0]['index'], input_data)
@@ -112,9 +115,9 @@ class UseAnalogCounterCNN:
         result = result * 10
 
         if debug: 
-            print(self.gettimestring() + " Validity 06")
+            logger.debug("Validity 06")
         if debug: 
-            print(self.gettimestring() + " Validity 07")
+            logger.debug("Validity 07")
 
         return result
 
