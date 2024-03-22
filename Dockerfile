@@ -1,4 +1,9 @@
-FROM python:3.7
+FROM python:3.7-slim
+
+RUN \
+  apt-get update -y && \
+  apt-get install -qq libglib2.0-0 libsm6 libxext6 libxrender-dev && \
+  rm -rf /var/lib/apt/lists/*
 
 EXPOSE 3000
 
