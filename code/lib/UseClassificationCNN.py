@@ -1,4 +1,4 @@
-import CNNBase
+import lib.CNNBase as CNNBase
 import numpy as np
 import logging
 
