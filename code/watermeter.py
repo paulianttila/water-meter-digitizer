@@ -1,6 +1,6 @@
 from http.server import BaseHTTPRequestHandler
 from urllib import parse
-import lib.ZaehlerstandClass
+import lib.MeterValue
 import os
 import socketserver
 import gc
@@ -58,26 +58,11 @@ class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
         self.wfile.write(bytes(message, 'UTF-8'))             
 
     def parseQueryParams(self, path, query) -> Params:
-        simple = True
-        if ('&full' in path) or ('?full' in path):
-            simple = False
-
-        single = False
-        if ('&single' in path) or ('?single' in path):
-            single = True
-
-        usePrevalue = False
-        if ('&useprevalue' in path.lower()) or ('?useprevalue' in path.lower()):
-            usePrevalue = True
-
-        url = ''
-        if 'url' in query:
-            url = query['url'][0]
-
-        value = ''
-        if 'value' in query:
-            value = query['value'][0]
-        
+        simple = '&full' not in path and '?full' not in path
+        single = '&single' in path or '?single' in path
+        usePrevalue = '&useprevalue' in path.lower() or '?useprevalue' in path.lower()
+        url = query['url'][0] if 'url' in query else ''
+        value = query['value'][0] if 'value' in query else ''
         return Params(simple, single, usePrevalue, url, value)
         
     def do_GET(self):
@@ -95,7 +80,7 @@ class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
             self.showMessage('Reload configuration')
             del watermeter
             gc.collect()
-            watermeter = lib.ZaehlerstandClass.Zaehlerstand()
+            watermeter = lib.MeterValue.MeterValue()
             return
 
         if ('/version' in url_parse.path):
@@ -136,12 +121,12 @@ class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
             return
 
         if '/watermeter.json' in url_parse.path:
-            result = watermeter.getZaehlerstandJSON(args.url, args.simple, args.usePrevalue, args.single)
+            result = watermeter.getMeterValueJSON(args.url, args.simple, args.usePrevalue, args.single)
             self.showMessage(result, 'application/json')
             return
 
         if '/watermeter' in url_parse.path:
-            result = watermeter.getZaehlerstand(args.url, args.simple, args.usePrevalue, args.single)
+            result = watermeter.getMeterValue(args.url, args.simple, args.usePrevalue, args.single)
             self.showMessage(result)
             return
 
@@ -151,14 +136,14 @@ if __name__ == '__main__':
     if logLevel is not None:
         logger.setLevel(logLevel)
 
-    logging.getLogger("lib.CutImageClass").setLevel(logger.level)
-    logging.getLogger("lib.LoadFileFromHTTPClass").setLevel(logger.level)
+    logging.getLogger("lib.CutImage").setLevel(logger.level)
+    logging.getLogger("lib.LoadFileFromHTTP").setLevel(logger.level)
     logging.getLogger("lib.ReadConfig").setLevel(logger.level)
-    logging.getLogger("lib.UseAnalogCounterCNNClass").setLevel(logger.level)
-    logging.getLogger("lib.UseClassificationCNNClass").setLevel(logger.level)
-    logging.getLogger("lib.ZaehlerstandClass").setLevel(logger.level)
+    logging.getLogger("lib.UseAnalogCounterCNN").setLevel(logger.level)
+    logging.getLogger("lib.UseClassificationCNN").setLevel(logger.level)
+    logging.getLogger("lib.MeterValue").setLevel(logger.level)
 
-    watermeter = lib.ZaehlerstandClass.Zaehlerstand()
+    watermeter = lib.MeterValue.MeterValue()
 
     PORT = 3000
     with socketserver.TCPServer(("", PORT), SimpleHTTPRequestHandler) as httpd:

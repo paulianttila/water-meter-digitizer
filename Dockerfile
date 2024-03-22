@@ -11,4 +11,4 @@ RUN pip install --no-cache-dir ./wheels/tflite_runtime-2.1.0.post1-cp37-cp37m-li
 	pip install --no-cache-dir -r requirements.txt && \
 	rm -r ./wheels
 
-CMD ["python", "./wasseruhr.py"]
+CMD ["python", "./watermeter.py"]

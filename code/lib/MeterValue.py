@@ -1,10 +1,8 @@
 import configparser
-#import lib.ReadAnalogNeedleClass
-import lib.CutImageClass
-#import lib.ReadDigitalDigitClass
-import lib.UseClassificationCNNClass
-import lib.UseAnalogCounterCNNClass
-import lib.LoadFileFromHTTPClass
+import lib.CutImage
+import lib.UseClassificationCNN
+import lib.UseAnalogCounterCNN
+import lib.LoadFileFromHTTP
 import lib.ReadConfig
 import math
 import os
@@ -17,7 +15,7 @@ import logging
 
 logger = logging.getLogger(__name__)
 
-class Zaehlerstand:
+class MeterValue:
     def __init__(self):
         
 
@@ -49,7 +47,7 @@ class Zaehlerstand:
             if config.has_option(zw, 'LogNames'):
                 LogNames = config.get(zw, 'LogNames')
 
-            self.readAnalogNeedle = lib.UseAnalogCounterCNNClass.UseAnalogCounterCNN(model_file, in_dx, in_dy, log_Image, LogNames)
+            self.readAnalogNeedle = lib.UseAnalogCounterCNN.UseAnalogCounterCNN(model_file, in_dx, in_dy, log_Image, LogNames)
             logger.debug('Analog Model Init Done')
         else:
             logger.debug('Analog Model Disabled')
@@ -66,12 +64,12 @@ class Zaehlerstand:
         if config.has_option(zw, 'LogNames'):
             LogNames = config.get(zw, 'LogNames')
 
-        self.readDigitalDigit = lib.UseClassificationCNNClass.UseClassificationCNN(model_file, in_dx, in_dy, in_numberclasses, log_Image, LogNames)
+        self.readDigitalDigit = lib.UseClassificationCNN.UseClassificationCNN(model_file, in_dx, in_dy, in_numberclasses, log_Image, LogNames)
         logger.debug('Digital Model Init Done')
 
-        self.CutImage = lib.CutImageClass.CutImage(self.readConfig)
+        self.CutImage = lib.CutImage.CutImage(self.readConfig)
         logger.debug('Digital Model Init Done')
-        self.LoadFileFromHTTP = lib.LoadFileFromHTTPClass.LoadFileFromHttp()
+        self.LoadFileFromHTTP = lib.LoadFileFromHTTP.LoadFileFromHttp()
 
         self.ConsistencyEnabled = False        
         if config.has_option('ConsistencyCheck', 'Enabled'):
@@ -189,7 +187,7 @@ class Zaehlerstand:
         return txt
 
 
-    def getZaehlerstand(self, url, simple = True, UsePreValue = False, single = False, ignoreConsistencyCheck = False):
+    def getMeterValue(self, url, simple = True, UsePreValue = False, single = False, ignoreConsistencyCheck = False):
         #txt = ""
         #logtime="test"
         txt, logtime = self.LoadFileFromHTTP.LoadImageFromURL(url, './image_tmp/original.jpg')
@@ -214,7 +212,7 @@ class Zaehlerstand:
             self.akt_vorkomma = self.DigitalReadoutToValue(resultdigital, UsePreValue, self.LastNachkomma, self.akt_nachkomma)
             self.LoadFileFromHTTP.PostProcessLogImageProcedure(True)
 
-            logger.debug('Start Making Zaehlerstand')
+            logger.debug('Start Making MeterValue')
             (error, errortxt) = self.checkConsistency(ignoreConsistencyCheck)
             self.UpdateLastValues(error)
             txt = self.MakeReturnValue(error, errortxt, single)
@@ -234,11 +232,11 @@ class Zaehlerstand:
                     for i in range(len(resultanalog)):
                         txt += '<img src=/image_tmp/'+  str(resultcut[0][i][0]) + '.jpg></img>' + "{:.1f}".format(resultanalog[i])
                     txt = txt + '<p>'
-            logger.debug('Get Zaehlerstand done')
+            logger.debug('Get MeterValue done')
         return txt
 
     
-    def getZaehlerstandJSON(self, url, simple = True, UsePreValue = False, single = False, ignoreConsistencyCheck = False):
+    def getMeterValueJSON(self, url, simple = True, UsePreValue = False, single = False, ignoreConsistencyCheck = False):
         #txt = ""
         #logtime="test"
         Value = ""
@@ -278,7 +276,7 @@ class Zaehlerstand:
             self.akt_vorkomma = self.DigitalReadoutToValue(resultdigital, UsePreValue, self.LastNachkomma, self.akt_nachkomma)
             self.LoadFileFromHTTP.PostProcessLogImageProcedure(True)
 
-            logger.debug('Start Making Zaehlerstand')
+            logger.debug('Start Making MeterValue')
             (error, errortxt) = self.checkConsistency(ignoreConsistencyCheck)
             self.UpdateLastValues(error)
 
