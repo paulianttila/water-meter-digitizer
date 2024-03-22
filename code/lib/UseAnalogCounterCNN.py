@@ -10,20 +10,14 @@ import tflite_runtime.interpreter as tflite
 
 from PIL import Image
 import numpy as np
-import glob
 import os
-import cv2
-import configparser
 import math
-import time
 from shutil import copyfile
 from PIL import Image 
 from datetime import datetime
 import logging
 
 logger = logging.getLogger(__name__)
-
-debug = True
 
 class UseAnalogCounterCNN:
     def __init__(self, in_Modelfile, in_dx, in_dy, in_LogImageLocation, in_LogNames):
@@ -38,13 +32,10 @@ class UseAnalogCounterCNN:
 
         self.CheckAndLoadDefaultConfig()
 
-        if self.log_Image:
-            if in_LogNames:
-                zw_LogNames = in_LogNames.split(',')
-                self.LogNames = []
-                for nm in zw_LogNames:
-                      self.LogNames.append(nm.strip())
-
+        if self.log_Image and in_LogNames:
+            zw_LogNames = in_LogNames.split(',')
+            self.LogNames = []
+            self.LogNames.extend(nm.strip() for nm in zw_LogNames)
         filename, file_extension = os.path.splitext(self.model_file)
         if file_extension != ".tflite":
             logger.error("Only TFLite-Model (*.tflite) are support since version 7.0.0 and higher")
@@ -71,14 +62,13 @@ class UseAnalogCounterCNN:
                     os.makedirs(pfad)
             defaultmodel = self.model_file.replace(targetdir, defaultdir)
             copyfile(defaultmodel, self.model_file)
-        if len(self.log_Image) > 0:
-            if not os.path.exists(self.log_Image):
-                zerlegt = self.log_Image.split('/')
-                pfad = zerlegt[0]
-                for i in range(1, len(zerlegt)):
-                    pfad = pfad + '/' + zerlegt[i]
-                    if not os.path.exists(pfad):
-                        os.makedirs(pfad)
+        if len(self.log_Image) > 0 and not os.path.exists(self.log_Image):
+            zerlegt = self.log_Image.split('/')
+            pfad = zerlegt[0]
+            for i in range(1, len(zerlegt)):
+                pfad = pfad + '/' + zerlegt[i]
+                if not os.path.exists(pfad):
+                    os.makedirs(pfad)
 
     def Readout(self, PictureList, logtime):
         self.result = []
@@ -90,20 +80,15 @@ class UseAnalogCounterCNN:
         return self.result
 
     def ReadoutSingleImage(self, image):
-        if debug: 
-            logger.debug("Validity 01")
+        logger.debug("Validity 01")
         test_image = image.resize((self.dx,  self.dy), Image.NEAREST)
-        if debug: 
-            logger.debug("Validity 02")
+        logger.debug("Validity 02")
         test_image.save('./image_tmp/resize.jpg', "JPEG")
-        if debug: 
-            logger.debug("Validity 03")
+        logger.debug("Validity 03")
         test_image = np.array(test_image, dtype="float32")
-        if debug: 
-            logger.debug("Validity 04")
+        logger.debug("Validity 04")
         img = np.reshape(test_image,[1, self.dy, self.dx,3])
-        if debug: 
-            logger.debug("Validity 05")
+        logger.debug("Validity 05")
 
         input_data = img
         self.interpreter.set_tensor(self.input_details[0]['index'], input_data)
@@ -114,22 +99,12 @@ class UseAnalogCounterCNN:
         result =  np.arctan2(out_sin, out_cos)/(2*math.pi) % 1
         result = result * 10
 
-        if debug: 
-            logger.debug("Validity 06")
-        if debug: 
-            logger.debug("Validity 07")
-
+        logger.debug("Validity 06")
         return result
 
     def saveLogImage(self, image, value, logtime):
-        if (len(self.LogNames) > 0) and (not image[0] in self.LogNames):
+        if (len(self.LogNames) > 0) and (image[0] not in self.LogNames):
             return
         speichername = "{:.1f}".format(value) + '_' +  image[0] + '_' + logtime + '.jpg'
-        speichername = self.log_Image + '/' + speichername
+        speichername = f'{self.log_Image}/{speichername}'
         image[1].save(speichername, "JPEG")        
-
-    def gettimestring(self):
-        curr_time = datetime.now()
-        formatted_time = curr_time.strftime('%Y-%m-%d %H:%M:%S.%f')
-        return formatted_time
-

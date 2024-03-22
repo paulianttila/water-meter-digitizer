@@ -39,16 +39,13 @@ class LoadFileFromHttp:
         self.LastImageSafed = ''
 
     def CheckAndLoadDefaultConfig(self):
-        defaultdir = "./config_default/"
-        targetdir = './config/'
-        if len(self.log_Image) > 0:
-            if not os.path.exists(self.log_Image):
-                zerlegt = self.log_Image.split('/')
-                pfad = zerlegt[0]
-                for i in range(1, len(zerlegt)):
-                    pfad = pfad + '/' + zerlegt[i]
-                    if not os.path.exists(pfad):
-                        os.makedirs(pfad)
+        if len(self.log_Image) > 0 and not os.path.exists(self.log_Image):
+            zerlegt = self.log_Image.split('/')
+            pfad = zerlegt[0]
+            for i in range(1, len(zerlegt)):
+                pfad = f'{pfad}/{zerlegt[i]}'
+                if not os.path.exists(pfad):
+                    os.makedirs(pfad)
 
     def ReadURL(self, event, url, target):
         urllib.request.urlretrieve(url, target)
@@ -68,16 +65,16 @@ class LoadFileFromHttp:
         logtime = time.strftime('%Y-%m-%d_%H-%M-%S', time.localtime())
         if event.is_set():
             self.saveLogImage(target, logtime)
-            if self.VerifyImage(target) == True:
+            if self.VerifyImage(target) is True:
                 image_size = os.stat(target).st_size
                 if image_size > self.MinImageSize:
                     result = ''
                 else:
-                    result = 'Error - Imagefile too small. Size ' + str(image_size) + ', min size is ' + str(self.MinImageSize)+ '. Source: ' + str(url)
+                    result = f'Error - Imagefile too small. Size {str(image_size)}, min size is {str(self.MinImageSize)}. Source: {str(url)}'
             else:
-                result = 'Error - Imagefile is corrupted - Source: ' + str(url)
+                result = f'Error - Imagefile is corrupted - Source: {str(url)}'
         else:
-            result = 'Error - Problem during HTTP-request - URL: ' + str(url)
+            result = f'Error - Problem during HTTP-request - URL: {str(url)}'
         return (result, logtime)
 
     def PostProcessLogImageProcedure(self, everythingsuccessfull):
@@ -95,6 +92,6 @@ class LoadFileFromHttp:
 
     def saveLogImage(self, img_file, logtime):
         if len(self.log_Image) > 0:
-            speichername = self.log_Image + '/SourceImage_' + logtime + '.jpg'
+            speichername = f'{self.log_Image}/SourceImage_{logtime}.jpg'
             copyfile(img_file, speichername)
             self.LastImageSafed = speichername

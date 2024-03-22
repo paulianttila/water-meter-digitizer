@@ -1,14 +1,13 @@
 import numpy as np
 import cv2
-import configparser
-import os
-from shutil import copyfile
 from PIL import Image
 from pathlib import Path
 import threading
 import logging
 
 logger = logging.getLogger(__name__)
+
+debug = True
 
 class CutImage():
     def __init__(self, readconfig, zwpath='./image_tmp/'):
@@ -38,16 +37,15 @@ class CutImage():
         zw2 = str(zw2)
         zw4 = str(Path(self.ConfigOriginalPath))
         zw3 = zw2.replace(zw4, zw1)
-        zw3 = Path(zw3)
-        return zw3
+        return Path(zw3)
 
     def Cut(self, image):
         source = cv2.imread(image)
-        cv2.imwrite(self.PathImageZw + 'org.jpg', source)
+        cv2.imwrite(f'{self.PathImageZw}org.jpg', source)
         target = self.RotateImage(source)
-        cv2.imwrite(self.PathImageZw + 'rot.jpg', target)
+        cv2.imwrite(f'{self.PathImageZw}rot.jpg', target)
         target = self.Alignment(target)
-        cv2.imwrite(self.PathImageZw + 'alg.jpg', target)
+        cv2.imwrite(f'{self.PathImageZw}alg.jpg', target)
 
         zeiger = self.cutZeiger(target)
         ziffern = self.cutZiffern(target)
@@ -87,25 +85,12 @@ class CutImage():
 
     def Alignment(self, source):
         h, w, ch = source.shape
-        if (self.M is None) or (self.FastMode == False):
+        if (self.M is None) or (self.FastMode is False):
             self.CalculateAffineTransform(source)
         else:
             CalcAffTransOffline = self.CalcAffTransOfflineClass(self)
-            CalcAffTransOffline.start()            
-        target = cv2.warpAffine(source, self.M, (w, h))
-        return target
-
-    def Alignment(self, source):
-        h, w, ch = source.shape
-        p0 = self.getRefCoordinate(source, self.reference_image[0])
-        p1 = self.getRefCoordinate(source, self.reference_image[1])
-        p2 = self.getRefCoordinate(source, self.reference_image[2])
-
-        pts1 = np.float32([p0, p1, p2])
-        pts2 = np.float32([self.reference_pos[0], self.reference_pos[1], self.reference_pos[2]])
-        M = cv2.getAffineTransform(pts1,pts2)
-        target = cv2.warpAffine(source ,M, (w, h))
-        return target
+            CalcAffTransOffline.start()
+        return cv2.warpAffine(source, self.M, (w, h))
 
     def CalculateAffineTransform(self, source):
         logger.debug("Cut CalcAffineTransformation")
@@ -148,13 +133,7 @@ class CutImage():
         method = cv2.TM_CCOEFF_NORMED                #4
         res = cv2.matchTemplate(image, template, method)
         min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(res)
-        # If the method is TM_SQDIFF or TM_SQDIFF_NORMED, take minimum
-        if method in [cv2.TM_SQDIFF, cv2.TM_SQDIFF_NORMED]:
-            top_left = min_loc
-        else:
-            top_left = max_loc
-#        bottom_right = (top_left[0] + w, top_left[1] + h)
-        return top_left
+        return min_loc if method in [cv2.TM_SQDIFF, cv2.TM_SQDIFF_NORMED] else max_loc
 
 
     def RotateImage(self, image):
@@ -168,8 +147,6 @@ class CutImage():
         im = cv2.imread(url)
 
         d = 2
-        d_eclipse = 1
-
         x = self.reference_p0[0]
         y = self.reference_p0[1]
         h, w =  self.ref0.shape[:2]
@@ -181,7 +158,7 @@ class CutImage():
         h, w =  self.ref1.shape[:2]
         cv2.rectangle(im,(x-d,y-d),(x+w+2*d,y+h+2*d),(0,0,255),d)
         cv2.putText(im,'ref1',(x,y-5),0,0.4,(0,0,255))
-        
+
         x = self.reference_p2[0]
         y = self.reference_p2[1]
         h, w =  self.ref2.shape[:2]
@@ -189,6 +166,8 @@ class CutImage():
         cv2.putText(im,'ref2',(x,y-5),0,0.4,(0,0,255))
 
         if self.AnalogReadOutEnabled:
+            d_eclipse = 1
+
             for zeiger in self.Analog_Counter:
                 x, y, w, h = zeiger[1]
                 cv2.rectangle(im,(x-d,y-d),(x+w+2*d,y+h+2*d),(0,255,0),d)
@@ -209,7 +188,6 @@ class CutImage():
         im = cv2.imread(zwimage)
 
         d = 3
-        d_eclipse = 1
         _colour = (255, 0, 0)
 
         if draw_ref:
@@ -222,6 +200,7 @@ class CutImage():
 
 
         if self.AnalogReadOutEnabled and draw_cou:
+            d_eclipse = 1
             for i in range(len(self.Analog_Counter)):
                 if i != ign_cou:
                     x, y, w, h = self.Analog_Counter[i][1]

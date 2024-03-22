@@ -94,11 +94,11 @@ class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
 
         if "/image_tmp/" in url_parse.path:
             self.send_response(200)
-            size = str(os.stat('.'+self.path).st_size)
+            size = str(os.stat(f'.{self.path}').st_size)
             self.send_header('Content-type', 'image/jpg')
             self.send_header('Content-length', size)
             self.end_headers()
-            with open('.'+self.path, 'rb') as file: 
+            with open(f'.{self.path}', 'rb') as file: 
                 self.wfile.write(file.read()) # Read the file and send the contents
             return
 
@@ -107,7 +107,7 @@ class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
             logger.info('Crash with division by zero!')
             a = 1
             b = 0
-            c = a/b
+            c = a/b  # noqa: F841
             return
 
         if ('/roi' in url_parse.path.lower()):
