@@ -3,9 +3,11 @@ import os
 import gc
 import logging
 import sys
-from fastapi import FastAPI, Response
+from fastapi import FastAPI, Response, Request
 from fastapi.responses import HTMLResponse
 from fastapi.responses import FileResponse
+from fastapi.staticfiles import StaticFiles
+from fastapi.templating import Jinja2Templates
 import uvicorn
 
 version = "Version 8.0.0 (2024-03-22)"
@@ -19,33 +21,14 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 app = FastAPI(title="Watermeter")
+app.mount("/static", StaticFiles(directory="web/static"), name="static")
+templates = Jinja2Templates(directory="web/templates")
 
 
 @app.get("/", response_class=HTMLResponse)
-def getIndex():
-    return  """
-<!DOCTYPE html>
-<html>
-<body>
-    Watermeter {0}
-    <h1>Links</h1>
-    <a href="watermeter?single=True">Watermeter value (single)</a><br>
-    <a href="watermeter?usePreValue=True">Watermeter value with previous value</a><br>
-    <a href="watermeter?simple=False">Watermeter value with full details</a><br>
-    <a href="watermeter?usePreValue=True&simple=False">Watermeter value with previous value and full details</a><br>
-    <a href="roi">ROI image</a><br>
-    <br><br>
-    <a href="watermeter?format=json&single=True">Watermeter value (single) in JSON format</a><br>
-    <a href="watermeter?format=json&simple=False&usePreValue=True">Watermeter value with previous value in JSON format</a><br>
-    <h1>Set previous value</h1>
-    Set previous value by &lt;ip&gt;:&lt;port&gt;/setPreValue.html?value=&lt;value&gt;
-    <br><br>
-    Example: 192.168.10.23:3000/setPreValue?value=452.0124
-    <h1>Reload configuration</h1>
-    <a href="reload">Reload</a><br>
-</body>
-</html>""".format(
-        version
+def getIndex(request: Request):
+    return templates.TemplateResponse(
+        "index.html", context={"request": request, "version": version}
     )
 
 
