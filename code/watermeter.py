@@ -8,17 +8,22 @@ from fastapi.responses import HTMLResponse
 from fastapi.responses import FileResponse
 import uvicorn
 
-version = 'Version 8.0.0 (2024-03-22)'
+version = "Version 8.0.0 (2024-03-22)"
 
-logging.basicConfig(stream=sys.stdout, level=logging.DEBUG, format='%(asctime)s - %(levelname)s - %(name)s - %(message)s')
+logging.basicConfig(
+    stream=sys.stdout,
+    level=logging.DEBUG,
+    format="%(asctime)s - %(levelname)s - %(name)s - %(message)s",
+)
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
-app = FastAPI(title='Watermeter')
+app = FastAPI(title="Watermeter")
 
-@app.get('/', response_class=HTMLResponse)
+
+@app.get("/", response_class=HTMLResponse)
 def getIndex():
-    return '''
+    return  """
 <!DOCTYPE html>
 <html>
 <body>
@@ -39,58 +44,80 @@ def getIndex():
     <h1>Reload configuration</h1>
     <a href="reload">Reload</a><br>
 </body>
-</html>'''.format(version)
+</html>""".format(
+        version
+    )
 
-@app.get('/healthcheck')
+
+@app.get("/healthcheck")
 def healthcheck():
-    return 'Health - OK'
+    return "Health - OK"
 
-@app.get('/image_tmp/{image}')
+
+@app.get("/image_tmp/{image}")
 def getImage(image: str):
-    return FileResponse(f'./image_tmp/{image}', media_type='image/jpg', filename=image)
+    return FileResponse(f"./image_tmp/{image}", media_type="image/jpg", filename=image)
 
-@app.get('/version', response_class=HTMLResponse)
+
+@app.get("/version", response_class=HTMLResponse)
 def getVersion():
-    return version   
+    return version
 
-@app.get('/reload', response_class=HTMLResponse)
+
+@app.get("/reload", response_class=HTMLResponse)
 def reloadConfig():
     global watermeter
     del watermeter
     gc.collect()
     watermeter = MeterValue()
-    return 'Configuration reloaded'
+    return "Configuration reloaded"
 
-@app.get('/roi', response_class=HTMLResponse)
-def getRoi(url: str = ''):
+
+@app.get("/roi", response_class=HTMLResponse)
+def getRoi(url: str = ""):
     return watermeter.getROI(url)
 
-@app.get('/setPreValue', response_class=HTMLResponse)
+
+@app.get("/setPreValue", response_class=HTMLResponse)
 def setPreValue(value: float):
     return watermeter.setPreValue(value)
 
-@app.get('/watermeter')
-def getMeterValue(format: str = 'html', url: str = '', simple: bool = True, usePreValue: bool = False, single: bool = False):
-    if format == 'json':
-        return Response(watermeter.getMeterValueJSON(url, simple, usePreValue, single), media_type='application/json')
-    else:
-        return Response(watermeter.getMeterValue(url, simple, usePreValue, single), media_type='text/html')
 
-if __name__ == '__main__':
-    logLevel = os.environ.get('LOG_LEVEL')
+@app.get("/watermeter")
+def getMeterValue(
+    format: str = "html",
+    url: str = "",
+    simple: bool = True,
+    usePreValue: bool = False,
+    single: bool = False,
+):
+    if format == "json":
+        return Response(
+            watermeter.getMeterValueJSON(url, simple, usePreValue, single),
+            media_type="application/json",
+        )
+    else:
+        return Response(
+            watermeter.getMeterValue(url, simple, usePreValue, single),
+            media_type="text/html",
+        )
+
+
+if __name__ == "__main__":
+    logLevel = os.environ.get("LOG_LEVEL")
     if logLevel is not None:
         logger.setLevel(logLevel)
 
-    logging.getLogger('lib.CNNBase').setLevel(logger.level)
-    logging.getLogger('lib.CutImage').setLevel(logger.level)
-    logging.getLogger('lib.LoadFileFromHTTP').setLevel(logger.level)
-    logging.getLogger('lib.ReadConfig').setLevel(logger.level)
-    logging.getLogger('lib.UseAnalogCounterCNN').setLevel(logger.level)
-    logging.getLogger('lib.UseClassificationCNN').setLevel(logger.level)
-    logging.getLogger('lib.MeterValue').setLevel(logger.level)
+    logging.getLogger("lib.CNNBase").setLevel(logger.level)
+    logging.getLogger("lib.CutImage").setLevel(logger.level)
+    logging.getLogger("lib.LoadFileFromHTTP").setLevel(logger.level)
+    logging.getLogger("lib.ReadConfig").setLevel(logger.level)
+    logging.getLogger("lib.UseAnalogCounterCNN").setLevel(logger.level)
+    logging.getLogger("lib.UseClassificationCNN").setLevel(logger.level)
+    logging.getLogger("lib.MeterValue").setLevel(logger.level)
 
     watermeter = MeterValue()
-    
+
     port = 3000
-    logger.info(f'Watermeter is serving at port {port}')
-    uvicorn.run(app, host='0.0.0.0', port=port)
+    logger.info(f"Watermeter is serving at port {port}")
+    uvicorn.run(app, host="0.0.0.0", port=port)

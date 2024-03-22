@@ -9,13 +9,16 @@ logger = logging.getLogger(__name__)
 
 debug = True
 
-class CutImage():
-    def __init__(self, readconfig, zwpath='./image_tmp/'):
+
+class CutImage:
+    def __init__(self, readconfig, zwpath="./image_tmp/"):
         self.PathImageZw = zwpath
         self.UpdateConfig(readconfig)
 
     def UpdateConfig(self, readconfig):
-        (self.ConfigOriginalPath, self.ConfigReroutePath) = readconfig.ConfigRerouteConfig()
+        (self.ConfigOriginalPath, self.ConfigReroutePath) = (
+            readconfig.ConfigRerouteConfig()
+        )
 
         self.rotateAngle = readconfig.CutPreRotateAngle()
         (self.reference_name, self.reference_pos) = readconfig.CutReferenceParameter()
@@ -25,11 +28,12 @@ class CutImage():
             zwname = self.ReplacePathToConfig(self.reference_name[i])
             self.reference_image.append(cv2.imread(str(zwname)))
 
-        (self.AnalogReadOutEnabled, self.Analog_Counter) = readconfig.CutGetAnalogCounter()
+        (self.AnalogReadOutEnabled, self.Analog_Counter) = (
+            readconfig.CutGetAnalogCounter()
+        )
         (self.Digital_Digit) = readconfig.CutGetDigitalDigit()
         self.FastMode = readconfig.Cut_FastMode
         self.M = None
-
 
     def ReplacePathToConfig(self, inp):
         zw1 = str(self.ConfigReroutePath)
@@ -41,11 +45,11 @@ class CutImage():
 
     def Cut(self, image):
         source = cv2.imread(image)
-        cv2.imwrite(f'{self.PathImageZw}org.jpg', source)
+        cv2.imwrite(f"{self.PathImageZw}org.jpg", source)
         target = self.RotateImage(source)
-        cv2.imwrite(f'{self.PathImageZw}rot.jpg', target)
+        cv2.imwrite(f"{self.PathImageZw}rot.jpg", target)
         target = self.Alignment(target)
-        cv2.imwrite(f'{self.PathImageZw}alg.jpg', target)
+        cv2.imwrite(f"{self.PathImageZw}alg.jpg", target)
 
         zeiger = self.cutZeiger(target)
         ziffern = self.cutZiffern(target)
@@ -59,10 +63,10 @@ class CutImage():
     def cutZeiger(self, source):
         result = []
         for zeiger in self.Analog_Counter:
-#            img[y:y+h, x:x+w]
+            #            img[y:y+h, x:x+w]
             x, y, dx, dy = zeiger[1]
-            crop_img = source[y:y+dy, x:x+dx]
-            name = self.PathImageZw + zeiger[0] + '.jpg'
+            crop_img = source[y : y + dy, x : x + dx]
+            name = self.PathImageZw + zeiger[0] + ".jpg"
             cv2.imwrite(name, crop_img)
             crop_img = cv2.cvtColor(crop_img, cv2.COLOR_BGR2RGB)
             im_pil = Image.fromarray(crop_img)
@@ -74,8 +78,8 @@ class CutImage():
         result = []
         for zeiger in self.Digital_Digit:
             x, y, dx, dy = zeiger[1]
-            crop_img = source[y:y+dy, x:x+dx]
-            name = self.PathImageZw + zeiger[0] + '.jpg'
+            crop_img = source[y : y + dy, x : x + dx]
+            name = self.PathImageZw + zeiger[0] + ".jpg"
             cv2.imwrite(name, crop_img)
             crop_img = cv2.cvtColor(crop_img, cv2.COLOR_BGR2RGB)
             im_pil = Image.fromarray(crop_img)
@@ -95,22 +99,23 @@ class CutImage():
     def CalculateAffineTransform(self, source):
         logger.debug("Cut CalcAffineTransformation")
         h, w, ch = source.shape
-        if debug: 
-            logger.debug("Align 01a")        
+        if debug:
+            logger.debug("Align 01a")
         p0 = self.getRefCoordinate(source, self.reference_image[0])
-        if debug: 
-            logger.debug("Align 01b")  
+        if debug:
+            logger.debug("Align 01b")
         p1 = self.getRefCoordinate(source, self.reference_image[1])
-        if debug: 
-            logger.debug("Align 01c")  
+        if debug:
+            logger.debug("Align 01c")
         p2 = self.getRefCoordinate(source, self.reference_image[2])
-        if debug: 
-            logger.debug("Align 02")  
+        if debug:
+            logger.debug("Align 02")
 
         pts1 = np.float32([p0, p1, p2])
-        pts2 = np.float32([self.reference_pos[0], self.reference_pos[1], self.reference_pos[2]])
-        self.M = cv2.getAffineTransform(pts1,pts2)
-
+        pts2 = np.float32(
+            [self.reference_pos[0], self.reference_pos[1], self.reference_pos[2]]
+        )
+        self.M = cv2.getAffineTransform(pts1, pts2)
 
     class CalcAffTransOfflineClass(threading.Thread):
         def __init__(self, _master):
@@ -124,17 +129,16 @@ class CutImage():
         logger.debug("Cut After")
         if self.FastMode:
             CalcAffTransOffline = self.CalcAffTransOfflineClass(self)
-            CalcAffTransOffline.start()        
+            CalcAffTransOffline.start()
 
     def getRefCoordinate(self, image, template):
-#        method = cv2.TM_SQDIFF                     #2
-        method = cv2.TM_SQDIFF_NORMED              #1
-#        method = cv2.TM_CCORR_NORMED                #3
-        method = cv2.TM_CCOEFF_NORMED                #4
+        #        method = cv2.TM_SQDIFF                     #2
+        method = cv2.TM_SQDIFF_NORMED  # 1
+        #        method = cv2.TM_CCORR_NORMED                #3
+        method = cv2.TM_CCOEFF_NORMED  # 4
         res = cv2.matchTemplate(image, template, method)
         min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(res)
         return min_loc if method in [cv2.TM_SQDIFF, cv2.TM_SQDIFF_NORMED] else max_loc
-
 
     def RotateImage(self, image):
         h, w, ch = image.shape
@@ -149,41 +153,70 @@ class CutImage():
         d = 2
         x = self.reference_p0[0]
         y = self.reference_p0[1]
-        h, w =  self.ref0.shape[:2]
-        cv2.rectangle(im,(x-d,y-d),(x+w+2*d,y+h+2*d),(0,0,255),d)
-        cv2.putText(im,'ref0',(x,y-5),0,0.4,(0,0,255))
+        h, w = self.ref0.shape[:2]
+        cv2.rectangle(
+            im, (x - d, y - d), (x + w + 2 * d, y + h + 2 * d), (0, 0, 255), d
+        )
+        cv2.putText(im, "ref0", (x, y - 5), 0, 0.4, (0, 0, 255))
 
         x = self.reference_p1[0]
         y = self.reference_p1[1]
-        h, w =  self.ref1.shape[:2]
-        cv2.rectangle(im,(x-d,y-d),(x+w+2*d,y+h+2*d),(0,0,255),d)
-        cv2.putText(im,'ref1',(x,y-5),0,0.4,(0,0,255))
+        h, w = self.ref1.shape[:2]
+        cv2.rectangle(
+            im, (x - d, y - d), (x + w + 2 * d, y + h + 2 * d), (0, 0, 255), d
+        )
+        cv2.putText(im, "ref1", (x, y - 5), 0, 0.4, (0, 0, 255))
 
         x = self.reference_p2[0]
         y = self.reference_p2[1]
-        h, w =  self.ref2.shape[:2]
-        cv2.rectangle(im,(x-d,y-d),(x+w+2*d,y+h+2*d),(0,0,255),d)
-        cv2.putText(im,'ref2',(x,y-5),0,0.4,(0,0,255))
+        h, w = self.ref2.shape[:2]
+        cv2.rectangle(
+            im, (x - d, y - d), (x + w + 2 * d, y + h + 2 * d), (0, 0, 255), d
+        )
+        cv2.putText(im, "ref2", (x, y - 5), 0, 0.4, (0, 0, 255))
 
         if self.AnalogReadOutEnabled:
             d_eclipse = 1
 
             for zeiger in self.Analog_Counter:
                 x, y, w, h = zeiger[1]
-                cv2.rectangle(im,(x-d,y-d),(x+w+2*d,y+h+2*d),(0,255,0),d)
-                xct = int(x+w/2)+1
-                yct = int(y+h/2)+1
-                cv2.line(im,(xct-5,yct),(xct+5,yct),(0,255,0),1)
-                cv2.line(im,(xct,yct-5),(xct,yct+5),(0,255,0),1)
-                cv2.ellipse(im, (xct, yct), (int(w/2)+2*d_eclipse, int(h/2)+2*d_eclipse), 0, 0, 360, (0,255,0), d_eclipse)
-                cv2.putText(im,zeiger[0],(x,y-5),0,0.4,(0,255,0))
+                cv2.rectangle(
+                    im, (x - d, y - d), (x + w + 2 * d, y + h + 2 * d), (0, 255, 0), d
+                )
+                xct = int(x + w / 2) + 1
+                yct = int(y + h / 2) + 1
+                cv2.line(im, (xct - 5, yct), (xct + 5, yct), (0, 255, 0), 1)
+                cv2.line(im, (xct, yct - 5), (xct, yct + 5), (0, 255, 0), 1)
+                cv2.ellipse(
+                    im,
+                    (xct, yct),
+                    (int(w / 2) + 2 * d_eclipse, int(h / 2) + 2 * d_eclipse),
+                    0,
+                    0,
+                    360,
+                    (0, 255, 0),
+                    d_eclipse,
+                )
+                cv2.putText(im, zeiger[0], (x, y - 5), 0, 0.4, (0, 255, 0))
         for zeiger in self.Digital_Digit:
             x, y, w, h = zeiger[1]
-            cv2.rectangle(im,(x-d,y-d),(x+w+2*d,y+h+2*d),(0,255,0),d)
-            cv2.putText(im,zeiger[0],(x,y-5),0,0.4,(0,255,0))
-        cv2.imwrite('./image_tmp/roi.jpg', im)
+            cv2.rectangle(
+                im, (x - d, y - d), (x + w + 2 * d, y + h + 2 * d), (0, 255, 0), d
+            )
+            cv2.putText(im, zeiger[0], (x, y - 5), 0, 0.4, (0, 255, 0))
+        cv2.imwrite("./image_tmp/roi.jpg", im)
 
-    def DrawROI(self, image_in, image_out='./image_tmp/roi.jpg', draw_ref=False, draw_dig=True, draw_cou=True, ign_ref=-1, ign_dig=-1, ign_cou=-1):
+    def DrawROI(
+        self,
+        image_in,
+        image_out="./image_tmp/roi.jpg",
+        draw_ref=False,
+        draw_dig=True,
+        draw_cou=True,
+        ign_ref=-1,
+        ign_dig=-1,
+        ign_cou=-1,
+    ):
         zwimage = str(image_in)
         im = cv2.imread(zwimage)
 
@@ -195,29 +228,62 @@ class CutImage():
                 if i != ign_ref:
                     x, y = self.reference_pos[i]
                     h, w = self.reference_image[i].shape[:2]
-                    cv2.rectangle(im,(x-d,y-d),(x+w+2*d,y+h+2*d),_colour,d)
-                    cv2.putText(im,self.reference_name[i].replace("./config/", ""),(x,y-5),0,0.4,_colour)
-
+                    cv2.rectangle(
+                        im, (x - d, y - d), (x + w + 2 * d, y + h + 2 * d), _colour, d
+                    )
+                    cv2.putText(
+                        im,
+                        self.reference_name[i].replace("./config/", ""),
+                        (x, y - 5),
+                        0,
+                        0.4,
+                        _colour,
+                    )
 
         if self.AnalogReadOutEnabled and draw_cou:
             d_eclipse = 1
             for i in range(len(self.Analog_Counter)):
                 if i != ign_cou:
                     x, y, w, h = self.Analog_Counter[i][1]
-                    cv2.rectangle(im,(x-d,y-d),(x+w+2*d,y+h+2*d),(0,255,0),d)
-                    xct = int(x+w/2)+1
-                    yct = int(y+h/2)+1
-                    cv2.line(im,(x,yct),(x+w+5,yct),(0,255,0),1)
-                    cv2.line(im,(xct,y),(xct,y+h),(0,255,0),1)
-                    cv2.ellipse(im, (xct, yct), (int(w/2)+2*d_eclipse, int(h/2)+2*d_eclipse), 0, 0, 360, (0,255,0), d_eclipse)
-                    cv2.putText(im,self.Analog_Counter[i][0],(x,y-5),0,0.5,(0,255,0))
+                    cv2.rectangle(
+                        im,
+                        (x - d, y - d),
+                        (x + w + 2 * d, y + h + 2 * d),
+                        (0, 255, 0),
+                        d,
+                    )
+                    xct = int(x + w / 2) + 1
+                    yct = int(y + h / 2) + 1
+                    cv2.line(im, (x, yct), (x + w + 5, yct), (0, 255, 0), 1)
+                    cv2.line(im, (xct, y), (xct, y + h), (0, 255, 0), 1)
+                    cv2.ellipse(
+                        im,
+                        (xct, yct),
+                        (int(w / 2) + 2 * d_eclipse, int(h / 2) + 2 * d_eclipse),
+                        0,
+                        0,
+                        360,
+                        (0, 255, 0),
+                        d_eclipse,
+                    )
+                    cv2.putText(
+                        im, self.Analog_Counter[i][0], (x, y - 5), 0, 0.5, (0, 255, 0)
+                    )
 
         if draw_dig:
             for i in range(len(self.Digital_Digit)):
                 if i != ign_dig:
                     x, y, w, h = self.Digital_Digit[i][1]
-                    cv2.rectangle(im,(x-d,y-d),(x+w+2*d,y+h+2*d),(0,255,0),d)
-                    cv2.putText(im,self.Digital_Digit[i][0],(x,y-5),0,0.5,(0,255,0))
+                    cv2.rectangle(
+                        im,
+                        (x - d, y - d),
+                        (x + w + 2 * d, y + h + 2 * d),
+                        (0, 255, 0),
+                        d,
+                    )
+                    cv2.putText(
+                        im, self.Digital_Digit[i][0], (x, y - 5), 0, 0.5, (0, 255, 0)
+                    )
 
         zwname = str(image_out)
         cv2.imwrite(zwname, im)

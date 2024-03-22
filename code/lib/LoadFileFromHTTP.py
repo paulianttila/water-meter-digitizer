@@ -9,41 +9,44 @@ import logging
 
 logger = logging.getLogger(__name__)
 
+
 class LoadFileFromHttp:
     def __init__(self):
         config = configparser.ConfigParser()
-        config.read('./config/config.ini')
+        config.read("./config/config.ini")
 
-        self.TimeoutLoadImage = 30                  # default Timeout = 30s
-        if config.has_option('Imagesource', 'TimeoutLoadImage'):
-            self.TimeoutLoadImage = int(config['Imagesource']['TimeoutLoadImage'])
+        self.TimeoutLoadImage = 30  # default Timeout = 30s
+        if config.has_option("Imagesource", "TimeoutLoadImage"):
+            self.TimeoutLoadImage = int(config["Imagesource"]["TimeoutLoadImage"])
 
-        self.URLImageSource = ''
-        if config.has_option('Imagesource', 'URLImageSource'):
-            self.URLImageSource = config['Imagesource']['URLImageSource']
+        self.URLImageSource = ""
+        if config.has_option("Imagesource", "URLImageSource"):
+            self.URLImageSource = config["Imagesource"]["URLImageSource"]
 
         self.MinImageSize = 10000
-        if config.has_option('Imagesource', 'MinImageSize'):
-            self.MinImageSize = int(config['Imagesource']['MinImageSize'])
+        if config.has_option("Imagesource", "MinImageSize"):
+            self.MinImageSize = int(config["Imagesource"]["MinImageSize"])
 
-        self.log_Image = ''
-        if config.has_option('Imagesource', 'LogImageLocation'):
-            self.log_Image = config['Imagesource']['LogImageLocation']
+        self.log_Image = ""
+        if config.has_option("Imagesource", "LogImageLocation"):
+            self.log_Image = config["Imagesource"]["LogImageLocation"]
 
         self.LogOnlyFalsePictures = False
-        if config.has_option('Imagesource', 'LogOnlyFalsePictures'):
-            self.LogOnlyFalsePictures = bool(config['Imagesource']['LogOnlyFalsePictures'])
+        if config.has_option("Imagesource", "LogOnlyFalsePictures"):
+            self.LogOnlyFalsePictures = bool(
+                config["Imagesource"]["LogOnlyFalsePictures"]
+            )
 
         self.CheckAndLoadDefaultConfig()
 
-        self.LastImageSafed = ''
+        self.LastImageSafed = ""
 
     def CheckAndLoadDefaultConfig(self):
         if len(self.log_Image) > 0 and not os.path.exists(self.log_Image):
-            zerlegt = self.log_Image.split('/')
+            zerlegt = self.log_Image.split("/")
             pfad = zerlegt[0]
             for i in range(1, len(zerlegt)):
-                pfad = f'{pfad}/{zerlegt[i]}'
+                pfad = f"{pfad}/{zerlegt[i]}"
                 if not os.path.exists(pfad):
                     os.makedirs(pfad)
 
@@ -52,35 +55,40 @@ class LoadFileFromHttp:
         event.set()
 
     def LoadImageFromURL(self, url, target):
-        self.LastImageSafed = ''
-        if url == '':
+        self.LastImageSafed = ""
+        if url == "":
             url = self.URLImageSource
         event = Event()
         action_process = Process(target=self.ReadURL, args=(event, url, target))
         action_process.start()
         action_process.join(timeout=self.TimeoutLoadImage)
         action_process.terminate()
-#        action_process.close()
+        #        action_process.close()
 
-        logtime = time.strftime('%Y-%m-%d_%H-%M-%S', time.localtime())
+        logtime = time.strftime("%Y-%m-%d_%H-%M-%S", time.localtime())
         if event.is_set():
             self.saveLogImage(target, logtime)
             if self.VerifyImage(target) is True:
                 image_size = os.stat(target).st_size
                 if image_size > self.MinImageSize:
-                    result = ''
+                    result = ""
                 else:
-                    result = f'Error - Imagefile too small. Size {str(image_size)}, min size is {str(self.MinImageSize)}. Source: {str(url)}'
+                    result = f"Error - Imagefile too small. Size {str(image_size)}, min size is {str(self.MinImageSize)}. Source: {str(url)}"
             else:
-                result = f'Error - Imagefile is corrupted - Source: {str(url)}'
+                result = f"Error - Imagefile is corrupted - Source: {str(url)}"
         else:
-            result = f'Error - Problem during HTTP-request - URL: {str(url)}'
+            result = f"Error - Problem during HTTP-request - URL: {str(url)}"
         return (result, logtime)
 
     def PostProcessLogImageProcedure(self, everythingsuccessfull):
-        if (len(self.log_Image) > 0) and self.LogOnlyFalsePictures and (len(self.LastImageSafed) > 0) and everythingsuccessfull:
+        if (
+            (len(self.log_Image) > 0)
+            and self.LogOnlyFalsePictures
+            and (len(self.LastImageSafed) > 0)
+            and everythingsuccessfull
+        ):
             os.remove(self.LastImageSafed)
-            self.LastImageSafed = ''
+            self.LastImageSafed = ""
 
     def VerifyImage(self, img_file):
         try:
@@ -92,6 +100,6 @@ class LoadFileFromHttp:
 
     def saveLogImage(self, img_file, logtime):
         if len(self.log_Image) > 0:
-            speichername = f'{self.log_Image}/SourceImage_{logtime}.jpg'
+            speichername = f"{self.log_Image}/SourceImage_{logtime}.jpg"
             copyfile(img_file, speichername)
             self.LastImageSafed = speichername
