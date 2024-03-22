@@ -3,7 +3,7 @@ import os
 import gc
 import logging
 import sys
-from fastapi import FastAPI
+from fastapi import FastAPI, Response
 from fastapi.responses import HTMLResponse
 from fastapi.responses import FileResponse
 import uvicorn
@@ -69,12 +69,12 @@ def getRoi(url: str = ''):
 def setPreValue(value: float):
     return watermeter.setPreValue(value)
 
-@app.get('/watermeter', response_class=HTMLResponse)
+@app.get('/watermeter')
 def getMeterValue(format: str = 'html', url: str = '', simple: bool = True, usePreValue: bool = False, single: bool = False):
     if format == 'json':
-        return watermeter.getMeterValueJSON(url, simple, usePreValue, single)
+        return Response(watermeter.getMeterValueJSON(url, simple, usePreValue, single), media_type='application/json')
     else:
-        return watermeter.getMeterValue(url, simple, usePreValue, single)    
+        return Response(watermeter.getMeterValue(url, simple, usePreValue, single), media_type='text/html')
 
 if __name__ == '__main__':
     logLevel = os.environ.get('LOG_LEVEL')
