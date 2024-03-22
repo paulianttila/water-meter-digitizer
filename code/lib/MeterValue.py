@@ -1,9 +1,9 @@
 import configparser
-import lib.CutImage
-import lib.UseClassificationCNN
-import lib.UseAnalogCounterCNN
-import lib.LoadFileFromHTTP
-import lib.ReadConfig
+from lib.CutImage import CutImage
+from lib.UseClassificationCNN import UseClassificationCNN
+from lib.UseAnalogCounterCNN import UseAnalogCounterCNN
+from  lib.LoadFileFromHTTP import LoadFileFromHttp
+from  lib.ReadConfig import ReadConfig
 import math
 import os
 from shutil import copyfile
@@ -21,7 +21,7 @@ class MeterValue:
 
         basedir = Path(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
         conf_path = Path(os.path.join(basedir, 'config'))
-        self.readConfig = lib.ReadConfig.ReadConfig(conf_path)
+        self.readConfig = ReadConfig(conf_path)
         self.CheckAndLoadDefaultConfig()
 
         config = configparser.ConfigParser()
@@ -47,7 +47,7 @@ class MeterValue:
             if config.has_option(zw, 'LogNames'):
                 LogNames = config.get(zw, 'LogNames')
 
-            self.readAnalogNeedle = lib.UseAnalogCounterCNN.UseAnalogCounterCNN(model_file, in_dx, in_dy, log_Image, LogNames)
+            self.readAnalogNeedle = UseAnalogCounterCNN(model_file, in_dx, in_dy, log_Image, LogNames)
             logger.debug('Analog Model Init Done')
         else:
             logger.debug('Analog Model Disabled')
@@ -64,12 +64,12 @@ class MeterValue:
         if config.has_option(zw, 'LogNames'):
             LogNames = config.get(zw, 'LogNames')
 
-        self.readDigitalDigit = lib.UseClassificationCNN.UseClassificationCNN(model_file, in_dx, in_dy, in_numberclasses, log_Image, LogNames)
+        self.readDigitalDigit = UseClassificationCNN(model_file, in_dx, in_dy, in_numberclasses, log_Image, LogNames)
         logger.debug('Digital Model Init Done')
 
-        self.CutImage = lib.CutImage.CutImage(self.readConfig)
+        self.CutImage = CutImage(self.readConfig)
         logger.debug('Digital Model Init Done')
-        self.LoadFileFromHTTP = lib.LoadFileFromHTTP.LoadFileFromHttp()
+        self.LoadFileFromHTTP = LoadFileFromHttp()
 
         self.ConsistencyEnabled = False        
         if config.has_option('ConsistencyCheck', 'Enabled'):

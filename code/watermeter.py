@@ -1,6 +1,6 @@
 from http.server import BaseHTTPRequestHandler
 from urllib import parse
-import lib.MeterValue
+from lib.MeterValue import MeterValue
 import os
 import socketserver
 import gc
@@ -80,7 +80,7 @@ class SimpleHTTPRequestHandler(BaseHTTPRequestHandler):
             self.showMessage('Reload configuration')
             del watermeter
             gc.collect()
-            watermeter = lib.MeterValue.MeterValue()
+            watermeter = MeterValue()
             return
 
         if ('/version' in url_parse.path):
@@ -143,7 +143,7 @@ if __name__ == '__main__':
     logging.getLogger("lib.UseClassificationCNN").setLevel(logger.level)
     logging.getLogger("lib.MeterValue").setLevel(logger.level)
 
-    watermeter = lib.MeterValue.MeterValue()
+    watermeter = MeterValue()
 
     PORT = 3000
     with socketserver.TCPServer(("", PORT), SimpleHTTPRequestHandler) as httpd:

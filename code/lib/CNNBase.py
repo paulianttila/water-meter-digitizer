@@ -19,22 +19,19 @@ found_tflite = spam_spec is not None
 logger = logging.getLogger(__name__)
 
 class CNNBase:
-    def __init__(self, in_Modelfile, in_dx, in_dy, in_LogImageLocation, in_LogNames):
+    def __init__(self, in_Modelfile, in_dx, in_dy, in_LogImageLocation):
         self.log_Image = in_LogImageLocation
         self.LogNames = ''
         self.dx = in_dx
         self.dy = in_dy
         self.GlobalError = False
         self.GlobalErrorText = ""
-
         self.model_file = in_Modelfile
 
         self.CheckAndLoadDefaultConfig()
 
-        if self.log_Image and in_LogNames:
-            zw_LogNames = in_LogNames.split(',')
-            self.LogNames = []
-            self.LogNames.extend(nm.strip() for nm in zw_LogNames)
+
+    def _LoadModel(self):
         filename, file_extension = os.path.splitext(self.model_file)
         if file_extension != ".tflite":
             logger.error("Only TFLite-Model (*.tflite) are support since version 7.0.0 and higher")
