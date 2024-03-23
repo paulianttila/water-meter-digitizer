@@ -1,3 +1,5 @@
+import json
+from lib.LoadFileFromHTTP import DownloadFailure
 from lib.MeterValue import MeterValue
 import os
 import gc
@@ -52,13 +54,19 @@ def reloadConfig():
     global watermeter
     del watermeter
     gc.collect()
-    watermeter = MeterValue()
+    watermeter = MeterValue(configFile="./config/config.ini")
     return "Configuration reloaded"
 
 
 @app.get("/roi", response_class=HTMLResponse)
-def getRoi(url: str = ""):
-    return watermeter.getROI(url)
+def getRoi(request: Request, url: str = "", timeout: int = 30):
+    try:
+        watermeter.getROI(url, timeout)
+        return templates.TemplateResponse(
+            "roi.html", context={"request": request, "image": "/image_tmp/roi.jpg"}
+        )
+    except DownloadFailure as e:
+        return f"Error: {e}"
 
 
 @app.get("/setPreValue", response_class=HTMLResponse)
@@ -73,15 +81,35 @@ def getMeterValue(
     simple: bool = True,
     usePreValue: bool = False,
     single: bool = False,
+    ignoreConsistencyCheck: bool = False,
+    timeout: int = 0,
 ):
     if format == "json":
+        result = watermeter.getMeterValueJson(
+            url=url,
+            simple=simple,
+            usePreValue=usePreValue,
+            single=single,
+            ignoreConsistencyCheck=ignoreConsistencyCheck,
+            timeout=timeout,
+        )
+
         return Response(
-            watermeter.getMeterValueJSON(url, simple, usePreValue, single),
+            json.dumps(result),
             media_type="application/json",
         )
     else:
+        result = watermeter.getMeterValueHtml(
+            url=url,
+            simple=simple,
+            usePreValue=usePreValue,
+            single=single,
+            ignoreConsistencyCheck=ignoreConsistencyCheck,
+            timeout=timeout,
+        )
+
         return Response(
-            watermeter.getMeterValue(url, simple, usePreValue, single),
+            result,
             media_type="text/html",
         )
 
@@ -94,12 +122,12 @@ if __name__ == "__main__":
     logging.getLogger("lib.CNNBase").setLevel(logger.level)
     logging.getLogger("lib.CutImage").setLevel(logger.level)
     logging.getLogger("lib.LoadFileFromHTTP").setLevel(logger.level)
-    logging.getLogger("lib.ReadConfig").setLevel(logger.level)
+    logging.getLogger("lib.Config").setLevel(logger.level)
     logging.getLogger("lib.UseAnalogCounterCNN").setLevel(logger.level)
     logging.getLogger("lib.UseClassificationCNN").setLevel(logger.level)
     logging.getLogger("lib.MeterValue").setLevel(logger.level)
 
-    watermeter = MeterValue()
+    watermeter = MeterValue(configFile="./config/config.ini")
 
     port = 3000
     logger.info(f"Watermeter is serving at port {port}")

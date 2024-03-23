@@ -1,116 +1,78 @@
 import configparser
+from pathlib import Path
 from lib.CutImage import CutImage
 from lib.UseClassificationCNN import UseClassificationCNN
 from lib.UseAnalogCounterCNN import UseAnalogCounterCNN
-from lib.LoadFileFromHTTP import LoadFileFromHttp
-from lib.ReadConfig import ReadConfig
+from lib.LoadFileFromHTTP import DownloadFailure, LoadFileFromHttp
+from lib.Config import Config
 import math
 import os
 from shutil import copyfile
 import time
 from datetime import datetime
-import json
-from pathlib import Path
 import logging
 
 logger = logging.getLogger(__name__)
 
 
 class MeterValue:
-    def __init__(self):
-
-        basedir = Path(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-        conf_path = Path(os.path.join(basedir, "config"))
-        self.readConfig = ReadConfig(conf_path)
-        self.CheckAndLoadDefaultConfig()
-
-        config = configparser.ConfigParser()
-        config.read("./config/config.ini")
-
+    def __init__(self, configFile: str):
         logger.debug("Start Init Meter Reader")
+        basedir = Path(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+        confPath = Path(os.path.join(basedir, "config"))
+        self.config = Config(confPath)
 
-        self.AnalogReadOutEnabled = True
-        if config.has_option("AnalogReadOut", "Enabled"):
-            self.AnalogReadOutEnabled = config["AnalogReadOut"]["Enabled"]
-            if self.AnalogReadOutEnabled.upper() == "FALSE":
-                self.AnalogReadOutEnabled = False
+        if self.config.readPreValueFromFileAtStartup:
+            self.loadPrevalueFromFile(self.config.readPreValueFromFileMaxAge)
 
-        if self.AnalogReadOutEnabled:
-            zw = "Analog_Counter"
-            log_Image = ""
-            LogNames = ""
-            in_dx = 32
-            in_dy = 32
-            model_file = config[zw]["Modelfile"]
-            if config.has_option(zw, "LogImageLocation"):
-                log_Image = config[zw]["LogImageLocation"]
-            if config.has_option(zw, "LogNames"):
-                LogNames = config.get(zw, "LogNames")
+        self.initAnalog()
+        self.initDigital()
 
-            self.readAnalogNeedle = UseAnalogCounterCNN(
-                model_file, in_dx, in_dy, log_Image, LogNames
-            )
-            logger.debug("Analog Model Init Done")
-        else:
-            logger.debug("Analog Model Disabled")
-
-        zw = "Digital_Digit"
-        log_Image = ""
-        LogNames = ""
-        in_dx = 20
-        in_dy = 32
-        in_numberclasses = 11
-        model_file = config[zw]["Modelfile"]
-        if config.has_option(zw, "LogImageLocation"):
-            log_Image = config[zw]["LogImageLocation"]
-        if config.has_option(zw, "LogNames"):
-            LogNames = config.get(zw, "LogNames")
-
-        self.readDigitalDigit = UseClassificationCNN(
-            model_file, in_dx, in_dy, in_numberclasses, log_Image, LogNames
+        self.cutImageHandler = CutImage(self.config)
+        self.imageLoader = LoadFileFromHttp(
+            url=self.config.httpImageUrl,
+            minImageSize=10000,
+            imageLogFolder=self.config.httpImageLogFolder,
+            logOnlyFalsePictures=self.config.httpLogOnlyFalsePictures,
         )
-        logger.debug("Digital Model Init Done")
 
-        self.CutImage = CutImage(self.readConfig)
-        logger.debug("Digital Model Init Done")
-        self.LoadFileFromHTTP = LoadFileFromHttp()
+        self.lastIntegerValue = ""
+        self.lastDecimalValue = ""
+        self.akt_vorkomma = None
+        self.akt_nachkomma = None
 
-        self.ConsistencyEnabled = False
-        if config.has_option("ConsistencyCheck", "Enabled"):
-            self.ConsistencyEnabled = config["ConsistencyCheck"]["Enabled"]
-            if self.ConsistencyEnabled.upper() == "TRUE":
-                self.ConsistencyEnabled = True
-
-        self.AllowNegativeRates = True
-        if config.has_option("ConsistencyCheck", "AllowNegativeRates"):
-            self.AllowNegativeRates = config["ConsistencyCheck"]["AllowNegativeRates"]
-            if self.AllowNegativeRates.upper() == "FALSE":
-                self.AllowNegativeRates = False
-
-        if config.has_option("ConsistencyCheck", "MaxRateValue"):
-            self.MaxRateValue = float(config["ConsistencyCheck"]["MaxRateValue"])
-        if config.has_option("ConsistencyCheck", "ErrorReturn"):
-            self.ErrorReturn = config["ConsistencyCheck"]["ErrorReturn"]
-
-        self.LastVorkomma = ""
-        self.LastNachkomma = ""
-
-        ReadPreValueFromFileMaxAge = 0
-        if config.has_option("ConsistencyCheck", "ReadPreValueFromFileMaxAge"):
-            ReadPreValueFromFileMaxAge = int(
-                config["ConsistencyCheck"]["ReadPreValueFromFileMaxAge"]
+    def initAnalog(self):
+        if self.config.analogReadOutEnabled:
+            self.readAnalogNeedle = UseAnalogCounterCNN(
+                modelfile=self.config.analogModelFile,
+                dx=32,
+                dy=32,
+                imageLogFolder=self.config.analogImageLogFolder,
+                imageLogNames=self.config.analogLogImageNames,
             )
-        if (
-            config.has_option("ConsistencyCheck", "ReadPreValueFromFileAtStartup")
-            and config["ConsistencyCheck"]["ReadPreValueFromFileAtStartup"]
-        ):
-            self.prevalueLoadFromFile(ReadPreValueFromFileMaxAge)
+            logger.debug("Analog model init done")
+        else:
+            logger.debug("Analog model disabled")
 
-    def CheckError(self):
+    def initDigital(self):
+        if self.config.digitalReadOutEnabled:
+            self.readDigitalDigit = UseClassificationCNN(
+                modelfile=self.config.digitModelFile,
+                dx=20,
+                dy=32,
+                numberclasses=11,
+                imageLogFolder=self.config.digitImageLogFolder,
+                imageLogNames=self.config.digitLogImageNames,
+            )
+            logger.debug("Digital model init done")
+        else:
+            logger.debug("Digital model disabled")
+
+    def checkError(self):
         ErrorText = None
         if self.readDigitalDigit.GlobalError:
             ErrorText = self.readDigitalDigit.GlobalErrorText
-        if self.AnalogReadOutEnabled and self.readAnalogNeedle.GlobalError:
+        if self.config.analogReadOutEnabled and self.readAnalogNeedle.GlobalError:
             ErrorText = (
                 f"{ErrorText}<br>{self.readAnalogNeedle.GlobalErrorText}"
                 if ErrorText is not None
@@ -118,7 +80,7 @@ class MeterValue:
             )
         return ErrorText
 
-    def CheckAndLoadDefaultConfig(self):
+    def checkAndLoadDefaultConfig(self):
         defaultdir = "./config_default/"
         targetdir = "./config/"
         if not os.path.exists("./config/config.ini"):
@@ -128,39 +90,38 @@ class MeterValue:
 
     def setPreValue(self, setValue):
         zerlegt = setValue.split(".")
-        vorkomma = zerlegt[0][: len(self.CutImage.Digital_Digit)]
-        self.LastVorkomma = vorkomma.zfill(len(self.CutImage.Digital_Digit))
-
-        logtime = time.strftime("%Y-%m-%d_%H-%M-%S", time.localtime())
+        vorkomma = zerlegt[0][: len(self.cutImageHandler.Digital_Digit)]
+        self.lastIntegerValue = vorkomma.zfill(len(self.cutImageHandler.Digital_Digit))
 
         result = "N"
-        if self.AnalogReadOutEnabled:
-            nachkomma = zerlegt[1][: len(self.CutImage.Analog_Counter)]
-            while len(nachkomma) < len(self.CutImage.Analog_Counter):
+        if self.config.analogReadOutEnabled:
+            nachkomma = zerlegt[1][: len(self.cutImageHandler.Analog_Counter)]
+            while len(nachkomma) < len(self.cutImageHandler.Analog_Counter):
                 nachkomma = f"{nachkomma}0"
-            self.LastNachkomma = nachkomma
-            result = f"{self.LastVorkomma}.{self.LastNachkomma}"
+            self.lastDecimalValue = nachkomma
+            result = f"{self.lastIntegerValue}.{self.lastDecimalValue}"
         else:
-            result = self.LastVorkomma
+            result = self.lastIntegerValue
 
-        self.prevalueStoreToFile(logtime)
+        self.storePrevalueToFile()
 
         result = f"Last value set to: {result}"
         return result
 
-    def prevalueStoreToFile(self, logtime):
+    def storePrevalueToFile(self):
+        logtime = time.strftime("%Y-%m-%d_%H-%M-%S", time.localtime())
         config = configparser.ConfigParser()
         config.read("./config/prevalue.ini")
-        config["PreValue"]["LastVorkomma"] = self.LastVorkomma
-        if self.AnalogReadOutEnabled:
-            config["PreValue"]["LastNachkomma"] = self.LastNachkomma
+        config["PreValue"]["LastVorkomma"] = self.lastIntegerValue
+        if self.config.analogReadOutEnabled:
+            config["PreValue"]["LastNachkomma"] = self.lastDecimalValue
         else:
             config["PreValue"]["LastNachkomma"] = "0"
         config["PreValue"]["Time"] = logtime
         with open("./config/prevalue.ini", "w") as cfg:
             config.write(cfg)
 
-    def prevalueLoadFromFile(self, ReadPreValueFromFileMaxAge):
+    def loadPrevalueFromFile(self, readPreValueFromFileMaxAge):
         config = configparser.ConfigParser()
         config.read("./config/prevalue.ini")
         logtime = config["PreValue"]["Time"]
@@ -169,172 +130,173 @@ class MeterValue:
         #        d1 = datetime.strptime(nowtime, fmt)
         d1 = datetime.now()
         d2 = datetime.strptime(logtime, fmt)
-        unterschied = (d1 - d2).days * 24 * 60
+        diff = (d1 - d2).days * 24 * 60
 
-        if unterschied <= ReadPreValueFromFileMaxAge:
-            self.LastVorkomma = config["PreValue"]["LastVorkomma"]
-            self.LastNachkomma = config["PreValue"]["LastNachkomma"]
-            zw = f"Prevalue loaded from file: {self.LastVorkomma}.{self.LastNachkomma}"
+        if diff <= readPreValueFromFileMaxAge:
+            self.lastIntegerValue = config["PreValue"]["LastVorkomma"]
+            self.lastDecimalValue = config["PreValue"]["LastNachkomma"]
+            zw = f"Prevalue loaded from file: {self.lastIntegerValue}.{self.lastDecimalValue}"
         else:
-            zw = f"Prevalue not loaded from file - value too old ({str(unterschied)} minutes)."
+            zw = f"Prevalue not loaded from file - value too old ({str(diff)} minutes)."
 
         logger.debug(zw)
 
-    def getROI(self, url):
-        txt, logtime = self.LoadFileFromHTTP.LoadImageFromURL(
-            url, "./image_tmp/original.jpg"
-        )
+    def getROI(self, url: str, timeout: int = 0):
+        self.removeFile("./image_tmp/original.jpg")
 
-        if len(txt) == 0:
-            self.CutImage.Cut("./image_tmp/original.jpg")
-            logger.debug("Start ROI")
-            self.CutImage.DrawROI("./image_tmp/alg.jpg")
-            txt = "<p>ROI Image: <p><img src=/image_tmp/roi.jpg></img><p>"
-            logger.debug("Get ROI done")
-        return txt
+        self.imageLoader.loadImageFromUrl(url, "./image_tmp/original.jpg", timeout)
 
-    def getMeterValue(
+        self.cutImageHandler.Cut("./image_tmp/original.jpg")
+        logger.debug("Start ROI")
+        self.cutImageHandler.DrawROI("./image_tmp/alg.jpg")
+        logger.debug("Get ROI done")
+
+    def getMeterValueHtml(
         self,
-        url,
-        simple=True,
-        UsePreValue=False,
-        single=False,
-        ignoreConsistencyCheck=False,
-    ):
-        # txt = ""
-        # logtime="test"
-        txt, logtime = self.LoadFileFromHTTP.LoadImageFromURL(
-            url, "./image_tmp/original.jpg"
-        )
-
-        if len(txt) == 0:
-            if self.AnalogReadOutEnabled:
-                logger.debug("Start CutImage, AnalogReadout, DigitalReadout")
-            else:
-                logger.debug("Start CutImage, DigitalReadout")
-            resultcut = self.CutImage.Cut("./image_tmp/original.jpg")
-            self.CutImage.DrawROI("./image_tmp/alg.jpg")  # update ROI
-
-            # resultanalog = [0, 0, 0, 0]
-            # resultdigital = [1, 2, 3, 4, 5]
-            if self.AnalogReadOutEnabled:
-                resultanalog = self.readAnalogNeedle.Readout(resultcut[0], logtime)
-            resultdigital = self.readDigitalDigit.Readout(resultcut[1], logtime)
-
-            self.akt_nachkomma = 0
-            if self.AnalogReadOutEnabled:
-                self.akt_nachkomma = self.AnalogReadoutToValue(resultanalog)
-            self.akt_vorkomma = self.DigitalReadoutToValue(
-                resultdigital, UsePreValue, self.LastNachkomma, self.akt_nachkomma
-            )
-            self.LoadFileFromHTTP.PostProcessLogImageProcedure(True)
-
-            logger.debug("Start Making MeterValue")
-            (error, errortxt) = self.checkConsistency(ignoreConsistencyCheck)
-            self.UpdateLastValues(error)
-            txt = self.MakeReturnValue(error, errortxt, single)
-
-            if not simple:
-                txt = f"{txt}<p>Aligned Image: <p><img src=/image_tmp/alg.jpg></img><p>"
-                txt = f"{txt}Digital Counter: <p>"
-                for i in range(len(resultdigital)):
-                    zw = (
-                        "NaN"
-                        if resultdigital[i] == "NaN"
-                        else str(int(resultdigital[i]))
-                    )
-                    txt += (
-                        f"<img src=/image_tmp/{str(resultcut[1][i][0])}.jpg></img>{zw}"
-                    )
-                txt = f"{txt}<p>"
-                if self.AnalogReadOutEnabled:
-                    txt = f"{txt}Analog Meter: <p>"
-                    for i in range(len(resultanalog)):
-                        txt += (
-                            f"<img src=/image_tmp/{str(resultcut[0][i][0])}.jpg></img>"
-                            + "{:.1f}".format(resultanalog[i])
-                        )
-                    txt = f"{txt}<p>"
-            logger.debug("Get MeterValue done")
-        return txt
-
-    def getMeterValueJSON(
-        self,
-        url,
-        simple=True,
-        UsePreValue=False,
-        single=False,
-        ignoreConsistencyCheck=False,
-    ):
-        # txt = ""
-        # logtime="test"
-        Value = ""
-        Digit = ""
-        AnalogCounter = ""
-        Error = ""
-        txt, logtime = self.LoadFileFromHTTP.LoadImageFromURL(
-            url, "./image_tmp/original.jpg"
-        )
-
-        if self.AnalogReadOutEnabled:
-            zw = self.LastVorkomma.lstrip("0") + "." + self.LastNachkomma
+        url: str,
+        simple: bool = True,
+        usePreValue: bool = False,
+        single: bool = False,
+        ignoreConsistencyCheck: bool = False,
+        timeout: int = 0,
+    ) -> str:
+        if self.config.analogReadOutEnabled:
+            prevValue = self.lastIntegerValue.lstrip("0") + "." + self.lastDecimalValue
         else:
-            zw = self.LastVorkomma.lstrip("0")
+            prevValue = self.lastIntegerValue.lstrip("0")
 
         preval = {
-            "Value": zw,
-            "DigitalDigits": self.LastVorkomma,
-            "AnalogCounter": self.LastNachkomma,
+            "Value": None if prevValue == "." else prevValue,
+            "DigitalDigits": (
+                None if self.lastIntegerValue == "" else self.lastIntegerValue
+            ),
+            "AnalogCounter": (
+                None if self.lastDecimalValue == "" else self.lastDecimalValue
+            ),
         }
 
-        if len(txt) == 0:
-            if self.AnalogReadOutEnabled:
-                logger.debug("Start CutImage, AnalogReadout, DigitalReadout")
-            else:
-                logger.debug("Start CutImage, DigitalReadout")
-            resultcut = self.CutImage.Cut("./image_tmp/original.jpg")
-            self.CutImage.DrawROI("./image_tmp/alg.jpg")  # update ROI
-
-            # resultanalog = [0, 0, 0, 0]
-            # resultdigital = [1, 2, 3, 4, 5]
-            if self.AnalogReadOutEnabled:
-                resultanalog = self.readAnalogNeedle.Readout(resultcut[0], logtime)
-            resultdigital = self.readDigitalDigit.Readout(resultcut[1], logtime)
-
-            self.akt_nachkomma = 0
-            if self.AnalogReadOutEnabled:
-                self.akt_nachkomma = self.AnalogReadoutToValue(resultanalog)
-            self.akt_vorkomma = self.DigitalReadoutToValue(
-                resultdigital, UsePreValue, self.LastNachkomma, self.akt_nachkomma
+        try:
+            logtime = self.imageLoader.loadImageFromUrl(
+                url, "./image_tmp/original.jpg", timeout
             )
-            self.LoadFileFromHTTP.PostProcessLogImageProcedure(True)
+        except DownloadFailure as e:
+            return self.MakeReturnValue(True, f"{e}", preval)
 
-            logger.debug("Start Making MeterValue")
-            (error, errortxt) = self.checkConsistency(ignoreConsistencyCheck)
-            self.UpdateLastValues(error)
-
-            (Value, AnalogCounter, Digit, Error) = self.MakeReturnValueJSON(
-                error, errortxt, single
-            )
-
-            result = {
-                "Value": Value,
-                "DigitalDigits": Digit,
-                "AnalogCounter": AnalogCounter,
-                "Error": Error,
-                "Prevalue": preval,
-            }
+        if self.config.analogReadOutEnabled:
+            logger.debug("Start CutImage, AnalogReadout, DigitalReadout")
         else:
-            result = {
-                "Value": Value,
-                "DigitalDigits": Digit,
-                "AnalogCounter": AnalogCounter,
-                "Error": txt,
+            logger.debug("Start CutImage, DigitalReadout")
+        resultcut = self.cutImageHandler.Cut("./image_tmp/original.jpg")
+        self.cutImageHandler.DrawROI("./image_tmp/alg.jpg")  # update ROI
+
+        if self.config.analogReadOutEnabled:
+            resultanalog = self.readAnalogNeedle.readout(resultcut[0], logtime)
+        resultdigital = self.readDigitalDigit.readout(resultcut[1], logtime)
+
+        self.akt_nachkomma = 0
+        if self.config.analogReadOutEnabled:
+            self.akt_nachkomma = self.analogReadoutToValue(resultanalog)
+        self.akt_vorkomma = self.digitalReadoutToValue(
+            resultdigital, usePreValue, self.lastDecimalValue, self.akt_nachkomma
+        )
+        self.imageLoader.postProcessLogImageProcedure(True)
+
+        logger.debug("Start Making MeterValue")
+        (consistencyError, errortxt) = self.checkConsistency(ignoreConsistencyCheck)
+        self.updateLastValues(consistencyError)
+
+        txt = self.MakeReturnValue(consistencyError, errortxt, single)
+
+        if not simple:
+            txt = f"{txt}<p>Aligned Image: <p><img src=/image_tmp/alg.jpg></img><p>"
+            txt = f"{txt}Digital Counter: <p>"
+            for i in range(len(resultdigital)):
+                zw = "NaN" if resultdigital[i] == "NaN" else str(int(resultdigital[i]))
+                txt += f"<img src=/image_tmp/{str(resultcut[1][i][0])}.jpg></img>{zw}"
+            txt = f"{txt}<p>"
+            if self.config.analogReadOutEnabled:
+                txt = f"{txt}Analog Meter: <p>"
+                for i in range(len(resultanalog)):
+                    txt += (
+                        f"<img src=/image_tmp/{str(resultcut[0][i][0])}.jpg></img>"
+                        + "{:.1f}".format(resultanalog[i])
+                    )
+                txt = f"{txt}<p>"
+        logger.debug("Get MeterValue done")
+        return txt
+
+    def getMeterValueJson(
+        self,
+        url: str,
+        simple: bool = True,
+        usePreValue: bool = False,
+        single: bool = False,
+        ignoreConsistencyCheck: bool = False,
+        timeout: int = 0,
+    ) -> str:
+
+        if self.config.analogReadOutEnabled:
+            prevValue = self.lastIntegerValue.lstrip("0") + "." + self.lastDecimalValue
+        else:
+            prevValue = self.lastIntegerValue.lstrip("0")
+
+        preval = {
+            "Value": None if prevValue == "." else prevValue,
+            "DigitalDigits": (
+                None if self.lastIntegerValue == "" else self.lastIntegerValue
+            ),
+            "AnalogCounter": (
+                None if self.lastDecimalValue == "" else self.lastDecimalValue
+            ),
+        }
+
+        try:
+            logtime = self.imageLoader.loadImageFromUrl(
+                url, "./image_tmp/original.jpg", timeout
+            )
+        except DownloadFailure as e:
+            return {
+                "Value": None,
+                "DigitalDigits": None,
+                "AnalogCounter": None,
+                "Error": f"{e}",
                 "Prevalue": preval,
             }
 
-        txt = json.dumps(result)
-        return txt
+        if self.config.analogReadOutEnabled:
+            logger.debug("Start CutImage, AnalogReadout, DigitalReadout")
+        else:
+            logger.debug("Start CutImage, DigitalReadout")
+        resultcut = self.cutImageHandler.Cut("./image_tmp/original.jpg")
+        self.cutImageHandler.DrawROI("./image_tmp/alg.jpg")  # update ROI
+
+        if self.config.analogReadOutEnabled:
+            resultanalog = self.readAnalogNeedle.readout(resultcut[0], logtime)
+        resultdigital = self.readDigitalDigit.readout(resultcut[1], logtime)
+
+        self.akt_nachkomma = 0
+        if self.config.analogReadOutEnabled:
+            self.akt_nachkomma = self.analogReadoutToValue(resultanalog)
+        self.akt_vorkomma = self.digitalReadoutToValue(
+            resultdigital, usePreValue, self.lastDecimalValue, self.akt_nachkomma
+        )
+        self.imageLoader.postProcessLogImageProcedure(True)
+
+        logger.debug("Start Making MeterValue")
+        (consistencyError, errortxt) = self.checkConsistency(ignoreConsistencyCheck)
+        self.updateLastValues(consistencyError)
+
+        (Value, AnalogCounter, Digit, Error) = self.MakeReturnValueJSON(
+            consistencyError, errortxt, single
+        )
+
+        return {
+            "Value": Value,
+            "DigitalDigits": Digit,
+            "AnalogCounter": AnalogCounter,
+            "Error": Error,
+            "Prevalue": preval,
+        }
 
     def MakeReturnValueJSON(self, error, errortxt, single):
         Value = ""
@@ -342,16 +304,16 @@ class MeterValue:
         Digit = ""
         Errortxt = errortxt
         if error:
-            if self.ErrorReturn.find("Value") > -1:
+            if self.config.errorReturn.find("Value") > -1:
                 Digit = str(self.akt_vorkomma)
                 Value = str(self.akt_vorkomma.lstrip("0"))
-                if self.AnalogReadOutEnabled:
+                if self.config.analogReadOutEnabled:
                     Value = f"{Value}.{str(self.akt_nachkomma)}"
                     AnalogCounter = str(self.akt_nachkomma)
         else:
             Digit = str(self.akt_vorkomma.lstrip("0"))
             Value = str(self.akt_vorkomma.lstrip("0"))
-            if self.AnalogReadOutEnabled:
+            if self.config.analogReadOutEnabled:
                 Value = f"{Value}.{str(self.akt_nachkomma)}"
                 AnalogCounter = str(self.akt_nachkomma)
         return (Value, AnalogCounter, Digit, Errortxt)
@@ -359,125 +321,125 @@ class MeterValue:
     def MakeReturnValue(self, error, errortxt, single):
         output = ""
         if error:
-            if self.ErrorReturn.find("Value") > -1:
+            if self.config.errorReturn.find("Value") > -1:
                 output = str(self.akt_vorkomma.lstrip("0"))
-                if self.AnalogReadOutEnabled:
+                if self.config.analogReadOutEnabled:
                     output = f"{output}.{str(self.akt_nachkomma)}"
                 if not single:
                     output = output + "\t" + self.akt_vorkomma
-                    if self.AnalogReadOutEnabled:
+                    if self.config.analogReadOutEnabled:
                         output = output + "\t" + self.akt_nachkomma
             output = output + "\t" + errortxt if len(output) > 0 else errortxt
         else:
             output = str(self.akt_vorkomma.lstrip("0")) or "0"
-            if self.AnalogReadOutEnabled:
+            if self.config.analogReadOutEnabled:
                 output = f"{output}.{str(self.akt_nachkomma)}"
             if not single:
                 output = output + "\t" + self.akt_vorkomma
-                if self.AnalogReadOutEnabled:
+                if self.config.analogReadOutEnabled:
                     output = output + "\t" + self.akt_nachkomma
         return output
 
-    def UpdateLastValues(self, error):
+    def updateLastValues(self, error):
         if "N" in self.akt_vorkomma:
             return
         if error:
-            if self.ErrorReturn.find("NewValue") > -1:
-                self.LastNachkomma = self.akt_nachkomma
-                self.LastVorkomma = self.akt_vorkomma
+            if self.config.errorReturn.find("NewValue") > -1:
+                self.lastDecimalValue = self.akt_nachkomma
+                self.lastIntegerValue = self.akt_vorkomma
             else:
-                self.akt_nachkomma = self.LastNachkomma
-                self.akt_vorkomma = self.LastVorkomma
+                self.akt_nachkomma = self.lastDecimalValue
+                self.akt_vorkomma = self.lastIntegerValue
         else:
-            self.LastNachkomma = self.akt_nachkomma
-            self.LastVorkomma = self.akt_vorkomma
+            self.lastDecimalValue = self.akt_nachkomma
+            self.lastIntegerValue = self.akt_vorkomma
 
-        logtime = time.strftime("%Y-%m-%d_%H-%M-%S", time.localtime())
-        self.prevalueStoreToFile(logtime)
+        self.storePrevalueToFile()
 
     def checkConsistency(self, ignoreConsistencyCheck):
         error = False
         errortxt = ""
         if (
-            (len(self.LastVorkomma) > 0)
+            (len(self.lastIntegerValue) > 0)
             and "N" not in self.akt_vorkomma
-            and self.ConsistencyEnabled
+            and self.config.consistencyEnabled
         ):
             akt_zaehlerstand = float(
                 str(self.akt_vorkomma.lstrip("0")) + "." + str(self.akt_nachkomma)
             )
             old_zaehlerstand = float(
-                str(self.LastVorkomma.lstrip("0")) + "." + str(self.LastNachkomma)
+                str(self.lastIntegerValue.lstrip("0"))
+                + "."
+                + str(self.lastDecimalValue)
             )
             delta = akt_zaehlerstand - old_zaehlerstand
-            if not (self.AllowNegativeRates) and (delta < 0):
+            if not (self.config.allowNegativeRates) and (delta < 0):
                 error = True
                 errortxt = "Error - NegativeRate"
-            if abs(delta) > self.MaxRateValue:
+            if abs(delta) > self.config.maxRateValue:
                 if error:
                     errortxt = "Error - RateTooHigh ({:.4f})" + errortxt.format(delta)
                 else:
                     errortxt = "Error - RateTooHigh ({:.4f})".format(delta)
                 error = True
-            if self.ErrorReturn.find("ErrorMessage") == -1:
+            if self.config.errorReturn.find("ErrorMessage") == -1:
                 errortxt = ""
-            if error and (self.ErrorReturn.find("Readout") > -1):
+            if error and (self.config.errorReturn.find("Readout") > -1):
                 if len(errortxt):
                     errortxt = errortxt + "\t" + str(akt_zaehlerstand)
                 else:
                     errortxt = str(akt_zaehlerstand)
         return (error, errortxt)
 
-    def AnalogReadoutToValue(self, res_analog):
+    def analogReadoutToValue(self, res_analog):
         prev = -1
         erg = ""
         for item in res_analog[::-1]:
-            #        for item in res_analog:
-            prev = self.ZeigerEval(item, prev)
+            prev = self.evaluateValue(item, prev)
             erg = str(int(prev)) + erg
         return erg
 
-    def ZeigerEval(self, zahl, ziffer_vorgaenger):
-        ergebnis_nachkomma = math.floor((zahl * 10) % 10)
-        ergebnis_vorkomma = math.floor(zahl % 10)
+    def evaluateValue(self, newValue, prevValue):
+        result_decimal = math.floor((newValue * 10) % 10)
+        result_integer = math.floor(newValue % 10)
 
-        if ziffer_vorgaenger == -1:
-            ergebnis = ergebnis_vorkomma
+        if prevValue == -1:
+            result = result_integer
         else:
-            ergebnis_rating = ergebnis_nachkomma - ziffer_vorgaenger
-            if ergebnis_nachkomma >= 5:
-                ergebnis_rating -= 5
+            result_rating = result_decimal - prevValue
+            if result_decimal >= 5:
+                result_rating -= 5
             else:
-                ergebnis_rating += 5
-            ergebnis = round(zahl)
-            if ergebnis_rating < 0:
-                ergebnis -= 1
-            if ergebnis == -1:
-                ergebnis += 10
+                result_rating += 5
+            result = round(newValue)
+            if result_rating < 0:
+                result -= 1
+            if result == -1:
+                result += 10
 
-        ergebnis = ergebnis % 10
-        return ergebnis
+        result = result % 10
+        return result
 
-    def DigitalReadoutToValue(
-        self, res_digital, UsePreValue, lastnachkomma, aktnachkomma
+    def digitalReadoutToValue(
+        self, res_digital, usePreValue, lastnachkomma, aktnachkomma
     ):
         erg = ""
         if (
-            UsePreValue
-            and str(self.LastVorkomma) != ""
-            and str(self.LastNachkomma) != ""
+            usePreValue
+            and str(self.lastIntegerValue) != ""
+            and str(self.lastDecimalValue) != ""
         ):
             last = int(str(lastnachkomma)[:1])
             aktu = int(str(aktnachkomma)[:1])
             overZero = 1 if aktu < last else 0
         else:
-            UsePreValue = False
+            usePreValue = False
 
         for i in range(len(res_digital) - 1, -1, -1):
             item = res_digital[i]
             if item == "NaN":
-                if UsePreValue:
-                    item = int(self.LastVorkomma[i])
+                if usePreValue:
+                    item = int(self.lastIntegerValue[i])
                     if overZero:
                         item += 1
                         if item == 10:
@@ -490,3 +452,7 @@ class MeterValue:
             erg = str(item) + erg
 
         return erg
+
+    def removeFile(self, filename):
+        if os.path.exists(filename):
+            os.remove(filename)

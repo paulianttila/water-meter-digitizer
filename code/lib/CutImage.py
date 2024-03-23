@@ -4,6 +4,7 @@ from PIL import Image
 from pathlib import Path
 import threading
 import logging
+from lib.Config import Config
 
 logger = logging.getLogger(__name__)
 
@@ -11,28 +12,28 @@ debug = True
 
 
 class CutImage:
-    def __init__(self, readconfig, zwpath="./image_tmp/"):
+    def __init__(self, config: Config, zwpath="./image_tmp/"):
         self.PathImageZw = zwpath
-        self.UpdateConfig(readconfig)
+        self.UpdateConfig(config)
 
-    def UpdateConfig(self, readconfig):
+    def UpdateConfig(self, config):
         (self.ConfigOriginalPath, self.ConfigReroutePath) = (
-            readconfig.ConfigRerouteConfig()
+            config.ConfigRerouteConfig()
         )
 
-        self.rotateAngle = readconfig.CutPreRotateAngle()
-        (self.reference_name, self.reference_pos) = readconfig.CutReferenceParameter()
+        self.rotateAngle = config.CutPreRotateAngle()
+        (self.reference_name, self.reference_pos) = config.CutReferenceParameter()
 
         self.reference_image = []
         for i in range(3):
             zwname = self.ReplacePathToConfig(self.reference_name[i])
             self.reference_image.append(cv2.imread(str(zwname)))
 
-        (self.AnalogReadOutEnabled, self.Analog_Counter) = (
-            readconfig.CutGetAnalogCounter()
+        (self.analogReadOutEnabled, self.Analog_Counter) = (
+            config.CutGetAnalogCounter()
         )
-        (self.Digital_Digit) = readconfig.CutGetDigitalDigit()
-        self.FastMode = readconfig.Cut_FastMode
+        (self.Digital_Digit) = config.CutGetDigitalDigit()
+        self.FastMode = config.Cut_FastMode
         self.M = None
 
     def ReplacePathToConfig(self, inp):
@@ -55,7 +56,7 @@ class CutImage:
         ziffern = self.cutZiffern(target)
 
         zeiger = ziffern
-        if self.AnalogReadOutEnabled:
+        if self.analogReadOutEnabled:
             zeiger = self.cutZeiger(target)
 
         return [zeiger, ziffern]
@@ -175,7 +176,7 @@ class CutImage:
         )
         cv2.putText(im, "ref2", (x, y - 5), 0, 0.4, (0, 0, 255))
 
-        if self.AnalogReadOutEnabled:
+        if self.analogReadOutEnabled:
             d_eclipse = 1
 
             for zeiger in self.Analog_Counter:
@@ -240,7 +241,7 @@ class CutImage:
                         _colour,
                     )
 
-        if self.AnalogReadOutEnabled and draw_cou:
+        if self.analogReadOutEnabled and draw_cou:
             d_eclipse = 1
             for i in range(len(self.Analog_Counter)):
                 if i != ign_cou:
