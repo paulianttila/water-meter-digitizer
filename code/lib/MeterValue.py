@@ -149,7 +149,9 @@ class MeterValue:
 
         self.cutImageHandler.Cut(f"{self.imageTmpFolder}/original.jpg")
         logger.debug("Start ROI")
-        self.cutImageHandler.DrawROI(f"{self.imageTmpFolder}/alg.jpg")
+        self.cutImageHandler.DrawROI(
+            f"{self.imageTmpFolder}/alg.jpg", f"{self.imageTmpFolder}/roi.jpg"
+        )
         logger.debug("Get ROI done")
 
     def getMeterValueHtml(
@@ -188,7 +190,7 @@ class MeterValue:
         else:
             logger.debug("Start CutImage, DigitalReadout")
         resultcut = self.cutImageHandler.Cut(f"{self.imageTmpFolder}/original.jpg")
-        self.cutImageHandler.DrawROI(f"{self.imageTmpFolder}/alg.jpg")  # update ROI
+        self.cutImageHandler.DrawROI(f"{self.imageTmpFolder}/alg.jpg")
 
         if self.config.analogReadOutEnabled:
             resultanalog = self.readAnalogNeedle.readout(resultcut[0], logtime)
