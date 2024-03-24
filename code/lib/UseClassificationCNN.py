@@ -12,12 +12,10 @@ class UseClassificationCNN(CNNBase):
         modelfile: str,
         dx: int,
         dy: int,
-        numberclasses: int,
         imageTmpFolder: str = "/image_tmp/",
         imageLogFolder: str = None,
         imageLogNames: list = [],
     ):
-        self.numberclasses = numberclasses
         super().__init__(
             modelfile,
             dx=dx,
@@ -27,7 +25,6 @@ class UseClassificationCNN(CNNBase):
             imageLogNames=imageLogNames,
         )
         super()._loadModel()
-        self.createLogFolders()
 
     def readoutSingleImage(self, image):
         output_data = super().readoutSingleImage(image)
@@ -37,10 +34,3 @@ class UseClassificationCNN(CNNBase):
             result = "NaN"
 
         return result
-
-    def createLogFolders(self):
-        if self.imageLogFolder and os.path.exists(self.imageLogFolder):
-            for i in range(self.numberclasses):
-                folder = f"{self.imageLogFolder}/{str(i)}"
-                if not os.path.exists(folder):
-                    os.makedirs(folder)

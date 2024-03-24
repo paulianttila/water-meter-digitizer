@@ -63,8 +63,17 @@ class CNNBase:
         if len(self.imageLogFolder) > 0:
             if (len(self.imageLogNames) > 0) and (image[0] not in self.imageLogNames):
                 return
-            filename = f"{value:.1f}_{image[0]}_{logtime}.jpg"
-            filename = f"{self.imageLogFolder}/{filename}"
+            if isinstance(value, int):
+                folder = f"{self.imageLogFolder}/{value}"
+            if isinstance(value, float):
+                folder = f"{self.imageLogFolder}/{int(value)}"
+            else:
+                folder = f"{self.imageLogFolder}/{value}"
+
+            self.createFolderIfNotExists(folder)
+            filename = f"{image[0]}_{logtime}.jpg"
+            filename = f"{folder}/{filename}"
+            logger.debug(f"Save image to {filename}")
             image[1].save(filename, "JPEG")
 
     def readoutSingleImage(self, image):
@@ -75,3 +84,6 @@ class CNNBase:
         self.interpreter.set_tensor(self.input_details[0]["index"], input_data)
         self.interpreter.invoke()
         return self.interpreter.get_tensor(self.output_details[0]["index"])
+
+    def createFolderIfNotExists(self, folder):
+        os.makedirs(folder, exist_ok=True)

@@ -44,8 +44,8 @@ class MeterValue:
 
         self.lastIntegerValue = ""
         self.lastDecimalValue = ""
-        self.akt_vorkomma = None
-        self.akt_nachkomma = None
+        self.akt_vorkomma = ""
+        self.akt_nachkomma = ""
 
     def initAnalog(self):
         if self.config.analogReadOutEnabled:
@@ -68,7 +68,6 @@ class MeterValue:
                 dx=20,
                 dy=32,
                 imageTmpFolder=self.imageTmpFolder,
-                numberclasses=11,
                 imageLogFolder=self.config.digitImageLogFolder,
                 imageLogNames=self.config.digitLogImageNames,
             )
