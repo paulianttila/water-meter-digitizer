@@ -134,11 +134,14 @@ class MeterValue:
         if diff <= readPreValueFromFileMaxAge:
             self.lastIntegerValue = config["PreValue"]["LastVorkomma"]
             self.lastDecimalValue = config["PreValue"]["LastNachkomma"]
-            zw = f"Prevalue loaded from file: {self.lastIntegerValue}.{self.lastDecimalValue}"
+            zw = (
+                "Previous value loaded from file: ",
+                f"{self.lastIntegerValue}.{self.lastDecimalValue}",
+            )
         else:
             zw = f"Prevalue not loaded from file - value too old ({str(diff)} minutes)."
 
-        logger.debug(zw)
+        logger.info(zw)
 
     def getROI(self, url: str, timeout: int = 0):
         self.removeFile(f"{self.imageTmpFolder}/original.jpg")
