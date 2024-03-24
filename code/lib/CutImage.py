@@ -23,7 +23,7 @@ class CutImage:
             if os.path.exists(file):
                 self.reference_images.append(cv2.imread(file))
             else:
-                logger.error(f"Reference Image {file} not found")
+                logger.warn(f"Reference Image {file} not found")
 
     def Cut(self, image):
         source = cv2.imread(image)
