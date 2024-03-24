@@ -23,11 +23,11 @@ class CutImage:
 
     def Cut(self, image):
         source = cv2.imread(image)
-        cv2.imwrite(f"{self.imageTmpFolder}org.jpg", source)
+        cv2.imwrite(f"{self.imageTmpFolder}/org.jpg", source)
         target = self.RotateImage(source)
-        cv2.imwrite(f"{self.imageTmpFolder}rot.jpg", target)
+        cv2.imwrite(f"{self.imageTmpFolder}/rot.jpg", target)
         target = self.Alignment(target)
-        cv2.imwrite(f"{self.imageTmpFolder}alg.jpg", target)
+        cv2.imwrite(f"{self.imageTmpFolder}/alg.jpg", target)
 
         zeiger = self.cutZeiger(target)
         ziffern = self.cutZiffern(target)
@@ -44,7 +44,7 @@ class CutImage:
             #            img[y:y+h, x:x+w]
             x, y, dx, dy = zeiger[1]
             crop_img = source[y : y + dy, x : x + dx]
-            name = self.imageTmpFolder + zeiger[0] + ".jpg"
+            name = f"{self.imageTmpFolder}/{zeiger[0]}.jpg"
             cv2.imwrite(name, crop_img)
             crop_img = cv2.cvtColor(crop_img, cv2.COLOR_BGR2RGB)
             im_pil = Image.fromarray(crop_img)
@@ -57,7 +57,7 @@ class CutImage:
         for zeiger in self.config.cutDigitalDigit:
             x, y, dx, dy = zeiger[1]
             crop_img = source[y : y + dy, x : x + dx]
-            name = self.imageTmpFolder + zeiger[0] + ".jpg"
+            name = f"{self.imageTmpFolder}/{zeiger[0]}.jpg"
             cv2.imwrite(name, crop_img)
             crop_img = cv2.cvtColor(crop_img, cv2.COLOR_BGR2RGB)
             im_pil = Image.fromarray(crop_img)
