@@ -134,12 +134,10 @@ class MeterValue:
         if diff <= readPreValueFromFileMaxAge:
             self.lastIntegerValue = config["PreValue"]["LastVorkomma"]
             self.lastDecimalValue = config["PreValue"]["LastNachkomma"]
-            zw = (
-                "Previous value loaded from file: ",
-                f"{self.lastIntegerValue}.{self.lastDecimalValue}",
-            )
+            zw = f"Previous value loaded from file: {self.lastIntegerValue}.{self.lastDecimalValue}"
+
         else:
-            zw = f"Prevalue not loaded from file - value too old ({str(diff)} minutes)."
+            zw = f"Previous value not loaded from file as value is too old: ({str(diff)} minutes)."
 
         logger.info(zw)
 
