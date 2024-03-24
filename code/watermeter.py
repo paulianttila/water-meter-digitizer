@@ -43,12 +43,15 @@ def healthcheck():
 
 @app.get("/image_tmp/{image}")
 def getImage(image: str):
-    return FileResponse(f"./image_tmp/{image}", media_type="image/jpg", filename=image)
+    return FileResponse(
+        f"{imageTmpFolder}/{image}", media_type="image/jpg", filename=image
+    )
 
 
 @app.get("/version", response_class=HTMLResponse)
 def getVersion():
     return version
+
 
 @app.get("/exit", response_class=HTMLResponse)
 def doExit():
@@ -61,7 +64,11 @@ def reloadConfig():
     global watermeter
     del watermeter
     gc.collect()
-    watermeter = MeterValue(configFile="./config/config.ini")
+    watermeter = MeterValue(
+        configFile=f"{configDir}/config.ini",
+        prevValueFile=f"{configDir}/prevalue.ini",
+        imageTmpFolder=imageTmpFolder,
+    )
     return "Configuration reloaded"
 
 
@@ -70,7 +77,8 @@ def getRoi(request: Request, url: str = "", timeout: int = 30):
     try:
         watermeter.getROI(url, timeout)
         return templates.TemplateResponse(
-            "roi.html", context={"request": request, "image": "/image_tmp/roi.jpg"}
+            "roi.html",
+            context={"request": request, "image": "/image_tmp/roi.jpg"},
         )
     except DownloadFailure as e:
         return f"Error: {e}"
@@ -134,7 +142,13 @@ if __name__ == "__main__":
     logging.getLogger("lib.UseClassificationCNN").setLevel(logger.level)
     logging.getLogger("lib.MeterValue").setLevel(logger.level)
 
-    watermeter = MeterValue(configFile="./config/config.ini")
+    configDir = os.environ.get("CONFIG_DIR", "/config")
+    imageTmpFolder = os.environ.get("IMAGE_TMP", "/image_tmp")
+    watermeter = MeterValue(
+        configFile=f"{configDir}/config.ini",
+        prevValueFile=f"{configDir}/prevalue.ini",
+        imageTmpFolder=imageTmpFolder,
+    )
 
     port = 3000
     logger.info(f"Watermeter is serving at port {port}")

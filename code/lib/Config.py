@@ -31,7 +31,7 @@ class Config:
     digitalReadOutEnabled: bool = True
     digitModelFile: str = ""
     digitDoImageLogging: bool = False
-    digitImageLogFolder: str = ""
+    digitImageLogFolder: str = "/log"
     digitLogImageNames: List[str] = field(default_factory=list)
     cutDigitalDigit: List[List[Union[str, Tuple[int, int, int, int]]]] = field(
         default_factory=list
@@ -54,12 +54,9 @@ class Config:
     cutReferenceName: List[str] = field(default_factory=list)
     cutReferencePos: List[Tuple[int, int]] = field(default_factory=list)
 
-    def __post_init__(self):
-        self.parseConfig()
-
-    def parseConfig(self, iniFile: str = "./config/config.ini"):
+    def parseConfig(self, iniFile: str = "/config/config.ini"):
         if not os.path.exists(iniFile):
-            raise ConfigurationMissing("Configuration file not found")
+            raise ConfigurationMissing("Configuration file '{iniFile}' not found")
 
         config = configparser.ConfigParser()
         config.read(iniFile)

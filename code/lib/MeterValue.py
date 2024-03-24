@@ -6,7 +6,6 @@ from lib.LoadImageFile import DownloadFailure, LoadImageFile
 from lib.Config import Config
 import math
 import os
-from shutil import copyfile
 import time
 from datetime import datetime
 import logging
@@ -15,17 +14,27 @@ logger = logging.getLogger(__name__)
 
 
 class MeterValue:
-    def __init__(self, configFile: str):
+    def __init__(
+        self,
+        configFile: str = "/config/config.ini",
+        prevValueFile: str = "/config/prevalue.ini",
+        imageTmpFolder: str = "/tmp_images",
+    ):
         logger.debug("Start Init Meter Reader")
+        self.prevValueFile = prevValueFile
+        self.imageTmpFolder = imageTmpFolder
         self.config = Config()
+        self.config.parseConfig(configFile)
 
         if self.config.readPreValueFromFileAtStartup:
-            self.loadPrevalueFromFile(self.config.readPreValueFromFileMaxAge)
+            self.loadPrevalueFromFile(
+                self.prevValueFile, self.config.readPreValueFromFileMaxAge
+            )
 
         self.initAnalog()
         self.initDigital()
 
-        self.cutImageHandler = CutImage(self.config)
+        self.cutImageHandler = CutImage(self.config, imageTmpFolder=imageTmpFolder)
         self.imageLoader = LoadImageFile(
             url=self.config.httpImageUrl,
             minImageSize=10000,
@@ -44,6 +53,7 @@ class MeterValue:
                 modelfile=self.config.analogModelFile,
                 dx=32,
                 dy=32,
+                imageTmpFolder=self.imageTmpFolder,
                 imageLogFolder=self.config.analogImageLogFolder,
                 imageLogNames=self.config.analogLogImageNames,
             )
@@ -57,6 +67,7 @@ class MeterValue:
                 modelfile=self.config.digitModelFile,
                 dx=20,
                 dy=32,
+                imageTmpFolder=self.imageTmpFolder,
                 numberclasses=11,
                 imageLogFolder=self.config.digitImageLogFolder,
                 imageLogNames=self.config.digitLogImageNames,
@@ -97,22 +108,22 @@ class MeterValue:
         result = f"Last value set to: {result}"
         return result
 
-    def storePrevalueToFile(self):
+    def storePrevalueToFile(self, file: str):
         logtime = time.strftime("%Y-%m-%d_%H-%M-%S", time.localtime())
         config = configparser.ConfigParser()
-        config.read("./config/prevalue.ini")
+        config.read(file)
         config["PreValue"]["LastVorkomma"] = self.lastIntegerValue
         if self.config.analogReadOutEnabled:
             config["PreValue"]["LastNachkomma"] = self.lastDecimalValue
         else:
             config["PreValue"]["LastNachkomma"] = "0"
         config["PreValue"]["Time"] = logtime
-        with open("./config/prevalue.ini", "w") as cfg:
+        with open(file, "w") as cfg:
             config.write(cfg)
 
-    def loadPrevalueFromFile(self, readPreValueFromFileMaxAge):
+    def loadPrevalueFromFile(self, file: str, readPreValueFromFileMaxAge):
         config = configparser.ConfigParser()
-        config.read("./config/prevalue.ini")
+        config.read(file)
         logtime = config["PreValue"]["Time"]
 
         fmt = "%Y-%m-%d_%H-%M-%S"
@@ -131,13 +142,15 @@ class MeterValue:
         logger.debug(zw)
 
     def getROI(self, url: str, timeout: int = 0):
-        self.removeFile("./image_tmp/original.jpg")
+        self.removeFile(f"{self.imageTmpFolder}/original.jpg")
 
-        self.imageLoader.loadImageFromUrl(url, "./image_tmp/original.jpg", timeout)
+        self.imageLoader.loadImageFromUrl(
+            url, f"{self.imageTmpFolder}/original.jpg", timeout
+        )
 
-        self.cutImageHandler.Cut("./image_tmp/original.jpg")
+        self.cutImageHandler.Cut(f"{self.imageTmpFolder}/original.jpg")
         logger.debug("Start ROI")
-        self.cutImageHandler.DrawROI("./image_tmp/alg.jpg")
+        self.cutImageHandler.DrawROI(f"{self.imageTmpFolder}/alg.jpg")
         logger.debug("Get ROI done")
 
     def getMeterValueHtml(
@@ -166,7 +179,7 @@ class MeterValue:
 
         try:
             logtime = self.imageLoader.loadImageFromUrl(
-                url, "./image_tmp/original.jpg", timeout
+                url, f"{self.imageTmpFolder}/original.jpg", timeout
             )
         except DownloadFailure as e:
             return self.MakeReturnValue(True, f"{e}", preval)
@@ -175,8 +188,8 @@ class MeterValue:
             logger.debug("Start CutImage, AnalogReadout, DigitalReadout")
         else:
             logger.debug("Start CutImage, DigitalReadout")
-        resultcut = self.cutImageHandler.Cut("./image_tmp/original.jpg")
-        self.cutImageHandler.DrawROI("./image_tmp/alg.jpg")  # update ROI
+        resultcut = self.cutImageHandler.Cut(f"{self.imageTmpFolder}/original.jpg")
+        self.cutImageHandler.DrawROI(f"{self.imageTmpFolder}/alg.jpg")  # update ROI
 
         if self.config.analogReadOutEnabled:
             resultanalog = self.readAnalogNeedle.readout(resultcut[0], logtime)
@@ -241,7 +254,7 @@ class MeterValue:
 
         try:
             logtime = self.imageLoader.loadImageFromUrl(
-                url, "./image_tmp/original.jpg", timeout
+                url, f"{self.imageTmpFolder}/original.jpg", timeout
             )
         except DownloadFailure as e:
             return {
@@ -256,8 +269,8 @@ class MeterValue:
             logger.debug("Start CutImage, AnalogReadout, DigitalReadout")
         else:
             logger.debug("Start CutImage, DigitalReadout")
-        resultcut = self.cutImageHandler.Cut("./image_tmp/original.jpg")
-        self.cutImageHandler.DrawROI("./image_tmp/alg.jpg")  # update ROI
+        resultcut = self.cutImageHandler.Cut(f"{self.imageTmpFolder}/original.jpg")
+        self.cutImageHandler.DrawROI(f"{self.imageTmpFolder}/alg.jpg")  # update ROI
 
         if self.config.analogReadOutEnabled:
             resultanalog = self.readAnalogNeedle.readout(resultcut[0], logtime)

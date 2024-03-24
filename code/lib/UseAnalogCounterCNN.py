@@ -12,10 +12,18 @@ class UseAnalogCounterCNN(CNNBase):
         modelfile: str,
         dx: int,
         dy: int,
+        imageTmpFolder: str = "/image_tmp/",
         imageLogFolder: str = None,
         imageLogNames: list = [],
     ):
-        super().__init__(modelfile, dx, dy, imageLogFolder, imageLogNames)
+        super().__init__(
+            modelfile,
+            dx=dx,
+            dy=dy,
+            imageTmpFolder=imageTmpFolder,
+            imageLogFolder=imageLogFolder,
+            imageLogNames=imageLogNames,
+        )
         super()._loadModel()
 
     def readoutSingleImage(self, image):

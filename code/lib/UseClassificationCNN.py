@@ -13,11 +13,19 @@ class UseClassificationCNN(CNNBase):
         dx: int,
         dy: int,
         numberclasses: int,
+        imageTmpFolder: str = "/image_tmp/",
         imageLogFolder: str = None,
         imageLogNames: list = [],
     ):
         self.numberclasses = numberclasses
-        super().__init__(modelfile, dx, dy, imageLogFolder, imageLogNames)
+        super().__init__(
+            modelfile,
+            dx=dx,
+            dy=dy,
+            imageTmpFolder=imageTmpFolder,
+            imageLogFolder=imageLogFolder,
+            imageLogNames=imageLogNames,
+        )
         super()._loadModel()
         self.createLogFolders()
 

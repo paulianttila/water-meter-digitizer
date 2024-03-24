@@ -12,8 +12,8 @@ debug = True
 
 
 class CutImage:
-    def __init__(self, config: Config, zwpath="./image_tmp/"):
-        self.PathImageZw = zwpath
+    def __init__(self, config: Config, imageTmpFolder="/image_tmp/"):
+        self.imageTmpFolder = imageTmpFolder
         self.config = config
         self.reference_images = []
         self.M = None
@@ -23,11 +23,11 @@ class CutImage:
 
     def Cut(self, image):
         source = cv2.imread(image)
-        cv2.imwrite(f"{self.PathImageZw}org.jpg", source)
+        cv2.imwrite(f"{self.imageTmpFolder}org.jpg", source)
         target = self.RotateImage(source)
-        cv2.imwrite(f"{self.PathImageZw}rot.jpg", target)
+        cv2.imwrite(f"{self.imageTmpFolder}rot.jpg", target)
         target = self.Alignment(target)
-        cv2.imwrite(f"{self.PathImageZw}alg.jpg", target)
+        cv2.imwrite(f"{self.imageTmpFolder}alg.jpg", target)
 
         zeiger = self.cutZeiger(target)
         ziffern = self.cutZiffern(target)
@@ -44,7 +44,7 @@ class CutImage:
             #            img[y:y+h, x:x+w]
             x, y, dx, dy = zeiger[1]
             crop_img = source[y : y + dy, x : x + dx]
-            name = self.PathImageZw + zeiger[0] + ".jpg"
+            name = self.imageTmpFolder + zeiger[0] + ".jpg"
             cv2.imwrite(name, crop_img)
             crop_img = cv2.cvtColor(crop_img, cv2.COLOR_BGR2RGB)
             im_pil = Image.fromarray(crop_img)
@@ -57,7 +57,7 @@ class CutImage:
         for zeiger in self.config.cutDigitalDigit:
             x, y, dx, dy = zeiger[1]
             crop_img = source[y : y + dy, x : x + dx]
-            name = self.PathImageZw + zeiger[0] + ".jpg"
+            name = self.imageTmpFolder + zeiger[0] + ".jpg"
             cv2.imwrite(name, crop_img)
             crop_img = cv2.cvtColor(crop_img, cv2.COLOR_BGR2RGB)
             im_pil = Image.fromarray(crop_img)
@@ -186,12 +186,12 @@ class CutImage:
                 im, (x - d, y - d), (x + w + 2 * d, y + h + 2 * d), (0, 255, 0), d
             )
             cv2.putText(im, zeiger[0], (x, y - 5), 0, 0.4, (0, 255, 0))
-        cv2.imwrite("./image_tmp/roi.jpg", im)
+        cv2.imwrite(f"{self.imageTmpFolder}/roi.jpg", im)
 
     def DrawROI(
         self,
         image_in,
-        image_out="./image_tmp/roi.jpg",
+        image_out="/image_tmp/roi.jpg",
         draw_ref=False,
         draw_dig=True,
         draw_cou=True,
@@ -215,7 +215,7 @@ class CutImage:
                     )
                     cv2.putText(
                         im,
-                        self.config.cutReferenceName[i].replace("./config/", ""),
+                        self.config.cutReferenceName[i].replace("/config/", ""),
                         (x, y - 5),
                         0,
                         0.4,
