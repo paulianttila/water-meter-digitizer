@@ -1,3 +1,4 @@
+import os
 import numpy as np
 import cv2
 from PIL import Image
@@ -19,7 +20,10 @@ class CutImage:
         self.M = None
         for i in range(3):
             file = self.config.cutReferenceName[i]
-            self.reference_images.append(cv2.imread(file))
+            if os.path.exists(file):
+                self.reference_images.append(cv2.imread(file))
+            else:
+                logger.error(f"Reference Image {file} not found")
 
     def Cut(self, image):
         source = cv2.imread(image)
@@ -77,17 +81,13 @@ class CutImage:
     def CalculateAffineTransform(self, source):
         logger.debug("Cut CalcAffineTransformation")
         h, w, ch = source.shape
-        if debug:
-            logger.debug("Align 01a")
+        logger.debug("Align 01a")
         p0 = self.getRefCoordinate(source, self.reference_images[0])
-        if debug:
-            logger.debug("Align 01b")
+        logger.debug("Align 01b")
         p1 = self.getRefCoordinate(source, self.reference_images[1])
-        if debug:
-            logger.debug("Align 01c")
+        logger.debug("Align 01c")
         p2 = self.getRefCoordinate(source, self.reference_images[2])
-        if debug:
-            logger.debug("Align 02")
+        logger.debug("Align 02")
 
         pts1 = np.float32([p0, p1, p2])
         pts2 = np.float32(
