@@ -1,4 +1,3 @@
-import configparser
 import urllib.request
 from multiprocessing import Process, Event
 from PIL import Image
@@ -24,9 +23,6 @@ class LoadImageFile:
         imageLogFolder: str = None,
         logOnlyFalsePictures: bool = True,
     ):
-        config = configparser.ConfigParser()
-        config.read("./config/config.ini")
-
         self.imageUrl = url
         self.timeout = timeout
         self.minImageSize = minImageSize
