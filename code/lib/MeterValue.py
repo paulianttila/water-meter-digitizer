@@ -20,7 +20,7 @@ class MeterValue:
         logger.debug("Start Init Meter Reader")
         basedir = Path(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
         confPath = Path(os.path.join(basedir, "config"))
-        self.config = Config(confPath)
+        self.config = Config(confPath, initializeConfig=False)
 
         if self.config.readPreValueFromFileAtStartup:
             self.loadPrevalueFromFile(self.config.readPreValueFromFileMaxAge)
