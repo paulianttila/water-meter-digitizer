@@ -1,5 +1,6 @@
 import json
-from lib.LoadFileFromHTTP import DownloadFailure
+import signal
+from lib.LoadImageFile import DownloadFailure
 from lib.MeterValue import MeterValue
 import os
 import gc
@@ -13,6 +14,7 @@ from fastapi.templating import Jinja2Templates
 import uvicorn
 
 version = "Version 8.0.0 (2024-03-22)"
+watermeter = None
 
 logging.basicConfig(
     stream=sys.stdout,
@@ -47,6 +49,11 @@ def getImage(image: str):
 @app.get("/version", response_class=HTMLResponse)
 def getVersion():
     return version
+
+@app.get("/exit", response_class=HTMLResponse)
+def doExit():
+    os.kill(os.getpid(), signal.SIGTERM)
+    return "App will exit in immidiately"
 
 
 @app.get("/reload", response_class=HTMLResponse)
