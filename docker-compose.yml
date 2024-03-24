@@ -1,0 +1,31 @@
+version: "3.5"
+
+services:
+  watermeter-system:
+    container_name: ${NAME:-watermeter-system}
+    image: watermeter-system
+    build: .
+    restart: unless-stopped
+    security_opt:
+      - no-new-privileges:true
+    environment:
+      - LOG_LEVEL=DEBUG
+      - TZ=Europe/Helsinki
+    volumes:
+        - ${DIR_DATA:-.}/config:/config
+        - ${DIR_DATA:-.}/log:/log
+        - temp:/image_tmp
+    ports:
+        - 3000:3000
+    logging:
+      driver: "json-file"
+      options:
+        max-size: "2m"
+        max-file: "2"
+
+volumes:
+  temp:
+    driver_opts:
+      type: tmpfs
+      device: tmpfs
+      o: "size=5M"
