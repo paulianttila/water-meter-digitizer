@@ -102,7 +102,7 @@ class MeterValue:
         else:
             result = self.lastIntegerValue
 
-        self.storePrevalueToFile()
+        self.storePrevalueToFile(self.prevValueFile)
 
         result = f"Last value set to: {result}"
         return result
@@ -357,7 +357,7 @@ class MeterValue:
             self.lastDecimalValue = self.akt_nachkomma
             self.lastIntegerValue = self.akt_vorkomma
 
-        self.storePrevalueToFile()
+        self.storePrevalueToFile(self.prevValueFile)
 
     def checkConsistency(self, ignoreConsistencyCheck):
         error = False
