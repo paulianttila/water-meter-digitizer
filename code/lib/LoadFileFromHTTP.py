@@ -32,19 +32,17 @@ class LoadFileFromHttp:
         self.minImageSize = minImageSize
         self.imageLogFolder = imageLogFolder
         self.logOnlyFalsePictures = logOnlyFalsePictures
+        self.lastImageSaved = None
+        self.createFolders()
 
-        self.checkAndLoadDefaultConfig()
-
-        self.lastImageSaved = ""
-
-    def checkAndLoadDefaultConfig(self):
+    def createFolders(self):
         if len(self.imageLogFolder) > 0 and not os.path.exists(self.imageLogFolder):
-            zerlegt = self.imageLogFolder.split("/")
-            pfad = zerlegt[0]
-            for i in range(1, len(zerlegt)):
-                pfad = f"{pfad}/{zerlegt[i]}"
-                if not os.path.exists(pfad):
-                    os.makedirs(pfad)
+            folders = self.imageLogFolder.split("/")
+            path = folders[0]
+            for folder in folders[1:]:
+                path = f"{path}/{folder}"
+                if not os.path.exists(path):
+                    os.makedirs(path)
 
     def readImageFromUrl(self, event, url: str, target: str):
         if url.startswith("file://"):
@@ -55,19 +53,19 @@ class LoadFileFromHttp:
         event.set()
 
     def loadImageFromUrl(self, url: str, target: str, timeout: int):
-        self.lastImageSaved = ""
+        self.lastImageSaved = None
         if url is None or not url:
             url = self.imageUrl
         event = Event()
-        action_process = Process(
+        actionProcess = Process(
             target=self.readImageFromUrl, args=(event, url, target)
         )
-        action_process.start()
+        actionProcess.start()
         if timeout == 0:
             timeout = self.timeout
-        action_process.join(timeout=timeout)
-        action_process.terminate()
-        #        action_process.close()
+        actionProcess.join(timeout=timeout)
+        actionProcess.terminate()
+        #actionProcess.close()
 
         logtime = time.strftime("%Y-%m-%d_%H-%M-%S", time.localtime())
         if event.is_set():
@@ -76,7 +74,8 @@ class LoadFileFromHttp:
                 image_size = os.stat(target).st_size
                 if image_size < self.minImageSize:
                     DownloadFailure(
-                        f"Imagefile too small. Size {str(image_size)}, min size is {str(self.minImageSize)}. url: {str(url)}"
+                        f"Imagefile too small. Size {str(image_size)}, "
+                        "min size is {str(self.minImageSize)}. url: {str(url)}"
                     )
             else:
                 DownloadFailure(f"Imagefile is corrupted, url: {str(url)}")
@@ -86,24 +85,24 @@ class LoadFileFromHttp:
 
     def postProcessLogImageProcedure(self, everythingsuccessfull):
         if (
-            (len(self.imageLogFolder) > 0)
+            self.imageLogFolder is not None
             and self.logOnlyFalsePictures
-            and (len(self.lastImageSaved) > 0)
+            and self.lastImageSaved is not None
             and everythingsuccessfull
         ):
             os.remove(self.lastImageSaved)
-            self.lastImageSaved = ""
+            self.lastImageSaved = None
 
-    def verifyImage(self, img_file):
+    def verifyImage(self, imgFile):
         try:
-            v_image = Image.open(img_file)
+            v_image = Image.open(imgFile)
             v_image.verify()
             return True
         except OSError:
             return False
 
     def saveImageToLogFolder(self, imageFile, logtime):
-        if len(self.imageLogFolder) > 0:
+        if self.imageLogFolder is not None:
             filename = f"{self.imageLogFolder}/SourceImage_{logtime}.jpg"
             copyfile(imageFile, filename)
             self.lastImageSaved = filename
