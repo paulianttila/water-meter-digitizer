@@ -14,35 +14,12 @@ debug = True
 class CutImage:
     def __init__(self, config: Config, zwpath="./image_tmp/"):
         self.PathImageZw = zwpath
-        self.UpdateConfig(config)
-
-    def UpdateConfig(self, config):
-        (self.ConfigOriginalPath, self.ConfigReroutePath) = (
-            config.ConfigRerouteConfig()
-        )
-
-        self.rotateAngle = config.CutPreRotateAngle()
-        (self.reference_name, self.reference_pos) = config.CutReferenceParameter()
-
-        self.reference_image = []
-        for i in range(3):
-            zwname = self.ReplacePathToConfig(self.reference_name[i])
-            self.reference_image.append(cv2.imread(str(zwname)))
-
-        (self.analogReadOutEnabled, self.Analog_Counter) = (
-            config.CutGetAnalogCounter()
-        )
-        (self.Digital_Digit) = config.CutGetDigitalDigit()
-        self.FastMode = config.Cut_FastMode
+        self.config = config
+        self.reference_images = []
         self.M = None
-
-    def ReplacePathToConfig(self, inp):
-        zw1 = str(self.ConfigReroutePath)
-        zw2 = Path(inp)
-        zw2 = str(zw2)
-        zw4 = str(Path(self.ConfigOriginalPath))
-        zw3 = zw2.replace(zw4, zw1)
-        return Path(zw3)
+        for i in range(3):
+            file = self.config.cutReferenceName[i]
+            self.reference_images.append(cv2.imread(file))
 
     def Cut(self, image):
         source = cv2.imread(image)
@@ -56,14 +33,14 @@ class CutImage:
         ziffern = self.cutZiffern(target)
 
         zeiger = ziffern
-        if self.analogReadOutEnabled:
+        if self.config.analogReadOutEnabled:
             zeiger = self.cutZeiger(target)
 
         return [zeiger, ziffern]
 
     def cutZeiger(self, source):
         result = []
-        for zeiger in self.Analog_Counter:
+        for zeiger in self.config.cutAnalogCounter:
             #            img[y:y+h, x:x+w]
             x, y, dx, dy = zeiger[1]
             crop_img = source[y : y + dy, x : x + dx]
@@ -77,7 +54,7 @@ class CutImage:
 
     def cutZiffern(self, source):
         result = []
-        for zeiger in self.Digital_Digit:
+        for zeiger in self.config.cutDigitalDigit:
             x, y, dx, dy = zeiger[1]
             crop_img = source[y : y + dy, x : x + dx]
             name = self.PathImageZw + zeiger[0] + ".jpg"
@@ -90,7 +67,7 @@ class CutImage:
 
     def Alignment(self, source):
         h, w, ch = source.shape
-        if (self.M is None) or (self.FastMode is False):
+        if (self.M is None) or (self.config.cutFastMode is False):
             self.CalculateAffineTransform(source)
         else:
             CalcAffTransOffline = self.CalcAffTransOfflineClass(self)
@@ -102,19 +79,23 @@ class CutImage:
         h, w, ch = source.shape
         if debug:
             logger.debug("Align 01a")
-        p0 = self.getRefCoordinate(source, self.reference_image[0])
+        p0 = self.getRefCoordinate(source, self.reference_images[0])
         if debug:
             logger.debug("Align 01b")
-        p1 = self.getRefCoordinate(source, self.reference_image[1])
+        p1 = self.getRefCoordinate(source, self.reference_images[1])
         if debug:
             logger.debug("Align 01c")
-        p2 = self.getRefCoordinate(source, self.reference_image[2])
+        p2 = self.getRefCoordinate(source, self.reference_images[2])
         if debug:
             logger.debug("Align 02")
 
         pts1 = np.float32([p0, p1, p2])
         pts2 = np.float32(
-            [self.reference_pos[0], self.reference_pos[1], self.reference_pos[2]]
+            [
+                self.config.cutReferencePos[0],
+                self.config.cutReferencePos[1],
+                self.config.cutReferencePos[2],
+            ]
         )
         self.M = cv2.getAffineTransform(pts1, pts2)
 
@@ -128,7 +109,7 @@ class CutImage:
 
     def CutAfter(self):
         logger.debug("Cut After")
-        if self.FastMode:
+        if self.config.cutFastMode:
             CalcAffTransOffline = self.CalcAffTransOfflineClass(self)
             CalcAffTransOffline.start()
 
@@ -144,7 +125,7 @@ class CutImage:
     def RotateImage(self, image):
         h, w, ch = image.shape
         center = (w / 2, h / 2)
-        M = cv2.getRotationMatrix2D(center, self.rotateAngle, 1.0)
+        M = cv2.getRotationMatrix2D(center, self.config.cutRotateAngle, 1.0)
         image = cv2.warpAffine(image, M, (w, h))
         return image
 
@@ -176,10 +157,10 @@ class CutImage:
         )
         cv2.putText(im, "ref2", (x, y - 5), 0, 0.4, (0, 0, 255))
 
-        if self.analogReadOutEnabled:
+        if self.config.analogReadOutEnabled:
             d_eclipse = 1
 
-            for zeiger in self.Analog_Counter:
+            for zeiger in self.config.cutAnalogCounter:
                 x, y, w, h = zeiger[1]
                 cv2.rectangle(
                     im, (x - d, y - d), (x + w + 2 * d, y + h + 2 * d), (0, 255, 0), d
@@ -199,7 +180,7 @@ class CutImage:
                     d_eclipse,
                 )
                 cv2.putText(im, zeiger[0], (x, y - 5), 0, 0.4, (0, 255, 0))
-        for zeiger in self.Digital_Digit:
+        for zeiger in self.config.cutDigitalDigit:
             x, y, w, h = zeiger[1]
             cv2.rectangle(
                 im, (x - d, y - d), (x + w + 2 * d, y + h + 2 * d), (0, 255, 0), d
@@ -227,25 +208,25 @@ class CutImage:
         if draw_ref:
             for i in range(3):
                 if i != ign_ref:
-                    x, y = self.reference_pos[i]
-                    h, w = self.reference_image[i].shape[:2]
+                    x, y = self.config.cutReferencePos[i]
+                    h, w = self.reference_images[i].shape[:2]
                     cv2.rectangle(
                         im, (x - d, y - d), (x + w + 2 * d, y + h + 2 * d), _colour, d
                     )
                     cv2.putText(
                         im,
-                        self.reference_name[i].replace("./config/", ""),
+                        self.config.cutReferenceName[i].replace("./config/", ""),
                         (x, y - 5),
                         0,
                         0.4,
                         _colour,
                     )
 
-        if self.analogReadOutEnabled and draw_cou:
+        if self.config.analogReadOutEnabled and draw_cou:
             d_eclipse = 1
-            for i in range(len(self.Analog_Counter)):
+            for i in range(len(self.config.cutAnalogCounter)):
                 if i != ign_cou:
-                    x, y, w, h = self.Analog_Counter[i][1]
+                    x, y, w, h = self.config.cutAnalogCounter[i][1]
                     cv2.rectangle(
                         im,
                         (x - d, y - d),
@@ -268,13 +249,18 @@ class CutImage:
                         d_eclipse,
                     )
                     cv2.putText(
-                        im, self.Analog_Counter[i][0], (x, y - 5), 0, 0.5, (0, 255, 0)
+                        im,
+                        self.config.cutAnalogCounter[i][0],
+                        (x, y - 5),
+                        0,
+                        0.5,
+                        (0, 255, 0),
                     )
 
         if draw_dig:
-            for i in range(len(self.Digital_Digit)):
+            for i in range(len(self.config.cutDigitalDigit)):
                 if i != ign_dig:
-                    x, y, w, h = self.Digital_Digit[i][1]
+                    x, y, w, h = self.config.cutDigitalDigit[i][1]
                     cv2.rectangle(
                         im,
                         (x - d, y - d),
@@ -283,7 +269,12 @@ class CutImage:
                         d,
                     )
                     cv2.putText(
-                        im, self.Digital_Digit[i][0], (x, y - 5), 0, 0.5, (0, 255, 0)
+                        im,
+                        self.config.cutDigitalDigit[i][0],
+                        (x, y - 5),
+                        0,
+                        0.5,
+                        (0, 255, 0),
                     )
 
         zwname = str(image_out)

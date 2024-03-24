@@ -1,45 +1,68 @@
 import configparser
 import os
-from shutil import copyfile
-import shutil
 import logging
-from pathlib import Path
+from dataclasses import dataclass, field
+from typing import List, Tuple, Union
 
 logger = logging.getLogger(__name__)
 
 
 class ConfigurationMissing(Exception):
-    ...
     pass
 
 
+@dataclass
 class Config:
-    def __init__(
-        self,
-        path: Path,
-        defaultPath: str = "./config_default/",
-        configreroute: str = "./config/",
-        initializeConfig: bool = True,
-    ):
-        self.iniFile = "config.ini"
-        self.preValueFile = "prevalue.ini"
-        self.pathToConfig = path
-        self.configExist = False
-        if initializeConfig:
-            self.checkAndLoadDefaultConfig(defaultPath)
+    ##################  LoadFileFromHTTP Parameters ########################
+    httpTimeoutLoadImage: int = 30
+    httpImageUrl: str = ""
+    httpImageLogFolder: str = ""
+    httpLogOnlyFalsePictures: bool = False
+
+    ##################  ConsistencyCheck Parameters ########################
+    consistencyEnabled: bool = False
+    allowNegativeRates: bool = True
+    maxRateValue: float = None
+    errorReturn: str = None
+    readPreValueFromFileMaxAge: int = 0
+    readPreValueFromFileAtStartup: bool = False
+
+    ##################  DigitalReadOut Parameters ########################
+    digitalReadOutEnabled: bool = True
+    digitModelFile: str = ""
+    digitDoImageLogging: bool = False
+    digitImageLogFolder: str = ""
+    digitLogImageNames: List[str] = field(default_factory=list)
+    cutDigitalDigit: List[List[Union[str, Tuple[int, int, int, int]]]] = field(
+        default_factory=list
+    )
+
+    ##################  AnalogReadOut Parameters ########################
+    analogReadOutEnabled: bool = False
+    analogModelFile: str = ""
+    analogDoImageLogging: bool = False
+    analogImageLogFolder: str = ""
+    analogLogImageNames: List[str] = field(default_factory=list)
+
+    cutAnalogCounter: List[List[Union[str, Tuple[int, int, int, int]]]] = field(
+        default_factory=list
+    )
+
+    ################## ImageCut Parameters ###############################
+    cutFastMode: bool = False
+    cutRotateAngle: float = 0.0
+    cutReferenceName: List[str] = field(default_factory=list)
+    cutReferencePos: List[Tuple[int, int]] = field(default_factory=list)
+
+    def __post_init__(self):
         self.parseConfig()
-        self.configOriginalPath = "./config/"
-        self.configReroutePath = configreroute
 
-    def parseConfig(self):
-        pfadini = str(self.pathToConfig.joinpath("config.ini"))
-        self.configExist = os.path.exists(pfadini)
-
-        if not self.configExist:
+    def parseConfig(self, iniFile: str = "./config/config.ini"):
+        if not os.path.exists(iniFile):
             raise ConfigurationMissing("Configuration file not found")
 
         config = configparser.ConfigParser()
-        config.read(pfadini)
+        config.read(iniFile)
 
         ##################  LoadFileFromHTTP Parameters ########################
         self.httpTimeoutLoadImage = config.getint(
@@ -48,7 +71,9 @@ class Config:
 
         self.httpImageUrl = config.get("Imagesource", "URLImageSource", fallback="")
 
-        self.httpImageLogFolder = config.get("Imagesource", "LogImageLocation", fallback="")
+        self.httpImageLogFolder = config.get(
+            "Imagesource", "LogImageLocation", fallback=""
+        )
 
         self.httpLogOnlyFalsePictures = config.getboolean(
             "Imagesource", "LogOnlyFalsePictures", fallback=False
@@ -144,7 +169,7 @@ class Config:
             self.cutAnalogCounter.append(cnt)
 
         ################## ImageCut Parameters ###############################
-        self.Cut_FastMode = config.getboolean("alignment", "fastmode", fallback=False)
+        self.cutFastMode = config.getboolean("alignment", "fastmode", fallback=False)
 
         self.cutRotateAngle = config.getfloat(
             "alignment", "initial_rotation_angle", fallback=0.0
@@ -172,78 +197,3 @@ class Config:
                 config.getint("alignment.ref2", "pos_y", fallback=0),
             )
         )
-
-    def CutGetAnalogCounter(self):
-        return (self.analogReadOutEnabled, self.cutAnalogCounter)
-
-    def CutGetDigitalDigit(self):
-        return self.cutDigitalDigit
-
-    def CutPreRotateAngle(self):
-        return self.cutRotateAngle
-
-    def CutReferenceParameter(self):
-        return (self.cutReferenceName, self.cutReferencePos)
-
-    def LoadHTTPParameter(self):
-        return (
-            self.httpTimeoutLoadImage,
-            self.httpImageUrl,
-            self.httpImageLogFolder,
-            self.httpLogOnlyFalsePictures,
-        )
-
-    def ZaehlerAnalogEnabled(self):
-        return self.analogReadOutEnabled
-
-    def ZaehlerConsistency(self):
-        return (
-            self.consistencyEnabled,
-            self.allowNegativeRates,
-            self.maxRateValue,
-            self.errorReturn,
-        )
-
-    def ZaehlerReadPrevalue(self):
-        return (
-            self.readPreValueFromFileAtStartup,
-            self.readPreValueFromFileMaxAge,
-        )
-
-    def DigitModelFile(self):
-        return self.digitModelFile
-
-    def DigitGetLogInfo(self):
-        return (
-            self.digitDoImageLogging,
-            self.digitLogImageNames,
-            self.digitImageLogFolder,
-        )
-
-    def AnalogModelFile(self):
-        return self.analogModelFile
-
-    def AnalogGetLogInfo(self):
-        return (
-            self.analogDoImageLogging,
-            self.analogLogImageNames,
-            self.analogImageLogFolder,
-        )
-
-    def ConfigRerouteConfig(self):
-        return (self.configOriginalPath, self.configReroutePath)
-
-    def checkAndLoadDefaultConfig(self, defaultdir):
-        zw = str(self.pathToConfig.joinpath(self.iniFile))
-        if not os.path.exists(zw):
-            for file in os.listdir(defaultdir):
-                if os.path.isdir(defaultdir + file):
-                    shutil.copytree(
-                        defaultdir + file, str(self.pathToConfig.joinpath(file))
-                    )
-                else:
-                    zw = str(self.pathToConfig.joinpath(file))
-                    shutil.copyfile(defaultdir + file, zw)
-        zw = str(self.pathToConfig.joinpath(self.preValueFile))
-        if not os.path.exists(zw):
-            copyfile(defaultdir + self.preValueFile, zw)

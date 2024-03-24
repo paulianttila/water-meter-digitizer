@@ -1,9 +1,8 @@
 import configparser
-from pathlib import Path
 from lib.CutImage import CutImage
 from lib.UseClassificationCNN import UseClassificationCNN
 from lib.UseAnalogCounterCNN import UseAnalogCounterCNN
-from lib.LoadFileFromHTTP import DownloadFailure, LoadFileFromHttp
+from lib.LoadImageFile import DownloadFailure, LoadImageFile
 from lib.Config import Config
 import math
 import os
@@ -18,9 +17,7 @@ logger = logging.getLogger(__name__)
 class MeterValue:
     def __init__(self, configFile: str):
         logger.debug("Start Init Meter Reader")
-        basedir = Path(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-        confPath = Path(os.path.join(basedir, "config"))
-        self.config = Config(confPath, initializeConfig=False)
+        self.config = Config()
 
         if self.config.readPreValueFromFileAtStartup:
             self.loadPrevalueFromFile(self.config.readPreValueFromFileMaxAge)
@@ -29,7 +26,7 @@ class MeterValue:
         self.initDigital()
 
         self.cutImageHandler = CutImage(self.config)
-        self.imageLoader = LoadFileFromHttp(
+        self.imageLoader = LoadImageFile(
             url=self.config.httpImageUrl,
             minImageSize=10000,
             imageLogFolder=self.config.httpImageLogFolder,
@@ -79,14 +76,6 @@ class MeterValue:
                 else self.readAnalogNeedle.GlobalErrorText
             )
         return ErrorText
-
-    def checkAndLoadDefaultConfig(self):
-        defaultdir = "./config_default/"
-        targetdir = "./config/"
-        if not os.path.exists("./config/config.ini"):
-            copyfile(f"{defaultdir}config.ini", f"{targetdir}config.ini")
-        if not os.path.exists("./config/prevalue.ini"):
-            copyfile(f"{defaultdir}prevalue.ini", f"{targetdir}prevalue.ini")
 
     def setPreValue(self, setValue):
         zerlegt = setValue.split(".")
