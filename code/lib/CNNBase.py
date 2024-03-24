@@ -1,10 +1,12 @@
-import tflite_runtime.interpreter as tflite
-
+import contextlib
 from PIL import Image
 import numpy as np
 import os
 import logging
 from importlib import util
+
+with contextlib.suppress(ImportError):
+    import tflite_runtime.interpreter as tflite
 
 spam_spec = util.find_spec("tensorflow")
 found_tensorflow = spam_spec is not None
@@ -39,11 +41,14 @@ class CNNBase:
             )
             return
 
-        self.interpreter = tflite.Interpreter(model_path=self.modelFile)
-        self.interpreter.allocate_tensors()
-        self.input_details = self.interpreter.get_input_details()
-        self.output_details = self.interpreter.get_output_details()
-
+        try:
+            self.interpreter = tflite.Interpreter(model_path=self.modelFile)
+            self.interpreter.allocate_tensors()
+            self.input_details = self.interpreter.get_input_details()
+            self.output_details = self.interpreter.get_output_details()
+        except Exception as e:
+            logger.error(f"Error loading model: {e}")
+            
     def readout(self, pictureList, logtime):
         self.result = []
         for image in pictureList:
