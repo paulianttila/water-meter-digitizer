@@ -30,6 +30,9 @@ class MeterValue:
             self.loadPrevalueFromFile(
                 self.prevValueFile, self.config.readPreValueFromFileMaxAge
             )
+        else:
+            self.lastIntegerValue = ""
+            self.lastDecimalValue = ""
 
         self.initAnalog()
         self.initDigital()
@@ -42,8 +45,6 @@ class MeterValue:
             logOnlyFalsePictures=self.config.httpLogOnlyFalsePictures,
         )
 
-        self.lastIntegerValue = ""
-        self.lastDecimalValue = ""
         self.akt_vorkomma = ""
         self.akt_nachkomma = ""
 
@@ -111,9 +112,9 @@ class MeterValue:
         logtime = time.strftime("%Y-%m-%d_%H-%M-%S", time.localtime())
         config = configparser.ConfigParser()
         config.read(file)
-        config["PreValue"]["LastVorkomma"] = self.lastIntegerValue
+        config["PreValue"]["LastVorkomma"] = self.lastDecimalValue
         if self.config.analogReadOutEnabled:
-            config["PreValue"]["LastNachkomma"] = self.lastDecimalValue
+            config["PreValue"]["LastNachkomma"] = self.lastIntegerValue
         else:
             config["PreValue"]["LastNachkomma"] = "0"
         config["PreValue"]["Time"] = logtime
@@ -132,8 +133,8 @@ class MeterValue:
         diff = (d1 - d2).days * 24 * 60
 
         if diff <= readPreValueFromFileMaxAge:
-            self.lastIntegerValue = config["PreValue"]["LastVorkomma"]
-            self.lastDecimalValue = config["PreValue"]["LastNachkomma"]
+            self.lastDecimalValue = config["PreValue"]["LastVorkomma"]
+            self.lastIntegerValue = config["PreValue"]["LastNachkomma"]
             zw = f"Previous value loaded from file: {self.lastIntegerValue}.{self.lastDecimalValue}"
 
         else:
