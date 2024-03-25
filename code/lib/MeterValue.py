@@ -152,7 +152,6 @@ class MeterValue:
             url, f"{self.imageTmpFolder}/original.jpg", timeout
         )
 
-        self.cutImageHandler.cut(f"{self.imageTmpFolder}/original.jpg")
         logger.debug("Start ROI")
         self.cutImageHandler.drawRoi(
             f"{self.imageTmpFolder}/aligned.jpg", f"{self.imageTmpFolder}/roi.jpg"
@@ -194,22 +193,22 @@ class MeterValue:
             logger.debug("Start CutImage, AnalogReadout, DigitalReadout")
         else:
             logger.debug("Start CutImage, DigitalReadout")
-        resultcut = self.cutImageHandler.cut(f"{self.imageTmpFolder}/original.jpg")
+        cutIimages = self.cutImageHandler.cut(f"{self.imageTmpFolder}/original.jpg")
         self.cutImageHandler.drawRoi(f"{self.imageTmpFolder}/roi.jpg")
 
         if self.config.analogReadOutEnabled:
-            resultanalog = self.readAnalogNeedle.readout(resultcut[0])
-        resultdigital = self.readDigitalDigit.readout(resultcut[1])
+            resultAnalog = self.readAnalogNeedle.readout(cutIimages.analogImages)
+        resultDigital = self.readDigitalDigit.readout(cutIimages.digitalImages)
 
         self.akt_nachkomma = 0
         if self.config.analogReadOutEnabled:
-            self.akt_nachkomma = self.analogReadoutToValue(resultanalog)
+            self.akt_nachkomma = self.analogReadoutToValue(resultAnalog)
         self.akt_vorkomma = self.digitalReadoutToValue(
-            resultdigital, usePreValue, self.lastDecimalValue, self.akt_nachkomma
+            resultDigital, usePreValue, self.lastDecimalValue, self.akt_nachkomma
         )
         self.imageLoader.postProcessLogImageProcedure(True)
 
-        logger.debug("Start Making MeterValue")
+        logger.debug("Start making meter value")
         (consistencyError, errortxt) = self.checkConsistency(ignoreConsistencyCheck)
         self.updateLastValues(consistencyError)
 
@@ -218,19 +217,21 @@ class MeterValue:
         if not simple:
             txt = f"{txt}<p>Aligned Image: <p><img src=/image_tmp/aligned.jpg></img><p>"
             txt = f"{txt}Digital Counter: <p>"
-            for i in range(len(resultdigital)):
-                zw = "NaN" if resultdigital[i] == "NaN" else str(int(resultdigital[i]))
-                txt += f"<img src=/image_tmp/{str(resultcut[1][i][0])}.jpg></img>{zw}"
+            for i in range(len(resultDigital)):
+                zw = "NaN" if resultDigital[i] == "NaN" else str(int(resultDigital[i]))
+                imageName = str(cutIimages.digitalImages[i][0])
+                txt += f"<img src=/image_tmp/{imageName}.jpg></img>{zw}"
             txt = f"{txt}<p>"
             if self.config.analogReadOutEnabled:
                 txt = f"{txt}Analog Meter: <p>"
-                for i in range(len(resultanalog)):
+                for i in range(len(resultAnalog)):
+                    imageName = str(cutIimages.analogImages[i][0])
                     txt += (
-                        f"<img src=/image_tmp/{str(resultcut[0][i][0])}.jpg></img>"
-                        + "{:.1f}".format(resultanalog[i])
+                        f"<img src=/image_tmp/{imageName}.jpg></img>"
+                        + "{:.1f}".format(resultAnalog[i])
                     )
                 txt = f"{txt}<p>"
-        logger.debug("Get MeterValue done")
+        logger.debug("Get meter value done")
         return txt
 
     def getMeterValueJson(
@@ -275,22 +276,22 @@ class MeterValue:
             logger.debug("Start CutImage, AnalogReadout, DigitalReadout")
         else:
             logger.debug("Start CutImage, DigitalReadout")
-        resultcut = self.cutImageHandler.cut(f"{self.imageTmpFolder}/original.jpg")
+        cutIimages = self.cutImageHandler.cut(f"{self.imageTmpFolder}/original.jpg")
         self.cutImageHandler.drawRoi(f"{self.imageTmpFolder}/roi.jpg")
 
         if self.config.analogReadOutEnabled:
-            resultanalog = self.readAnalogNeedle.readout(resultcut[0])
-        resultdigital = self.readDigitalDigit.readout(resultcut[1])
+            resultAnalog = self.readAnalogNeedle.readout(cutIimages.analogImages)
+        resultDigital = self.readDigitalDigit.readout(cutIimages.digitalImages)
 
         self.akt_nachkomma = 0
         if self.config.analogReadOutEnabled:
-            self.akt_nachkomma = self.analogReadoutToValue(resultanalog)
+            self.akt_nachkomma = self.analogReadoutToValue(resultAnalog)
         self.akt_vorkomma = self.digitalReadoutToValue(
-            resultdigital, usePreValue, self.lastDecimalValue, self.akt_nachkomma
+            resultDigital, usePreValue, self.lastDecimalValue, self.akt_nachkomma
         )
         self.imageLoader.postProcessLogImageProcedure(True)
 
-        logger.debug("Start Making MeterValue")
+        logger.debug("Start making meter value")
         (consistencyError, errortxt) = self.checkConsistency(ignoreConsistencyCheck)
         self.updateLastValues(consistencyError)
 
@@ -298,6 +299,7 @@ class MeterValue:
             consistencyError, errortxt, single
         )
 
+        logger.debug("Get meter value done")
         return {
             "Value": Value,
             "DigitalDigits": Digit,
