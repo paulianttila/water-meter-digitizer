@@ -1,7 +1,6 @@
 import os
 import numpy as np
 import cv2
-from cv2.typing import MatLike
 from PIL import Image
 import logging
 from lib.Config import Config, ImagePosition
@@ -105,7 +104,7 @@ class CutImage:
 
         cv2.imwrite(imageOut, image)
 
-    def _drawRef(self, image: MatLike) -> MatLike:
+    def _drawRef(self, image):
         _colour = (255, 0, 0)
         d = 3
         for i in range(len(self.config.cutReferencePos)):
@@ -124,7 +123,7 @@ class CutImage:
             )
         return image
 
-    def drawCou(self, image: MatLike) -> MatLike:
+    def drawCou(self, image):
         d_eclipse = 1
         d = 3
         for i in range(len(self.config.cutAnalogCounter)):
@@ -161,7 +160,7 @@ class CutImage:
             )
         return image
 
-    def drawDig(self, image: MatLike) -> MatLike:
+    def drawDig(self, image):
         d = 3
         for i in range(len(self.config.cutDigitalDigit)):
             imgPos = self.config.cutDigitalDigit[i]
