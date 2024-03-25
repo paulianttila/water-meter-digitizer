@@ -31,7 +31,7 @@ class LoadImageFile:
         self.lastImageSaved = None
         self.createFolders()
 
-    def createFolders(self):
+    def createFolders(self) -> None:
         if len(self.imageLogFolder) > 0 and not os.path.exists(self.imageLogFolder):
             folders = self.imageLogFolder.split("/")
             path = folders[0]
@@ -40,7 +40,7 @@ class LoadImageFile:
                 if not os.path.exists(path):
                     os.makedirs(path)
 
-    def readImageFromUrl(self, event, url: str, target: str):
+    def readImageFromUrl(self, event, url: str, target: str) -> None:
         # Todo: limit file to one folder for security reasons
         if url.startswith("file://"):
             file = url[7:]
@@ -49,7 +49,7 @@ class LoadImageFile:
             urllib.request.urlretrieve(url, target)
         event.set()
 
-    def loadImageFromUrl(self, url: str, target: str, timeout: int):
+    def loadImageFromUrl(self, url: str, target: str, timeout: int) -> None:
         self.lastImageSaved = None
         if url is None or not url:
             url = self.imageUrl
@@ -58,29 +58,24 @@ class LoadImageFile:
             target=self.readImageFromUrl, args=(event, url, target)
         )
         actionProcess.start()
-        if timeout == 0:
+        if timeout is None:
             timeout = self.timeout
         actionProcess.join(timeout=timeout)
         actionProcess.terminate()
-        #actionProcess.close()
-
-        logtime = time.strftime("%Y-%m-%d_%H-%M-%S", time.localtime())
-        if event.is_set():
-            self.saveImageToLogFolder(target, logtime)
-            if self.verifyImage(target) is True:
-                image_size = os.stat(target).st_size
-                if image_size < self.minImageSize:
-                    DownloadFailure(
-                        f"Imagefile too small. Size {str(image_size)}, "
-                        "min size is {str(self.minImageSize)}. url: {str(url)}"
-                    )
-            else:
-                DownloadFailure(f"Imagefile is corrupted, url: {str(url)}")
-        else:
+        if not event.is_set():
             raise DownloadFailure(f"Image download failure from {str(url)}")
-        return logtime
+        self.saveImageToLogFolder(target)
+        if self.verifyImage(target) is True:
+            image_size = os.stat(target).st_size
+            if image_size < self.minImageSize:
+                DownloadFailure(
+                    f"Imagefile too small. Size {str(image_size)}, "
+                    f"min size is {str(self.minImageSize)}. url: {str(url)}"
+                )
+        else:
+            DownloadFailure(f"Imagefile is corrupted, url: {str(url)}")
 
-    def postProcessLogImageProcedure(self, everythingsuccessfull):
+    def postProcessLogImageProcedure(self, everythingsuccessfull) -> None:
         if (
             self.imageLogFolder is not None
             and self.logOnlyFalsePictures
@@ -90,7 +85,7 @@ class LoadImageFile:
             os.remove(self.lastImageSaved)
             self.lastImageSaved = None
 
-    def verifyImage(self, imgFile):
+    def verifyImage(self, imgFile) -> bool:
         try:
             v_image = Image.open(imgFile)
             v_image.verify()
@@ -98,8 +93,9 @@ class LoadImageFile:
         except OSError:
             return False
 
-    def saveImageToLogFolder(self, imageFile, logtime):
+    def saveImageToLogFolder(self, imageFile) -> None:
         if self.imageLogFolder is not None:
-            filename = f"{self.imageLogFolder}/SourceImage_{logtime}.jpg"
+            logtime = time.strftime("%Y-%m-%d_%H-%M-%S", time.localtime())
+            filename = f"{self.imageLogFolder}/{logtime}.jpg"
             copyfile(imageFile, filename)
             self.lastImageSaved = filename

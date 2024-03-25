@@ -1,4 +1,5 @@
 import contextlib
+import time
 from PIL import Image
 import numpy as np
 import os
@@ -49,41 +50,41 @@ class CNNBase:
             self.input_details = self.interpreter.get_input_details()
             self.output_details = self.interpreter.get_output_details()
         except Exception as e:
-            logger.error(f"Error loading model: {e}")
+            logger.error(f"Error occured during model '{self.modelFile}' loading: {e}")
             
-    def readout(self, pictureList, logtime):
+    def readout(self, pictureList):
         self.result = []
         for image in pictureList:
-            value = self.readoutSingleImage(image[1])
-            self.saveImageToLogFolder(image, value, logtime)
+            value = self.readoutSingleImage(image)
+            self.saveImageToLogFolder(image, value)
             self.result.append(value)
         return self.result
 
-    def saveImageToLogFolder(self, image, value, logtime):
-        if len(self.imageLogFolder) > 0:
-            if (len(self.imageLogNames) > 0) and (image[0] not in self.imageLogNames):
-                return
-            if isinstance(value, int):
-                folder = f"{self.imageLogFolder}/{value}"
-            if isinstance(value, float):
-                folder = f"{self.imageLogFolder}/{int(value)}"
-            else:
-                folder = f"{self.imageLogFolder}/{value}"
-
-            self.createFolderIfNotExists(folder)
-            filename = f"{image[0]}_{logtime}.jpg"
-            filename = f"{folder}/{filename}"
-            logger.debug(f"Save image to {filename}")
-            image[1].save(filename, "JPEG")
-
     def readoutSingleImage(self, image):
-        test_image = image.resize((self.dx, self.dy), Image.NEAREST)
-        test_image.save(f"{self.imageTmpFolder}/resize.jpg", "JPEG")
-        test_image = np.array(test_image, dtype="float32")
-        input_data = np.reshape(test_image, [1, self.dy, self.dx, 3])
+        testImage = image.resize((self.dx, self.dy), Image.NEAREST)
+        testImage.save(f"{self.imageTmpFolder}/resize.jpg", "JPEG")
+        testImage = np.array(testImage, dtype="float32")
+        input_data = np.reshape(testImage, [1, self.dy, self.dx, 3])
         self.interpreter.set_tensor(self.input_details[0]["index"], input_data)
         self.interpreter.invoke()
         return self.interpreter.get_tensor(self.output_details[0]["index"])
 
-    def createFolderIfNotExists(self, folder):
+    def saveImageToLogFolder(self, image: str, value):
+        if self.imageLogFolder is None or len(self.imageLogFolder) <= 0:
+            return
+
+        imageName = image[0]
+        if imageName not in self.imageLogNames:
+            return
+
+        val = str(int(value)) if isinstance(value, float) else str(value)
+        folder = f"{self.imageLogFolder}/{val}"
+
+        self.createFolderIfNotExists(folder)
+        t = time.strftime("%Y-%m-%d_%H-%M-%S", time.localtime())
+        filename = f"{folder}/{imageName}_{t}.jpg"
+        logger.debug(f"Save image to {filename}")
+        image[1].save(filename, "JPEG")
+
+    def createFolderIfNotExists(self, folder: str):
         os.makedirs(folder, exist_ok=True)

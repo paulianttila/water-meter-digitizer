@@ -12,6 +12,15 @@ class ConfigurationMissing(Exception):
 
 
 @dataclass
+class ImagePosition:
+    def __init__(self, name: str, x1: int, y1: int, w: int, h: int):
+        self.name = name
+        self.x1 = x1
+        self.y1 = y1
+        self.w = w
+        self.h = h
+
+@dataclass
 class Config:
     ##################  LoadFileFromHTTP Parameters ########################
     httpTimeoutLoadImage: int = 30
@@ -33,9 +42,7 @@ class Config:
     digitDoImageLogging: bool = False
     digitImageLogFolder: str = "/log"
     digitLogImageNames: List[str] = field(default_factory=list)
-    cutDigitalDigit: List[List[Union[str, Tuple[int, int, int, int]]]] = field(
-        default_factory=list
-    )
+    cutDigitalDigit: List[ImagePosition] = field(default_factory=list)
 
     ##################  AnalogReadOut Parameters ########################
     analogReadOutEnabled: bool = False
@@ -43,10 +50,7 @@ class Config:
     analogDoImageLogging: bool = False
     analogImageLogFolder: str = ""
     analogLogImageNames: List[str] = field(default_factory=list)
-
-    cutAnalogCounter: List[List[Union[str, Tuple[int, int, int, int]]]] = field(
-        default_factory=list
-    )
+    cutAnalogCounter: List[ImagePosition] = field(default_factory=list)
 
     ################## ImageCut Parameters ###############################
     cutFastMode: bool = False
@@ -118,19 +122,16 @@ class Config:
             nm.strip() for nm in digitLogNamesFull.split(",")
         )
 
+
         digitalDigitFull = config.get("Digital_Digit", "names").split(",")
         self.cutDigitalDigit = []
-        for nm in digitalDigitFull:
-            nm = nm.strip()
-            cnt = [nm]
-            x1 = int(config[f"Digital_Digit.{nm}"]["pos_x"])
-            y1 = int(config[f"Digital_Digit.{nm}"]["pos_y"])
-            dx = int(config[f"Digital_Digit.{nm}"]["dx"])
-            dy = int(config[f"Digital_Digit.{nm}"]["dy"])
-            p_neu = (x1, y1, dx, dy)
-            self.digitalDigitDefault = p_neu
-            cnt.append(p_neu)
-            self.cutDigitalDigit.append(cnt)
+        for name in digitalDigitFull:
+            name = name.strip()
+            x1 = int(config[f"Digital_Digit.{name}"]["pos_x"])
+            y1 = int(config[f"Digital_Digit.{name}"]["pos_y"])
+            w = int(config[f"Digital_Digit.{name}"]["dx"])
+            h = int(config[f"Digital_Digit.{name}"]["dy"])
+            self.cutDigitalDigit.append(ImagePosition(name, x1, y1, w, h))
 
         ##################  AnalogReadOut Parameters ########################
 
@@ -153,17 +154,13 @@ class Config:
 
         analogCounter = config.get("Analog_Counter", "names").split(",")
         self.cutAnalogCounter = []
-        for nm in analogCounter:
-            nm = nm.strip()
-            cnt = [nm]
-            x1 = int(config[f"Analog_Counter.{nm}"]["pos_x"])
-            y1 = int(config[f"Analog_Counter.{nm}"]["pos_y"])
-            dx = int(config[f"Analog_Counter.{nm}"]["dx"])
-            dy = int(config[f"Analog_Counter.{nm}"]["dy"])
-            p_neu = (x1, y1, dx, dy)
-            self.analogCounterDefault = p_neu
-            cnt.append(p_neu)
-            self.cutAnalogCounter.append(cnt)
+        for name in analogCounter:
+            name = name.strip()
+            x1 = int(config[f"Analog_Counter.{name}"]["pos_x"])
+            y1 = int(config[f"Analog_Counter.{name}"]["pos_y"])
+            w = int(config[f"Analog_Counter.{name}"]["dx"])
+            h = int(config[f"Analog_Counter.{name}"]["dy"])
+            self.cutAnalogCounter.append(ImagePosition(name, x1, y1, w, h))
 
         ################## ImageCut Parameters ###############################
         self.cutFastMode = config.getboolean("alignment", "fastmode", fallback=False)

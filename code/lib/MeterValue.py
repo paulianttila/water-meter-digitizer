@@ -138,21 +138,23 @@ class MeterValue:
             zw = f"Previous value loaded from file: {self.lastIntegerValue}.{self.lastDecimalValue}"
 
         else:
+            self.lastDecimalValue = ""
+            self.lastIntegerValue = ""
             zw = f"Previous value not loaded from file as value is too old: ({str(diff)} minutes)."
 
         logger.info(zw)
 
-    def getROI(self, url: str, timeout: int = 0):
+    def getROI(self, url: str, timeout: int = None):
         self.removeFile(f"{self.imageTmpFolder}/original.jpg")
 
         self.imageLoader.loadImageFromUrl(
             url, f"{self.imageTmpFolder}/original.jpg", timeout
         )
 
-        self.cutImageHandler.Cut(f"{self.imageTmpFolder}/original.jpg")
+        self.cutImageHandler.cut(f"{self.imageTmpFolder}/original.jpg")
         logger.debug("Start ROI")
-        self.cutImageHandler.DrawROI(
-            f"{self.imageTmpFolder}/alg.jpg", f"{self.imageTmpFolder}/roi.jpg"
+        self.cutImageHandler.drawRoi(
+            f"{self.imageTmpFolder}/aligned.jpg", f"{self.imageTmpFolder}/roi.jpg"
         )
         logger.debug("Get ROI done")
 
@@ -163,7 +165,7 @@ class MeterValue:
         usePreValue: bool = False,
         single: bool = False,
         ignoreConsistencyCheck: bool = False,
-        timeout: int = 0,
+        timeout: int = None,
     ) -> str:
         if self.config.analogReadOutEnabled:
             prevValue = self.lastIntegerValue.lstrip("0") + "." + self.lastDecimalValue
@@ -181,7 +183,7 @@ class MeterValue:
         }
 
         try:
-            logtime = self.imageLoader.loadImageFromUrl(
+            self.imageLoader.loadImageFromUrl(
                 url, f"{self.imageTmpFolder}/original.jpg", timeout
             )
         except DownloadFailure as e:
@@ -191,12 +193,12 @@ class MeterValue:
             logger.debug("Start CutImage, AnalogReadout, DigitalReadout")
         else:
             logger.debug("Start CutImage, DigitalReadout")
-        resultcut = self.cutImageHandler.Cut(f"{self.imageTmpFolder}/original.jpg")
-        self.cutImageHandler.DrawROI(f"{self.imageTmpFolder}/alg.jpg")
+        resultcut = self.cutImageHandler.cut(f"{self.imageTmpFolder}/original.jpg")
+        self.cutImageHandler.drawRoi(f"{self.imageTmpFolder}/aligned.jpg")
 
         if self.config.analogReadOutEnabled:
-            resultanalog = self.readAnalogNeedle.readout(resultcut[0], logtime)
-        resultdigital = self.readDigitalDigit.readout(resultcut[1], logtime)
+            resultanalog = self.readAnalogNeedle.readout(resultcut[0])
+        resultdigital = self.readDigitalDigit.readout(resultcut[1])
 
         self.akt_nachkomma = 0
         if self.config.analogReadOutEnabled:
@@ -213,7 +215,7 @@ class MeterValue:
         txt = self.MakeReturnValue(consistencyError, errortxt, single)
 
         if not simple:
-            txt = f"{txt}<p>Aligned Image: <p><img src=/image_tmp/alg.jpg></img><p>"
+            txt = f"{txt}<p>Aligned Image: <p><img src=/image_tmp/aligned.jpg></img><p>"
             txt = f"{txt}Digital Counter: <p>"
             for i in range(len(resultdigital)):
                 zw = "NaN" if resultdigital[i] == "NaN" else str(int(resultdigital[i]))
@@ -256,7 +258,7 @@ class MeterValue:
         }
 
         try:
-            logtime = self.imageLoader.loadImageFromUrl(
+            self.imageLoader.loadImageFromUrl(
                 url, f"{self.imageTmpFolder}/original.jpg", timeout
             )
         except DownloadFailure as e:
@@ -272,12 +274,12 @@ class MeterValue:
             logger.debug("Start CutImage, AnalogReadout, DigitalReadout")
         else:
             logger.debug("Start CutImage, DigitalReadout")
-        resultcut = self.cutImageHandler.Cut(f"{self.imageTmpFolder}/original.jpg")
-        self.cutImageHandler.DrawROI(f"{self.imageTmpFolder}/alg.jpg")  # update ROI
+        resultcut = self.cutImageHandler.cut(f"{self.imageTmpFolder}/original.jpg")
+        self.cutImageHandler.drawRoi(f"{self.imageTmpFolder}/roi.jpg")
 
         if self.config.analogReadOutEnabled:
-            resultanalog = self.readAnalogNeedle.readout(resultcut[0], logtime)
-        resultdigital = self.readDigitalDigit.readout(resultcut[1], logtime)
+            resultanalog = self.readAnalogNeedle.readout(resultcut[0])
+        resultdigital = self.readDigitalDigit.readout(resultcut[1])
 
         self.akt_nachkomma = 0
         if self.config.analogReadOutEnabled:
