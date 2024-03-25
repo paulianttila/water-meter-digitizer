@@ -40,6 +40,7 @@ class MeterValue:
         self.cutImageHandler = CutImage(self.config, imageTmpFolder=imageTmpFolder)
         self.imageLoader = LoadImageFile(
             url=self.config.httpImageUrl,
+            timeout=self.config.httpTimeoutLoadImage,
             minImageSize=10000,
             imageLogFolder=self.config.httpImageLogFolder,
             logOnlyFalsePictures=self.config.httpLogOnlyFalsePictures,

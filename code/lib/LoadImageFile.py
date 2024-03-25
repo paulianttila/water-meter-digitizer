@@ -58,7 +58,7 @@ class LoadImageFile:
             target=self.readImageFromUrl, args=(event, url, target)
         )
         actionProcess.start()
-        if timeout is None:
+        if timeout == 0:
             timeout = self.timeout
         actionProcess.join(timeout=timeout)
         actionProcess.terminate()
