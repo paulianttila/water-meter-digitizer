@@ -40,8 +40,11 @@ class CutImage:
         )
         return [analogs, digits]
 
-    def _cutImages(self, source, imagePositions: ImagePosition):
-        return [self.cutImage(source, digit) for digit in imagePositions]
+    def _cutImages(self, source, imagePositions: ImagePosition) -> list:
+        return [
+            [digit.name, self.cutImage(source, digit)]
+            for digit in imagePositions
+        ]
 
     def cutImage(self, source, imgPosition: ImagePosition):
         x, y, w, h = imgPosition.x1, imgPosition.y1, imgPosition.w, imgPosition.h

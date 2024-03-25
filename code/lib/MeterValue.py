@@ -195,7 +195,7 @@ class MeterValue:
         else:
             logger.debug("Start CutImage, DigitalReadout")
         resultcut = self.cutImageHandler.cut(f"{self.imageTmpFolder}/original.jpg")
-        self.cutImageHandler.drawRoi(f"{self.imageTmpFolder}/aligned.jpg")
+        self.cutImageHandler.drawRoi(f"{self.imageTmpFolder}/roi.jpg")
 
         if self.config.analogReadOutEnabled:
             resultanalog = self.readAnalogNeedle.readout(resultcut[0])

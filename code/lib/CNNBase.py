@@ -55,7 +55,7 @@ class CNNBase:
     def readout(self, pictureList):
         self.result = []
         for image in pictureList:
-            value = self.readoutSingleImage(image)
+            value = self.readoutSingleImage(image[1])
             self.saveImageToLogFolder(image, value)
             self.result.append(value)
         return self.result
@@ -69,7 +69,7 @@ class CNNBase:
         self.interpreter.invoke()
         return self.interpreter.get_tensor(self.output_details[0]["index"])
 
-    def saveImageToLogFolder(self, image: str, value):
+    def saveImageToLogFolder(self, image, value):
         if self.imageLogFolder is None or len(self.imageLogFolder) <= 0:
             return
 
