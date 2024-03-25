@@ -73,7 +73,7 @@ def reloadConfig():
 
 
 @app.get("/roi", response_class=HTMLResponse)
-def getRoi(request: Request, url: str = "", timeout: int = 30):
+def getRoi(request: Request, url: str = "", timeout: int = 0):
     try:
         watermeter.getROI(url, timeout)
         return templates.TemplateResponse(

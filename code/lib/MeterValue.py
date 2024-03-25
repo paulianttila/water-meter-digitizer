@@ -144,7 +144,7 @@ class MeterValue:
 
         logger.info(zw)
 
-    def getROI(self, url: str, timeout: int = None):
+    def getROI(self, url: str, timeout: int = 0):
         self.removeFile(f"{self.imageTmpFolder}/original.jpg")
 
         self.imageLoader.loadImageFromUrl(
@@ -165,7 +165,7 @@ class MeterValue:
         usePreValue: bool = False,
         single: bool = False,
         ignoreConsistencyCheck: bool = False,
-        timeout: int = None,
+        timeout: int = 0,
     ) -> str:
         if self.config.analogReadOutEnabled:
             prevValue = self.lastIntegerValue.lstrip("0") + "." + self.lastDecimalValue
