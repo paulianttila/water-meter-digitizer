@@ -14,7 +14,7 @@ class AnalogCounterCNN(CNNBase):
         dy: int,
         imageTmpFolder: str = "/image_tmp/",
         imageLogFolder: str = None,
-        imageLogNames: list = [],
+        imageLogNames: list = None,
     ):
         super().__init__(
             modelfile,

@@ -26,8 +26,10 @@ class CNNBase:
         dy: int,
         imageTmpFolder: str = "/image_tmp/",
         imageLogFolder: str = None,
-        imageLogNames: list = [],
+        imageLogNames: list = None,
     ):
+        if imageLogNames is None:
+            imageLogNames = []
         self.modelFile = modelfile
         self.dx = dx
         self.dy = dy
@@ -51,7 +53,7 @@ class CNNBase:
             self.output_details = self.interpreter.get_output_details()
         except Exception as e:
             logger.error(f"Error occured during model '{self.modelFile}' loading: {e}")
-            
+
     def readout(self, pictureList):
         self.result = []
         for image in pictureList:
