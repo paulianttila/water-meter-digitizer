@@ -143,7 +143,7 @@ class Meter:
         self.imageLoader.loadImageFromUrl(
             url, f"{self.imageTmpFolder}/original.jpg", timeout
         )
-
+        self.cutImageHandler.cut(f"{self.imageTmpFolder}/original.jpg")
         logger.debug("Start ROI")
         self.cutImageHandler.drawRoi(
             f"{self.imageTmpFolder}/aligned.jpg", f"{self.imageTmpFolder}/roi.jpg"
