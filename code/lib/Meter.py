@@ -13,7 +13,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-class MeterValue:
+class Meter:
     def __init__(
         self,
         configFile: str = "/config/config.ini",

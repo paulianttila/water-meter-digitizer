@@ -1,7 +1,7 @@
 import json
 import signal
 from lib.ImageLoader import DownloadFailure
-from lib.MeterValue import MeterValue
+from lib.Meter import Meter
 import os
 import gc
 import logging
@@ -64,7 +64,7 @@ def reloadConfig():
     global watermeter
     del watermeter
     gc.collect()
-    watermeter = MeterValue(
+    watermeter = Meter(
         configFile=f"{configDir}/config.ini",
         prevValueFile=f"{configDir}/prevalue.ini",
         imageTmpFolder=imageTmpFolder,
@@ -140,11 +140,11 @@ if __name__ == "__main__":
     logging.getLogger("lib.Config").setLevel(logger.level)
     logging.getLogger("lib.AnalogCounterCNN").setLevel(logger.level)
     logging.getLogger("lib.DigitalCounterCNN").setLevel(logger.level)
-    logging.getLogger("lib.MeterValue").setLevel(logger.level)
+    logging.getLogger("lib.Meter").setLevel(logger.level)
 
     configDir = os.environ.get("CONFIG_DIR", "/config")
     imageTmpFolder = os.environ.get("IMAGE_TMP", "/image_tmp")
-    watermeter = MeterValue(
+    watermeter = Meter(
         configFile=f"{configDir}/config.ini",
         prevValueFile=f"{configDir}/prevalue.ini",
         imageTmpFolder=imageTmpFolder,
