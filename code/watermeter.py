@@ -100,33 +100,28 @@ def getMeterValue(
     ignoreConsistencyCheck: bool = False,
     timeout: int = 0,
 ):
-    if format == "json":
-        result = watermeter.getMeterValueJson(
-            url=url,
-            simple=simple,
-            usePreviuosValue=usePreValue,
-            single=single,
-            ignoreConsistencyCheck=ignoreConsistencyCheck,
-            timeout=timeout,
-        )
+    if format not in ["html", "json"]:
+        return "Invalid format. Use 'html' or 'json'"
 
-        return Response(
-            json.dumps(result),
-            media_type="application/json",
-        )
-    else:
-        result = watermeter.getMeterValueHtml(
-            url=url,
-            simple=simple,
-            usePreviuosValue=usePreValue,
-            single=single,
-            ignoreConsistencyCheck=ignoreConsistencyCheck,
-            timeout=timeout,
-        )
+    result = watermeter.getMeterValue(
+        url=url,
+        format=format,
+        simple=simple,
+        usePreviuosValue=usePreValue,
+        single=single,
+        ignoreConsistencyCheck=ignoreConsistencyCheck,
+        timeout=timeout,
+    )
 
+    if format == "html":
         return Response(
             result,
             media_type="text/html",
+        )
+    else:
+        return Response(
+            json.dumps(result),
+            media_type="application/json",
         )
 
 

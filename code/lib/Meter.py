@@ -150,9 +150,10 @@ class Meter:
         )
         logger.debug("Get ROI done")
 
-    def getMeterValueHtml(
+    def getMeterValue(
         self,
         url: str,
+        format: str = "html",
         simple: bool = True,
         usePreviuosValue: bool = False,
         single: bool = False,
@@ -179,7 +180,10 @@ class Meter:
                 url, f"{self.imageTmpFolder}/original.jpg", timeout
             )
         except DownloadFailure as e:
-            return self._makeReturnValue(True, f"{e}", preval)
+            if format == "html":
+                return self._makeReturnValue(True, f"{e}", preval)
+            else:
+                return self._makeReturnValueJSON(True, f"{e}", preval)
 
         if self.config.analogReadOutEnabled:
             logger.debug("Start CutImage, AnalogReadout, DigitalReadout")
@@ -207,104 +211,45 @@ class Meter:
         (consistencyError, errortxt) = self._checkConsistency(ignoreConsistencyCheck)
         self._updateLastValues(consistencyError)
 
-        txt = self._makeReturnValue(consistencyError, errortxt, single)
+        if format == "html":
+            txt = self._makeReturnValue(consistencyError, errortxt, single)
 
-        if not simple:
-            txt = f"{txt}<p>Aligned Image: <p><img src=/image_tmp/aligned.jpg></img><p>"
-            txt = f"{txt}Digital Counter: <p>"
-            for i in range(len(resultDigital)):
-                zw = "NaN" if resultDigital[i] == "NaN" else str(int(resultDigital[i]))
-                imageName = str(cutIimages.digitalImages[i][0])
-                txt += f"<img src=/image_tmp/{imageName}.jpg></img>{zw}"
-            txt = f"{txt}<p>"
-            if self.config.analogReadOutEnabled:
-                txt = f"{txt}Analog Meter: <p>"
-                for i in range(len(resultAnalog)):
-                    imageName = str(cutIimages.analogImages[i][0])
-                    txt += (
-                        f"<img src=/image_tmp/{imageName}.jpg></img>"
-                        + "{:.1f}".format(resultAnalog[i])
+            if not simple:
+                txt = f"{txt}<p>Aligned Image: <p><img src=/image_tmp/aligned.jpg></img><p>"
+                txt = f"{txt}Digital Counter: <p>"
+                for i in range(len(resultDigital)):
+                    zw = (
+                        "NaN"
+                        if resultDigital[i] == "NaN"
+                        else str(int(resultDigital[i]))
                     )
+                    imageName = str(cutIimages.digitalImages[i][0])
+                    txt += f"<img src=/image_tmp/{imageName}.jpg></img>{zw}"
                 txt = f"{txt}<p>"
-        logger.debug("Get meter value done")
-        return txt
-
-    def getMeterValueJson(
-        self,
-        url: str,
-        simple: bool = True,
-        usePreviuosValue: bool = False,
-        single: bool = False,
-        ignoreConsistencyCheck: bool = False,
-        timeout: int = 0,
-    ) -> str:
-
-        if self.config.analogReadOutEnabled:
-            prevValue = self.lastIntegerPart.lstrip("0") + "." + self.lastDecimalPart
+                if self.config.analogReadOutEnabled:
+                    txt = f"{txt}Analog Meter: <p>"
+                    for i in range(len(resultAnalog)):
+                        imageName = str(cutIimages.analogImages[i][0])
+                        txt += (
+                            f"<img src=/image_tmp/{imageName}.jpg></img>"
+                            + "{:.1f}".format(resultAnalog[i])
+                        )
+                    txt = f"{txt}<p>"
+            logger.debug("Get meter value done")
+            return txt
         else:
-            prevValue = self.lastIntegerPart.lstrip("0")
-
-        preval = {
-            "Value": None if prevValue == "." else prevValue,
-            "DigitalDigits": (
-                None if self.lastIntegerPart == "" else self.lastIntegerPart
-            ),
-            "AnalogCounter": (
-                None if self.lastDecimalPart == "" else self.lastDecimalPart
-            ),
-        }
-
-        try:
-            self.imageLoader.loadImageFromUrl(
-                url, f"{self.imageTmpFolder}/original.jpg", timeout
+            (Value, AnalogCounter, Digit, Error) = self._makeReturnValueJSON(
+                consistencyError, errortxt, single
             )
-        except DownloadFailure as e:
+
+            logger.debug("Get meter value done")
             return {
-                "Value": None,
-                "DigitalDigits": None,
-                "AnalogCounter": None,
-                "Error": f"{e}",
+                "Value": Value,
+                "DigitalDigits": Digit,
+                "AnalogCounter": AnalogCounter,
+                "Error": Error,
                 "Prevalue": preval,
             }
-
-        if self.config.analogReadOutEnabled:
-            logger.debug("Start CutImage, AnalogReadout, DigitalReadout")
-        else:
-            logger.debug("Start CutImage, DigitalReadout")
-        cutIimages = self.cutImageHandler.cut(f"{self.imageTmpFolder}/original.jpg")
-        self.cutImageHandler.drawRoi(f"{self.imageTmpFolder}/roi.jpg")
-
-        if self.config.analogReadOutEnabled:
-            resultAnalog = self.readAnalogNeedle.readout(cutIimages.analogImages)
-        resultDigital = self.readDigitalDigit.readout(cutIimages.digitalImages)
-
-        self.currentDecimalPart = 0
-        if self.config.analogReadOutEnabled:
-            self.currentDecimalPart = self._analogReadoutToValue(resultAnalog)
-        self.currentIntegerPart = self._digitalReadoutToValue(
-            resultDigital,
-            usePreviuosValue,
-            self.lastDecimalPart,
-            self.currentDecimalPart,
-        )
-        self.imageLoader.postProcessLogImageProcedure(True)
-
-        logger.debug("Start making meter value")
-        (consistencyError, errortxt) = self._checkConsistency(ignoreConsistencyCheck)
-        self._updateLastValues(consistencyError)
-
-        (Value, AnalogCounter, Digit, Error) = self._makeReturnValueJSON(
-            consistencyError, errortxt, single
-        )
-
-        logger.debug("Get meter value done")
-        return {
-            "Value": Value,
-            "DigitalDigits": Digit,
-            "AnalogCounter": AnalogCounter,
-            "Error": Error,
-            "Prevalue": preval,
-        }
 
     def _makeReturnValueJSON(self, error, errortxt, single):
         Value = ""
