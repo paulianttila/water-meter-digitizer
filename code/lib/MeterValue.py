@@ -1,7 +1,7 @@
 import configparser
 from lib.CutImage import CutImage
-from lib.UseClassificationCNN import UseClassificationCNN
-from lib.UseAnalogCounterCNN import UseAnalogCounterCNN
+from lib.DigitalCounterCNN import DigitalCounterCNN
+from lib.AnalogCounterCNN import AnalogCounterCNN
 from lib.LoadImageFile import DownloadFailure, LoadImageFile
 from lib.Config import Config
 import math
@@ -51,7 +51,7 @@ class MeterValue:
 
     def initAnalog(self):
         if self.config.analogReadOutEnabled:
-            self.readAnalogNeedle = UseAnalogCounterCNN(
+            self.readAnalogNeedle = AnalogCounterCNN(
                 modelfile=self.config.analogModelFile,
                 dx=32,
                 dy=32,
@@ -65,7 +65,7 @@ class MeterValue:
 
     def initDigital(self):
         if self.config.digitalReadOutEnabled:
-            self.readDigitalDigit = UseClassificationCNN(
+            self.readDigitalDigit = DigitalCounterCNN(
                 modelfile=self.config.digitModelFile,
                 dx=20,
                 dy=32,

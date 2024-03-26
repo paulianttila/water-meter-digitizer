@@ -138,8 +138,8 @@ if __name__ == "__main__":
     logging.getLogger("lib.CutImage").setLevel(logger.level)
     logging.getLogger("lib.LoadFileFromHTTP").setLevel(logger.level)
     logging.getLogger("lib.Config").setLevel(logger.level)
-    logging.getLogger("lib.UseAnalogCounterCNN").setLevel(logger.level)
-    logging.getLogger("lib.UseClassificationCNN").setLevel(logger.level)
+    logging.getLogger("lib.AnalogCounterCNN").setLevel(logger.level)
+    logging.getLogger("lib.DigitalCounterCNN").setLevel(logger.level)
     logging.getLogger("lib.MeterValue").setLevel(logger.level)
 
     configDir = os.environ.get("CONFIG_DIR", "/config")

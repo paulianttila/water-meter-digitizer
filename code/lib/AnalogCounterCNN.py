@@ -1,12 +1,12 @@
 from lib.CNNBase import CNNBase
 import numpy as np
+import math
 import logging
-import os
 
 logger = logging.getLogger(__name__)
 
 
-class UseClassificationCNN(CNNBase):
+class AnalogCounterCNN(CNNBase):
     def __init__(
         self,
         modelfile: str,
@@ -28,9 +28,9 @@ class UseClassificationCNN(CNNBase):
 
     def readoutSingleImage(self, image):
         output_data = super().readoutSingleImage(image)
-        result = np.argmax(output_data)
 
-        if result == 10:
-            result = "NaN"
-
+        out_sin = output_data[0][0]
+        out_cos = output_data[0][1]
+        result = np.arctan2(out_sin, out_cos) / (2 * math.pi) % 1
+        result = result * 10
         return result
