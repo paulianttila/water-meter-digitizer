@@ -1,6 +1,6 @@
 import json
 import signal
-from lib.LoadImageFile import DownloadFailure
+from lib.ImageLoader import DownloadFailure
 from lib.MeterValue import MeterValue
 import os
 import gc

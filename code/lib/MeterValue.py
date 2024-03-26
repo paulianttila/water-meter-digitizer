@@ -2,7 +2,7 @@ import configparser
 from lib.CutImage import CutImage
 from lib.DigitalCounterCNN import DigitalCounterCNN
 from lib.AnalogCounterCNN import AnalogCounterCNN
-from lib.LoadImageFile import DownloadFailure, LoadImageFile
+from lib.ImageLoader import DownloadFailure, ImageLoader
 from lib.Config import Config
 import math
 import os
@@ -38,7 +38,7 @@ class MeterValue:
         self.initDigital()
 
         self.cutImageHandler = CutImage(self.config, imageTmpFolder=imageTmpFolder)
-        self.imageLoader = LoadImageFile(
+        self.imageLoader = ImageLoader(
             url=self.config.httpImageUrl,
             timeout=self.config.httpTimeoutLoadImage,
             minImageSize=10000,
