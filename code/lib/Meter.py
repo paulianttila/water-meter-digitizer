@@ -77,25 +77,23 @@ class Meter:
         else:
             logger.debug("Digital model disabled")
 
-    def setPreviousValue(self, setValue):
-        zerlegt = setValue.split(".")
-        digital = zerlegt[0][: len(self.cutImageHandler.Digital_Digit)]
-        self.lastIntegerPart = digital.zfill(len(self.cutImageHandler.Digital_Digit))
+    def setPreviousValue(self, setValue: float) -> float:
+        integer, decimals = str(setValue).split(".")
+        nrOfDigits = len(self.config.cutDigitalDigit)
+        digital = integer[:nrOfDigits]
+        self.lastIntegerPart = self._fillValueWithLeadingZeros(nrOfDigits, digital)
 
         result = "N"
         if self.config.analogReadOutEnabled:
-            analog = zerlegt[1][: len(self.cutImageHandler.Analog_Counter)]
-            while len(analog) < len(self.cutImageHandler.Analog_Counter):
-                analog = f"{analog}0"
-            self.lastDecimalPart = analog
+            nrOfAnalogs = len(self.config.cutAnalogCounter)
+            analog = decimals[:nrOfAnalogs]
+            self.lastDecimalPart = self._fillValueWithEndingZeros(nrOfAnalogs, analog)
             result = f"{self.lastIntegerPart}.{self.lastDecimalPart}"
         else:
             result = self.lastIntegerPart
 
         self._storePrevalueToFile(self.prevValueFile)
-
-        result = f"Last value set to: {result}"
-        return result
+        return float(result)
 
     def _storePrevalueToFile(self, file: str):
         logtime = time.strftime("%Y-%m-%d_%H-%M-%S", time.localtime())
@@ -156,7 +154,7 @@ class Meter:
         self,
         url: str,
         simple: bool = True,
-        usePreValue: bool = False,
+        usePreviuosValue: bool = False,
         single: bool = False,
         ignoreConsistencyCheck: bool = False,
         timeout: int = 0,
@@ -198,7 +196,10 @@ class Meter:
         if self.config.analogReadOutEnabled:
             self.currentDecimalPart = self._analogReadoutToValue(resultAnalog)
         self.currentIntegerPart = self._digitalReadoutToValue(
-            resultDigital, usePreValue, self.lastDecimalPart, self.currentDecimalPart
+            resultDigital,
+            usePreviuosValue,
+            self.lastDecimalPart,
+            self.currentDecimalPart,
         )
         self.imageLoader.postProcessLogImageProcedure(True)
 
@@ -232,7 +233,7 @@ class Meter:
         self,
         url: str,
         simple: bool = True,
-        usePreValue: bool = False,
+        usePreviuosValue: bool = False,
         single: bool = False,
         ignoreConsistencyCheck: bool = False,
         timeout: int = 0,
@@ -281,7 +282,10 @@ class Meter:
         if self.config.analogReadOutEnabled:
             self.currentDecimalPart = self._analogReadoutToValue(resultAnalog)
         self.currentIntegerPart = self._digitalReadoutToValue(
-            resultDigital, usePreValue, self.lastDecimalPart, self.currentDecimalPart
+            resultDigital,
+            usePreviuosValue,
+            self.lastDecimalPart,
+            self.currentDecimalPart,
         )
         self.imageLoader.postProcessLogImageProcedure(True)
 
@@ -394,23 +398,24 @@ class Meter:
                 )
         return (error, errortxt)
 
-    def _analogReadoutToValue(self, res_analog):
+    def _analogReadoutToValue(self, analogValues: list) -> str:
         prev = -1
-        erg = ""
-        for item in res_analog[::-1]:
-            prev = self._evaluateValue(item, prev)
-            erg = str(int(prev)) + erg
-        return erg
+        strValue = ""
+        for item in analogValues[::-1]:
+            prev = self._evaluateAnalogValue(item, prev)
+            strValue = f"{prev}{strValue}"
+            logger.debug(f"Total value: {strValue}")
+        return strValue
 
-    def _evaluateValue(self, newValue, prevValue):
-        result_decimal = math.floor((newValue * 10) % 10)
-        result_integer = math.floor(newValue % 10)
+    def _evaluateAnalogValue(self, newValue, prevValue: int) -> int:
+        decimalPart = math.floor((newValue * 10) % 10)
+        integerPart = math.floor(newValue % 10)
 
         if prevValue == -1:
-            result = result_integer
+            result = integerPart
         else:
-            result_rating = result_decimal - prevValue
-            if result_decimal >= 5:
+            result_rating = decimalPart - prevValue
+            if decimalPart >= 5:
                 result_rating -= 5
             else:
                 result_rating += 5
@@ -421,41 +426,59 @@ class Meter:
                 result += 10
 
         result = result % 10
+        logger.debug(f"Value: {newValue} (prev value: {prevValue}) -> {result}")
         return result
 
     def _digitalReadoutToValue(
-        self, res_digital, usePreValue, lastnachkomma, aktnachkomma
-    ):
-        erg = ""
+        self,
+        digitalValues: list,
+        usePreviuosValue: bool,
+        lastDecimalPart,
+        currentDecimalPart,
+    ) -> str:
+        lastIntegerPart = self._fillValueWithLeadingZeros(
+            len(digitalValues), self.lastIntegerPart
+        )
+
         if (
-            usePreValue
+            usePreviuosValue
             and str(self.lastIntegerPart) != ""
             and str(self.lastDecimalPart) != ""
         ):
-            last = int(str(lastnachkomma)[:1])
-            aktu = int(str(aktnachkomma)[:1])
+            last = int(str(lastDecimalPart)[:1])
+            aktu = int(str(currentDecimalPart)[:1])
             overZero = 1 if aktu < last else 0
         else:
-            usePreValue = False
+            usePreviuosValue = False
 
-        for i in range(len(res_digital) - 1, -1, -1):
-            item = res_digital[i]
-            if item == "NaN":
-                if usePreValue:
-                    item = int(self.lastIntegerPart[i])
+        strValue = ""
+
+        for i in range(len(digitalValues) - 1, -1, -1):
+            digit = digitalValues[i]
+            if digit == "NaN":
+                if usePreviuosValue:
+                    digit = int(lastIntegerPart[i])
                     if overZero:
-                        item += 1
-                        if item == 10:
-                            item = 0
+                        digit += 1
+                        if digit == 10:
+                            digit = 0
                             overZero = 1
                         else:
                             overZero = 0
                 else:
-                    item = "N"
-            erg = str(item) + erg
+                    digit = "N"
+            strValue = f"{digit}{strValue}"
 
-        return erg
+        return strValue
 
     def _removeFile(self, filename):
         if os.path.exists(filename):
             os.remove(filename)
+
+    def _fillValueWithLeadingZeros(self, length: int, value: str) -> str:
+        return value.zfill(length) if len(value) < length else value
+
+    def _fillValueWithEndingZeros(self, length: int, value: str) -> str:
+        while len(value) < length:
+            value = f"{value}0"
+        return value
