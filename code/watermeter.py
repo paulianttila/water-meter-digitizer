@@ -84,9 +84,10 @@ def getRoi(request: Request, url: str = "", timeout: int = 0):
         return f"Error: {e}"
 
 
-@app.get("/setPreValue", response_class=HTMLResponse)
-def setPreValue(value: float):
-    return watermeter.setPreviousValue(value)
+@app.get("/setPreviousValue", response_class=HTMLResponse)
+def setPreviousValue(value: float):
+    result = watermeter.setPreviousValue(value)
+    return f"Last value set to: {result}"
 
 
 @app.get("/watermeter")
@@ -103,7 +104,7 @@ def getMeterValue(
         result = watermeter.getMeterValueJson(
             url=url,
             simple=simple,
-            usePreValue=usePreValue,
+            usePreviuosValue=usePreValue,
             single=single,
             ignoreConsistencyCheck=ignoreConsistencyCheck,
             timeout=timeout,
@@ -117,7 +118,7 @@ def getMeterValue(
         result = watermeter.getMeterValueHtml(
             url=url,
             simple=simple,
-            usePreValue=usePreValue,
+            usePreviuosValue=usePreValue,
             single=single,
             ignoreConsistencyCheck=ignoreConsistencyCheck,
             timeout=timeout,
