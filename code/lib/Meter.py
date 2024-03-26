@@ -31,8 +31,11 @@ class Meter:
                 self.prevValueFile, self.config.readPreValueFromFileMaxAge
             )
         else:
-            self.lastIntegerValue = ""
-            self.lastDecimalValue = ""
+            self.lastIntegerPart = ""
+            self.lastDecimalPart = ""
+
+        self.currentIntegerPart = ""
+        self.currentDecimalPart = ""
 
         self._initAnalog()
         self._initDigital()
@@ -45,9 +48,6 @@ class Meter:
             imageLogFolder=self.config.httpImageLogFolder,
             logOnlyFalsePictures=self.config.httpLogOnlyFalsePictures,
         )
-
-        self.akt_vorkomma = ""
-        self.akt_nachkomma = ""
 
     def _initAnalog(self):
         if self.config.analogReadOutEnabled:
@@ -79,18 +79,18 @@ class Meter:
 
     def setPreviousValue(self, setValue):
         zerlegt = setValue.split(".")
-        vorkomma = zerlegt[0][: len(self.cutImageHandler.Digital_Digit)]
-        self.lastIntegerValue = vorkomma.zfill(len(self.cutImageHandler.Digital_Digit))
+        digital = zerlegt[0][: len(self.cutImageHandler.Digital_Digit)]
+        self.lastIntegerPart = digital.zfill(len(self.cutImageHandler.Digital_Digit))
 
         result = "N"
         if self.config.analogReadOutEnabled:
-            nachkomma = zerlegt[1][: len(self.cutImageHandler.Analog_Counter)]
-            while len(nachkomma) < len(self.cutImageHandler.Analog_Counter):
-                nachkomma = f"{nachkomma}0"
-            self.lastDecimalValue = nachkomma
-            result = f"{self.lastIntegerValue}.{self.lastDecimalValue}"
+            analog = zerlegt[1][: len(self.cutImageHandler.Analog_Counter)]
+            while len(analog) < len(self.cutImageHandler.Analog_Counter):
+                analog = f"{analog}0"
+            self.lastDecimalPart = analog
+            result = f"{self.lastIntegerPart}.{self.lastDecimalPart}"
         else:
-            result = self.lastIntegerValue
+            result = self.lastIntegerPart
 
         self._storePrevalueToFile(self.prevValueFile)
 
@@ -101,9 +101,9 @@ class Meter:
         logtime = time.strftime("%Y-%m-%d_%H-%M-%S", time.localtime())
         config = configparser.ConfigParser()
         config.read(file)
-        config["PreValue"]["LastVorkomma"] = self.lastDecimalValue
+        config["PreValue"]["LastVorkomma"] = self.lastDecimalPart
         if self.config.analogReadOutEnabled:
-            config["PreValue"]["LastNachkomma"] = self.lastIntegerValue
+            config["PreValue"]["LastNachkomma"] = self.lastIntegerPart
         else:
             config["PreValue"]["LastNachkomma"] = "0"
         config["PreValue"]["Time"] = logtime
@@ -122,16 +122,16 @@ class Meter:
         diff = (d1 - d2).days * 24 * 60
 
         if diff <= readPreValueFromFileMaxAge:
-            self.lastDecimalValue = config["PreValue"]["LastVorkomma"]
-            self.lastIntegerValue = config["PreValue"]["LastNachkomma"]
+            self.lastDecimalPart = config["PreValue"]["LastVorkomma"]
+            self.lastIntegerPart = config["PreValue"]["LastNachkomma"]
             zw = (
                 f"Previous value loaded from file: "
-                f"{self.lastIntegerValue}.{self.lastDecimalValue}"
+                f"{self.lastIntegerPart}.{self.lastDecimalPart}"
             )
 
         else:
-            self.lastDecimalValue = ""
-            self.lastIntegerValue = ""
+            self.lastDecimalPart = ""
+            self.lastIntegerPart = ""
             zw = (
                 f"Previous value not loaded from file as value is too old: "
                 f"({str(diff)} minutes)."
@@ -162,17 +162,17 @@ class Meter:
         timeout: int = 0,
     ) -> str:
         if self.config.analogReadOutEnabled:
-            prevValue = self.lastIntegerValue.lstrip("0") + "." + self.lastDecimalValue
+            prevValue = self.lastIntegerPart.lstrip("0") + "." + self.lastDecimalPart
         else:
-            prevValue = self.lastIntegerValue.lstrip("0")
+            prevValue = self.lastIntegerPart.lstrip("0")
 
         preval = {
             "Value": None if prevValue == "." else prevValue,
             "DigitalDigits": (
-                None if self.lastIntegerValue == "" else self.lastIntegerValue
+                None if self.lastIntegerPart == "" else self.lastIntegerPart
             ),
             "AnalogCounter": (
-                None if self.lastDecimalValue == "" else self.lastDecimalValue
+                None if self.lastDecimalPart == "" else self.lastDecimalPart
             ),
         }
 
@@ -194,11 +194,11 @@ class Meter:
             resultAnalog = self.readAnalogNeedle.readout(cutIimages.analogImages)
         resultDigital = self.readDigitalDigit.readout(cutIimages.digitalImages)
 
-        self.akt_nachkomma = 0
+        self.currentDecimalPart = 0
         if self.config.analogReadOutEnabled:
-            self.akt_nachkomma = self._analogReadoutToValue(resultAnalog)
-        self.akt_vorkomma = self._digitalReadoutToValue(
-            resultDigital, usePreValue, self.lastDecimalValue, self.akt_nachkomma
+            self.currentDecimalPart = self._analogReadoutToValue(resultAnalog)
+        self.currentIntegerPart = self._digitalReadoutToValue(
+            resultDigital, usePreValue, self.lastDecimalPart, self.currentDecimalPart
         )
         self.imageLoader.postProcessLogImageProcedure(True)
 
@@ -239,17 +239,17 @@ class Meter:
     ) -> str:
 
         if self.config.analogReadOutEnabled:
-            prevValue = self.lastIntegerValue.lstrip("0") + "." + self.lastDecimalValue
+            prevValue = self.lastIntegerPart.lstrip("0") + "." + self.lastDecimalPart
         else:
-            prevValue = self.lastIntegerValue.lstrip("0")
+            prevValue = self.lastIntegerPart.lstrip("0")
 
         preval = {
             "Value": None if prevValue == "." else prevValue,
             "DigitalDigits": (
-                None if self.lastIntegerValue == "" else self.lastIntegerValue
+                None if self.lastIntegerPart == "" else self.lastIntegerPart
             ),
             "AnalogCounter": (
-                None if self.lastDecimalValue == "" else self.lastDecimalValue
+                None if self.lastDecimalPart == "" else self.lastDecimalPart
             ),
         }
 
@@ -277,11 +277,11 @@ class Meter:
             resultAnalog = self.readAnalogNeedle.readout(cutIimages.analogImages)
         resultDigital = self.readDigitalDigit.readout(cutIimages.digitalImages)
 
-        self.akt_nachkomma = 0
+        self.currentDecimalPart = 0
         if self.config.analogReadOutEnabled:
-            self.akt_nachkomma = self._analogReadoutToValue(resultAnalog)
-        self.akt_vorkomma = self._digitalReadoutToValue(
-            resultDigital, usePreValue, self.lastDecimalValue, self.akt_nachkomma
+            self.currentDecimalPart = self._analogReadoutToValue(resultAnalog)
+        self.currentIntegerPart = self._digitalReadoutToValue(
+            resultDigital, usePreValue, self.lastDecimalPart, self.currentDecimalPart
         )
         self.imageLoader.postProcessLogImageProcedure(True)
 
@@ -309,54 +309,54 @@ class Meter:
         Errortxt = errortxt
         if error:
             if self.config.errorReturn.find("Value") > -1:
-                Digit = str(self.akt_vorkomma)
-                Value = str(self.akt_vorkomma.lstrip("0"))
+                Digit = str(self.currentIntegerPart)
+                Value = str(self.currentIntegerPart.lstrip("0"))
                 if self.config.analogReadOutEnabled:
-                    Value = f"{Value}.{str(self.akt_nachkomma)}"
-                    AnalogCounter = str(self.akt_nachkomma)
+                    Value = f"{Value}.{str(self.currentDecimalPart)}"
+                    AnalogCounter = str(self.currentDecimalPart)
         else:
-            Digit = str(self.akt_vorkomma.lstrip("0"))
-            Value = str(self.akt_vorkomma.lstrip("0"))
+            Digit = str(self.currentIntegerPart.lstrip("0"))
+            Value = str(self.currentIntegerPart.lstrip("0"))
             if self.config.analogReadOutEnabled:
-                Value = f"{Value}.{str(self.akt_nachkomma)}"
-                AnalogCounter = str(self.akt_nachkomma)
+                Value = f"{Value}.{str(self.currentDecimalPart)}"
+                AnalogCounter = str(self.currentDecimalPart)
         return (Value, AnalogCounter, Digit, Errortxt)
 
     def _makeReturnValue(self, error, errortxt, single):
         output = ""
         if error:
             if self.config.errorReturn.find("Value") > -1:
-                output = str(self.akt_vorkomma.lstrip("0"))
+                output = str(self.currentIntegerPart.lstrip("0"))
                 if self.config.analogReadOutEnabled:
-                    output = f"{output}.{str(self.akt_nachkomma)}"
+                    output = f"{output}.{str(self.currentDecimalPart)}"
                 if not single:
-                    output = output + "\t" + self.akt_vorkomma
+                    output = output + "\t" + self.currentIntegerPart
                     if self.config.analogReadOutEnabled:
-                        output = output + "\t" + self.akt_nachkomma
+                        output = output + "\t" + self.currentDecimalPart
             output = output + "\t" + errortxt if len(output) > 0 else errortxt
         else:
-            output = str(self.akt_vorkomma.lstrip("0")) or "0"
+            output = str(self.currentIntegerPart.lstrip("0")) or "0"
             if self.config.analogReadOutEnabled:
-                output = f"{output}.{str(self.akt_nachkomma)}"
+                output = f"{output}.{str(self.currentDecimalPart)}"
             if not single:
-                output = output + "\t" + self.akt_vorkomma
+                output = output + "\t" + self.currentIntegerPart
                 if self.config.analogReadOutEnabled:
-                    output = output + "\t" + self.akt_nachkomma
+                    output = output + "\t" + self.currentDecimalPart
         return output
 
     def _updateLastValues(self, error):
-        if "N" in self.akt_vorkomma:
+        if "N" in self.currentIntegerPart:
             return
         if error:
             if self.config.errorReturn.find("NewValue") > -1:
-                self.lastDecimalValue = self.akt_nachkomma
-                self.lastIntegerValue = self.akt_vorkomma
+                self.lastDecimalPart = self.currentDecimalPart
+                self.lastIntegerPart = self.currentIntegerPart
             else:
-                self.akt_nachkomma = self.lastDecimalValue
-                self.akt_vorkomma = self.lastIntegerValue
+                self.currentDecimalPart = self.lastDecimalPart
+                self.currentIntegerPart = self.lastIntegerPart
         else:
-            self.lastDecimalValue = self.akt_nachkomma
-            self.lastIntegerValue = self.akt_vorkomma
+            self.lastDecimalPart = self.currentDecimalPart
+            self.lastIntegerPart = self.currentIntegerPart
 
         self._storePrevalueToFile(self.prevValueFile)
 
@@ -364,19 +364,19 @@ class Meter:
         error = False
         errortxt = ""
         if (
-            (len(self.lastIntegerValue) > 0)
-            and "N" not in self.akt_vorkomma
+            (len(self.lastIntegerPart) > 0)
+            and "N" not in self.currentIntegerPart
             and self.config.consistencyEnabled
         ):
-            akt_zaehlerstand = float(
-                str(self.akt_vorkomma.lstrip("0")) + "." + str(self.akt_nachkomma)
-            )
-            old_zaehlerstand = float(
-                str(self.lastIntegerValue.lstrip("0"))
+            newValue = float(
+                str(self.currentIntegerPart.lstrip("0"))
                 + "."
-                + str(self.lastDecimalValue)
+                + str(self.currentDecimalPart)
             )
-            delta = akt_zaehlerstand - old_zaehlerstand
+            oldValue = float(
+                str(self.lastIntegerPart.lstrip("0")) + "." + str(self.lastDecimalPart)
+            )
+            delta = newValue - oldValue
             if not (self.config.allowNegativeRates) and (delta < 0):
                 error = True
                 errortxt = "Error - NegativeRate"
@@ -389,10 +389,9 @@ class Meter:
             if self.config.errorReturn.find("ErrorMessage") == -1:
                 errortxt = ""
             if error and (self.config.errorReturn.find("Readout") > -1):
-                if len(errortxt):
-                    errortxt = errortxt + "\t" + str(akt_zaehlerstand)
-                else:
-                    errortxt = str(akt_zaehlerstand)
+                errortxt = (
+                    errortxt + "\t" + str(newValue) if len(errortxt) else str(newValue)
+                )
         return (error, errortxt)
 
     def _analogReadoutToValue(self, res_analog):
@@ -430,8 +429,8 @@ class Meter:
         erg = ""
         if (
             usePreValue
-            and str(self.lastIntegerValue) != ""
-            and str(self.lastDecimalValue) != ""
+            and str(self.lastIntegerPart) != ""
+            and str(self.lastDecimalPart) != ""
         ):
             last = int(str(lastnachkomma)[:1])
             aktu = int(str(aktnachkomma)[:1])
@@ -443,7 +442,7 @@ class Meter:
             item = res_digital[i]
             if item == "NaN":
                 if usePreValue:
-                    item = int(self.lastIntegerValue[i])
+                    item = int(self.lastIntegerPart[i])
                     if overZero:
                         item += 1
                         if item == 10:
