@@ -86,7 +86,7 @@ def getRoi(request: Request, url: str = "", timeout: int = 0):
 
 @app.get("/setPreValue", response_class=HTMLResponse)
 def setPreValue(value: float):
-    return watermeter.setPreValue(value)
+    return watermeter.setPreviousValue(value)
 
 
 @app.get("/watermeter")

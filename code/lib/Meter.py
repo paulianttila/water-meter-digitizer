@@ -27,15 +27,15 @@ class Meter:
         self.config.parseConfig(configFile)
 
         if self.config.readPreValueFromFileAtStartup:
-            self.loadPrevalueFromFile(
+            self._loadPrevalueFromFile(
                 self.prevValueFile, self.config.readPreValueFromFileMaxAge
             )
         else:
             self.lastIntegerValue = ""
             self.lastDecimalValue = ""
 
-        self.initAnalog()
-        self.initDigital()
+        self._initAnalog()
+        self._initDigital()
 
         self.cutImageHandler = CutImage(self.config, imageTmpFolder=imageTmpFolder)
         self.imageLoader = ImageLoader(
@@ -49,7 +49,7 @@ class Meter:
         self.akt_vorkomma = ""
         self.akt_nachkomma = ""
 
-    def initAnalog(self):
+    def _initAnalog(self):
         if self.config.analogReadOutEnabled:
             self.readAnalogNeedle = AnalogCounterCNN(
                 modelfile=self.config.analogModelFile,
@@ -63,7 +63,7 @@ class Meter:
         else:
             logger.debug("Analog model disabled")
 
-    def initDigital(self):
+    def _initDigital(self):
         if self.config.digitalReadOutEnabled:
             self.readDigitalDigit = DigitalCounterCNN(
                 modelfile=self.config.digitModelFile,
@@ -77,19 +77,7 @@ class Meter:
         else:
             logger.debug("Digital model disabled")
 
-    def checkError(self):
-        ErrorText = None
-        if self.readDigitalDigit.GlobalError:
-            ErrorText = self.readDigitalDigit.GlobalErrorText
-        if self.config.analogReadOutEnabled and self.readAnalogNeedle.GlobalError:
-            ErrorText = (
-                f"{ErrorText}<br>{self.readAnalogNeedle.GlobalErrorText}"
-                if ErrorText is not None
-                else self.readAnalogNeedle.GlobalErrorText
-            )
-        return ErrorText
-
-    def setPreValue(self, setValue):
+    def setPreviousValue(self, setValue):
         zerlegt = setValue.split(".")
         vorkomma = zerlegt[0][: len(self.cutImageHandler.Digital_Digit)]
         self.lastIntegerValue = vorkomma.zfill(len(self.cutImageHandler.Digital_Digit))
@@ -104,12 +92,12 @@ class Meter:
         else:
             result = self.lastIntegerValue
 
-        self.storePrevalueToFile(self.prevValueFile)
+        self._storePrevalueToFile(self.prevValueFile)
 
         result = f"Last value set to: {result}"
         return result
 
-    def storePrevalueToFile(self, file: str):
+    def _storePrevalueToFile(self, file: str):
         logtime = time.strftime("%Y-%m-%d_%H-%M-%S", time.localtime())
         config = configparser.ConfigParser()
         config.read(file)
@@ -122,7 +110,7 @@ class Meter:
         with open(file, "w") as cfg:
             config.write(cfg)
 
-    def loadPrevalueFromFile(self, file: str, readPreValueFromFileMaxAge):
+    def _loadPrevalueFromFile(self, file: str, readPreValueFromFileMaxAge):
         config = configparser.ConfigParser()
         config.read(file)
         logtime = config["PreValue"]["Time"]
@@ -136,17 +124,23 @@ class Meter:
         if diff <= readPreValueFromFileMaxAge:
             self.lastDecimalValue = config["PreValue"]["LastVorkomma"]
             self.lastIntegerValue = config["PreValue"]["LastNachkomma"]
-            zw = f"Previous value loaded from file: {self.lastIntegerValue}.{self.lastDecimalValue}"
+            zw = (
+                f"Previous value loaded from file: "
+                f"{self.lastIntegerValue}.{self.lastDecimalValue}"
+            )
 
         else:
             self.lastDecimalValue = ""
             self.lastIntegerValue = ""
-            zw = f"Previous value not loaded from file as value is too old: ({str(diff)} minutes)."
+            zw = (
+                f"Previous value not loaded from file as value is too old: "
+                f"({str(diff)} minutes)."
+            )
 
         logger.info(zw)
 
     def getROI(self, url: str, timeout: int = 0):
-        self.removeFile(f"{self.imageTmpFolder}/original.jpg")
+        self._removeFile(f"{self.imageTmpFolder}/original.jpg")
 
         self.imageLoader.loadImageFromUrl(
             url, f"{self.imageTmpFolder}/original.jpg", timeout
@@ -187,7 +181,7 @@ class Meter:
                 url, f"{self.imageTmpFolder}/original.jpg", timeout
             )
         except DownloadFailure as e:
-            return self.MakeReturnValue(True, f"{e}", preval)
+            return self._makeReturnValue(True, f"{e}", preval)
 
         if self.config.analogReadOutEnabled:
             logger.debug("Start CutImage, AnalogReadout, DigitalReadout")
@@ -202,17 +196,17 @@ class Meter:
 
         self.akt_nachkomma = 0
         if self.config.analogReadOutEnabled:
-            self.akt_nachkomma = self.analogReadoutToValue(resultAnalog)
-        self.akt_vorkomma = self.digitalReadoutToValue(
+            self.akt_nachkomma = self._analogReadoutToValue(resultAnalog)
+        self.akt_vorkomma = self._digitalReadoutToValue(
             resultDigital, usePreValue, self.lastDecimalValue, self.akt_nachkomma
         )
         self.imageLoader.postProcessLogImageProcedure(True)
 
         logger.debug("Start making meter value")
-        (consistencyError, errortxt) = self.checkConsistency(ignoreConsistencyCheck)
-        self.updateLastValues(consistencyError)
+        (consistencyError, errortxt) = self._checkConsistency(ignoreConsistencyCheck)
+        self._updateLastValues(consistencyError)
 
-        txt = self.MakeReturnValue(consistencyError, errortxt, single)
+        txt = self._makeReturnValue(consistencyError, errortxt, single)
 
         if not simple:
             txt = f"{txt}<p>Aligned Image: <p><img src=/image_tmp/aligned.jpg></img><p>"
@@ -285,17 +279,17 @@ class Meter:
 
         self.akt_nachkomma = 0
         if self.config.analogReadOutEnabled:
-            self.akt_nachkomma = self.analogReadoutToValue(resultAnalog)
-        self.akt_vorkomma = self.digitalReadoutToValue(
+            self.akt_nachkomma = self._analogReadoutToValue(resultAnalog)
+        self.akt_vorkomma = self._digitalReadoutToValue(
             resultDigital, usePreValue, self.lastDecimalValue, self.akt_nachkomma
         )
         self.imageLoader.postProcessLogImageProcedure(True)
 
         logger.debug("Start making meter value")
-        (consistencyError, errortxt) = self.checkConsistency(ignoreConsistencyCheck)
-        self.updateLastValues(consistencyError)
+        (consistencyError, errortxt) = self._checkConsistency(ignoreConsistencyCheck)
+        self._updateLastValues(consistencyError)
 
-        (Value, AnalogCounter, Digit, Error) = self.MakeReturnValueJSON(
+        (Value, AnalogCounter, Digit, Error) = self._makeReturnValueJSON(
             consistencyError, errortxt, single
         )
 
@@ -308,7 +302,7 @@ class Meter:
             "Prevalue": preval,
         }
 
-    def MakeReturnValueJSON(self, error, errortxt, single):
+    def _makeReturnValueJSON(self, error, errortxt, single):
         Value = ""
         AnalogCounter = ""
         Digit = ""
@@ -328,7 +322,7 @@ class Meter:
                 AnalogCounter = str(self.akt_nachkomma)
         return (Value, AnalogCounter, Digit, Errortxt)
 
-    def MakeReturnValue(self, error, errortxt, single):
+    def _makeReturnValue(self, error, errortxt, single):
         output = ""
         if error:
             if self.config.errorReturn.find("Value") > -1:
@@ -350,7 +344,7 @@ class Meter:
                     output = output + "\t" + self.akt_nachkomma
         return output
 
-    def updateLastValues(self, error):
+    def _updateLastValues(self, error):
         if "N" in self.akt_vorkomma:
             return
         if error:
@@ -364,9 +358,9 @@ class Meter:
             self.lastDecimalValue = self.akt_nachkomma
             self.lastIntegerValue = self.akt_vorkomma
 
-        self.storePrevalueToFile(self.prevValueFile)
+        self._storePrevalueToFile(self.prevValueFile)
 
-    def checkConsistency(self, ignoreConsistencyCheck):
+    def _checkConsistency(self, ignoreConsistencyCheck):
         error = False
         errortxt = ""
         if (
@@ -401,15 +395,15 @@ class Meter:
                     errortxt = str(akt_zaehlerstand)
         return (error, errortxt)
 
-    def analogReadoutToValue(self, res_analog):
+    def _analogReadoutToValue(self, res_analog):
         prev = -1
         erg = ""
         for item in res_analog[::-1]:
-            prev = self.evaluateValue(item, prev)
+            prev = self._evaluateValue(item, prev)
             erg = str(int(prev)) + erg
         return erg
 
-    def evaluateValue(self, newValue, prevValue):
+    def _evaluateValue(self, newValue, prevValue):
         result_decimal = math.floor((newValue * 10) % 10)
         result_integer = math.floor(newValue % 10)
 
@@ -430,7 +424,7 @@ class Meter:
         result = result % 10
         return result
 
-    def digitalReadoutToValue(
+    def _digitalReadoutToValue(
         self, res_digital, usePreValue, lastnachkomma, aktnachkomma
     ):
         erg = ""
@@ -463,6 +457,6 @@ class Meter:
 
         return erg
 
-    def removeFile(self, filename):
+    def _removeFile(self, filename):
         if os.path.exists(filename):
             os.remove(filename)
