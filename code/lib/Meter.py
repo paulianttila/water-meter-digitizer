@@ -19,7 +19,7 @@ logger = logging.getLogger(__name__)
 
 @dataclass
 class Value:
-    value: Union[float, int]
+    value: Union[float, int, str]
     decimalPart: str
     integerPart: str
 
@@ -403,7 +403,10 @@ class Meter:
             value = f"{value}0"
         return value
 
-    def _getCurrentValueAsNumber(self) -> Union[float, int]:
+    def _getCurrentValueAsNumber(self) -> Union[float, int, str]:
+        if "N" in self.currentIntegerPart or "N" in self.currentDecimalPart:
+            return f"{self.currentIntegerPart.lstrip('0')}.{self.currentDecimalPart}"
+        
         if self.config.analogReadOutEnabled:
             return float(
                 f"{self.currentIntegerPart.lstrip('0')}.{self.currentDecimalPart}"
