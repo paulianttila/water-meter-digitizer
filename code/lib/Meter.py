@@ -311,28 +311,6 @@ class Meter:
 
         return (value, analogCounter, digit)
 
-    def _makeReturnValueOld(self, error, errortxt, single):
-        output = ""
-        if error:
-            if self.config.errorReturn.find("Value") > -1:
-                output = str(self.currentIntegerPart.lstrip("0"))
-                if self.config.analogReadOutEnabled:
-                    output = f"{output}.{str(self.currentDecimalPart)}"
-                if not single:
-                    output = output + "\t" + self.currentIntegerPart
-                    if self.config.analogReadOutEnabled:
-                        output = output + "\t" + self.currentDecimalPart
-            output = output + "\t" + errortxt if len(output) > 0 else errortxt
-        else:
-            output = str(self.currentIntegerPart.lstrip("0")) or "0"
-            if self.config.analogReadOutEnabled:
-                output = f"{output}.{str(self.currentDecimalPart)}"
-            if not single:
-                output = output + "\t" + self.currentIntegerPart
-                if self.config.analogReadOutEnabled:
-                    output = output + "\t" + self.currentDecimalPart
-        return output
-
     def _updateLastValues(self, error):
         if "N" in self.currentIntegerPart:
             return
@@ -387,11 +365,11 @@ class Meter:
         prev = -1
         strValue = ""
         for item in analogValues[::-1]:
-            prev = self._evaluateAnalogValue(item, prev)
+            prev = self._evaluateAnalogCounters(item, prev)
             strValue = f"{prev}{strValue}"
         return strValue
 
-    def _evaluateAnalogValue(self, newValue, prevValue: int) -> int:
+    def _evaluateAnalogCounters(self, newValue, prevValue: int) -> int:
         decimalPart = math.floor((newValue * 10) % 10)
         integerPart = math.floor(newValue % 10)
 
