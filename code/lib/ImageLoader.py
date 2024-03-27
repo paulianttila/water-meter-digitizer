@@ -1,10 +1,9 @@
-import urllib.request
-from multiprocessing import Process, Event
 from PIL import Image
 from shutil import copyfile
 import time
 import os
 import logging
+import requests
 
 logger = logging.getLogger(__name__)
 
@@ -40,41 +39,38 @@ class ImageLoader:
                 if not os.path.exists(path):
                     os.makedirs(path)
 
-    def _readImageFromUrl(self, event, url: str, target: str) -> None:
+    def _readImageFromUrl(self, url: str, targetFile: str, timeout: int) -> None:
         # Todo: limit file to one folder for security reasons
         if url.startswith("file://"):
             file = url[7:]
-            copyfile(file, target)
+            copyfile(file, targetFile)
         else:
-            urllib.request.urlretrieve(url, target)
-        event.set()
+            data = requests.get(url, timeout=timeout)
+            with open(targetFile, "wb") as f:
+                f.write(data.content)
 
-    def loadImageFromUrl(self, url: str, target: str, timeout: int) -> None:
+    def loadImageFromUrl(self, url: str, targetFile: str, timeout: int = 0) -> None:
         try:
             startTime = time.time()
             self.lastImageSaved = None
             if url is None or not url:
                 url = self.imageUrl
-            event = Event()
-            actionProcess = Process(
-                target=self._readImageFromUrl, args=(event, url, target)
-            )
-            actionProcess.start()
             if timeout == 0:
                 timeout = self.timeout
-            actionProcess.join(timeout=timeout)
-            actionProcess.terminate()
-            if not event.is_set():
-                raise DownloadFailure(f"Image download failure from {str(url)}")
-            self._saveImageToLogFolder(target)
-            if self._verifyImage(target) is not True:
+            self._readImageFromUrl(url, targetFile, timeout)
+            self._saveImageToLogFolder(targetFile)
+            if self._verifyImage(targetFile) is not True:
                 raise DownloadFailure(f"Imagefile is corrupted, url: {str(url)}")
-            image_size = os.stat(target).st_size
+            image_size = os.stat(targetFile).st_size
             if image_size < self.minImageSize:
                 raise DownloadFailure(
                     f"Imagefile too small. Size {str(image_size)}, "
                     f"min size is {str(self.minImageSize)}. url: {str(url)}"
                 )
+        except Exception as e:
+            raise DownloadFailure(
+                f"Image download failure from {str(url)}: {str(e)}"
+            ) from e
         finally:
             logger.debug(f"Image downloaded in {time.time() - startTime:.3f} sec")
 
@@ -90,8 +86,8 @@ class ImageLoader:
 
     def _verifyImage(self, imgFile) -> bool:
         try:
-            v_image = Image.open(imgFile)
-            v_image.verify()
+            image = Image.open(imgFile)
+            image.verify()
             return True
         except OSError:
             return False
