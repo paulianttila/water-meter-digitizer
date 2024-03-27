@@ -50,30 +50,33 @@ class ImageLoader:
         event.set()
 
     def loadImageFromUrl(self, url: str, target: str, timeout: int) -> None:
-        self.lastImageSaved = None
-        if url is None or not url:
-            url = self.imageUrl
-        event = Event()
-        actionProcess = Process(
-            target=self._readImageFromUrl, args=(event, url, target)
-        )
-        actionProcess.start()
-        if timeout == 0:
-            timeout = self.timeout
-        actionProcess.join(timeout=timeout)
-        actionProcess.terminate()
-        if not event.is_set():
-            raise DownloadFailure(f"Image download failure from {str(url)}")
-        self._saveImageToLogFolder(target)
-        if self._verifyImage(target) is True:
+        try:
+            startTime = time.time()
+            self.lastImageSaved = None
+            if url is None or not url:
+                url = self.imageUrl
+            event = Event()
+            actionProcess = Process(
+                target=self._readImageFromUrl, args=(event, url, target)
+            )
+            actionProcess.start()
+            if timeout == 0:
+                timeout = self.timeout
+            actionProcess.join(timeout=timeout)
+            actionProcess.terminate()
+            if not event.is_set():
+                raise DownloadFailure(f"Image download failure from {str(url)}")
+            self._saveImageToLogFolder(target)
+            if self._verifyImage(target) is not True:
+                raise DownloadFailure(f"Imagefile is corrupted, url: {str(url)}")
             image_size = os.stat(target).st_size
             if image_size < self.minImageSize:
-                DownloadFailure(
+                raise DownloadFailure(
                     f"Imagefile too small. Size {str(image_size)}, "
                     f"min size is {str(self.minImageSize)}. url: {str(url)}"
                 )
-        else:
-            DownloadFailure(f"Imagefile is corrupted, url: {str(url)}")
+        finally:
+            logger.debug(f"Image downloaded in {time.time() - startTime:.3f} sec")
 
     def postProcessLogImageProcedure(self, everythingsuccessfull) -> None:
         if (
