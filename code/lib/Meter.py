@@ -1,7 +1,8 @@
+import base64
 import configparser
 from dataclasses import dataclass
 from typing import Union
-from lib.CutImage import CutImage
+from lib.ImageProcessor import ImageProcessor
 from lib.DigitalCounterCNN import DigitalCounterCNN
 from lib.AnalogCounterCNN import AnalogCounterCNN
 from lib.ImageLoader import ImageLoader
@@ -69,7 +70,7 @@ class Meter:
         self._initAnalog()
         self._initDigital()
 
-        self.cutImageHandler = CutImage(self.config, imageTmpFolder=imageTmpFolder)
+        self.imageProcessor = ImageProcessor(self.config, imageTmpFolder=imageTmpFolder)
         self.imageLoader = ImageLoader(
             url=self.config.httpImageUrl,
             timeout=self.config.httpTimeoutLoadImage,
@@ -162,18 +163,15 @@ class Meter:
                     f"({str(diff)} minutes)."
                 )
         except Exception as e:
-            logger.warn(f"Error occured during previous value loading: {str(e)}")
+            logger.warning(f"Error occured during previous value loading: {str(e)}")
 
     def getROI(self, url: str, timeout: int = 0):
-        IMAGE_FILE = f"{self.imageTmpFolder}/original.jpg"
-        ALIGNED_FILE = f"{self.imageTmpFolder}/aligned.jpg"
-        ROI_FILE = f"{self.imageTmpFolder}/roi.jpg"
-
-        self._removeFileIfExists(IMAGE_FILE)
-        self._loadImage(url, timeout, IMAGE_FILE)
-        self.cutImageHandler.cut(IMAGE_FILE)
+        data = self.imageLoader.loadImageFromUrl(url, timeout)
+        image = self.imageProcessor.loadImage(data)
+        image = self.imageProcessor.rotate(image)
+        image = self.imageProcessor.align(image)
         logger.debug("Start ROI")
-        self.cutImageHandler.drawRoi(ALIGNED_FILE, ROI_FILE)
+        image = self.imageProcessor.drawRoi(image, storeToFile=True)
 
     def getMeterValue(
         self,
@@ -181,24 +179,25 @@ class Meter:
         usePreviuosValue: bool = False,
         ignoreConsistencyCheck: bool = False,
         timeout: int = 0,
+        saveImages: bool = False,
     ) -> ValueResult:
 
         logger.debug("Create previous values")
         previousValue = self._createPreviousValues()
 
-        IMAGE_FILE = f"{self.imageTmpFolder}/original.jpg"
-        ALIGNED_FILE = f"{self.imageTmpFolder}/aligned.jpg"
-        ROI_FILE = f"{self.imageTmpFolder}/roi.jpg"
-
         logger.debug("Load image")
-        self._loadImage(url, timeout, IMAGE_FILE)
+        data = self.imageLoader.loadImageFromUrl(url, timeout)
+        if self.config.httpLogOnlyFalsePictures is False:
+            self._saveImageToFile(f"{self.imageTmpFolder}/original.jpg", data)
 
         startTime = time.time()
         logger.debug("Start image cutting")
-        cutIimages = self.cutImageHandler.cut(IMAGE_FILE)
-
-        logger.debug("Draw roi")
-        self.cutImageHandler.drawRoi(ALIGNED_FILE, ROI_FILE)
+        image = self.imageProcessor.loadImage(data)
+        image = self.imageProcessor.rotate(image, storeIntermediateFiles=saveImages)
+        image = self.imageProcessor.align(image, storeIntermediateFiles=saveImages)
+        cutIimages = self.imageProcessor.cut(image, storeIntermediateFiles=saveImages)
+        if saveImages:
+            self.imageProcessor.drawRoi(image, storeToFile=True)
 
         if self.config.analogReadOutEnabled:
             logger.debug("Start analog readout")
@@ -242,17 +241,13 @@ class Meter:
             cutIimages,
             previousValue,
             "",
+            cutIimages.analogImages,
+            cutIimages.digitalImages,
         )
         logger.debug(
             f"Procesing time {time.time() - startTime:.3f} sec, result: {result}"
         )
         return result
-
-    def _loadImage(self, url: str, timeout: int, file) -> None:
-        data = self.imageLoader.loadImageFromUrl(url, timeout)
-        self._saveImageToFile(file, data)
-        if self.config.httpLogOnlyFalsePictures is False:
-            self._copyImageToLogFolder(file)
 
     def _createPreviousValues(self) -> Value:
         prevValue = self._getPreviousValueAsNumber()
@@ -270,6 +265,8 @@ class Meter:
         cutIimages,
         preval,
         error,
+        analogImages,
+        digitalImages,
     ) -> ValueResult:
 
         value = Value(

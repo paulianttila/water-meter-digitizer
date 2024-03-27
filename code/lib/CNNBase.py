@@ -64,7 +64,7 @@ class CNNBase:
 
     def readoutSingleImage(self, image):
         testImage = image.resize((self.dx, self.dy), Image.NEAREST)
-        testImage.save(f"{self.imageTmpFolder}/resize.jpg", "JPEG")
+        #testImage.save(f"{self.imageTmpFolder}/resize.jpg", "JPEG")
         testImage = np.array(testImage, dtype="float32")
         input_data = np.reshape(testImage, [1, self.dy, self.dx, 3])
         self.interpreter.set_tensor(self.input_details[0]["index"], input_data)

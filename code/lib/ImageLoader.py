@@ -1,7 +1,6 @@
 import io
 from PIL import Image
 import time
-import os
 import logging
 import requests
 
@@ -65,5 +64,5 @@ class ImageLoader:
             image.verify()
             return True
         except Exception as e:
-            logger.warn(f"Image verification failed: {str(e)}")
+            logger.warning(f"Image verification failed: {str(e)}")
             return False

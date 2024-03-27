@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+
 import os
 import numpy as np
 import cv2
@@ -19,7 +20,7 @@ class CutResult:
         self.digitalImages = digitalImages
 
 
-class CutImage:
+class ImageProcessor:
     def __init__(self, config: Config, imageTmpFolder="/image_tmp/"):
         self.imageTmpFolder = imageTmpFolder
         self.config = config
@@ -29,35 +30,58 @@ class CutImage:
                 logger.debug(f"Use reference image {file}")
                 self.referenceImages.append(cv2.imread(file))
             else:
-                logger.warn(f"Reference Image {file} not found")
+                logger.warning(f"Reference Image {file} not found")
 
-    def cut(self, image) -> CutResult:
-        source = cv2.imread(image)
-        cv2.imwrite(f"{self.imageTmpFolder}/original.jpg", source)
-        target = self._rotateImage(source)
-        cv2.imwrite(f"{self.imageTmpFolder}/rotated.jpg", target)
-        target = self._align(target)
-        cv2.imwrite(f"{self.imageTmpFolder}/aligned.jpg", target)
+    def convertImageToBytes(self, image: Image) -> bytes:
+        success, buffer = cv2.imencode(".jpg", image)
+        return buffer.tobytes()
 
+    def loadImage(self, data: bytes) -> Image:
+        return cv2.imdecode(np.frombuffer(data, np.uint8), cv2.IMREAD_COLOR)
+
+    def rotate(self, image: Image, storeIntermediateFiles: bool = False) -> Image:
+        image = self._rotateImage(image)
+        if storeIntermediateFiles:
+            cv2.imwrite(f"{self.imageTmpFolder}/rotated.jpg", image)
+        return image
+
+    def align(self, image: Image, storeIntermediateFiles: bool = False) -> Image:
+        image = self._align(image)
+        if storeIntermediateFiles:
+            cv2.imwrite(f"{self.imageTmpFolder}/aligned.jpg", image)
+        return image
+
+    def cut(self, image: Image, storeIntermediateFiles: bool = False) -> CutResult:
         digits = (
-            self._cutImages(target, self.config.cutDigitalDigit)
+            self._cutImages(image, self.config.cutDigitalDigit, storeIntermediateFiles)
             if self.config.digitalReadOutEnabled
             else []
         )
         analogs = (
-            self._cutImages(target, self.config.cutAnalogCounter)
+            self._cutImages(image, self.config.cutAnalogCounter, storeIntermediateFiles)
             if self.config.analogReadOutEnabled
             else []
         )
         return CutResult(analogs, digits)
 
-    def _cutImages(self, source, imagePositions: ImagePosition) -> list:
-        return [[digit.name, self._cutImage(source, digit)] for digit in imagePositions]
+    def _cutImages(
+        self,
+        source,
+        imagePositions: ImagePosition,
+        storeIntermediateFiles: bool = False,
+    ) -> list:
+        return [
+            [digit.name, self._cutImage(source, digit, storeIntermediateFiles)]
+            for digit in imagePositions
+        ]
 
-    def _cutImage(self, source, imgPosition: ImagePosition) -> Image:
+    def _cutImage(
+        self, source, imgPosition: ImagePosition, storeIntermediateFiles: bool = False
+    ) -> Image:
         x, y, w, h = imgPosition.x1, imgPosition.y1, imgPosition.w, imgPosition.h
         cropImg = source[y : y + h, x : x + w]
-        cv2.imwrite(f"{self.imageTmpFolder}/{imgPosition.name}.jpg", cropImg)
+        if storeIntermediateFiles:
+            cv2.imwrite(f"{self.imageTmpFolder}/{imgPosition.name}.jpg", cropImg)
         cropImg = cv2.cvtColor(cropImg, cv2.COLOR_BGR2RGB)
         return Image.fromarray(cropImg)
 
@@ -96,13 +120,12 @@ class CutImage:
 
     def drawRoi(
         self,
-        imageIn: str,
-        imageOut: str = "/image_tmp/roi.jpg",
+        image: Image,
+        storeToFile: bool = False,
         drawRef=False,
         drawDig=True,
         drawCou=True,
-    ) -> None:
-        image = cv2.imread(imageIn)
+    ) -> Image:
 
         if drawRef:
             self._drawRef(image)
@@ -113,7 +136,10 @@ class CutImage:
         if drawCou:
             self._drawCou(image)
 
-        cv2.imwrite(imageOut, image)
+        if storeToFile:
+            cv2.imwrite(f"{self.imageTmpFolder}/roi.jpg", image)
+
+        return image
 
     def _drawRef(self, image: Image) -> Image:
         colour = (255, 0, 0)

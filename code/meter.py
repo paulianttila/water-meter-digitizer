@@ -98,7 +98,6 @@ def getMeterValue(
     url: str = "",
     simpleOutput: bool = False,
     usePreviuosValue: bool = False,
-    single: bool = False,
     ignoreConsistencyCheck: bool = False,
     timeout: int = 0,
 ):
@@ -111,6 +110,7 @@ def getMeterValue(
             usePreviuosValue=usePreviuosValue,
             ignoreConsistencyCheck=ignoreConsistencyCheck,
             timeout=timeout,
+            saveImages=format == "html",
         )
     except Exception as e:
         logger.warn(f"Error occured: {str(e)}")
@@ -143,7 +143,7 @@ if __name__ == "__main__":
 
     logging.getLogger("lib.CNNBase").setLevel(logger.level)
     logging.getLogger("lib.CutImage").setLevel(logger.level)
-    logging.getLogger("lib.LoadFileFromHTTP").setLevel(logger.level)
+    logging.getLogger("lib.ImageLoader").setLevel(logger.level)
     logging.getLogger("lib.Config").setLevel(logger.level)
     logging.getLogger("lib.AnalogCounterCNN").setLevel(logger.level)
     logging.getLogger("lib.DigitalCounterCNN").setLevel(logger.level)
