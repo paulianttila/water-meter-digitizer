@@ -1,3 +1,4 @@
+import dataclasses
 import json
 import signal
 from lib.ImageLoader import DownloadFailure
@@ -14,7 +15,7 @@ from fastapi.templating import Jinja2Templates
 import uvicorn
 
 version = "Version 8.0.0 (2024-03-22)"
-watermeter = None
+meter = None
 
 logging.basicConfig(
     stream=sys.stdout,
@@ -24,7 +25,7 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
-app = FastAPI(title="Watermeter")
+app = FastAPI(title="meter")
 app.mount("/static", StaticFiles(directory="web/static"), name="static")
 templates = Jinja2Templates(directory="web/templates")
 
@@ -61,10 +62,10 @@ def doExit():
 
 @app.get("/reload", response_class=HTMLResponse)
 def reloadConfig():
-    global watermeter
-    del watermeter
+    global meter
+    del meter
     gc.collect()
-    watermeter = Meter(
+    meter = Meter(
         configFile=f"{configDir}/config.ini",
         prevValueFile=f"{configDir}/prevalue.ini",
         imageTmpFolder=imageTmpFolder,
@@ -75,7 +76,7 @@ def reloadConfig():
 @app.get("/roi", response_class=HTMLResponse)
 def getRoi(request: Request, url: str = "", timeout: int = 0):
     try:
-        watermeter.getROI(url, timeout)
+        meter.getROI(url, timeout)
         return templates.TemplateResponse(
             "roi.html",
             context={"request": request, "image": "/image_tmp/roi.jpg"},
@@ -86,42 +87,51 @@ def getRoi(request: Request, url: str = "", timeout: int = 0):
 
 @app.get("/setPreviousValue", response_class=HTMLResponse)
 def setPreviousValue(value: float):
-    result = watermeter.setPreviousValue(value)
+    result = meter.setPreviousValue(value)
     return f"Last value set to: {result}"
 
 
-@app.get("/watermeter")
+@app.get("/meter")
 def getMeterValue(
+    request: Request,
     format: str = "html",
     url: str = "",
-    simple: bool = True,
-    usePreValue: bool = False,
+    simpleOutput: bool = False,
+    usePreviuosValue: bool = False,
     single: bool = False,
     ignoreConsistencyCheck: bool = False,
     timeout: int = 0,
 ):
     if format not in ["html", "json"]:
-        return "Invalid format. Use 'html' or 'json'"
+        return Response(
+            "Invalid format. Use 'html' or 'json'",
+            media_type="text/html",
+        )
 
-    result = watermeter.getMeterValue(
+    result = meter.getMeterValue(
         url=url,
-        format=format,
-        simple=simple,
-        usePreviuosValue=usePreValue,
-        single=single,
+        usePreviuosValue=usePreviuosValue,
         ignoreConsistencyCheck=ignoreConsistencyCheck,
         timeout=timeout,
     )
 
-    if format == "html":
+    if format != "html":
         return Response(
-            result,
+            json.dumps(dataclasses.asdict(result)),
+            media_type="application/json",
+        )
+    if simpleOutput:
+        return Response(
+            f"{result.newValue.value}",
             media_type="text/html",
         )
     else:
-        return Response(
-            json.dumps(result),
-            media_type="application/json",
+        return templates.TemplateResponse(
+            "result.html",
+            context={
+                "request": request,
+                "result": result,
+            },
         )
 
 
@@ -140,12 +150,12 @@ if __name__ == "__main__":
 
     configDir = os.environ.get("CONFIG_DIR", "/config")
     imageTmpFolder = os.environ.get("IMAGE_TMP", "/image_tmp")
-    watermeter = Meter(
+    meter = Meter(
         configFile=f"{configDir}/config.ini",
         prevValueFile=f"{configDir}/prevalue.ini",
         imageTmpFolder=imageTmpFolder,
     )
 
     port = 3000
-    logger.info(f"Watermeter is serving at port {port}")
+    logger.info(f"Meter is serving at port {port}")
     uvicorn.run(app, host="0.0.0.0", port=port)

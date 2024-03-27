@@ -26,4 +26,4 @@ COPY ./config/ ./
 WORKDIR /app
 COPY ./code/ ./
 
-CMD ["python", "./watermeter.py"]
+CMD ["python", "./meter.py"]

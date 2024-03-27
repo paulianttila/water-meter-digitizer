@@ -1,4 +1,5 @@
 import configparser
+from dataclasses import dataclass
 from lib.CutImage import CutImage
 from lib.DigitalCounterCNN import DigitalCounterCNN
 from lib.AnalogCounterCNN import AnalogCounterCNN
@@ -11,6 +12,22 @@ from datetime import datetime
 import logging
 
 logger = logging.getLogger(__name__)
+
+
+@dataclass
+class Value:
+    value: str
+    analogValue: str
+    digitalValue: str
+
+
+@dataclass
+class ValueResult:
+    newValue: Value
+    previousValue: Value
+    digitalResults: dict
+    analogResults: dict
+    error: str
 
 
 class Meter:
@@ -51,7 +68,7 @@ class Meter:
 
     def _initAnalog(self):
         if self.config.analogReadOutEnabled:
-            self.readAnalogNeedle = AnalogCounterCNN(
+            self.analogNeedleReader = AnalogCounterCNN(
                 modelfile=self.config.analogModelFile,
                 dx=32,
                 dy=32,
@@ -65,7 +82,7 @@ class Meter:
 
     def _initDigital(self):
         if self.config.digitalReadOutEnabled:
-            self.readDigitalDigit = DigitalCounterCNN(
+            self.digitalDigitsReader = DigitalCounterCNN(
                 modelfile=self.config.digitModelFile,
                 dx=20,
                 dy=32,
@@ -153,128 +170,148 @@ class Meter:
     def getMeterValue(
         self,
         url: str,
-        format: str = "html",
-        simple: bool = True,
         usePreviuosValue: bool = False,
-        single: bool = False,
         ignoreConsistencyCheck: bool = False,
         timeout: int = 0,
-    ) -> str:
-        if self.config.analogReadOutEnabled:
-            prevValue = self.lastIntegerPart.lstrip("0") + "." + self.lastDecimalPart
-        else:
-            prevValue = self.lastIntegerPart.lstrip("0")
+    ) -> ValueResult:
 
-        preval = {
-            "Value": None if prevValue == "." else prevValue,
-            "DigitalDigits": (
-                None if self.lastIntegerPart == "" else self.lastIntegerPart
-            ),
-            "AnalogCounter": (
-                None if self.lastDecimalPart == "" else self.lastDecimalPart
-            ),
-        }
+        logger.debug("Create previous values")
+        previousValues = self._createPreviousValues()
 
+        logger.debug("Load image")
         try:
             self.imageLoader.loadImageFromUrl(
                 url, f"{self.imageTmpFolder}/original.jpg", timeout
             )
         except DownloadFailure as e:
-            if format == "html":
-                return self._makeReturnValue(True, f"{e}", preval)
-            else:
-                return self._makeReturnValueJSON(True, f"{e}", preval)
+            return self._makeReturnValues(True, f"{e}", previousValues)
 
-        if self.config.analogReadOutEnabled:
-            logger.debug("Start CutImage, AnalogReadout, DigitalReadout")
-        else:
-            logger.debug("Start CutImage, DigitalReadout")
-
+        startTime = time.time()
+        logger.debug("Start image cutting")
         cutIimages = self.cutImageHandler.cut(f"{self.imageTmpFolder}/original.jpg")
+
+        logger.debug("Draw roi")
         self.cutImageHandler.drawRoi(
             f"{self.imageTmpFolder}/aligned.jpg", f"{self.imageTmpFolder}/roi.jpg"
         )
 
         if self.config.analogReadOutEnabled:
-            resultAnalog = self.readAnalogNeedle.readout(cutIimages.analogImages)
-        resultDigital = self.readDigitalDigit.readout(cutIimages.digitalImages)
+            logger.debug("Start analog readout")
+            resultAnalog = self.analogNeedleReader.readout(cutIimages.analogImages)
+        if self.config.digitalReadOutEnabled:
+            logger.debug("Start digital readout")
+            resultDigital = self.digitalDigitsReader.readout(cutIimages.digitalImages)
 
-        self.currentDecimalPart = 0
+        logger.debug("Start post processing")
         if self.config.analogReadOutEnabled:
             self.currentDecimalPart = self._analogReadoutToValue(resultAnalog)
-        self.currentIntegerPart = self._digitalReadoutToValue(
-            resultDigital,
-            usePreviuosValue,
-            self.lastDecimalPart,
-            self.currentDecimalPart,
-        )
+        else:
+            self.currentDecimalPart = 0
+        if self.config.digitalReadOutEnabled:
+            self.currentIntegerPart = self._digitalReadoutToValue(
+                resultDigital,
+                usePreviuosValue,
+                self.lastDecimalPart,
+                self.currentDecimalPart,
+            )
+        else:
+            self.currentIntegerPart = 0
         self.imageLoader.postProcessLogImageProcedure(True)
 
-        logger.debug("Start making meter value")
+        logger.debug("Check consistency")
         (consistencyError, errortxt) = self._checkConsistency(ignoreConsistencyCheck)
+
+        logger.debug("Update last values")
         self._updateLastValues(consistencyError)
 
-        if format == "html":
-            txt = self._makeReturnValue(consistencyError, errortxt, single)
+        logger.debug("Generate meter value result")
+        (val, analogValue, digitalValue) = self._makeReturnValues(consistencyError)
 
-            if not simple:
-                txt = f"{txt}<p>Aligned Image: <p><img src=/image_tmp/aligned.jpg></img><p>"
-                txt = f"{txt}Digital Counter: <p>"
-                for i in range(len(resultDigital)):
-                    zw = (
-                        "NaN"
-                        if resultDigital[i] == "NaN"
-                        else str(int(resultDigital[i]))
-                    )
-                    imageName = str(cutIimages.digitalImages[i][0])
-                    txt += f"<img src=/image_tmp/{imageName}.jpg></img>{zw}"
-                txt = f"{txt}<p>"
-                if self.config.analogReadOutEnabled:
-                    txt = f"{txt}Analog Meter: <p>"
-                    for i in range(len(resultAnalog)):
-                        imageName = str(cutIimages.analogImages[i][0])
-                        txt += (
-                            f"<img src=/image_tmp/{imageName}.jpg></img>"
-                            + "{:.1f}".format(resultAnalog[i])
-                        )
-                    txt = f"{txt}<p>"
-            logger.debug("Get meter value done")
-            return txt
+        result = self._createValueResult(
+            val,
+            self._fillValueWithEndingZeros(len(resultAnalog), analogValue),
+            self._fillValueWithLeadingZeros(len(resultDigital), digitalValue),
+            resultDigital,
+            resultAnalog,
+            cutIimages,
+            previousValues,
+            errortxt,
+        )
+        logger.debug(
+            f"Procesing time {time.time() - startTime:.3f} sec, result: {result}"
+        )
+        return result
+
+    def _createPreviousValues(self) -> Value:
+        if self.config.analogReadOutEnabled:
+            prevValue = self.lastIntegerPart.lstrip("0") + "." + self.lastDecimalPart
         else:
-            (Value, AnalogCounter, Digit, Error) = self._makeReturnValueJSON(
-                consistencyError, errortxt, single
-            )
+            prevValue = self.lastIntegerPart.lstrip("0")
+        val = None if prevValue == "." else prevValue
+        digitalValue = None if self.lastIntegerPart == "" else self.lastIntegerPart
+        analogValue = None if self.lastDecimalPart == "" else self.lastDecimalPart
+        return Value(value=val, analogValue=analogValue, digitalValue=digitalValue)
 
-            logger.debug("Get meter value done")
-            return {
-                "Value": Value,
-                "DigitalDigits": Digit,
-                "AnalogCounter": AnalogCounter,
-                "Error": Error,
-                "Prevalue": preval,
-            }
+    def _createValueResult(
+        self,
+        val,
+        analogValue,
+        digitalValue,
+        resultDigital,
+        resultAnalog,
+        cutIimages,
+        preval,
+        error,
+    ) -> ValueResult:
 
-    def _makeReturnValueJSON(self, error, errortxt, single):
-        Value = ""
-        AnalogCounter = ""
-        Digit = ""
-        Errortxt = errortxt
+        value = Value(
+            value=val,
+            analogValue=analogValue,
+            digitalValue=digitalValue,
+        )
+
+        digitalResults = {}
+        for i in range(len(resultDigital)):
+            val = "NaN" if resultDigital[i] == "NaN" else str(int(resultDigital[i]))
+            name = str(cutIimages.digitalImages[i][0])
+            digitalResults[name] = val
+
+        analogResults = {}
+        if self.config.analogReadOutEnabled:
+            for i in range(len(resultAnalog)):
+                val = "{:.1f}".format(resultAnalog[i])
+                name = str(cutIimages.analogImages[i][0])
+                analogResults[name] = val
+
+        return ValueResult(
+            newValue=value,
+            previousValue=preval,
+            digitalResults=digitalResults,
+            analogResults=analogResults,
+            error=error,
+        )
+
+    def _makeReturnValues(self, error):
+        value = ""
+        analogCounter = ""
+        digit = ""
         if error:
             if self.config.errorReturn.find("Value") > -1:
-                Digit = str(self.currentIntegerPart)
-                Value = str(self.currentIntegerPart.lstrip("0"))
+                digit = str(self.currentIntegerPart)
+                value = str(self.currentIntegerPart.lstrip("0"))
                 if self.config.analogReadOutEnabled:
-                    Value = f"{Value}.{str(self.currentDecimalPart)}"
-                    AnalogCounter = str(self.currentDecimalPart)
+                    value = f"{value}.{str(self.currentDecimalPart)}"
+                    analogCounter = str(self.currentDecimalPart)
         else:
-            Digit = str(self.currentIntegerPart.lstrip("0"))
-            Value = str(self.currentIntegerPart.lstrip("0"))
+            digit = str(self.currentIntegerPart.lstrip("0"))
+            value = str(self.currentIntegerPart.lstrip("0"))
             if self.config.analogReadOutEnabled:
-                Value = f"{Value}.{str(self.currentDecimalPart)}"
-                AnalogCounter = str(self.currentDecimalPart)
-        return (Value, AnalogCounter, Digit, Errortxt)
+                value = f"{value}.{str(self.currentDecimalPart)}"
+                analogCounter = str(self.currentDecimalPart)
 
-    def _makeReturnValue(self, error, errortxt, single):
+        return (value, analogCounter, digit)
+
+    def _makeReturnValueOld(self, error, errortxt, single):
         output = ""
         if error:
             if self.config.errorReturn.find("Value") > -1:
@@ -352,7 +389,6 @@ class Meter:
         for item in analogValues[::-1]:
             prev = self._evaluateAnalogValue(item, prev)
             strValue = f"{prev}{strValue}"
-            logger.debug(f"Total value: {strValue}")
         return strValue
 
     def _evaluateAnalogValue(self, newValue, prevValue: int) -> int:
@@ -374,7 +410,7 @@ class Meter:
                 result += 10
 
         result = result % 10
-        logger.debug(f"Value: {newValue} (prev value: {prevValue}) -> {result}")
+        logger.debug(f"Analog value: {newValue} (prev value: {prevValue}) -> {result}")
         return result
 
     def _digitalReadoutToValue(
@@ -415,6 +451,10 @@ class Meter:
                             overZero = 0
                 else:
                     digit = "N"
+            logger.debug(
+                f"Digital value: {digitalValues[i]} "
+                f"(prev value: {lastIntegerPart[i]}) -> {digit}"
+            )
             strValue = f"{digit}{strValue}"
 
         return strValue
