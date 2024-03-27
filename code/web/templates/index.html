@@ -3,18 +3,20 @@
 <body>
     Meter {{ version }}
     <h1>Links</h1>
-    <a href="meter?usePreviuosValue=True">Meter value with previous value</a><br>
-    <a href="meter?simpleOutput=False">Meter value with full details</a><br>
-    <a href="meter?usePreviuosValue=True&simpleOutput=False">Meter value with previous value and full details</a><br>
+    <h2>HTML format</h2>
+    <a href="meter?usePreviuosValue=True&simpleOutput=True">Meter value with previous value filling</a><br>
+    <a href="meter?usePreviuosValue=False&simpleOutput=True">Meter value without previous value filling</a><br>
+    <a href="meter?usePreviuosValue=True&simpleOutput=False">Meter value with previous value filling and full details</a><br>
+    <a href="meter?usePreviuosValue=False&simpleOutput=False">Meter value without previous value filling and full details</a><br>
     <a href="roi">Region Of Interest image</a><br>
-    <br><br>
-    <a href="meter?format=json&single=True">Meter value (single) in JSON format</a><br>
-    <a href="meter?format=json&simpleOutput=False&usePreviuosValue=True">Meter value with previous value in JSON format</a><br>
-    <h1>Set previous value</h1>
+    <h2>JSON format</h2>
+    <a href="meter?format=json&usePreviuosValue=True">Meter value with previous value filling</a><br>
+    <a href="meter?format=json&usePreviuosValue=False">Meter value without previous value filling</a><br>
+    <h2>Set previous value</h2>
     Set previous value by &lt;ip&gt;:&lt;port&gt;/setPreValue.html?value=&lt;value&gt;
     <br><br>
     Example: 192.168.10.23:3000/setPreviousValue?value=452.9124
-    <h1>Reload configuration</h1>
-    <a href="reload">Reload</a><br>
+    <h2>Reload configuration</h2>
+    <a href="reload">Reload</a>
 </body>
 </html>
