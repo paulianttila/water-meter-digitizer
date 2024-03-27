@@ -1,16 +1,15 @@
 <!DOCTYPE html>
 <html>
 <body>
-    Watermeter {{ version }}
+    Meter {{ version }}
     <h1>Links</h1>
-    <a href="watermeter?single=True">Watermeter value (single)</a><br>
-    <a href="watermeter?usePreValue=True">Watermeter value with previous value</a><br>
-    <a href="watermeter?simple=False">Watermeter value with full details</a><br>
-    <a href="watermeter?usePreValue=True&simple=False">Watermeter value with previous value and full details</a><br>
+    <a href="meter?usePreviuosValue=True">Meter value with previous value</a><br>
+    <a href="meter?simpleOutput=False">Meter value with full details</a><br>
+    <a href="meter?usePreviuosValue=True&simpleOutput=False">Meter value with previous value and full details</a><br>
     <a href="roi">Region Of Interest image</a><br>
     <br><br>
-    <a href="watermeter?format=json&single=True">Watermeter value (single) in JSON format</a><br>
-    <a href="watermeter?format=json&simple=False&usePreValue=True">Watermeter value with previous value in JSON format</a><br>
+    <a href="meter?format=json&single=True">Meter value (single) in JSON format</a><br>
+    <a href="meter?format=json&simpleOutput=False&usePreviuosValue=True">Meter value with previous value in JSON format</a><br>
     <h1>Set previous value</h1>
     Set previous value by &lt;ip&gt;:&lt;port&gt;/setPreValue.html?value=&lt;value&gt;
     <br><br>
