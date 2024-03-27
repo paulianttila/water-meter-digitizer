@@ -65,7 +65,7 @@ def reloadConfig():
     global meter
     del meter
     gc.collect()
-    meter = Meter(
+    meter = Meter(  # noqa: F841
         configFile=f"{configDir}/config.ini",
         prevValueFile=f"{configDir}/prevalue.ini",
         imageTmpFolder=imageTmpFolder,
@@ -103,17 +103,22 @@ def getMeterValue(
     timeout: int = 0,
 ):
     if format not in ["html", "json"]:
-        return Response(
-            "Invalid format. Use 'html' or 'json'",
-            media_type="text/html",
-        )
+        return Response("Invalid format. Use 'html' or 'json'", media_type="text/html")
 
-    result = meter.getMeterValue(
-        url=url,
-        usePreviuosValue=usePreviuosValue,
-        ignoreConsistencyCheck=ignoreConsistencyCheck,
-        timeout=timeout,
-    )
+    try:
+        result = meter.getMeterValue(
+            url=url,
+            usePreviuosValue=usePreviuosValue,
+            ignoreConsistencyCheck=ignoreConsistencyCheck,
+            timeout=timeout,
+        )
+    except Exception as e:
+        logger.warn(f"Error occured: {str(e)}")
+        if format != "html":
+            return Response(
+                json.dumps({"error": str(e)}), media_type="application/json"
+            )
+        return Response(f"Error: {e}", media_type="text/html")
 
     if format != "html":
         return Response(
@@ -121,18 +126,14 @@ def getMeterValue(
             media_type="application/json",
         )
     if simpleOutput:
-        return Response(
-            f"{result.newValue.value}",
-            media_type="text/html",
-        )
-    else:
-        return templates.TemplateResponse(
-            "result.html",
-            context={
-                "request": request,
-                "result": result,
-            },
-        )
+        return Response(f"{result.newValue.value}", media_type="text/html")
+    return templates.TemplateResponse(
+        "result.html",
+        context={
+            "request": request,
+            "result": result,
+        },
+    )
 
 
 if __name__ == "__main__":

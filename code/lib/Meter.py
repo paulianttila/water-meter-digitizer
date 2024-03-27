@@ -1,24 +1,26 @@
 import configparser
 from dataclasses import dataclass
+from typing import Union
 from lib.CutImage import CutImage
 from lib.DigitalCounterCNN import DigitalCounterCNN
 from lib.AnalogCounterCNN import AnalogCounterCNN
-from lib.ImageLoader import DownloadFailure, ImageLoader
+from lib.ImageLoader import ImageLoader
 from lib.Config import Config
 import math
 import os
 import time
 from datetime import datetime
 import logging
+from shutil import copyfile
 
 logger = logging.getLogger(__name__)
 
 
 @dataclass
 class Value:
-    value: str
-    analogValue: str
-    digitalValue: str
+    value: Union[float, int]
+    decimalPart: str
+    integerPart: str
 
 
 @dataclass
@@ -28,6 +30,16 @@ class ValueResult:
     digitalResults: dict
     analogResults: dict
     error: str
+
+
+class ConcistencyError(Exception):
+    ...
+    pass
+
+
+class ValueError(Exception):
+    ...
+    pass
 
 
 class Meter:
@@ -44,7 +56,7 @@ class Meter:
         self.config.parseConfig(configFile)
 
         if self.config.readPreValueFromFileAtStartup:
-            self._loadPrevalueFromFile(
+            self._loadPreviousValueFromFile(
                 self.prevValueFile, self.config.readPreValueFromFileMaxAge
             )
         else:
@@ -62,13 +74,11 @@ class Meter:
             url=self.config.httpImageUrl,
             timeout=self.config.httpTimeoutLoadImage,
             minImageSize=10000,
-            imageLogFolder=self.config.httpImageLogFolder,
-            logOnlyFalsePictures=self.config.httpLogOnlyFalsePictures,
         )
 
     def _initAnalog(self):
         if self.config.analogReadOutEnabled:
-            self.analogNeedleReader = AnalogCounterCNN(
+            self.analogCounterReader = AnalogCounterCNN(
                 modelfile=self.config.analogModelFile,
                 dx=32,
                 dy=32,
@@ -82,7 +92,7 @@ class Meter:
 
     def _initDigital(self):
         if self.config.digitalReadOutEnabled:
-            self.digitalDigitsReader = DigitalCounterCNN(
+            self.digitalCounterReader = DigitalCounterCNN(
                 modelfile=self.config.digitModelFile,
                 dx=20,
                 dy=32,
@@ -109,63 +119,61 @@ class Meter:
         else:
             result = self.lastIntegerPart
 
-        self._storePrevalueToFile(self.prevValueFile)
+        self._savePreviousValueToFile(self.prevValueFile)
         return float(result)
 
-    def _storePrevalueToFile(self, file: str):
+    def _savePreviousValueToFile(self, file: str):
         logtime = time.strftime("%Y-%m-%d_%H-%M-%S", time.localtime())
         config = configparser.ConfigParser()
         config.read(file)
-        config["PreValue"]["LastVorkomma"] = self.lastDecimalPart
+        config["PreviousValue"]["DecimalPart"] = self.lastDecimalPart
         if self.config.analogReadOutEnabled:
-            config["PreValue"]["LastNachkomma"] = self.lastIntegerPart
+            config["PreviousValue"]["IntegerPart"] = self.lastIntegerPart
         else:
-            config["PreValue"]["LastNachkomma"] = "0"
-        config["PreValue"]["Time"] = logtime
+            config["PreviousValue"]["IntegerPart"] = "0"
+        config["PreviousValue"]["Time"] = logtime
         with open(file, "w") as cfg:
             config.write(cfg)
 
-    def _loadPrevalueFromFile(self, file: str, readPreValueFromFileMaxAge):
-        config = configparser.ConfigParser()
-        config.read(file)
-        logtime = config["PreValue"]["Time"]
+    def _loadPreviousValueFromFile(self, file: str, readPreValueFromFileMaxAge):
+        try:
+            config = configparser.ConfigParser()
+            config.read(file)
+            logtime = config.get("PreviousValue", "Time")
 
-        fmt = "%Y-%m-%d_%H-%M-%S"
-        #        d1 = datetime.strptime(nowtime, fmt)
-        d1 = datetime.now()
-        d2 = datetime.strptime(logtime, fmt)
-        diff = (d1 - d2).days * 24 * 60
+            fmt = "%Y-%m-%d_%H-%M-%S"
+            #        d1 = datetime.strptime(nowtime, fmt)
+            d1 = datetime.now()
+            d2 = datetime.strptime(logtime, fmt)
+            diff = (d1 - d2).days * 24 * 60
 
-        if diff <= readPreValueFromFileMaxAge:
-            self.lastDecimalPart = config["PreValue"]["LastVorkomma"]
-            self.lastIntegerPart = config["PreValue"]["LastNachkomma"]
-            zw = (
-                f"Previous value loaded from file: "
-                f"{self.lastIntegerPart}.{self.lastDecimalPart}"
-            )
-
-        else:
-            self.lastDecimalPart = ""
-            self.lastIntegerPart = ""
-            zw = (
-                f"Previous value not loaded from file as value is too old: "
-                f"({str(diff)} minutes)."
-            )
-
-        logger.info(zw)
+            if diff <= readPreValueFromFileMaxAge:
+                self.lastDecimalPart = config.get("PreviousValue", "DecimalPart")
+                self.lastIntegerPart = config.get("PreviousValue", "IntegerPart")
+                logger.info(
+                    f"Previous value loaded from file: "
+                    f"{self.lastIntegerPart}.{self.lastDecimalPart}"
+                )
+            else:
+                self.lastDecimalPart = ""
+                self.lastIntegerPart = ""
+                logger.info(
+                    f"Previous value not loaded from file as value is too old: "
+                    f"({str(diff)} minutes)."
+                )
+        except Exception as e:
+            logger.warn(f"Error occured during previous value loading: {str(e)}")
 
     def getROI(self, url: str, timeout: int = 0):
-        self._removeFile(f"{self.imageTmpFolder}/original.jpg")
+        IMAGE_FILE = f"{self.imageTmpFolder}/original.jpg"
+        ALIGNED_FILE = f"{self.imageTmpFolder}/aligned.jpg"
+        ROI_FILE = f"{self.imageTmpFolder}/roi.jpg"
 
-        self.imageLoader.loadImageFromUrl(
-            url, f"{self.imageTmpFolder}/original.jpg", timeout
-        )
-        self.cutImageHandler.cut(f"{self.imageTmpFolder}/original.jpg")
+        self._removeFileIfExists(IMAGE_FILE)
+        self._loadImage(url, timeout, IMAGE_FILE)
+        self.cutImageHandler.cut(IMAGE_FILE)
         logger.debug("Start ROI")
-        self.cutImageHandler.drawRoi(
-            f"{self.imageTmpFolder}/aligned.jpg", f"{self.imageTmpFolder}/roi.jpg"
-        )
-        logger.debug("Get ROI done")
+        self.cutImageHandler.drawRoi(ALIGNED_FILE, ROI_FILE)
 
     def getMeterValue(
         self,
@@ -176,31 +184,28 @@ class Meter:
     ) -> ValueResult:
 
         logger.debug("Create previous values")
-        previousValues = self._createPreviousValues()
+        previousValue = self._createPreviousValues()
+
+        IMAGE_FILE = f"{self.imageTmpFolder}/original.jpg"
+        ALIGNED_FILE = f"{self.imageTmpFolder}/aligned.jpg"
+        ROI_FILE = f"{self.imageTmpFolder}/roi.jpg"
 
         logger.debug("Load image")
-        try:
-            self.imageLoader.loadImageFromUrl(
-                url, f"{self.imageTmpFolder}/original.jpg", timeout
-            )
-        except DownloadFailure as e:
-            return self._makeReturnValues(True, f"{e}", previousValues)
+        self._loadImage(url, timeout, IMAGE_FILE)
 
         startTime = time.time()
         logger.debug("Start image cutting")
-        cutIimages = self.cutImageHandler.cut(f"{self.imageTmpFolder}/original.jpg")
+        cutIimages = self.cutImageHandler.cut(IMAGE_FILE)
 
         logger.debug("Draw roi")
-        self.cutImageHandler.drawRoi(
-            f"{self.imageTmpFolder}/aligned.jpg", f"{self.imageTmpFolder}/roi.jpg"
-        )
+        self.cutImageHandler.drawRoi(ALIGNED_FILE, ROI_FILE)
 
         if self.config.analogReadOutEnabled:
             logger.debug("Start analog readout")
-            resultAnalog = self.analogNeedleReader.readout(cutIimages.analogImages)
+            resultAnalog = self.analogCounterReader.readout(cutIimages.analogImages)
         if self.config.digitalReadOutEnabled:
             logger.debug("Start digital readout")
-            resultDigital = self.digitalDigitsReader.readout(cutIimages.digitalImages)
+            resultDigital = self.digitalCounterReader.readout(cutIimages.digitalImages)
 
         logger.debug("Start post processing")
         if self.config.analogReadOutEnabled:
@@ -216,47 +221,50 @@ class Meter:
             )
         else:
             self.currentIntegerPart = 0
-        self.imageLoader.postProcessLogImageProcedure(True)
 
         logger.debug("Check consistency")
-        (consistencyError, errortxt) = self._checkConsistency(ignoreConsistencyCheck)
+        if not ignoreConsistencyCheck:
+            self._checkConsistency()
 
         logger.debug("Update last values")
-        self._updateLastValues(consistencyError)
+        self._updateLastValues()
 
         logger.debug("Generate meter value result")
-        (val, analogValue, digitalValue) = self._makeReturnValues(consistencyError)
+        currentValue = self._getCurrentValueAsNumber()
+        newValue = Value(currentValue, self.currentDecimalPart, self.currentIntegerPart)
 
         result = self._createValueResult(
-            val,
-            self._fillValueWithEndingZeros(len(resultAnalog), analogValue),
-            self._fillValueWithLeadingZeros(len(resultDigital), digitalValue),
+            newValue.value,
+            self._fillValueWithEndingZeros(len(resultAnalog), newValue.decimalPart),
+            self._fillValueWithLeadingZeros(len(resultDigital), newValue.integerPart),
             resultDigital,
             resultAnalog,
             cutIimages,
-            previousValues,
-            errortxt,
+            previousValue,
+            "",
         )
         logger.debug(
             f"Procesing time {time.time() - startTime:.3f} sec, result: {result}"
         )
         return result
 
+    def _loadImage(self, url: str, timeout: int, file) -> None:
+        data = self.imageLoader.loadImageFromUrl(url, timeout)
+        self._saveImageToFile(file, data)
+        if self.config.httpLogOnlyFalsePictures is False:
+            self._copyImageToLogFolder(file)
+
     def _createPreviousValues(self) -> Value:
-        if self.config.analogReadOutEnabled:
-            prevValue = self.lastIntegerPart.lstrip("0") + "." + self.lastDecimalPart
-        else:
-            prevValue = self.lastIntegerPart.lstrip("0")
-        val = None if prevValue == "." else prevValue
-        digitalValue = None if self.lastIntegerPart == "" else self.lastIntegerPart
-        analogValue = None if self.lastDecimalPart == "" else self.lastDecimalPart
-        return Value(value=val, analogValue=analogValue, digitalValue=digitalValue)
+        prevValue = self._getPreviousValueAsNumber()
+        integerPart = None if self.lastIntegerPart == "" else self.lastIntegerPart
+        decimalPart = None if self.lastDecimalPart == "" else self.lastDecimalPart
+        return Value(value=prevValue, decimalPart=decimalPart, integerPart=integerPart)
 
     def _createValueResult(
         self,
         val,
-        analogValue,
-        digitalValue,
+        decimalPart,
+        integerPart,
         resultDigital,
         resultAnalog,
         cutIimages,
@@ -266,8 +274,8 @@ class Meter:
 
         value = Value(
             value=val,
-            analogValue=analogValue,
-            digitalValue=digitalValue,
+            decimalPart=decimalPart,
+            integerPart=integerPart,
         )
 
         digitalResults = {}
@@ -291,80 +299,29 @@ class Meter:
             error=error,
         )
 
-    def _makeReturnValues(self, error):
-        value = ""
-        analogCounter = ""
-        digit = ""
-        if error:
-            if self.config.errorReturn.find("Value") > -1:
-                digit = str(self.currentIntegerPart)
-                value = str(self.currentIntegerPart.lstrip("0"))
-                if self.config.analogReadOutEnabled:
-                    value = f"{value}.{str(self.currentDecimalPart)}"
-                    analogCounter = str(self.currentDecimalPart)
-        else:
-            digit = str(self.currentIntegerPart.lstrip("0"))
-            value = str(self.currentIntegerPart.lstrip("0"))
-            if self.config.analogReadOutEnabled:
-                value = f"{value}.{str(self.currentDecimalPart)}"
-                analogCounter = str(self.currentDecimalPart)
-
-        return (value, analogCounter, digit)
-
-    def _updateLastValues(self, error):
+    def _updateLastValues(self):
         if "N" in self.currentIntegerPart:
             return
-        if error:
-            if self.config.errorReturn.find("NewValue") > -1:
-                self.lastDecimalPart = self.currentDecimalPart
-                self.lastIntegerPart = self.currentIntegerPart
-            else:
-                self.currentDecimalPart = self.lastDecimalPart
-                self.currentIntegerPart = self.lastIntegerPart
-        else:
-            self.lastDecimalPart = self.currentDecimalPart
-            self.lastIntegerPart = self.currentIntegerPart
+        self.lastDecimalPart = self.currentDecimalPart
+        self.lastIntegerPart = self.currentIntegerPart
+        self._savePreviousValueToFile(self.prevValueFile)
 
-        self._storePrevalueToFile(self.prevValueFile)
-
-    def _checkConsistency(self, ignoreConsistencyCheck):
-        error = False
-        errortxt = ""
+    def _checkConsistency(self):
         if (
             (len(self.lastIntegerPart) > 0)
             and "N" not in self.currentIntegerPart
             and self.config.consistencyEnabled
         ):
-            newValue = float(
-                str(self.currentIntegerPart.lstrip("0"))
-                + "."
-                + str(self.currentDecimalPart)
-            )
-            oldValue = float(
-                str(self.lastIntegerPart.lstrip("0")) + "." + str(self.lastDecimalPart)
-            )
-            delta = newValue - oldValue
+            delta = self._getCurrentValueAsNumber() - self._getPreviousValueAsNumber()
             if not (self.config.allowNegativeRates) and (delta < 0):
-                error = True
-                errortxt = "Error - NegativeRate"
+                raise ConcistencyError("Negative rate ({delta:.4f})")
             if abs(delta) > self.config.maxRateValue:
-                if error:
-                    errortxt = "Error - RateTooHigh ({:.4f})" + errortxt.format(delta)
-                else:
-                    errortxt = "Error - RateTooHigh ({:.4f})".format(delta)
-                error = True
-            if self.config.errorReturn.find("ErrorMessage") == -1:
-                errortxt = ""
-            if error and (self.config.errorReturn.find("Readout") > -1):
-                errortxt = (
-                    errortxt + "\t" + str(newValue) if len(errortxt) else str(newValue)
-                )
-        return (error, errortxt)
+                raise ConcistencyError("Rate too high ({delta:.4f})")
 
-    def _analogReadoutToValue(self, analogValues: list) -> str:
+    def _analogReadoutToValue(self, decimalParts: list) -> str:
         prev = -1
         strValue = ""
-        for item in analogValues[::-1]:
+        for item in decimalParts[::-1]:
             prev = self._evaluateAnalogCounters(item, prev)
             strValue = f"{prev}{strValue}"
         return strValue
@@ -437,7 +394,7 @@ class Meter:
 
         return strValue
 
-    def _removeFile(self, filename):
+    def _removeFileIfExists(self, filename):
         if os.path.exists(filename):
             os.remove(filename)
 
@@ -448,3 +405,36 @@ class Meter:
         while len(value) < length:
             value = f"{value}0"
         return value
+
+    def _getCurrentValueAsNumber(self) -> Union[float, int]:
+        if self.config.analogReadOutEnabled:
+            return float(
+                f"{self.currentIntegerPart.lstrip('0')}.{self.currentDecimalPart}"
+            )
+        else:
+            return int(self.currentIntegerPart.lstrip("0"))
+
+    def _getPreviousValueAsNumber(self) -> Union[float, int]:
+        if self.config.analogReadOutEnabled:
+            return float(f"{self.lastIntegerPart.lstrip('0')}.{self.lastDecimalPart}")
+        else:
+            return int(self.lastIntegerPart.lstrip("0"))
+
+    def _saveImageToFile(self, file: str, data: bytes) -> None:
+        with open(file, "wb") as f:
+            f.write(data)
+
+    def _copyImageToLogFolder(self, imageFile) -> None:
+        self._createFolders(self.config.httpImageLogFolder)
+        logtime = time.strftime("%Y-%m-%d_%H-%M-%S", time.localtime())
+        filename = f"{self.config.httpImageLogFolder }/{logtime}.jpg"
+        copyfile(imageFile, filename)
+
+    def _createFolders(self, path: str) -> None:
+        if path != "" and not os.path.exists(path):
+            folders = path.split("/")
+            path = folders[0]
+            for folder in folders[1:]:
+                path = f"{path}/{folder}"
+                if not os.path.exists(path):
+                    os.makedirs(path)

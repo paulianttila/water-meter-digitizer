@@ -1,23 +1,30 @@
 <!DOCTYPE html>
 <html>
 <body>
-    <p>Total value: {{ result.newValue.value }}</p>
-    <p>Digital value: {{ result.newValue.digitalValue }}
-    <p>Analog value: {{ result.newValue.analogValue }}
-    <p>Previous value: {{ result.previousValue.value }}
-    <p>Previous digital value: {{ result.previousValue.digitalValue }}
-    <p>Previous analog value: {{ result.previousValue.analogValue }}
-    <p>Aligned Image:<p>
-    <img src=/image_tmp/aligned.jpg></img>
-    <p>Digital counters:<p>
+    <p>Total value: <b>{{ result.newValue.value }}</b></p>
+    <ul>
+        <li>Interger part: {{ result.newValue.integerPart }}</li>
+        <li>Decimal part: {{ result.newValue.decimalPart }}</li>
+    </ul>
+    <p><small></small></p>
+    <p><small></small></p>
+    <p>Previous value: {{ result.previousValue.value }}</p>
+    <ul>
+        <li>Integer part: {{ result.previousValue.integerPart }}</li>
+        <li>Decimal part: {{ result.previousValue.decimalPart }}</li>
+    </ul>
+    <br>
+    <p>Aligned Image:</p>
+    <img src=/image_tmp/aligned.jpg></img></p>
+    <p>Digital counters:</p>
     {% for image, value in result.digitalResults.items() %}
     <img src=/image_tmp/{{ image }}.jpg></img>{{ value }}
     {% endfor %}
-    <p>Analog counters:<p>
+    <p>Analog counters:</p>
     {% for image, value in result.analogResults.items() %} 
     <img src=/image_tmp/{{ image }}.jpg></img>{{ value }}
     {% endfor %}
-    <p>Region Of Interest (ROI):<p>
+    <p>Region Of Interest (ROI):</p>
     <img src=/image_tmp/roi.jpg></img>
     </body>
 </html>
