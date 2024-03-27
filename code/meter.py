@@ -113,7 +113,7 @@ def getMeterValue(
             saveImages=format == "html",
         )
     except Exception as e:
-        logger.warn(f"Error occured: {str(e)}")
+        logger.warning(f"Error occured: {str(e)}")
         if format != "html":
             return Response(
                 json.dumps({"error": str(e)}), media_type="application/json"
