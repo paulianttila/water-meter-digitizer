@@ -1,10 +1,14 @@
 import contextlib
+from dataclasses import dataclass
 import time
+from typing import List
 from PIL import Image
 import numpy as np
 import os
 import logging
 from importlib import util
+
+from lib.ImageProcessor import CutImage
 
 with contextlib.suppress(ImportError):
     import tflite_runtime.interpreter as tflite
@@ -17,6 +21,11 @@ found_tflite = spam_spec is not None
 
 logger = logging.getLogger(__name__)
 
+
+@dataclass
+class ReadoutResult:
+    name: str
+    value: float
 
 class CNNBase:
     def __init__(
@@ -54,12 +63,12 @@ class CNNBase:
         except Exception as e:
             logger.error(f"Error occured during model '{self.modelFile}' loading: {e}")
 
-    def readout(self, pictureList):
+    def readout(self, pictureList: List[CutImage]) -> List[ReadoutResult]:
         self.result = []
-        for image in pictureList:
-            value = self.readoutSingleImage(image[1])
-            self.saveImageToLogFolder(image, value)
-            self.result.append(value)
+        for item in pictureList:
+            value = self.readoutSingleImage(item.image)
+            self.saveImageToLogFolder(item.image, value)
+            self.result.append(ReadoutResult(item.name, value))
         return self.result
 
     def readoutSingleImage(self, image):

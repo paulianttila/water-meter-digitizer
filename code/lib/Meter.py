@@ -1,7 +1,7 @@
-import base64
 import configparser
 from dataclasses import dataclass
 from typing import Union
+from lib.CNNBase import ReadoutResult
 from lib.ImageProcessor import ImageProcessor
 from lib.DigitalCounterCNN import DigitalCounterCNN
 from lib.AnalogCounterCNN import AnalogCounterCNN
@@ -140,12 +140,10 @@ class Meter:
         try:
             config = configparser.ConfigParser()
             config.read(file)
-            logtime = config.get("PreviousValue", "Time")
+            time = config.get("PreviousValue", "Time")
 
-            fmt = "%Y-%m-%d_%H-%M-%S"
-            #        d1 = datetime.strptime(nowtime, fmt)
             d1 = datetime.now()
-            d2 = datetime.strptime(logtime, fmt)
+            d2 = datetime.strptime(time, "%Y-%m-%d_%H-%M-%S")
             diff = (d1 - d2).days * 24 * 60
 
             if diff <= readPreValueFromFileMaxAge:
@@ -238,11 +236,8 @@ class Meter:
             self._fillValueWithLeadingZeros(len(resultDigital), newValue.integerPart),
             resultDigital,
             resultAnalog,
-            cutIimages,
             previousValue,
             "",
-            cutIimages.analogImages,
-            cutIimages.digitalImages,
         )
         logger.debug(
             f"Procesing time {time.time() - startTime:.3f} sec, result: {result}"
@@ -262,11 +257,8 @@ class Meter:
         integerPart,
         resultDigital,
         resultAnalog,
-        cutIimages,
         preval,
         error,
-        analogImages,
-        digitalImages,
     ) -> ValueResult:
 
         value = Value(
@@ -276,17 +268,15 @@ class Meter:
         )
 
         digitalResults = {}
-        for i in range(len(resultDigital)):
-            val = "NaN" if resultDigital[i] == "NaN" else str(int(resultDigital[i]))
-            name = str(cutIimages.digitalImages[i][0])
-            digitalResults[name] = val
+        for item in resultDigital:
+            val = "NaN" if item.value == "NaN" else str(int(item.value))
+            digitalResults[item.name] = val
 
         analogResults = {}
         if self.config.analogReadOutEnabled:
-            for i in range(len(resultAnalog)):
-                val = "{:.1f}".format(resultAnalog[i])
-                name = str(cutIimages.analogImages[i][0])
-                analogResults[name] = val
+            for item in resultAnalog:
+                val = "{:.1f}".format(item.value)
+                analogResults[item.name] = val
 
         return ValueResult(
             newValue=value,
@@ -315,11 +305,11 @@ class Meter:
             if abs(delta) > self.config.maxRateValue:
                 raise ConcistencyError("Rate too high ({delta:.4f})")
 
-    def _analogReadoutToValue(self, decimalParts: list) -> str:
+    def _analogReadoutToValue(self, decimalParts: list[ReadoutResult]) -> str:
         prev = -1
         strValue = ""
         for item in decimalParts[::-1]:
-            prev = self._evaluateAnalogCounters(item, prev)
+            prev = self._evaluateAnalogCounters(item.value, prev)
             strValue = f"{prev}{strValue}"
         return strValue
 
@@ -347,7 +337,7 @@ class Meter:
 
     def _digitalReadoutToValue(
         self,
-        digitalValues: list,
+        digitalValues: list[ReadoutResult],
         usePreviuosValue: bool,
         lastDecimalPart,
         currentDecimalPart,
@@ -370,7 +360,7 @@ class Meter:
         strValue = ""
 
         for i in range(len(digitalValues) - 1, -1, -1):
-            digit = digitalValues[i]
+            digit = digitalValues[i].value
             if digit == "NaN":
                 if usePreviuosValue:
                     digit = int(lastIntegerPart[i])
@@ -406,7 +396,7 @@ class Meter:
     def _getCurrentValueAsNumber(self) -> Union[float, int, str]:
         if "N" in self.currentIntegerPart or "N" in self.currentDecimalPart:
             return f"{self.currentIntegerPart.lstrip('0')}.{self.currentDecimalPart}"
-        
+
         if self.config.analogReadOutEnabled:
             return float(
                 f"{self.currentIntegerPart.lstrip('0')}.{self.currentDecimalPart}"

@@ -1,6 +1,7 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 
 import os
+from typing import List
 import numpy as np
 import cv2
 from PIL import Image
@@ -11,9 +12,15 @@ logger = logging.getLogger(__name__)
 
 
 @dataclass
+class CutImage:
+    name: str
+    image: Image
+
+
+@dataclass
 class CutResult:
-    analogImages = []
-    digitalImages = []
+    analogImages: List[CutImage]
+    digitalImages: List[CutImage]
 
     def __init__(self, analogImages, digitalImages):
         self.analogImages = analogImages
@@ -69,9 +76,9 @@ class ImageProcessor:
         source,
         imagePositions: ImagePosition,
         storeIntermediateFiles: bool = False,
-    ) -> list:
+    ) -> List[CutImage]:
         return [
-            [digit.name, self._cutImage(source, digit, storeIntermediateFiles)]
+            CutImage(digit.name, self._cutImage(source, digit, storeIntermediateFiles))
             for digit in imagePositions
         ]
 
