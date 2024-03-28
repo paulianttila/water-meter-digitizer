@@ -1,18 +1,9 @@
 <!DOCTYPE html>
 <html>
 <body>
-    <p>Total value: <b>{{ result.newValue.value }}</b></p>
-    <ul>
-        <li>Interger part: {{ result.newValue.integerPart }}</li>
-        <li>Decimal part: {{ result.newValue.decimalPart }}</li>
-    </ul>
-    <p><small></small></p>
-    <p><small></small></p>
-    <p>Previous value: {{ result.previousValue.value }}</p>
-    <ul>
-        <li>Integer part: {{ result.previousValue.integerPart }}</li>
-        <li>Decimal part: {{ result.previousValue.decimalPart }}</li>
-    </ul>
+    <p>Value: {{ result.value }}</p>
+    <p>Raw value: {{ result.rawValue }}</p>
+    <p>Previous value: {{ result.previousValue }}</p>
     <br>
     <p>Aligned Image:</p>
     <img src=/image_tmp/aligned.jpg></img></p>

@@ -18,16 +18,10 @@ logger = logging.getLogger(__name__)
 
 
 @dataclass
-class Value:
-    value: Union[float, int, str]
-    decimalPart: str
-    integerPart: str
-
-
-@dataclass
 class ValueResult:
-    newValue: Value
-    previousValue: Value
+    value: str
+    rawValue: str
+    previousValue: str
     digitalResults: dict
     analogResults: dict
     error: str
@@ -61,11 +55,8 @@ class Meter:
                 self.prevValueFile, self.config.readPreValueFromFileMaxAge
             )
         else:
-            self.lastIntegerPart = ""
-            self.lastDecimalPart = ""
-
-        self.currentIntegerPart = ""
-        self.currentDecimalPart = ""
+            self.previousValue = ""
+        self.currentValue = ""
 
         self._initAnalog()
         self._initDigital()
@@ -98,34 +89,12 @@ class Meter:
         else:
             logger.debug("Digital model disabled")
 
-    def setPreviousValue(self, setValue: float) -> float:
-        integer, decimals = str(setValue).split(".")
-        nrOfDigits = len(self.config.cutDigitalDigit)
-        digital = integer[:nrOfDigits]
-        self.lastIntegerPart = self._fillValueWithLeadingZeros(nrOfDigits, digital)
-
-        result = "N"
-        if self.config.analogReadOutEnabled:
-            nrOfAnalogs = len(self.config.cutAnalogCounter)
-            analog = decimals[:nrOfAnalogs]
-            self.lastDecimalPart = self._fillValueWithEndingZeros(nrOfAnalogs, analog)
-            result = f"{self.lastIntegerPart}.{self.lastDecimalPart}"
-        else:
-            result = self.lastIntegerPart
-
-        self._savePreviousValueToFile(self.prevValueFile)
-        return float(result)
-
     def _savePreviousValueToFile(self, file: str):
-        logtime = time.strftime("%Y-%m-%d_%H-%M-%S", time.localtime())
+        logtime = time.strftime("%Y.%m.%d %H:%M:%S", time.localtime())
         config = configparser.ConfigParser()
         config.read(file)
-        config["PreviousValue"]["DecimalPart"] = self.lastDecimalPart
-        if self.config.analogReadOutEnabled:
-            config["PreviousValue"]["IntegerPart"] = self.lastIntegerPart
-        else:
-            config["PreviousValue"]["IntegerPart"] = "0"
         config["PreviousValue"]["Time"] = logtime
+        config["PreviousValue"]["Value"] = self.previousValue
         with open(file, "w") as cfg:
             config.write(cfg)
 
@@ -135,20 +104,16 @@ class Meter:
             config.read(file)
             time = config.get("PreviousValue", "Time")
 
-            d1 = datetime.now()
-            d2 = datetime.strptime(time, "%Y-%m-%d_%H-%M-%S")
-            diff = (d1 - d2).days * 24 * 60
+            valueTime = datetime.strptime(time, "%Y.%m.%d %H:%M:%S")
+            diff = (datetime.now() - valueTime).days * 24 * 60
 
             if diff <= readPreValueFromFileMaxAge:
-                self.lastDecimalPart = config.get("PreviousValue", "DecimalPart")
-                self.lastIntegerPart = config.get("PreviousValue", "IntegerPart")
+                self.previousValue = config.get("PreviousValue", "Value")
                 logger.info(
-                    f"Previous value loaded from file: "
-                    f"{self.lastIntegerPart}.{self.lastDecimalPart}"
+                    f"Previous value loaded from file: " f"{self.previousValue}"
                 )
             else:
-                self.lastDecimalPart = ""
-                self.lastIntegerPart = ""
+                self.previousValue = ""
                 logger.info(
                     f"Previous value not loaded from file as value is too old: "
                     f"({str(diff)} minutes)."
@@ -180,9 +145,6 @@ class Meter:
         saveImages: bool = False,
     ) -> ValueResult:
 
-        logger.debug("Create previous values")
-        previousValue = self._createPreviousValues()
-
         logger.debug("Load image")
         data = loadImageFromUrl(
             url=url if url is not None else self.config.httpImageUrl,
@@ -213,37 +175,41 @@ class Meter:
 
         logger.debug("Start post processing")
         if self.config.analogReadOutEnabled:
-            self.currentDecimalPart = self._analogReadoutToValue(resultAnalog)
+            currentDecimalPart = self._analogReadoutToValue(resultAnalog)
         else:
-            self.currentDecimalPart = 0
+            currentDecimalPart = ""
+
         if self.config.digitalReadOutEnabled:
-            self.currentIntegerPart = self._digitalReadoutToValue(
+            currentIntegerPartRaw = self._digitalReadoutToRawValue(resultDigital)
+            currentIntegerPart = self._digitalReadoutToValue(
                 resultDigital,
                 usePreviuosValue,
-                self.lastDecimalPart,
-                self.currentDecimalPart,
+                currentDecimalPart,
             )
-        else:
-            self.currentIntegerPart = 0
 
-        logger.debug("Check consistency")
-        if not ignoreConsistencyCheck:
-            self._checkConsistency()
+        else:
+            currentIntegerPart = ""
+
+        self.currentValue = self._createTotalValue(
+            currentIntegerPart, currentDecimalPart
+        )
+        currentRawValue = f"{currentIntegerPartRaw}.{currentDecimalPart}"
+
+        if not ignoreConsistencyCheck and self.config.consistencyEnabled:
+            logger.debug("Check consistency")
+            self._checkConsistency(self.currentValue, self.previousValue)
 
         logger.debug("Update last values")
         self._updateLastValues()
 
         logger.debug("Generate meter value result")
-        currentValue = self._getCurrentValueAsNumber()
-        newValue = Value(currentValue, self.currentDecimalPart, self.currentIntegerPart)
 
         result = self._createValueResult(
-            newValue.value,
-            self._fillValueWithEndingZeros(len(resultAnalog), newValue.decimalPart),
-            self._fillValueWithLeadingZeros(len(resultDigital), newValue.integerPart),
+            self.currentValue,
+            currentRawValue,
             resultDigital,
             resultAnalog,
-            previousValue,
+            self.previousValue,
             "",
         )
         logger.debug(
@@ -251,28 +217,15 @@ class Meter:
         )
         return result
 
-    def _createPreviousValues(self) -> Value:
-        prevValue = self._getPreviousValueAsNumber()
-        integerPart = None if self.lastIntegerPart == "" else self.lastIntegerPart
-        decimalPart = None if self.lastDecimalPart == "" else self.lastDecimalPart
-        return Value(value=prevValue, decimalPart=decimalPart, integerPart=integerPart)
-
     def _createValueResult(
         self,
-        val,
-        decimalPart,
-        integerPart,
+        currentValue,
+        currentRawValue,
         resultDigital,
         resultAnalog,
-        preval,
+        previousValue,
         error,
     ) -> ValueResult:
-
-        value = Value(
-            value=val,
-            decimalPart=decimalPart,
-            integerPart=integerPart,
-        )
 
         digitalResults = {}
         for item in resultDigital:
@@ -286,31 +239,28 @@ class Meter:
                 analogResults[item.name] = val
 
         return ValueResult(
-            newValue=value,
-            previousValue=preval,
+            value=currentValue,
+            rawValue=currentRawValue,
+            previousValue=previousValue if previousValue != "" else None,
             digitalResults=digitalResults,
             analogResults=analogResults,
             error=error,
         )
 
     def _updateLastValues(self):
-        if "N" in self.currentIntegerPart:
+        if "N" in self.currentValue:
             return
-        self.lastDecimalPart = self.currentDecimalPart
-        self.lastIntegerPart = self.currentIntegerPart
+        self.previousValue = self.currentValue
         self._savePreviousValueToFile(self.prevValueFile)
 
-    def _checkConsistency(self):
-        if (
-            (len(self.lastIntegerPart) > 0)
-            and "N" not in self.currentIntegerPart
-            and self.config.consistencyEnabled
-        ):
-            delta = self._getCurrentValueAsNumber() - self._getPreviousValueAsNumber()
+    def _checkConsistency(self, currentValue: str, previousValue: str):
+        if previousValue.isnumeric() and currentValue.isnumeric():
+            delta = float(currentValue) - float(self.previousValue)
             if not (self.config.allowNegativeRates) and (delta < 0):
                 raise ConcistencyError("Negative rate ({delta:.4f})")
             if abs(delta) > self.config.maxRateValue:
                 raise ConcistencyError("Rate too high ({delta:.4f})")
+        return currentValue
 
     def _analogReadoutToValue(self, decimalParts: list[ReadoutResult]) -> str:
         prev = -1
@@ -342,25 +292,41 @@ class Meter:
         logger.debug(f"Analog value: {newValue} (prev value: {prevValue}) -> {result}")
         return result
 
+    def _digitalReadoutToRawValue(
+        self,
+        digitalValues: list[ReadoutResult],
+    ) -> str:
+
+        strValue = ""
+
+        for i in range(len(digitalValues) - 1, -1, -1):
+            digit = digitalValues[i].value
+            if digit == "NaN":
+                digit = "N"
+            strValue = f"{digit}{strValue}"
+
+        return strValue
+
     def _digitalReadoutToValue(
         self,
         digitalValues: list[ReadoutResult],
         usePreviuosValue: bool,
-        lastDecimalPart,
-        currentDecimalPart,
+        currentDecimalPart: str,
     ) -> str:
-        lastIntegerPart = self._fillValueWithLeadingZeros(
-            len(digitalValues), self.lastIntegerPart
+
+        previousIntegerPart, previousDecimalPart = self.previousValue.split(".")
+        previousIntegerPart = self._fillValueWithLeadingZeros(
+            len(digitalValues), previousIntegerPart
         )
 
         if (
             usePreviuosValue
-            and str(self.lastIntegerPart) != ""
-            and str(self.lastDecimalPart) != ""
+            and str(previousIntegerPart) != ""
+            and str(previousDecimalPart) != ""
         ):
-            last = int(str(lastDecimalPart)[:1])
-            aktu = int(str(currentDecimalPart)[:1])
-            overZero = 1 if aktu < last else 0
+            previousMostSignificantDigit = int(previousDecimalPart[:1])
+            currentMostSignificantDigit = int(currentDecimalPart[:1])
+            rollover = currentMostSignificantDigit < previousMostSignificantDigit
         else:
             usePreviuosValue = False
 
@@ -370,27 +336,38 @@ class Meter:
             digit = digitalValues[i].value
             if digit == "NaN":
                 if usePreviuosValue:
-                    digit = int(lastIntegerPart[i])
-                    if overZero:
+                    digit = int(previousIntegerPart[i])
+                    if rollover:
                         digit += 1
                         if digit == 10:
                             digit = 0
-                            overZero = 1
+                            rollover = True
                         else:
-                            overZero = 0
+                            rollover = False
                 else:
                     digit = "N"
             logger.debug(
                 f"Digital value: {digitalValues[i]} "
-                f"(prev value: {lastIntegerPart[i]}) -> {digit}"
+                f"(prev value: {previousIntegerPart[i]}) -> {digit}"
             )
             strValue = f"{digit}{strValue}"
 
         return strValue
 
-    def _removeFileIfExists(self, filename):
-        if os.path.exists(filename):
-            os.remove(filename)
+    def _createTotalValue(self, integerPart: str, decimalPart: str) -> str:
+        if self.config.analogReadOutEnabled and self.config.digitalReadOutEnabled:
+            return f"{integerPart}.{decimalPart}"
+        if (
+            self.config.analogReadOutEnabled is False
+            and self.config.digitalReadOutEnabled
+        ):
+            return f"{integerPart}"
+        if (
+            self.config.analogReadOutEnabled
+            and self.config.digitalReadOutEnabled is False
+        ):
+            return f"{decimalPart}"
+        return ""
 
     def _fillValueWithLeadingZeros(self, length: int, value: str) -> str:
         return value.zfill(length) if len(value) < length else value
@@ -400,28 +377,11 @@ class Meter:
             value = f"{value}0"
         return value
 
-    def _getCurrentValueAsNumber(self) -> Union[float, int, str]:
-        if "N" in self.currentIntegerPart or "N" in self.currentDecimalPart:
-            return f"{self.currentIntegerPart.lstrip('0')}.{self.currentDecimalPart}"
-
-        if self.config.analogReadOutEnabled:
-            return float(
-                f"{self.currentIntegerPart.lstrip('0')}.{self.currentDecimalPart}"
-            )
-        else:
-            return int(self.currentIntegerPart.lstrip("0"))
-
-    def _getPreviousValueAsNumber(self) -> Union[float, int]:
-        if self.config.analogReadOutEnabled:
-            return float(f"{self.lastIntegerPart.lstrip('0')}.{self.lastDecimalPart}")
-        else:
-            return int(self.lastIntegerPart.lstrip("0"))
-
     def _saveImageToFile(self, file: str, data: bytes) -> None:
         with open(file, "wb") as f:
             f.write(data)
 
-    def _copyImageToLogFolder(self, imageFile) -> None:
+    def _copyImageToLogFolder(self, imageFile: str) -> None:
         self._createFolders(self.config.httpImageLogFolder)
         logtime = time.strftime("%Y-%m-%d_%H-%M-%S", time.localtime())
         filename = f"{self.config.httpImageLogFolder }/{logtime}.jpg"

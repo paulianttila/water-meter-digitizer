@@ -126,7 +126,7 @@ def getMeterValue(
             media_type="application/json",
         )
     if simpleOutput:
-        return Response(f"{result.newValue.value}", media_type="text/html")
+        return Response(f"{result.newValue}", media_type="text/html")
     return templates.TemplateResponse(
         "result.html",
         context={
