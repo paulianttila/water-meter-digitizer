@@ -1,5 +1,6 @@
 from dataclasses import dataclass, field
 
+import io
 import os
 from typing import List
 import numpy as np
@@ -38,6 +39,15 @@ class ImageProcessor:
                 self.referenceImages.append(cv2.imread(file))
             else:
                 logger.warning(f"Reference Image {file} not found")
+
+    def verifyImage(self, data: bytes) -> bool:
+        try:
+            image = Image.open(io.BytesIO(data))
+            image.verify()
+            return True
+        except Exception as e:
+            logger.warning(f"Image verification failed: {str(e)}")
+            return False
 
     def convertImageToBytes(self, image: Image) -> bytes:
         success, buffer = cv2.imencode(".jpg", image)

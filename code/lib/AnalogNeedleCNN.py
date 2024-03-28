@@ -6,13 +6,12 @@ import logging
 logger = logging.getLogger(__name__)
 
 
-class AnalogCounterCNN(CNNBase):
+class AnalogNeedleCNN(CNNBase):
     def __init__(
         self,
         modelfile: str,
         dx: int,
         dy: int,
-        imageTmpFolder: str = "/image_tmp/",
         imageLogFolder: str = None,
         imageLogNames: list = None,
     ):
@@ -20,7 +19,6 @@ class AnalogCounterCNN(CNNBase):
             modelfile,
             dx=dx,
             dy=dy,
-            imageTmpFolder=imageTmpFolder,
             imageLogFolder=imageLogFolder,
             imageLogNames=imageLogNames,
         )

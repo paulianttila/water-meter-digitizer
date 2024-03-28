@@ -4,8 +4,8 @@ from typing import Union
 from lib.CNNBase import ReadoutResult
 from lib.ImageProcessor import ImageProcessor
 from lib.DigitalCounterCNN import DigitalCounterCNN
-from lib.AnalogCounterCNN import AnalogCounterCNN
-from lib.ImageLoader import ImageLoader
+from lib.AnalogNeedleCNN import AnalogNeedleCNN
+from lib.ImageLoader import loadImageFromUrl
 from lib.Config import Config
 import math
 import os
@@ -71,19 +71,13 @@ class Meter:
         self._initDigital()
 
         self.imageProcessor = ImageProcessor(self.config, imageTmpFolder=imageTmpFolder)
-        self.imageLoader = ImageLoader(
-            url=self.config.httpImageUrl,
-            timeout=self.config.httpTimeoutLoadImage,
-            minImageSize=10000,
-        )
 
     def _initAnalog(self):
         if self.config.analogReadOutEnabled:
-            self.analogCounterReader = AnalogCounterCNN(
+            self.analogCounterReader = AnalogNeedleCNN(
                 modelfile=self.config.analogModelFile,
                 dx=32,
                 dy=32,
-                imageTmpFolder=self.imageTmpFolder,
                 imageLogFolder=self.config.analogImageLogFolder,
                 imageLogNames=self.config.analogLogImageNames,
             )
@@ -97,7 +91,6 @@ class Meter:
                 modelfile=self.config.digitModelFile,
                 dx=20,
                 dy=32,
-                imageTmpFolder=self.imageTmpFolder,
                 imageLogFolder=self.config.digitImageLogFolder,
                 imageLogNames=self.config.digitLogImageNames,
             )
@@ -163,8 +156,15 @@ class Meter:
         except Exception as e:
             logger.warning(f"Error occured during previous value loading: {str(e)}")
 
-    def getROI(self, url: str, timeout: int = 0):
-        data = self.imageLoader.loadImageFromUrl(url, timeout)
+    def getROI(self, url: str = None, timeout: int = 0):
+        data = loadImageFromUrl(
+            url=url if url is not None else self.config.httpImageUrl,
+            timeout=timeout if timeout != 0 else self.config.httpTimeoutLoadImage,
+            minImageSize=self.config.httpImageMinSize,
+        )
+        if self.imageProcessor.verifyImage(data) is not True:
+            raise ValueError("Downloaded image file is corrupted")
+
         image = self.imageProcessor.loadImage(data)
         image = self.imageProcessor.rotate(image)
         image = self.imageProcessor.align(image)
@@ -173,7 +173,7 @@ class Meter:
 
     def getMeterValue(
         self,
-        url: str,
+        url: str = None,
         usePreviuosValue: bool = False,
         ignoreConsistencyCheck: bool = False,
         timeout: int = 0,
@@ -184,7 +184,14 @@ class Meter:
         previousValue = self._createPreviousValues()
 
         logger.debug("Load image")
-        data = self.imageLoader.loadImageFromUrl(url, timeout)
+        data = loadImageFromUrl(
+            url=url if url is not None else self.config.httpImageUrl,
+            timeout=timeout if timeout != 0 else self.config.httpTimeoutLoadImage,
+            minImageSize=self.config.httpImageMinSize,
+        )
+        if self.imageProcessor.verifyImage(data) is not True:
+            raise ValueError("Downloaded image file is corrupted")
+
         if self.config.httpLogOnlyFalsePictures is False:
             self._saveImageToFile(f"{self.imageTmpFolder}/original.jpg", data)
 

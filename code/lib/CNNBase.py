@@ -33,7 +33,6 @@ class CNNBase:
         modelfile: str,
         dx: int,
         dy: int,
-        imageTmpFolder: str = "/image_tmp/",
         imageLogFolder: str = None,
         imageLogNames: list = None,
     ):
@@ -42,7 +41,6 @@ class CNNBase:
         self.modelFile = modelfile
         self.dx = dx
         self.dy = dy
-        self.imageTmpFolder = imageTmpFolder
         self.imageLogFolder = imageLogFolder
         self.imageLogNames = imageLogNames
 
@@ -73,7 +71,6 @@ class CNNBase:
 
     def readoutSingleImage(self, image):
         testImage = image.resize((self.dx, self.dy), Image.NEAREST)
-        #testImage.save(f"{self.imageTmpFolder}/resize.jpg", "JPEG")
         testImage = np.array(testImage, dtype="float32")
         input_data = np.reshape(testImage, [1, self.dy, self.dx, 3])
         self.interpreter.set_tensor(self.input_details[0]["index"], input_data)

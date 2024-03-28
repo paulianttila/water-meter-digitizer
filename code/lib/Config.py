@@ -25,6 +25,7 @@ class Config:
     ##################  LoadFileFromHTTP Parameters ########################
     httpTimeoutLoadImage: int = 30
     httpImageUrl: str = ""
+    httpImageMinSize: int = 10000
     httpImageLogFolder: str = ""
     httpLogOnlyFalsePictures: bool = False
 
@@ -72,6 +73,9 @@ class Config:
 
         self.httpImageUrl = config.get("Imagesource", "URLImageSource", fallback="")
 
+        self.httpImageMinSize = config.getint(
+            "Imagesource", "MinImageSize", fallback=10000
+        )
         self.httpImageLogFolder = config.get(
             "Imagesource", "LogImageLocation", fallback=""
         )

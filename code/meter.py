@@ -74,7 +74,7 @@ def reloadConfig():
 
 
 @app.get("/roi", response_class=HTMLResponse)
-def getRoi(request: Request, url: str = "", timeout: int = 0):
+def getRoi(request: Request, url: str = None, timeout: int = 0):
     try:
         meter.getROI(url, timeout)
         return templates.TemplateResponse(
@@ -95,7 +95,7 @@ def setPreviousValue(value: float):
 def getMeterValue(
     request: Request,
     format: str = "html",
-    url: str = "",
+    url: str = None,
     simpleOutput: bool = False,
     usePreviuosValue: bool = False,
     ignoreConsistencyCheck: bool = False,
@@ -145,7 +145,7 @@ if __name__ == "__main__":
     logging.getLogger("lib.CutImage").setLevel(logger.level)
     logging.getLogger("lib.ImageLoader").setLevel(logger.level)
     logging.getLogger("lib.Config").setLevel(logger.level)
-    logging.getLogger("lib.AnalogCounterCNN").setLevel(logger.level)
+    logging.getLogger("lib.AnalogNeedleCNN").setLevel(logger.level)
     logging.getLogger("lib.DigitalCounterCNN").setLevel(logger.level)
     logging.getLogger("lib.Meter").setLevel(logger.level)
 
