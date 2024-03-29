@@ -34,15 +34,11 @@ class CNNBase:
         dx: int,
         dy: int,
         imageLogFolder: str = None,
-        imageLogNames: list = None,
     ):
-        if imageLogNames is None:
-            imageLogNames = []
         self.modelFile = modelfile
         self.dx = dx
         self.dy = dy
         self.imageLogFolder = imageLogFolder
-        self.imageLogNames = imageLogNames
 
     def _loadModel(self):
         filename, file_extension = os.path.splitext(self.modelFile)
@@ -65,7 +61,7 @@ class CNNBase:
         self.result = []
         for item in pictureList:
             value = self.readoutSingleImage(item.image)
-            self.saveImageToLogFolder(item.image, value)
+            self.saveImageToLogFolder(item.name, item.image, value)
             self.result.append(ReadoutResult(item.name, value))
         return self.result
 
@@ -77,12 +73,8 @@ class CNNBase:
         self.interpreter.invoke()
         return self.interpreter.get_tensor(self.output_details[0]["index"])
 
-    def saveImageToLogFolder(self, image, value):
+    def saveImageToLogFolder(self, name:str, image: Image, value):
         if self.imageLogFolder is None or len(self.imageLogFolder) <= 0:
-            return
-
-        imageName = image[0]
-        if imageName not in self.imageLogNames:
             return
 
         val = str(int(value)) if isinstance(value, float) else str(value)
@@ -90,9 +82,9 @@ class CNNBase:
 
         self.createFolderIfNotExists(folder)
         t = time.strftime("%Y-%m-%d_%H-%M-%S", time.localtime())
-        filename = f"{folder}/{imageName}_{t}.jpg"
-        logger.debug(f"Save image to {filename}")
-        image[1].save(filename, "JPEG")
+        fileName = f"{folder}/{name}_{t}.jpg"
+        logger.debug(f"Save image to {fileName}")
+        image.save(fileName, "JPEG")
 
     def createFolderIfNotExists(self, folder: str):
         os.makedirs(folder, exist_ok=True)

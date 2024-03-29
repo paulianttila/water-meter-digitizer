@@ -13,14 +13,12 @@ class AnalogNeedleCNN(CNNBase):
         dx: int,
         dy: int,
         imageLogFolder: str = None,
-        imageLogNames: list = None,
     ):
         super().__init__(
             modelfile,
             dx=dx,
             dy=dy,
             imageLogFolder=imageLogFolder,
-            imageLogNames=imageLogNames,
         )
         super()._loadModel()
 

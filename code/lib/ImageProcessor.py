@@ -33,12 +33,12 @@ class ImageProcessor:
         self.imageTmpFolder = imageTmpFolder
         self.config = config
         self.referenceImages = []
-        for file in self.config.cutReferenceName:
-            if os.path.exists(file):
-                logger.debug(f"Use reference image {file}")
-                self.referenceImages.append(cv2.imread(file))
+        for item in self.config.alignmentRefImages:
+            if os.path.exists(item.fileName):
+                logger.debug(f"Use reference image {item.fileName}")
+                self.referenceImages.append(cv2.imread(item.fileName))
             else:
-                logger.warning(f"Reference Image {file} not found")
+                logger.warning(f"Reference Image {item.fileName} not found")
 
     def verifyImage(self, data: bytes) -> bool:
         try:
@@ -104,18 +104,21 @@ class ImageProcessor:
 
     def _align(self, source) -> Image:
         h, w, ch = source.shape
-        p0 = self._getRefCoordinate(source, self.referenceImages[0])
-        p1 = self._getRefCoordinate(source, self.referenceImages[1])
-        p2 = self._getRefCoordinate(source, self.referenceImages[2])
 
-        pts1 = np.float32([p0, p1, p2])
-        pts2 = np.float32(
-            [
-                self.config.cutReferencePos[0],
-                self.config.cutReferencePos[1],
-                self.config.cutReferencePos[2],
-            ]
-        )
+        refImageCordinates = [
+            self._getRefCoordinate(source, self.referenceImages[i])
+            for i in range(len(self.referenceImages))
+        ]
+
+        alignmentRefPos = [
+            (
+                self.config.alignmentRefImages[i].x,
+                self.config.alignmentRefImages[i].y,
+            )
+            for i in range(len(self.config.alignmentRefImages))
+        ]
+        pts1 = np.float32(refImageCordinates)
+        pts2 = np.float32(alignmentRefPos)
         M = cv2.getAffineTransform(pts1, pts2)
         return cv2.warpAffine(source, M, (w, h))
 
@@ -131,7 +134,7 @@ class ImageProcessor:
     def _rotateImage(self, image: Image) -> Image:
         h, w, ch = image.shape
         center = (w / 2, h / 2)
-        M = cv2.getRotationMatrix2D(center, self.config.cutRotateAngle, 1.0)
+        M = cv2.getRotationMatrix2D(center, self.config.alignmentRotateAngle, 1.0)
         image = cv2.warpAffine(image, M, (w, h))
         return image
 
@@ -139,103 +142,127 @@ class ImageProcessor:
         self,
         image: Image,
         storeToFile: bool = False,
-        drawRef=False,
-        drawDig=True,
-        drawCou=True,
+        rawRefs=False,
+        drawDigitals=True,
+        drawAnalogs=True,
     ) -> Image:
 
-        if drawRef:
-            self._drawRef(image)
+        if rawRefs:
+            self._drawRefs(image)
 
-        if drawDig:
-            self._drawDig(image)
+        if drawDigitals:
+            self._drawDigitals(image)
 
-        if drawCou:
-            self._drawCou(image)
+        if drawAnalogs:
+            self._drawAnalogs(image)
 
         if storeToFile:
             cv2.imwrite(f"{self.imageTmpFolder}/roi.jpg", image)
 
         return image
 
-    def _drawRef(self, image: Image) -> Image:
+    def _drawRefs(self, image: Image) -> Image:
         colour = (255, 0, 0)
         thickness = 3
-        for i in range(len(self.config.cutReferencePos)):
-            x, y = self.config.cutReferencePos[i]
+        font = cv2.FONT_HERSHEY_SIMPLEX
+
+        for i in range(len(self.config.alignmentRefImages)):
+            ref = self.config.alignmentRefImages[i]
+            x, y = ref.x, ref.y
             h, w = self.referenceImages[i].shape[:2]
             cv2.rectangle(
-                image,
-                (x - thickness, y - thickness),
-                (x + w + 2 * thickness, y + h + 2 * thickness),
-                colour,
-                thickness,
+                img=image,
+                pt1=(x - thickness, y - thickness),
+                pt2=(x + w + 2 * thickness, y + h + 2 * thickness),
+                color=colour,
+                thickness=thickness,
             )
             cv2.putText(
-                image,
-                self.config.cutReferenceName[i].replace("/config/", ""),
-                (x, y - 5),
-                0,
-                0.4,
-                colour,
+                img=image,
+                text=ref.name,
+                org=(x, y - 8),
+                fontFace=font,
+                fontScale=0.4,
+                color=colour,
             )
         return image
 
-    def _drawCou(self, image: Image) -> Image:
+    def _drawAnalogs(self, image: Image) -> Image:
         eclipse = 1
+        colour = (0, 255, 0)
         thickness = 3
+        font = cv2.FONT_HERSHEY_SIMPLEX
+
         for i in range(len(self.config.cutAnalogCounter)):
             imgPos = self.config.cutAnalogCounter[i]
             x, y, w, h = imgPos.x1, imgPos.y1, imgPos.w, imgPos.h
             cv2.rectangle(
-                image,
-                (x - thickness, y - thickness),
-                (x + w + 2 * thickness, y + h + 2 * thickness),
-                (0, 255, 0),
-                thickness,
+                img=image,
+                pt1=(x - thickness, y - thickness),
+                pt2=(x + w + 2 * thickness, y + h + 2 * thickness),
+                color=colour,
+                thickness=thickness,
             )
             xct = int(x + w / 2) + 1
             yct = int(y + h / 2) + 1
-            cv2.line(image, (x, yct), (x + w + 5, yct), (0, 255, 0), 1)
-            cv2.line(image, (xct, y), (xct, y + h), (0, 255, 0), 1)
+            cv2.line(image, (x, yct), (x + w + 5, yct), colour, 1)
+            cv2.line(image, (xct, y), (xct, y + h), colour, 1)
             cv2.ellipse(
-                image,
-                (xct, yct),
-                (int(w / 2) + 2 * eclipse, int(h / 2) + 2 * eclipse),
-                0,
-                0,
-                360,
-                (0, 255, 0),
-                eclipse,
+                img=image,
+                center=(xct, yct),
+                axes=(int(w / 2) + 2 * eclipse, int(h / 2) + 2 * eclipse),
+                angle=0,
+                startAngle=0,
+                endAngle=360,
+                color=colour,
+                thickness=eclipse,
             )
             cv2.putText(
-                image,
-                imgPos.name,
-                (x, y - 5),
-                0,
-                0.5,
-                (0, 255, 0),
+                img=image,
+                text=imgPos.name,
+                org=(x, y - 8),
+                fontFace=font,
+                fontScale=0.5,
+                color=colour,
             )
         return image
 
-    def _drawDig(self, image: Image) -> Image:
+    def _drawDigitals(self, image: Image) -> Image:
+        colour = (0, 255, 255)
         thickness = 3
+        font = cv2.FONT_HERSHEY_SIMPLEX
+
         for i in range(len(self.config.cutDigitalDigit)):
             imgPos = self.config.cutDigitalDigit[i]
             x, y, w, h = imgPos.x1, imgPos.y1, imgPos.w, imgPos.h
             cv2.rectangle(
-                image,
-                (x - thickness, y - thickness),
-                (x + w + 2 * thickness, y + h + 2 * thickness),
-                (0, 255, 0),
-                thickness,
+                img=image,
+                pt1=(x - thickness, y - thickness),
+                pt2=(x + w + 2 * thickness, y + h + 2 * thickness),
+                color=colour,
+                thickness=thickness,
             )
             cv2.putText(
-                image,
-                imgPos.name,
-                (x, y - 5),
-                0,
-                0.5,
-                (0, 255, 0),
+                img=image,
+                text=imgPos.name,
+                org=(x, y - 8),
+                fontFace=font,
+                fontScale=0.5,
+                color=colour,
             )
         return image
+
+    def _getOptimalFontScale(
+        self, text: str, width: int, fontFace=cv2.FONT_HERSHEY_SIMPLEX, thickness=1
+    ):
+        for scale in reversed(range(0, 60, 1)):
+            textSize = cv2.getTextSize(
+                text,
+                fontFace=cv2.FONT_HERSHEY_DUPLEX,
+                fontScale=scale / 10,
+                thickness=1,
+            )
+            new_width = textSize[0][0]
+            if new_width <= width:
+                return scale / 10
+        return 1

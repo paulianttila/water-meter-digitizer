@@ -1,6 +1,5 @@
 import configparser
 from dataclasses import dataclass
-from typing import Union
 from lib.CNNBase import ReadoutResult
 from lib.ImageProcessor import ImageProcessor
 from lib.DigitalCounterCNN import DigitalCounterCNN
@@ -70,7 +69,6 @@ class Meter:
                 dx=32,
                 dy=32,
                 imageLogFolder=self.config.analogImageLogFolder,
-                imageLogNames=self.config.analogLogImageNames,
             )
             logger.debug("Analog model init done")
         else:
@@ -83,7 +81,6 @@ class Meter:
                 dx=20,
                 dy=32,
                 imageLogFolder=self.config.digitImageLogFolder,
-                imageLogNames=self.config.digitLogImageNames,
             )
             logger.debug("Digital model init done")
         else:
@@ -135,6 +132,7 @@ class Meter:
         image = self.imageProcessor.align(image)
         logger.debug("Start ROI")
         image = self.imageProcessor.drawRoi(image, storeToFile=True)
+
 
     def getMeterValue(
         self,
