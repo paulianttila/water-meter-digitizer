@@ -1,21 +1,21 @@
 <!DOCTYPE html>
 <html>
 <body>
-    <p>Value: {{ result.value }}</p>
-    <p>Raw value: {{ result.rawValue }}</p>
-    <p>Previous value: {{ result.previousValue }}</p>
-    <br>
-    <p>Aligned Image:</p>
+    <h1>Meters</h1>
+    {% for meter in result.meters %}
+    <p>{{ meter.name }}: {{ meter.value }}</p>
+    {% endfor %}
+    <h2>Aligned Image</h2>
     <img src=/image_tmp/aligned.jpg></img></p>
-    <p>Digital counters:</p>
+    <h2>Digital counters</h2>
     {% for image, value in result.digitalResults.items() %}
     <img src=/image_tmp/{{ image }}.jpg></img>{{ value }}
     {% endfor %}
-    <p>Analog counters:</p>
+    <h2>Analog counters</h2>
     {% for image, value in result.analogResults.items() %} 
     <img src=/image_tmp/{{ image }}.jpg></img>{{ value }}
     {% endfor %}
-    <p>Region Of Interest (ROI):</p>
+    <h2>Region Of Interest (ROI)</h2>
     <img src=/image_tmp/roi.jpg></img>
-    </body>
+</body>
 </html>

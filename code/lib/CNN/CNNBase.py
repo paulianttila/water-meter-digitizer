@@ -8,7 +8,7 @@ import os
 import logging
 from importlib import util
 
-from lib.ImageProcessor import CutImage
+from lib.Utils.ImageProcessor import CutImage
 
 with contextlib.suppress(ImportError):
     import tflite_runtime.interpreter as tflite
@@ -21,11 +21,23 @@ found_tflite = spam_spec is not None
 
 logger = logging.getLogger(__name__)
 
+# Convolutional Neural Network
+
 
 @dataclass
 class ReadoutResult:
     name: str
     value: float
+
+
+@dataclass
+class ModelDetails:
+    name: str
+    xsize: int
+    ysize: int
+    channels: int
+    numerOutput: int
+
 
 class CNNBase:
     def __init__(
@@ -54,8 +66,28 @@ class CNNBase:
             self.interpreter.allocate_tensors()
             self.input_details = self.interpreter.get_input_details()
             self.output_details = self.interpreter.get_output_details()
+            self.getModelDetails()
         except Exception as e:
             logger.error(f"Error occured during model '{self.modelFile}' loading: {e}")
+
+    def getModelDetails(self) -> ModelDetails:
+        xsize = self.input_details[0]["shape"][1]
+        ysize = self.input_details[0]["shape"][2]
+        channels = self.input_details[0]["shape"][3]
+        numeroutput = self.output_details[0]["shape"][1]
+        logger.info(
+            f"Model '{self.modelFile}' loaded. "
+            f"ModelSize: {xsize}x{ysize}x{channels}. "
+            f"Output: {numeroutput}"
+        )
+
+        return ModelDetails(
+            self.modelFile,
+            xsize,
+            ysize,
+            channels,
+            numeroutput,
+        )
 
     def readout(self, pictureList: List[CutImage]) -> List[ReadoutResult]:
         self.result = []
@@ -73,7 +105,7 @@ class CNNBase:
         self.interpreter.invoke()
         return self.interpreter.get_tensor(self.output_details[0]["index"])
 
-    def saveImageToLogFolder(self, name:str, image: Image, value):
+    def saveImageToLogFolder(self, name: str, image: Image, value):
         if self.imageLogFolder is None or len(self.imageLogFolder) <= 0:
             return
 

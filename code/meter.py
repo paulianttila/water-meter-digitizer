@@ -1,8 +1,8 @@
 import dataclasses
 import json
 import signal
-from lib.ImageLoader import DownloadFailure
-from lib.Meter import Meter
+from lib.Utils.ImageLoader import DownloadFailure
+from lib.MeterProcessor import MeterProcessor
 import os
 import gc
 import logging
@@ -65,7 +65,7 @@ def reloadConfig():
     global meter
     del meter
     gc.collect()
-    meter = Meter(  # noqa: F841
+    meter = MeterProcessor(  # noqa: F841
         configFile=f"{configDir}/config.ini",
         prevValueFile=f"{configDir}/prevalue.ini",
         imageTmpFolder=imageTmpFolder,
@@ -76,10 +76,10 @@ def reloadConfig():
 @app.get("/roi", response_class=HTMLResponse)
 def getRoi(request: Request, url: str = None, timeout: int = 0):
     try:
-        meter.getROI(url, timeout)
+        base64image = meter.getROI(url, timeout)
         return templates.TemplateResponse(
             "roi.html",
-            context={"request": request, "image": "/image_tmp/roi.jpg"},
+            context={"request": request, "data": base64image},
         )
     except DownloadFailure as e:
         return f"Error: {e}"
@@ -91,24 +91,19 @@ def setPreviousValue(value: float):
     return f"Last value set to: {result}"
 
 
-@app.get("/meter")
-def getMeterValue(
+@app.get("/meters")
+def getMeters(
     request: Request,
     format: str = "html",
     url: str = None,
-    simpleOutput: bool = False,
-    usePreviuosValue: bool = False,
-    ignoreConsistencyCheck: bool = False,
     timeout: int = 0,
 ):
     if format not in ["html", "json"]:
         return Response("Invalid format. Use 'html' or 'json'", media_type="text/html")
 
     try:
-        result = meter.getMeterValue(
+        result = meter.getMeters(
             url=url,
-            usePreviuosValue=usePreviuosValue,
-            ignoreConsistencyCheck=ignoreConsistencyCheck,
             timeout=timeout,
             saveImages=format == "html",
         )
@@ -125,10 +120,8 @@ def getMeterValue(
             json.dumps(dataclasses.asdict(result)),
             media_type="application/json",
         )
-    if simpleOutput:
-        return Response(f"{result.newValue}", media_type="text/html")
     return templates.TemplateResponse(
-        "result.html",
+        "meters.html",
         context={
             "request": request,
             "result": result,
@@ -141,17 +134,18 @@ if __name__ == "__main__":
     if logLevel is not None:
         logger.setLevel(logLevel)
 
-    logging.getLogger("lib.CNNBase").setLevel(logger.level)
-    logging.getLogger("lib.CutImage").setLevel(logger.level)
-    logging.getLogger("lib.ImageLoader").setLevel(logger.level)
+    logging.getLogger("lib.CNN.CNNBase").setLevel(logger.level)
+    logging.getLogger("lib.CNN.AnalogNeedleCNN").setLevel(logger.level)
+    logging.getLogger("lib.CNN.DigitalCounterCNN").setLevel(logger.level)
+    logging.getLogger("lib.Utils.ImageLoader").setLevel(logger.level)
+    logging.getLogger("lib.Utils.ImageProcesor").setLevel(logger.level)
     logging.getLogger("lib.Config").setLevel(logger.level)
-    logging.getLogger("lib.AnalogNeedleCNN").setLevel(logger.level)
-    logging.getLogger("lib.DigitalCounterCNN").setLevel(logger.level)
-    logging.getLogger("lib.Meter").setLevel(logger.level)
+    logging.getLogger("lib.MeterProcessor").setLevel(logger.level)
+    logging.getLogger("lib.PreviousValueFile").setLevel(logger.level)
 
     configDir = os.environ.get("CONFIG_DIR", "/config")
     imageTmpFolder = os.environ.get("IMAGE_TMP", "/image_tmp")
-    meter = Meter(
+    meter = MeterProcessor(
         configFile=f"{configDir}/config.ini",
         prevValueFile=f"{configDir}/prevalue.ini",
         imageTmpFolder=imageTmpFolder,

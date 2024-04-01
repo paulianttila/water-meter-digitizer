@@ -1,4 +1,4 @@
-from dataclasses import dataclass, field
+from dataclasses import dataclass
 
 import io
 import os
@@ -49,12 +49,16 @@ class ImageProcessor:
             logger.warning(f"Image verification failed: {str(e)}")
             return False
 
-    def convertImageToBytes(self, image: Image) -> bytes:
+    def convertBGRtoRGB(self, image: Image) -> Image:
+        success, buffer = cv2.imencode(".jpg", image)
+        return self.convBytesToImage(buffer.tobytes())
+
+    def convBytesToImage(self, data: bytes) -> Image:
+        return cv2.imdecode(np.frombuffer(data, np.uint8), cv2.IMREAD_COLOR)
+
+    def convRGBimageToBytes(self, image: Image) -> bytes:
         success, buffer = cv2.imencode(".jpg", image)
         return buffer.tobytes()
-
-    def loadImage(self, data: bytes) -> Image:
-        return cv2.imdecode(np.frombuffer(data, np.uint8), cv2.IMREAD_COLOR)
 
     def rotate(self, image: Image, storeIntermediateFiles: bool = False) -> Image:
         image = self._rotateImage(image)
@@ -83,7 +87,7 @@ class ImageProcessor:
 
     def _cutImages(
         self,
-        source,
+        source: Image,
         imagePositions: ImagePosition,
         storeIntermediateFiles: bool = False,
     ) -> List[CutImage]:
@@ -93,7 +97,10 @@ class ImageProcessor:
         ]
 
     def _cutImage(
-        self, source, imgPosition: ImagePosition, storeIntermediateFiles: bool = False
+        self,
+        source: Image,
+        imgPosition: ImagePosition,
+        storeIntermediateFiles: bool = False,
     ) -> Image:
         x, y, w, h = imgPosition.x1, imgPosition.y1, imgPosition.w, imgPosition.h
         cropImg = source[y : y + h, x : x + w]
@@ -102,7 +109,7 @@ class ImageProcessor:
         cropImg = cv2.cvtColor(cropImg, cv2.COLOR_BGR2RGB)
         return Image.fromarray(cropImg)
 
-    def _align(self, source) -> Image:
+    def _align(self, source: Image) -> Image:
         h, w, ch = source.shape
 
         refImageCordinates = [
@@ -138,7 +145,7 @@ class ImageProcessor:
         image = cv2.warpAffine(image, M, (w, h))
         return image
 
-    def drawRoi(
+    def drawROI(
         self,
         image: Image,
         storeToFile: bool = False,

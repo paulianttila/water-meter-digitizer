@@ -29,6 +29,18 @@ class RefImages:
 
 
 @dataclass
+class MeterConfig:
+    name: str
+    format: str
+    consistencyEnabled: bool
+    allowNegativeRates: bool
+    maxRateValue: float
+    usePreviuosValue: bool
+    preValueFromFileMaxAge: int
+    useExtendedResolution: bool = False
+
+
+@dataclass
 class Config:
     ##################  LoadFileFromHTTP Parameters ########################
     httpTimeoutLoadImage: int = 30
@@ -37,16 +49,10 @@ class Config:
     httpImageLogFolder: str = ""
     httpLogOnlyFalsePictures: bool = False
 
-    ##################  ConsistencyCheck Parameters ########################
-    consistencyEnabled: bool = False
-    allowNegativeRates: bool = True
-    maxRateValue: float = None
-    readPreValueFromFileMaxAge: int = 0
-    readPreValueFromFileAtStartup: bool = False
-
     ##################  DigitalReadOut Parameters ########################
     digitalReadOutEnabled: bool = True
     digitModelFile: str = ""
+    digitModel: str = ""
     digitDoImageLogging: bool = False
     digitImageLogFolder: str = "/log"
     cutDigitalDigit: List[ImagePosition] = field(default_factory=list)
@@ -54,6 +60,7 @@ class Config:
     ##################  AnalogReadOut Parameters ########################
     analogReadOutEnabled: bool = False
     analogModelFile: str = ""
+    analogModel: str = ""
     analogDoImageLogging: bool = False
     analogImageLogFolder: str = ""
     cutAnalogCounter: List[ImagePosition] = field(default_factory=list)
@@ -62,7 +69,11 @@ class Config:
     alignmentRotateAngle: float = 0.0
     alignmentRefImages: List[RefImages] = field(default_factory=list)
 
+    ################## Meter Parameters ###############################
+    meterConfigs: List[MeterConfig] = field(default_factory=list)
+
     def parseConfig(self, iniFile: str = "/config/config.ini"):
+        # sourcery skip: avoid-builtin-shadow
         if not os.path.exists(iniFile):
             raise ConfigurationMissing("Configuration file '{iniFile}' not found")
 
@@ -73,42 +84,20 @@ class Config:
 
         ##################  LoadFileFromHTTP Parameters ########################
         self.httpTimeoutLoadImage = config.getint(
-            "Imagesource", "TimeoutLoadImage", fallback=30
+            "ImageSource", "TimeoutLoadImage", fallback=30
         )
 
-        self.httpImageUrl = config.get("Imagesource", "URLImageSource", fallback="")
+        self.httpImageUrl = config.get("ImageSource", "URLImageSource", fallback="")
 
         self.httpImageMinSize = config.getint(
-            "Imagesource", "MinImageSize", fallback=10000
+            "ImageSource", "MinImageSize", fallback=10000
         )
         self.httpImageLogFolder = config.get(
-            "Imagesource", "LogImageLocation", fallback=""
+            "ImageSource", "LogImageLocation", fallback=""
         )
 
         self.httpLogOnlyFalsePictures = config.getboolean(
-            "Imagesource", "LogOnlyFalsePictures", fallback=False
-        )
-
-        ##################  ConsistencyCheck Parameters ########################
-
-        self.consistencyEnabled = config.getboolean(
-            "ConsistencyCheck", "Enabled", fallback=False
-        )
-
-        self.allowNegativeRates = config.getboolean(
-            "ConsistencyCheck", "AllowNegativeRates", fallback=True
-        )
-
-        self.maxRateValue = config.getfloat(
-            "ConsistencyCheck", "MaxRateValue", fallback=None
-        )
-
-        self.readPreValueFromFileMaxAge = config.getint(
-            "ConsistencyCheck", "ReadPreValueFromFileMaxAge", fallback=0
-        )
-
-        self.readPreValueFromFileAtStartup = config.getboolean(
-            "ConsistencyCheck", "ReadPreValueFromFileAtStartup", fallback=False
+            "ImageSource", "LogOnlyFalsePictures", fallback=False
         )
 
         ##################  DigitalReadOut Parameters ########################
@@ -118,6 +107,10 @@ class Config:
         )
 
         self.digitModelFile = config.get("Digits", "Modelfile", fallback="")
+        self.digitModel = config.get("Digits", "Model", fallback="auto").lower()
+        if self.digitModel not in ["auto", "digital", "digital100"]:
+            raise ValueError(f"Unsupported model: {self.digitModel}")
+
         self.digitDoImageLogging = config.has_option("Digits", "LogImageLocation")
         self.digitImageLogFolder = config.get("Digits", "LogImageLocation", fallback="")
 
@@ -134,8 +127,13 @@ class Config:
         self.analogReadOutEnabled = config.getboolean(
             "AnalogReadOut", "Enabled", fallback=False
         )
+        if self.digitModel not in ["auto", "analog", "analog100"]:
+            raise ValueError(f"Unsupported model: {self.digitModel}")
 
         self.analogModelFile = config.get("Analog", "Modelfile", fallback="")
+        self.analogModel = config.get("Digits", "Model", fallback="auto").lower()
+        if self.digitModel not in ["auto", "analog", "analog100"]:
+            raise ValueError(f"Unsupported model: {self.digitModel}")
         self.analogDoImageLogging = config.has_option("Analog", "LogImageLocation")
         self.analogImageLogFolder = config.get(
             "Analog", "LogImageLocation", fallback=""
@@ -160,3 +158,38 @@ class Config:
             x = config.getint(f"Alignment.{name}", "x", fallback=0)
             y = config.getint(f"Alignment.{name}", "y", fallback=0)
             self.alignmentRefImages.append(RefImages(name, image, x, y))
+
+        ################## Meter Parameters ###############################
+        meterVals = config.get("Meters", "Names", fallback="")
+        for name in [x.strip() for x in meterVals.split(",")]:
+            format = config.get(f"Meter.{name}", "Value", fallback="")
+            consistencyEnabled = config.getboolean(
+                f"Meter.{name}", "ConsistencyEnabled", fallback=False
+            )
+            allowNegativeRates = config.getboolean(
+                f"Meter.{name}", "AllowNegativeRates", fallback=False
+            )
+            maxRateValue = config.getfloat(
+                f"Meter.{name}", "MaxRateValue", fallback=0.0
+            )
+            usePreviuosValue = config.getboolean(
+                f"Meter.{name}", "UsePreviuosValueFilling", fallback=False
+            )
+            preValueFromFileMaxAge = config.getint(
+                f"Meter.{name}", "PreValueFromFileMaxAge", fallback=0
+            )
+            useExtendedResolution = config.getboolean(
+                f"Meter.{name}", "UseExtendedResolution", fallback=False
+            )
+            self.meterConfigs.append(
+                MeterConfig(
+                    name,
+                    format,
+                    consistencyEnabled,
+                    allowNegativeRates,
+                    maxRateValue,
+                    usePreviuosValue,
+                    preValueFromFileMaxAge,
+                    useExtendedResolution
+                )
+            )
