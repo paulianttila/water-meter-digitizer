@@ -1,4 +1,4 @@
-FROM python:3.9-slim
+FROM python:3.11-slim
 
 RUN \
   apt-get update -y && \
@@ -9,13 +9,10 @@ EXPOSE 3000
 
 ENV PYTHONUNBUFFERED=1
 
-ARG tflite_runtime=tflite_runtime-2.5.0.post1-cp39-cp39-linux_x86_64.whl
+COPY requirements.txt ./
 
-COPY requirements.txt ./wheels/$tflite_runtime ./
-
-RUN pip install --no-cache-dir $tflite_runtime && \
-	pip install --no-cache-dir -r requirements.txt && \
-	rm -r requirements.txt  $tflite_runtime
+RUN pip install --no-cache-dir -r requirements.txt && \
+	rm -r requirements.txt
 
 RUN mkdir -p /image_tmp
 RUN mkdir -p /log
