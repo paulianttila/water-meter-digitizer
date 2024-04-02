@@ -51,7 +51,7 @@ jobs:
 
       - name: Run unit and integration tests
         run: |
-          cp -R config /
+          sudo cp -R config /
           bash ./run_tests.sh
 
       - name: Run code coverage
