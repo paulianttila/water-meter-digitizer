@@ -52,6 +52,8 @@ jobs:
       - name: Run unit and integration tests
         run: |
           sudo cp -R config /
+          sudo mkdir /image_tmp
+          sudo chown -R $(USER) /config /image_tmp 
           bash ./run_tests.sh
 
       - name: Run code coverage
