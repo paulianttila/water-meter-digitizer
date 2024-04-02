@@ -3,12 +3,12 @@ from shutil import copyfile
 import time
 
 
-def saveFile(file: str, data: bytes) -> None:
+def save_file(file: str, data: bytes) -> None:
     with open(file, "wb") as f:
         f.write(data)
 
 
-def createFolders(path: str) -> None:
+def create_folders(path: str) -> None:
     if path != "" and not os.path.exists(path):
         folders = path.split("/")
         path = folders[0]
@@ -18,8 +18,8 @@ def createFolders(path: str) -> None:
                 os.makedirs(path)
 
 
-def copyFileToLogFolder(file: str, folder: str) -> None:
-    createFolders(folder)
+def copy_file_to_log_folder(file: str, folder: str) -> None:
+    create_folders(folder)
     logtime = time.strftime("%Y-%m-%d_%H-%M-%S", time.localtime())
     filename = f"{folder}/{logtime}.jpg"
     copyfile(file, filename)

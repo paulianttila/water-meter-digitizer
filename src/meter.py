@@ -14,7 +14,7 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 import uvicorn
 
-version = "Version 8.0.0 (2024-03-22)"
+VERSION = "8.0.0"
 meter = None
 
 logging.basicConfig(
@@ -31,53 +31,53 @@ templates = Jinja2Templates(directory="web/templates")
 
 
 @app.get("/", response_class=HTMLResponse)
-def getIndex(request: Request):
+def get_index(request: Request):
     return templates.TemplateResponse(
-        "index.html", context={"request": request, "version": version}
+        "index.html", context={"request": request, "version": VERSION}
     )
 
 
-@app.get("/healthcheck")
+@app.get("/healthcheck", response_class=HTMLResponse)
 def healthcheck():
     return "Health - OK"
 
 
 @app.get("/image_tmp/{image}")
-def getImage(image: str):
+def get_image(image: str):
     logger.info(f"Getting image: {image}")
     return FileResponse(
-        f"{imageTmpDir}/{image}", media_type="image/jpg", filename=image
+        f"{image_tmp_dir}/{image}", media_type="image/jpg", filename=image
     )
 
 
 @app.get("/version", response_class=HTMLResponse)
-def getVersion():
-    return version
+def get_version():
+    return VERSION
 
 
 @app.get("/exit", response_class=HTMLResponse)
-def doExit():
+def do_exit():
     os.kill(os.getpid(), signal.SIGTERM)
     return "App will exit in immidiately"
 
 
 @app.get("/reload", response_class=HTMLResponse)
-def reloadConfig():
+def reload_config():
     global meter
     del meter
     gc.collect()
     meter = MeterProcessor(  # noqa: F841
-        configFile=f"{configDir}/config.ini",
-        prevValueFile=f"{configDir}/prevalue.ini",
-        imageTmpDir=imageTmpDir,
+        config_file=f"{config_dir}/config.ini",
+        prev_value_file=f"{config_dir}/prevalue.ini",
+        image_tmp_dir=image_tmp_dir,
     )
     return "Configuration reloaded"
 
 
 @app.get("/roi", response_class=HTMLResponse)
-def getRoi(request: Request, url: str = None, timeout: int = 0):
+def get_roi(request: Request, url: str = None, timeout: int = 0):
     try:
-        base64image = meter.getROI(url, timeout)
+        base64image = meter.get_roi(url, timeout)
         return templates.TemplateResponse(
             "roi.html",
             context={"request": request, "data": base64image},
@@ -87,13 +87,13 @@ def getRoi(request: Request, url: str = None, timeout: int = 0):
 
 
 @app.get("/setPreviousValue", response_class=HTMLResponse)
-def setPreviousValue(value: float):
+def set_previous_value(value: float):
     result = meter.setPreviousValue(value)
     return f"Last value set to: {result}"
 
 
 @app.get("/meters")
-def getMeters(
+def get_meters(
     request: Request,
     format: str = "html",
     url: str = None,
@@ -103,10 +103,10 @@ def getMeters(
         return Response("Invalid format. Use 'html' or 'json'", media_type="text/html")
 
     try:
-        result = meter.getMeters(
+        result = meter.get_meters(
             url=url,
             timeout=timeout,
-            saveImages=format == "html",
+            save_images=format == "html",
         )
     except Exception as e:
         logger.warning(f"Error occured: {str(e)}")
@@ -127,13 +127,14 @@ def getMeters(
             "request": request,
             "result": result,
         },
+        media_type="text/html",
     )
 
 
 if __name__ == "__main__":
-    logLevel = os.environ.get("LOG_LEVEL")
-    if logLevel is not None:
-        logger.setLevel(logLevel)
+    log_level = os.environ.get("LOG_LEVEL")
+    if log_level is not None:
+        logger.setLevel(log_level)
 
     logging.getLogger("lib.CNN.CNNBase").setLevel(logger.level)
     logging.getLogger("lib.CNN.AnalogNeedleCNN").setLevel(logger.level)
@@ -144,12 +145,12 @@ if __name__ == "__main__":
     logging.getLogger("lib.MeterProcessor").setLevel(logger.level)
     logging.getLogger("lib.PreviousValueFile").setLevel(logger.level)
 
-    configDir = os.environ.get("CONFIG_DIR", "/config")
-    imageTmpDir = os.environ.get("IMAGE_TMP", "/image_tmp")
+    config_dir = os.environ.get("CONFIG_DIR", "/config")
+    image_tmp_dir = os.environ.get("IMAGE_TMP", "/image_tmp")
     meter = MeterProcessor(
-        configFile=f"{configDir}/config.ini",
-        prevValueFile=f"{configDir}/prevalue.ini",
-        imageTmpFolder=imageTmpDir,
+        config_file=f"{config_dir}/config.ini",
+        prev_value_file=f"{config_dir}/prevalue.ini",
+        image_tmp_dir=image_tmp_dir,
     )
 
     port = 3000

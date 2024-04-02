@@ -23,7 +23,7 @@ class ImagePosition:
 @dataclass
 class RefImages:
     name: str
-    fileName: str
+    file_name: str
     x: int
     y: int
 
@@ -32,45 +32,45 @@ class RefImages:
 class MeterConfig:
     name: str
     format: str
-    consistencyEnabled: bool
-    allowNegativeRates: bool
-    maxRateValue: float
-    usePreviuosValue: bool
-    preValueFromFileMaxAge: int
-    useExtendedResolution: bool = False
+    consistency_enabled: bool
+    allow_negative_rates: bool
+    max_rate_value: float
+    use_previuos_value: bool
+    pre_value_from_file_max_age: int
+    use_extended_resolution: bool = False
 
 
 @dataclass
 class Config:
     ##################  LoadFileFromHTTP Parameters ########################
-    httpTimeoutLoadImage: int = 30
-    httpImageUrl: str = ""
-    httpImageMinSize: int = 10000
-    httpImageLogFolder: str = ""
-    httpLogOnlyFalsePictures: bool = False
+    http_load_image_timeout: int = 30
+    http_image_url: str = ""
+    http_image_min_size: int = 10000
+    http_image_log_dir: str = ""
+    http_log_only_false_pictures: bool = False
 
     ##################  DigitalReadOut Parameters ########################
-    digitalReadOutEnabled: bool = True
-    digitModelFile: str = ""
-    digitModel: str = ""
-    digitDoImageLogging: bool = False
-    digitImageLogFolder: str = "/log"
-    cutDigitalDigit: List[ImagePosition] = field(default_factory=list)
+    digital_readout_enabled: bool = True
+    digit_model_file: str = ""
+    digit_model: str = ""
+    digit_do_image_logging: bool = False
+    digit_image_log_dir: str = "/log"
+    cut_digital_digit: List[ImagePosition] = field(default_factory=list)
 
     ##################  AnalogReadOut Parameters ########################
-    analogReadOutEnabled: bool = False
-    analogModelFile: str = ""
-    analogModel: str = ""
-    analogDoImageLogging: bool = False
-    analogImageLogFolder: str = ""
-    cutAnalogCounter: List[ImagePosition] = field(default_factory=list)
+    analog_readout_enabled: bool = False
+    analog_model_file: str = ""
+    analog_model: str = ""
+    analog_do_image_logging: bool = False
+    analog_image_log_dir: str = ""
+    cut_analog_counter: List[ImagePosition] = field(default_factory=list)
 
     ################## Alignment Parameters ###############################
-    alignmentRotateAngle: float = 0.0
-    alignmentRefImages: List[RefImages] = field(default_factory=list)
+    alignment_rotate_angle: float = 0.0
+    alignment_ref_images: List[RefImages] = field(default_factory=list)
 
     ################## Meter Parameters ###############################
-    meterConfigs: List[MeterConfig] = field(default_factory=list)
+    meter_configs: List[MeterConfig] = field(default_factory=list)
 
     def parseConfig(self, iniFile: str = "/config/config.ini"):
         # sourcery skip: avoid-builtin-shadow
@@ -83,36 +83,36 @@ class Config:
         config.read(iniFile)
 
         ##################  LoadFileFromHTTP Parameters ########################
-        self.httpTimeoutLoadImage = config.getint(
+        self.http_load_image_timeout = config.getint(
             "ImageSource", "TimeoutLoadImage", fallback=30
         )
 
-        self.httpImageUrl = config.get("ImageSource", "URLImageSource", fallback="")
+        self.http_image_url = config.get("ImageSource", "URLImageSource", fallback="")
 
-        self.httpImageMinSize = config.getint(
+        self.http_image_min_size = config.getint(
             "ImageSource", "MinImageSize", fallback=10000
         )
-        self.httpImageLogFolder = config.get(
+        self.http_image_log_dir = config.get(
             "ImageSource", "LogImageLocation", fallback=""
         )
 
-        self.httpLogOnlyFalsePictures = config.getboolean(
+        self.http_log_only_false_pictures = config.getboolean(
             "ImageSource", "LogOnlyFalsePictures", fallback=False
         )
 
         ##################  DigitalReadOut Parameters ########################
 
-        self.digitalReadOutEnabled = config.getboolean(
+        self.digital_readout_enabled = config.getboolean(
             "DigitalReadOut", "Enabled", fallback=True
         )
 
-        self.digitModelFile = config.get("Digits", "Modelfile", fallback="")
-        self.digitModel = config.get("Digits", "Model", fallback="auto").lower()
-        if self.digitModel not in ["auto", "digital", "digital100"]:
-            raise ValueError(f"Unsupported model: {self.digitModel}")
+        self.digit_model_file = config.get("Digits", "Modelfile", fallback="")
+        self.digit_model = config.get("Digits", "Model", fallback="auto").lower()
+        if self.digit_model not in ["auto", "digital", "digital100"]:
+            raise ValueError(f"Unsupported model: {self.digit_model}")
 
-        self.digitDoImageLogging = config.has_option("Digits", "LogImageLocation")
-        self.digitImageLogFolder = config.get("Digits", "LogImageLocation", fallback="")
+        self.digit_do_image_logging = config.has_option("Digits", "LogImageLocation")
+        self.digit_image_log_dir = config.get("Digits", "LogImageLocation", fallback="")
 
         digits = config.get("Digits", "names")
         for name in [x.strip() for x in digits.split(",")]:
@@ -120,22 +120,22 @@ class Config:
             y1 = int(config[f"Digits.{name}"]["y"])
             w = int(config[f"Digits.{name}"]["dx"])
             h = int(config[f"Digits.{name}"]["dy"])
-            self.cutDigitalDigit.append(ImagePosition(name, x1, y1, w, h))
+            self.cut_digital_digit.append(ImagePosition(name, x1, y1, w, h))
 
         ##################  AnalogReadOut Parameters ########################
 
-        self.analogReadOutEnabled = config.getboolean(
+        self.analog_readout_enabled = config.getboolean(
             "AnalogReadOut", "Enabled", fallback=False
         )
-        if self.digitModel not in ["auto", "analog", "analog100"]:
-            raise ValueError(f"Unsupported model: {self.digitModel}")
+        if self.digit_model not in ["auto", "analog", "analog100"]:
+            raise ValueError(f"Unsupported model: {self.digit_model}")
 
-        self.analogModelFile = config.get("Analog", "Modelfile", fallback="")
-        self.analogModel = config.get("Digits", "Model", fallback="auto").lower()
-        if self.digitModel not in ["auto", "analog", "analog100"]:
-            raise ValueError(f"Unsupported model: {self.digitModel}")
-        self.analogDoImageLogging = config.has_option("Analog", "LogImageLocation")
-        self.analogImageLogFolder = config.get(
+        self.analog_model_file = config.get("Analog", "Modelfile", fallback="")
+        self.analog_model = config.get("Digits", "Model", fallback="auto").lower()
+        if self.digit_model not in ["auto", "analog", "analog100"]:
+            raise ValueError(f"Unsupported model: {self.digit_model}")
+        self.analog_do_image_logging = config.has_option("Analog", "LogImageLocation")
+        self.analog_image_log_dir = config.get(
             "Analog", "LogImageLocation", fallback=""
         )
 
@@ -145,10 +145,10 @@ class Config:
             y1 = int(config[f"Analog.{name}"]["y"])
             w = int(config[f"Analog.{name}"]["dx"])
             h = int(config[f"Analog.{name}"]["dy"])
-            self.cutAnalogCounter.append(ImagePosition(name, x1, y1, w, h))
+            self.cut_analog_counter.append(ImagePosition(name, x1, y1, w, h))
 
         ################## Alignment Parameters ###############################
-        self.alignmentRotateAngle = config.getfloat(
+        self.alignment_rotate_angle = config.getfloat(
             "Alignment", "InitialRotationAngle", fallback=0.0
         )
 
@@ -157,39 +157,39 @@ class Config:
             image = config.get(f"Alignment.{name}", "image", fallback="")
             x = config.getint(f"Alignment.{name}", "x", fallback=0)
             y = config.getint(f"Alignment.{name}", "y", fallback=0)
-            self.alignmentRefImages.append(RefImages(name, image, x, y))
+            self.alignment_ref_images.append(RefImages(name, image, x, y))
 
         ################## Meter Parameters ###############################
         meterVals = config.get("Meters", "Names", fallback="")
         for name in [x.strip() for x in meterVals.split(",")]:
             format = config.get(f"Meter.{name}", "Value", fallback="")
-            consistencyEnabled = config.getboolean(
+            consistency_enabled = config.getboolean(
                 f"Meter.{name}", "ConsistencyEnabled", fallback=False
             )
-            allowNegativeRates = config.getboolean(
+            allow_negative_rates = config.getboolean(
                 f"Meter.{name}", "AllowNegativeRates", fallback=False
             )
-            maxRateValue = config.getfloat(
+            max_rate_value = config.getfloat(
                 f"Meter.{name}", "MaxRateValue", fallback=0.0
             )
-            usePreviuosValue = config.getboolean(
+            use_previuos_value = config.getboolean(
                 f"Meter.{name}", "UsePreviuosValueFilling", fallback=False
             )
-            preValueFromFileMaxAge = config.getint(
+            pre_value_from_file_max_age = config.getint(
                 f"Meter.{name}", "PreValueFromFileMaxAge", fallback=0
             )
-            useExtendedResolution = config.getboolean(
+            use_extended_resolution = config.getboolean(
                 f"Meter.{name}", "UseExtendedResolution", fallback=False
             )
-            self.meterConfigs.append(
+            self.meter_configs.append(
                 MeterConfig(
                     name,
                     format,
-                    consistencyEnabled,
-                    allowNegativeRates,
-                    maxRateValue,
-                    usePreviuosValue,
-                    preValueFromFileMaxAge,
-                    useExtendedResolution,
+                    consistency_enabled,
+                    allow_negative_rates,
+                    max_rate_value,
+                    use_previuos_value,
+                    pre_value_from_file_max_age,
+                    use_extended_resolution,
                 )
             )

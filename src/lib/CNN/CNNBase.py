@@ -36,7 +36,7 @@ class ModelDetails:
     xsize: int
     ysize: int
     channels: int
-    numerOutput: int
+    numer_output: int
 
 
 class CNNBase:
@@ -45,15 +45,15 @@ class CNNBase:
         modelfile: str,
         dx: int,
         dy: int,
-        imageLogFolder: str = None,
+        image_log_dir: str = None,
     ):
-        self.modelFile = modelfile
+        self.modelfile = modelfile
         self.dx = dx
         self.dy = dy
-        self.imageLogFolder = imageLogFolder
+        self.image_log_dir = image_log_dir
 
     def _loadModel(self):
-        filename, file_extension = os.path.splitext(self.modelFile)
+        filename, file_extension = os.path.splitext(self.modelfile)
         if file_extension != ".tflite":
             logger.error(
                 "Only TFLite-Model (*.tflite) are support since version "
@@ -62,13 +62,13 @@ class CNNBase:
             return
 
         try:
-            self.interpreter = tflite.Interpreter(model_path=self.modelFile)
+            self.interpreter = tflite.Interpreter(model_path=self.modelfile)
             self.interpreter.allocate_tensors()
             self.input_details = self.interpreter.get_input_details()
             self.output_details = self.interpreter.get_output_details()
             self.getModelDetails()
         except Exception as e:
-            logger.error(f"Error occured during model '{self.modelFile}' loading: {e}")
+            logger.error(f"Error occured during model '{self.modelfile}' loading: {e}")
 
     def getModelDetails(self) -> ModelDetails:
         xsize = self.input_details[0]["shape"][1]
@@ -76,13 +76,13 @@ class CNNBase:
         channels = self.input_details[0]["shape"][3]
         numeroutput = self.output_details[0]["shape"][1]
         logger.info(
-            f"Model '{self.modelFile}' loaded. "
+            f"Model '{self.modelfile}' loaded. "
             f"ModelSize: {xsize}x{ysize}x{channels}. "
             f"Output: {numeroutput}"
         )
 
         return ModelDetails(
-            self.modelFile,
+            self.modelfile,
             xsize,
             ysize,
             channels,
@@ -98,25 +98,25 @@ class CNNBase:
         return self.result
 
     def readoutSingleImage(self, image):
-        testImage = image.resize((self.dx, self.dy), Image.NEAREST)
-        testImage = np.array(testImage, dtype="float32")
-        input_data = np.reshape(testImage, [1, self.dy, self.dx, 3])
+        test_image = image.resize((self.dx, self.dy), Image.NEAREST)
+        test_image = np.array(test_image, dtype="float32")
+        input_data = np.reshape(test_image, [1, self.dy, self.dx, 3])
         self.interpreter.set_tensor(self.input_details[0]["index"], input_data)
         self.interpreter.invoke()
         return self.interpreter.get_tensor(self.output_details[0]["index"])
 
     def saveImageToLogFolder(self, name: str, image: Image, value):
-        if self.imageLogFolder is None or len(self.imageLogFolder) <= 0:
+        if self.image_log_dir is None or len(self.image_log_dir) <= 0:
             return
 
         val = str(int(value)) if isinstance(value, float) else str(value)
-        folder = f"{self.imageLogFolder}/{val}"
+        folder = f"{self.image_log_dir}/{val}"
 
         self.createFolderIfNotExists(folder)
         t = time.strftime("%Y-%m-%d_%H-%M-%S", time.localtime())
-        fileName = f"{folder}/{name}_{t}.jpg"
-        logger.debug(f"Save image to {fileName}")
-        image.save(fileName, "JPEG")
+        filename = f"{folder}/{name}_{t}.jpg"
+        logger.debug(f"Save image to {filename}")
+        image.save(filename, "JPEG")
 
     def createFolderIfNotExists(self, folder: str):
         os.makedirs(folder, exist_ok=True)

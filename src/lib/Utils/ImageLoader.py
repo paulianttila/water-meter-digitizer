@@ -10,14 +10,14 @@ class DownloadFailure(Exception):
     pass
 
 
-def loadImageFromUrl(url: str, timeout: int = 10, minImageSize: int = 0) -> bytes:
+def load_image_from_url(url: str, timeout: int = 10, min_image_size: int = 0) -> bytes:
     try:
         startTime = time.time()
-        data = _readImageFromUrl(url, timeout)
+        data = _read_image_from_url(url, timeout)
         size = len(data)
-        if size < minImageSize:
+        if size < min_image_size:
             raise DownloadFailure(
-                f"Imagefile too small. Size {size}, min size is {minImageSize}, "
+                f"Imagefile too small. Size {size}, min size is {min_image_size}, "
                 f"url: {url}"
             )
         return data
@@ -27,7 +27,7 @@ def loadImageFromUrl(url: str, timeout: int = 10, minImageSize: int = 0) -> byte
         logger.debug(f"Image downloaded in {time.time() - startTime:.3f} sec")
 
 
-def _readImageFromUrl(url: str, timeout: int) -> None:
+def _read_image_from_url(url: str, timeout: int) -> None:
     # Todo: limit file to one folder for security reasons
     if url.startswith("file://"):
         file = url[7:]

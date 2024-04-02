@@ -2,20 +2,20 @@ import base64
 from dataclasses import dataclass
 import re
 from typing import List, Union
-from lib.Utils.FileUtils import saveFile
+from lib.Utils.FileUtils import save_file
 from lib.PreviousValueFile import (
-    loadPreviousValueFromFile,
-    savePreviousValueToFile,
+    load_previous_value_from_file,
+    save_previous_value_to_file,
 )
 from lib.Utils.MathUtils import (
-    fillValueWithEndingZeros,
-    fillWithPredecessorDigits,
+    fill_value_with_ending_zeros,
+    fill_with_predecessor_digits,
 )
 from lib.CNN.CNNBase import ModelDetails, ReadoutResult
 from lib.Utils.ImageProcessor import CutResult, ImageProcessor
 from lib.CNN.DigitalCounterCNN import DigitalCounterCNN
 from lib.CNN.AnalogNeedleCNN import AnalogNeedleCNN
-from lib.Utils.ImageLoader import loadImageFromUrl
+from lib.Utils.ImageLoader import load_image_from_url
 from lib.Config import Config, MeterConfig
 import math
 import time
@@ -27,10 +27,10 @@ logger = logging.getLogger(__name__)
 @dataclass
 class ValueResult:
     value: str
-    rawValue: str
-    previousValue: str
-    digitalResults: dict
-    analogResults: dict
+    raw_value: str
+    previous_value: str
+    digital_results: dict
+    analog_results: dict
     error: str
 
 
@@ -43,8 +43,8 @@ class MeterValue:
 @dataclass
 class MeterResult:
     meters: List[MeterValue]
-    digitalResults: dict
-    analogResults: dict
+    digital_results: dict
+    analog_results: dict
     error: str
 
 
@@ -52,8 +52,8 @@ class MeterResult:
 class Meter:
     name: str = None
     value: str = None
-    rawValue: str = None
-    previousValue: str = None
+    raw_value: str = None
+    previous_value: str = None
     config: MeterConfig = None
 
 
@@ -70,307 +70,317 @@ class ValueError(Exception):
 class MeterProcessor:
     def __init__(
         self,
-        configFile: str = "/config/config.ini",
-        prevValueFile: str = "/config/prevalue.ini",
-        imageTmpFolder: str = "/tmp_images",
+        config_file: str = "/config/config.ini",
+        prev_value_file: str = "/config/prevalue.ini",
+        image_tmp_dir: str = "/tmp_images",
     ):
         logger.debug("Start Init Meter Reader")
-        self.prevValueFile = prevValueFile
-        self.imageTmpFolder = imageTmpFolder
+        self.prev_value_file = prev_value_file
+        self.image_tmp_dir = image_tmp_dir
         self.config = Config()
-        self.config.parseConfig(configFile)
-        self._initAnalog()
-        self._initDigital()
-        self.imageProcessor = ImageProcessor(self.config, imageTmpFolder=imageTmpFolder)
+        self.config.parseConfig(config_file)
+        self._init_analog()
+        self._init_digital()
+        self.image_processor = ImageProcessor(self.config, image_tmp_dir=image_tmp_dir)
 
-    def getROI(self, url: str = None, timeout: int = 0) -> str:
-        data = self._downloadImage(url, timeout)
-        image = self.imageProcessor.convBytesToImage(data)
-        image = self.imageProcessor.rotate(image)
-        image = self.imageProcessor.align(image)
+    def get_roi(self, url: str = None, timeout: int = 0) -> str:
+        data = self._download_image(url, timeout)
+        image = self.image_processor.conv_bytes_to_image(data)
+        image = self.image_processor.rotate(image)
+        image = self.image_processor.align(image)
         logger.debug("Draw ROI")
-        image = self.imageProcessor.drawROI(image)
-        image = self.imageProcessor.convertBGRtoRGB(image)
-        b = self.imageProcessor.convRGBimageToBytes(image)
+        image = self.image_processor.draw_roi(image)
+        image = self.image_processor.convert_bgr_to_rgb(image)
+        b = self.image_processor.conv_rgb_image_to_bytes(image)
         return base64.b64encode(b).decode()
 
-    def getMeters(
+    def get_meters(
         self,
         url: str = None,
         timeout: int = 0,
-        saveImages: bool = False,
+        save_images: bool = False,
     ) -> MeterResult:
 
-        data = self._downloadImage(url, timeout, storeIntermediateFiles=saveImages)
-        startTime = time.time()
-        cutIimages = self._cutImages(data, storeIntermediateFiles=saveImages)
-        self._doCCN(cutIimages)
-        availableValues = self._evaluateCCNresults()
-        meters = self._getMeterValues(availableValues)
-        self._postprocessMeterValues(
+        data = self._download_image(url, timeout, store_intermediate_files=save_images)
+        starttime = time.time()
+        cut_images = self._cut_images(data, store_intermediate_files=save_images)
+        self._doCCN(cut_images)
+        available_values = self._evaluate_ccn_results()
+        meters = self._get_meter_values(available_values)
+        self._postprocess_meter_values(
             meters=meters,
-            values=availableValues,
-            cnnResults=(self.cnnDigitalResults + self.cnnAnalogResults),
+            values=available_values,
+            cnn_results=(self.cnn_digital_results + self.cnn_analog_results),
         )
-        result = self._genResult(meters)
+        result = self._gen_result(meters)
 
         logger.debug(
-            f"Procesing time {time.time() - startTime:.3f} sec, result: {result}"
+            f"Procesing time {time.time() - starttime:.3f} sec, result: {result}"
         )
         return result
 
-    def _getMeterValues(self, availableValues: dict):
+    def _get_meter_values(self, available_values: dict):
         meters = []
-        for meterConfig in self.config.meterConfigs:
-            value = meterConfig.format.format(**availableValues)
+        for meter_config in self.config.meter_configs:
+            value = meter_config.format.format(**available_values)
             meter = Meter(
-                name=meterConfig.name, value=value, rawValue=value, config=meterConfig
+                name=meter_config.name,
+                value=value,
+                raw_value=value,
+                config=meter_config,
             )
             meters.append(meter)
         logger.info(f" Meters: {meters}")
         return meters
 
-    def _evaluateCCNresults(self) -> dict[str, int]:
-        availableValues = {}
-        model = self._solveModel(
-            self.config.analogModel, self.analogCounterReader.getModelDetails()
+    def _evaluate_ccn_results(self) -> dict[str, int]:
+        available_values = {}
+        model = self._solve_model(
+            self.config.analog_model, self.analog_counter_reader.getModelDetails()
         )
-        for item in self.cnnAnalogResults:
-            val = self._evaluateAnalogCounter(
-                name=item.name, newValue=item.value, model=model
+        for item in self.cnn_analog_results:
+            val = self._evaluate_analog_counter(
+                name=item.name, new_value=item.value, model=model
             )
-            availableValues[item.name] = val
+            available_values[item.name] = val
 
-        model = self._solveModel(
-            self.config.digitModel, self.digitalCounterReader.getModelDetails()
+        model = self._solve_model(
+            self.config.digit_model, self.digital_counter_reader.getModelDetails()
         )
-        for item in self.cnnDigitalResults:
-            val = self._evaluateDigitalCounter(
-                name=item.name, newValue=item.value, model=model
+        for item in self.cnn_digital_results:
+            val = self._evaluate_digital_counter(
+                name=item.name, new_value=item.value, model=model
             )
-            availableValues[item.name] = val
-        logger.debug(f"Available values: {availableValues}")
-        return availableValues
+            available_values[item.name] = val
+        logger.debug(f"Available values: {available_values}")
+        return available_values
 
-    def _genResult(self, meters: List[Meter]) -> MeterResult:
-        analogResults = {}
-        if self.config.analogReadOutEnabled:
-            for item in self.cnnAnalogResults:
+    def _gen_result(self, meters: List[Meter]) -> MeterResult:
+        analog_results = {}
+        if self.config.analog_readout_enabled:
+            for item in self.cnn_analog_results:
                 val = "{:.2f}".format(item.value)
-                analogResults[item.name] = val
-        digitalResults = {}
-        for item in self.cnnDigitalResults:
+                analog_results[item.name] = val
+        digital_results = {}
+        for item in self.cnn_digital_results:
             val = "N" if item.value == "NaN" else str(int(item.value))
-            digitalResults[item.name] = val
+            digital_results[item.name] = val
 
-        meterResults = [
+        meter_results = [
             MeterValue(name=meter.name, value=meter.value) for meter in meters
         ]
         return MeterResult(
-            meters=meterResults,
-            digitalResults=digitalResults,
-            analogResults=analogResults,
+            meters=meter_results,
+            digital_results=digital_results,
+            analog_results=analog_results,
             error="",
         )
 
-    def _downloadImage(
-        self, url: str, timeout: int, storeIntermediateFiles: bool = False
+    def _download_image(
+        self, url: str, timeout: int, store_intermediate_files: bool = False
     ) -> bytes:
-        url = url if url is not None else self.config.httpImageUrl
+        url = url if url is not None else self.config.http_image_url
         logger.debug(f"Load image from {url}")
-        data = loadImageFromUrl(
+        data = load_image_from_url(
             url=url,
-            timeout=timeout if timeout != 0 else self.config.httpTimeoutLoadImage,
-            minImageSize=self.config.httpImageMinSize,
+            timeout=timeout if timeout != 0 else self.config.http_load_image_timeout,
+            min_image_size=self.config.http_image_min_size,
         )
-        if self.imageProcessor.verifyImage(data) is not True:
+        if self.image_processor.verify_image(data) is not True:
             raise ValueError("Downloaded image file is corrupted")
 
-        if storeIntermediateFiles:
-            saveFile(f"{self.imageTmpFolder}/original.jpg", data)
+        if store_intermediate_files:
+            save_file(f"{self.image_tmp_dir}/original.jpg", data)
         return data
 
-    def _cutImages(
-        self, data: bytes, storeIntermediateFiles: bool = False
+    def _cut_images(
+        self, data: bytes, store_intermediate_files: bool = False
     ) -> CutResult:
-        image = self.imageProcessor.convBytesToImage(data)
-        image = self.imageProcessor.rotate(image, storeIntermediateFiles)
-        image = self.imageProcessor.align(image, storeIntermediateFiles)
-        cutIimages = self.imageProcessor.cut(image, storeIntermediateFiles)
-        if storeIntermediateFiles:
-            self.imageProcessor.drawROI(image, storeToFile=True)
-        return cutIimages
+        image = self.image_processor.conv_bytes_to_image(data)
+        image = self.image_processor.rotate(image, store_intermediate_files)
+        image = self.image_processor.align(image, store_intermediate_files)
+        cut_images = self.image_processor.cut(image, store_intermediate_files)
+        if store_intermediate_files:
+            self.image_processor.draw_roi(image, store_to_file=True)
+        return cut_images
 
     def _doCCN(self, images: CutResult) -> None:
-        self.cnnAnalogResults = []
-        self.cnnDigitalResults = []
-        if self.config.analogReadOutEnabled:
-            self.cnnAnalogResults = self.analogCounterReader.readout(
-                images.analogImages
+        self.cnn_analog_results = []
+        self.cnn_digital_results = []
+        if self.config.analog_readout_enabled:
+            self.cnn_analog_results = self.analog_counter_reader.readout(
+                images.analog_images
             )
-            logger.debug(f"Analog CNN results: {self.cnnAnalogResults}")
-        if self.config.digitalReadOutEnabled:
-            self.cnnDigitalResults = self.digitalCounterReader.readout(
-                images.digitalImages
+            logger.debug(f"Analog CNN results: {self.cnn_analog_results}")
+        if self.config.digital_readout_enabled:
+            self.cnn_digital_results = self.digital_counter_reader.readout(
+                images.digital_images
             )
-            logger.debug(f"Digital CNN results: {self.cnnDigitalResults}")
+            logger.debug(f"Digital CNN results: {self.cnn_digital_results}")
 
-    def _postprocessMeterValues(
+    def _postprocess_meter_values(
         self,
         meters: List[Meter],
         values: dict,
-        cnnResults: List[ReadoutResult],
+        cnn_results: List[ReadoutResult],
     ) -> None:
         # for easier access
-        meterDict = {meter.name: meter for meter in meters}
-        cnnResultsDict = {item.name: item for item in cnnResults}
+        meter_dict = {meter.name: meter for meter in meters}
+        cnn_results_dict = {item.name: item for item in cnn_results}
 
         for meter in meters:
-            self._postprocessMeterValue(
-                meterDict[meter.name],
+            self._postprocess_meter_value(
+                meter_dict[meter.name],
                 values,
-                cnnResultsDict,
+                cnn_results_dict,
             )
 
-    def _postprocessMeterValue(
+    def _postprocess_meter_value(
         self,
         meter: Meter,
         values: dict,
-        cnnResults: dict,
+        cnn_results: dict,
     ) -> None:
-        if meter.config.consistencyEnabled is False:
+        if meter.config.consistency_enabled is False:
             return
 
         logger.info(f" Postprocess meter, paramters: {meter}")
 
-        if meter.config.usePreviuosValue:
-            meter.previousValue = loadPreviousValueFromFile(
-                self.prevValueFile, meter.name, meter.config.preValueFromFileMaxAge
+        if meter.config.use_previuos_value:
+            meter.previous_value = load_previous_value_from_file(
+                self.prev_value_file,
+                meter.name,
+                meter.config.pre_value_from_file_max_age,
             )
 
-        if meter.config.useExtendedResolution:
-            meter.value = self._getExtendedResolution(meter, cnnResults)
-        if meter.config.usePreviuosValue:
-            meter.previousValue = self._adaptPrevalueToMacthLen(
-                meter.value, meter.previousValue
+        if meter.config.use_extended_resolution:
+            meter.value = self._get_extended_resolution(meter, cnn_results)
+        if meter.config.use_previuos_value:
+            meter.previous_value = self._adapt_prevalue_to_macth_len(
+                meter.value, meter.previous_value
             )
-            meter.value = fillWithPredecessorDigits(meter.value, meter.previousValue)
-            self._checkConsistency(meter, meter.value, meter.previousValue)
-            savePreviousValueToFile(self.prevValueFile, meter.name, meter.value)
+            meter.value = fill_with_predecessor_digits(
+                meter.value, meter.previous_value
+            )
+            self._check_consistency(meter, meter.value, meter.previous_value)
+            save_previous_value_to_file(self.prev_value_file, meter.name, meter.value)
 
-    def _adaptPrevalueToMacthLen(self, newValue: str, previousValue: str) -> str:
-        if len(newValue) > len(previousValue):
+    def _adapt_prevalue_to_macth_len(self, new_value: str, previous_value: str) -> str:
+        if len(new_value) > len(previous_value):
             logger.debug(
-                f"Fill previousValue {previousValue} to match newValue {newValue} len"
+                f"Fill previous value {previous_value} "
+                f"to match new value {new_value} len"
             )
-            previousValue = fillValueWithEndingZeros(len(newValue), previousValue)
-        elif len(newValue) < len(previousValue):
+            previous_value = fill_value_with_ending_zeros(
+                len(new_value), previous_value
+            )
+        elif len(new_value) < len(previous_value):
             logger.debug(
-                f"Remove digits from previousValue {previousValue} to match "
-                f"newValue {newValue} len"
+                f"Remove digits from previous value {previous_value} to match "
+                f"new value {new_value} len"
             )
-            previousValue = previousValue[: len(newValue)]
-        return previousValue
+            previous_value = previous_value[: len(new_value)]
+        return previous_value
 
-    def _getExtendedResolution(self, meter: Meter, values: dict) -> str:
+    def _get_extended_resolution(self, meter: Meter, values: dict) -> str:
         # get last digit of the value
         names = re.findall(r"\{(.*?)\}", meter.config.format)
-        lastDigit = values[names[-1]]
-        resultAfterDecimalPoint = math.floor(float(lastDigit.value) * 10 + 10) % 10
-        return f"{meter.value}{resultAfterDecimalPoint}"
+        last_digit = values[names[-1]]
+        result_after_decimal_point = math.floor(float(last_digit.value) * 10 + 10) % 10
+        return f"{meter.value}{result_after_decimal_point}"
 
-    def _checkConsistency(
-        self, meter: Meter, currentValue: str, previousValue: str
+    def _check_consistency(
+        self, meter: Meter, currentValue: str, previous_value: str
     ) -> str:
-        if previousValue.isnumeric() and currentValue.isnumeric():
-            delta = float(currentValue) - float(self.previousValue)
-            if not (meter.config.allowNegativeRates) and (delta < 0):
+        if previous_value.isnumeric() and currentValue.isnumeric():
+            delta = float(currentValue) - float(self.previous_value)
+            if not (meter.config.allow_negative_rates) and (delta < 0):
                 raise ConcistencyError("Negative rate ({delta:.4f})")
-            if abs(delta) > meter.config.maxRateValue:
+            if abs(delta) > meter.config.max_rate_value:
                 raise ConcistencyError("Rate too high ({delta:.4f})")
         return currentValue
 
-    def _analogReadoutToValue(self, decimalParts: list[ReadoutResult]) -> str:
+    def _analog_readout_to_value(self, decimal_parts: list[ReadoutResult]) -> str:
         prev = -1
         strValue = ""
-        for item in decimalParts[::-1]:
-            prev = self._evaluateAnalogCounter(
-                name=item.name, newValue=item.value, prevValue=prev
+        for item in decimal_parts[::-1]:
+            prev = self._evaluate_analog_counter(
+                name=item.name, new_value=item.value, prev_value=prev
             )
             strValue = f"{prev}{strValue}"
         return strValue
 
-    def _evaluateAnalogCounter(
-        self, name: str, newValue, prevValue: int = -1, model: str = None
+    def _evaluate_analog_counter(
+        self, name: str, new_value, prev_value: int = -1, model: str = None
     ) -> int:
-        decimalPart = math.floor((newValue * 10) % 10)
-        integerPart = math.floor(newValue % 10)
+        decimal_part = math.floor((new_value * 10) % 10)
+        integer_part = math.floor(new_value % 10)
 
-        if prevValue == -1:
-            result = integerPart
+        if prev_value == -1:
+            result = integer_part
         else:
-            result_rating = decimalPart - prevValue
-            if decimalPart >= 5:
+            result_rating = decimal_part - prev_value
+            if decimal_part >= 5:
                 result_rating -= 5
             else:
                 result_rating += 5
-            result = round(newValue)
+            result = round(new_value)
             if result_rating < 0:
                 result -= 1
             if result == -1:
                 result += 10
 
         result = result % 10
-        logger.debug(f"{name}: {newValue} (prev value: {prevValue}) -> {result}")
+        logger.debug(f"{name}: {new_value} (prev value: {prev_value}) -> {result}")
         return result
 
-    def _evaluateDigitalCounter(
+    def _evaluate_digital_counter(
         self,
         name: str,
-        newValue: Union[float, int],
-        prevValue: int = -1,
+        new_value: Union[float, int],
+        prev_value: int = -1,
         model: str = None,
     ) -> int:
         if model.lower() == "digital100":
             digit = (
-                "N" if newValue < 0 or newValue >= 100 else int(round(newValue / 10))
+                "N" if new_value < 0 or new_value >= 100 else int(round(new_value / 10))
             )
         elif model.lower() == "digital":
-            digit = "N" if newValue < 0 or newValue >= 10 else newValue
-        logger.debug(f"{name}: {newValue}  -> {digit}")
+            digit = "N" if new_value < 0 or new_value >= 10 else new_value
+        logger.debug(f"{name}: {new_value}  -> {digit}")
         return digit
 
-    def _solveModel(self, model: str, details: ModelDetails) -> str:
+    def _solve_model(self, model: str, details: ModelDetails) -> str:
         if model.lower() != "auto":
             return model
-        if details.numerOutput == 2:
+        if details.numer_output == 2:
             return "analog"
-        if details.numerOutput == 11:
+        if details.numer_output == 11:
             return "digital"
-        if details.numerOutput == 100:
+        if details.numer_output == 100:
             if details.xsize == 32 and details.ysize == 32:
                 return "analog100"
             return "digital100"
 
-    def _initAnalog(self) -> None:
-        if self.config.analogReadOutEnabled:
-            self.analogCounterReader = AnalogNeedleCNN(
-                modelfile=self.config.analogModelFile,
+    def _init_analog(self) -> None:
+        if self.config.analog_readout_enabled:
+            self.analog_counter_reader = AnalogNeedleCNN(
+                modelfile=self.config.analog_model_file,
                 dx=32,
                 dy=32,
-                imageLogFolder=self.config.analogImageLogFolder,
+                image_log_dir=self.config.analog_image_log_dir,
             )
             logger.debug("Analog model init done")
         else:
             logger.debug("Analog model disabled")
 
-    def _initDigital(self) -> None:
-        if self.config.digitalReadOutEnabled:
-            self.digitalCounterReader = DigitalCounterCNN(
-                modelfile=self.config.digitModelFile,
+    def _init_digital(self) -> None:
+        if self.config.digital_readout_enabled:
+            self.digital_counter_reader = DigitalCounterCNN(
+                modelfile=self.config.digit_model_file,
                 dx=20,
                 dy=32,
-                imageLogFolder=self.config.digitImageLogFolder,
+                image_log_dir=self.config.digit_image_log_dir,
             )
             logger.debug("Digital model init done")
         else:
