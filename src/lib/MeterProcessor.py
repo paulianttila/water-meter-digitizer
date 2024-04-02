@@ -72,7 +72,7 @@ class MeterProcessor:
         self,
         config_file: str = "/config/config.ini",
         prev_value_file: str = "/config/prevalue.ini",
-        image_tmp_dir: str = "/tmp_images", # nosec B108
+        image_tmp_dir: str = "/tmp_images",  # nosec B108
     ):
         logger.debug("Start Init Meter Reader")
         self.prev_value_file = prev_value_file

@@ -155,4 +155,4 @@ if __name__ == "__main__":
 
     port = 3000
     logger.info(f"Meter is serving at port {port}")
-    uvicorn.run(app, host="0.0.0.0", port=port) # nosec B104
+    uvicorn.run(app, host="0.0.0.0", port=port)  # nosec B104
