@@ -51,8 +51,6 @@ jobs:
 
       - name: Run unit and integration tests
         run: |
-          bash tests/integration/mosquitto/run_mosquitto.sh
-          sleep 3
           bash run_tests.sh
 
       - name: Run code coverage
