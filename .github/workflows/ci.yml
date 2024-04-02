@@ -51,8 +51,8 @@ jobs:
 
       - name: Run unit and integration tests
         run: |
-          export INI_FILE=$(pwd)/config/config.ini
-          ./run_tests.sh
+          cp -R config /
+          bash ./run_tests.sh
 
       - name: Run code coverage
         run: |
