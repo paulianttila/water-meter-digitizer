@@ -134,7 +134,7 @@ def init_app():
     global meter, config
     ini_file = os.environ.get("INI_FILE", "/config/config.ini")
     config = Config()
-    config.load_config(ini_file)
+    config.load_config(ini_file=ini_file)
     logger.setLevel(config.log_level)
 
     logging.getLogger("lib.CNN.CNNBase").setLevel(logger.level)
