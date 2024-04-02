@@ -74,12 +74,16 @@ class ImageProcessor:
 
     def cut(self, image: Image, store_intermediate_files: bool = False) -> CutResult:
         digits = (
-            self._cut_images(image, self.config.cut_digital_digit, store_intermediate_files)
+            self._cut_images(
+                image, self.config.cut_digital_digit, store_intermediate_files
+            )
             if self.config.digital_readout_enabled
             else []
         )
         analogs = (
-            self._cut_images(image, self.config.cut_analog_counter, store_intermediate_files)
+            self._cut_images(
+                image, self.config.cut_analog_counter, store_intermediate_files
+            )
             if self.config.analog_readout_enabled
             else []
         )
@@ -92,7 +96,9 @@ class ImageProcessor:
         store_intermediate_files: bool = False,
     ) -> List[CutImage]:
         return [
-            CutImage(digit.name, self._cut_image(source, digit, store_intermediate_files))
+            CutImage(
+                digit.name, self._cut_image(source, digit, store_intermediate_files)
+            )
             for digit in imagePositions
         ]
 
