@@ -21,8 +21,6 @@ found_tflite = spam_spec is not None
 
 logger = logging.getLogger(__name__)
 
-# Convolutional Neural Network
-
 
 @dataclass
 class ReadoutResult:
@@ -90,14 +88,25 @@ class CNNBase:
         )
 
     def readout(self, pictureList: List[CutImage]) -> List[ReadoutResult]:
+        """
+        Performs Convolutional Neural Network readout on a list of images.
+
+        Args:
+            pictureList (List[CutImage]): A list of CutImage objects containing
+            the images to perform readout on.
+
+        Returns:
+            List[ReadoutResult]: A list of ReadoutResult objects containing
+            the readout results for each image.
+        """
         self.result = []
         for item in pictureList:
-            value = self.readoutSingleImage(item.image)
-            self.saveImageToLogFolder(item.name, item.image, value)
+            value = self._readout_single_image(item.image)
+            self._save_image_to_log_dir(item.name, item.image, value)
             self.result.append(ReadoutResult(item.name, value))
         return self.result
 
-    def readoutSingleImage(self, image):
+    def _readout_single_image(self, image: Image):
         test_image = image.resize((self.dx, self.dy), Image.NEAREST)
         test_image = np.array(test_image, dtype="float32")
         input_data = np.reshape(test_image, [1, self.dy, self.dx, 3])
@@ -105,18 +114,18 @@ class CNNBase:
         self.interpreter.invoke()
         return self.interpreter.get_tensor(self.output_details[0]["index"])
 
-    def saveImageToLogFolder(self, name: str, image: Image, value):
+    def _save_image_to_log_dir(self, name: str, image: Image, value):
         if self.image_log_dir is None or len(self.image_log_dir) <= 0:
             return
 
         val = str(int(value)) if isinstance(value, float) else str(value)
         folder = f"{self.image_log_dir}/{val}"
 
-        self.createFolderIfNotExists(folder)
+        self._create_dir_if_not_exists(folder)
         t = time.strftime("%Y-%m-%d_%H-%M-%S", time.localtime())
         filename = f"{folder}/{name}_{t}.jpg"
         logger.debug(f"Save image to {filename}")
         image.save(filename, "JPEG")
 
-    def createFolderIfNotExists(self, folder: str):
+    def _create_dir_if_not_exists(self, folder: str):
         os.makedirs(folder, exist_ok=True)

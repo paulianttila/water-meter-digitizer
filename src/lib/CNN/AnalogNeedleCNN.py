@@ -1,4 +1,5 @@
 from lib.CNN.CNNBase import CNNBase
+from PIL import Image
 import numpy as np
 import math
 import logging
@@ -22,8 +23,8 @@ class AnalogNeedleCNN(CNNBase):
         )
         super()._loadModel()
 
-    def readoutSingleImage(self, image):
-        output_data = super().readoutSingleImage(image)
+    def _readout_single_image(self, image: Image) -> float:
+        output_data = super()._readout_single_image(image)
         out_sin = output_data[0][0]
         out_cos = output_data[0][1]
         result = np.arctan2(out_sin, out_cos) / (2 * math.pi) % 1
