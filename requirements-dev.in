@@ -1,0 +1,11 @@
+# pip install pip-tools
+# pip-compile requirements-dev.in
+
+-r requirements.txt
+pip-tools
+pytest
+tavern
+ruff
+black
+coverage
+bandit[toml]
