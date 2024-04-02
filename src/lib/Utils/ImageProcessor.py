@@ -30,6 +30,14 @@ class CutResult:
 
 class ImageProcessor:
     def __init__(self, config: Config, image_tmp_dir="/image_tmp/"):
+        """
+        Initializes the ImageProcessor class.
+
+        Args:
+            config (Config): The configuration object.
+            image_tmp_dir (str, optional): The directory to store temporary images. 
+            Defaults to "/image_tmp/".
+        """
         self.image_tmp_dir = image_tmp_dir
         self.config = config
         self.reference_images = []
@@ -41,6 +49,15 @@ class ImageProcessor:
                 logger.warning(f"Reference Image {item.file_name} not found")
 
     def verify_image(self, data: bytes) -> bool:
+        """
+        Verifies the integrity of an image.
+
+        Args:
+            data (bytes): The image data as bytes.
+
+        Returns:
+            bool: True if the image is valid, False otherwise.
+        """
         try:
             image = Image.open(io.BytesIO(data))
             image.verify()
@@ -50,10 +67,28 @@ class ImageProcessor:
             return False
 
     def convert_bgr_to_rgb(self, image: Image) -> Image:
+        """
+        Converts an image from BGR color space to RGB color space.
+
+        Args:
+            image (Image): The input image in BGR color space.
+
+        Returns:
+            Image: The converted image in RGB color space.
+        """
         success, buffer = cv2.imencode(".jpg", image)
         return self.conv_bytes_to_image(buffer.tobytes())
 
     def conv_bytes_to_image(self, data: bytes) -> Image:
+        """
+        Converts a byte array to an image using OpenCV.
+
+        Args:
+            data (bytes): The byte array representing the image.
+
+        Returns:
+            Image: The converted image.
+        """
         return cv2.imdecode(np.frombuffer(data, np.uint8), cv2.IMREAD_COLOR)
 
     def conv_rgb_image_to_bytes(self, image: Image) -> bytes:
@@ -61,18 +96,53 @@ class ImageProcessor:
         return buffer.tobytes()
 
     def rotate(self, image: Image, store_intermediate_files: bool = False) -> Image:
+        """
+        Rotates an image.
+
+        Args:
+            image (Image): The input image.
+            store_intermediate_files (bool, optional): Whether to store intermediate 
+            files. Defaults to False.
+
+        Returns:
+
+            Image: The rotated image.
+        """
         image = self._rotate_image(image)
         if store_intermediate_files:
             cv2.imwrite(f"{self.image_tmp_dir}/rotated.jpg", image)
         return image
 
     def align(self, image: Image, store_intermediate_files: bool = False) -> Image:
+        """
+        Aligns an image.
+
+        Args:
+            image (Image): The input image.
+            store_intermediate_files (bool, optional): Whether to store intermediate 
+            files. Defaults to False.
+
+        Returns:
+
+            Image: The aligned image.
+        """
         image = self._align(image)
         if store_intermediate_files:
             cv2.imwrite(f"{self.image_tmp_dir}/aligned.jpg", image)
         return image
 
     def cut(self, image: Image, store_intermediate_files: bool = False) -> CutResult:
+        """
+        Cuts the image into analog and digital images.
+
+        Args:
+            image (Image): The input image.
+            store_intermediate_files (bool, optional): Whether to store intermediate 
+            files. Defaults to False.
+
+        Returns:
+            CutResult: The result of the cut operation.
+        """
         digits = (
             self._cut_images(
                 image, self.config.cut_digital_digit, store_intermediate_files
@@ -159,6 +229,25 @@ class ImageProcessor:
         draw_digitals=True,
         draw_analogs=True,
     ) -> Image:
+        """
+        Draws regions of interest (ROI) on the image.
+
+        Args:
+            image (Image): The input image.
+
+            store_to_file (bool, optional): Whether to store the image to a file. 
+            Defaults to False.
+            raw_refs (bool, optional): Whether to draw raw reference images. 
+            Defaults to False.
+            draw_digitals (bool, optional): Whether to draw digital images. 
+            Defaults to True.
+            draw_analogs (bool, optional): Whether to draw analog images. 
+            Defaults to True.
+
+        Returns:
+            Image: The image with ROIs drawn.
+
+        """
 
         if raw_refs:
             self._draw_refs(image)

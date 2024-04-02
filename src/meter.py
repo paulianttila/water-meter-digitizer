@@ -77,7 +77,7 @@ def reload_config():
 @app.get("/roi", response_class=HTMLResponse)
 def get_roi(request: Request, url: str = None, timeout: int = 0):
     try:
-        base64image = meter.get_roi(url, timeout)
+        base64image = meter.get_roi_image(url, timeout)
         return templates.TemplateResponse(
             "roi.html",
             context={"request": request, "data": base64image},

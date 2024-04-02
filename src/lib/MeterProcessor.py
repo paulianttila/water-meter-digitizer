@@ -83,7 +83,22 @@ class MeterProcessor:
         self._init_digital()
         self.image_processor = ImageProcessor(self.config, image_tmp_dir=image_tmp_dir)
 
-    def get_roi(self, url: str = None, timeout: int = 0) -> str:
+    def get_roi_image(self, url: str = None, timeout: int = 0) -> str:
+        """
+        Draw the region of interest (ROI) to the image.
+
+        Args:
+            url (str, optional): The URL of the image. Defaults to None.
+            timeout (int, optional): The timeout value for downloading the image.
+            Defaults to 0.
+
+        Returns:
+            str: The base64-encoded ROI image.
+
+        Raises:
+            Any exceptions that may occur during the image processing.
+
+        """
         data = self._download_image(url, timeout)
         image = self.image_processor.conv_bytes_to_image(data)
         image = self.image_processor.rotate(image)
@@ -100,7 +115,21 @@ class MeterProcessor:
         timeout: int = 0,
         save_images: bool = False,
     ) -> MeterResult:
+        """
+        Retrieves the meter values from the given URL.
 
+        Args:
+            url (str, optional): The URL of the image containing the meter.
+            Defaults to None.
+            timeout (int, optional): The timeout value for downloading the image.
+            Defaults to 0.
+            save_images (bool, optional): Whether to save intermediate images.
+            Defaults to False.
+
+        Returns:
+            MeterResult: The result object containing the meter values.
+
+        """
         data = self._download_image(url, timeout, store_intermediate_files=save_images)
         starttime = time.time()
         cut_images = self._cut_images(data, store_intermediate_files=save_images)
