@@ -80,7 +80,7 @@ class Config:
     def load_config(self, ini_file: str = "config.ini"):
         # sourcery skip: avoid-builtin-shadow
         if not os.path.exists(ini_file):
-            raise ConfigurationMissing("Configuration file '{ini_file}' not found")
+            raise ConfigurationMissing(f"Configuration file '{ini_file}' not found")
 
         config = configparser.ConfigParser(
             interpolation=configparser.ExtendedInterpolation(), allow_no_value=True
