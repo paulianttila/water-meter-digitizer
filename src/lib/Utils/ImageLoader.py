@@ -18,7 +18,7 @@ def load_image_from_url(url: str, timeout: int = 10, min_image_size: int = 0) ->
         url (str): The URL of the image to be loaded.
         timeout (int, optional): The maximum time to wait for the image to be downloaded
         , in seconds. Defaults to 10.
-        min_image_size (int, optional): The minimum size of the image in bytes. 
+        min_image_size (int, optional): The minimum size of the image in bytes.
         If the downloaded image is smaller than this size, a DownloadFailure exception
         will be raised. Defaults to 0.
 
@@ -26,7 +26,7 @@ def load_image_from_url(url: str, timeout: int = 10, min_image_size: int = 0) ->
         bytes: The image data as bytes.
 
     Raises:
-        DownloadFailure: If the image download fails or the downloaded image is too 
+        DownloadFailure: If the image download fails or the downloaded image is too
         small.
 
     """

@@ -35,7 +35,7 @@ class ImageProcessor:
 
         Args:
             config (Config): The configuration object.
-            image_tmp_dir (str, optional): The directory to store temporary images. 
+            image_tmp_dir (str, optional): The directory to store temporary images.
             Defaults to "/image_tmp/".
         """
         self.image_tmp_dir = image_tmp_dir
@@ -101,7 +101,7 @@ class ImageProcessor:
 
         Args:
             image (Image): The input image.
-            store_intermediate_files (bool, optional): Whether to store intermediate 
+            store_intermediate_files (bool, optional): Whether to store intermediate
             files. Defaults to False.
 
         Returns:
@@ -119,7 +119,7 @@ class ImageProcessor:
 
         Args:
             image (Image): The input image.
-            store_intermediate_files (bool, optional): Whether to store intermediate 
+            store_intermediate_files (bool, optional): Whether to store intermediate
             files. Defaults to False.
 
         Returns:
@@ -137,7 +137,7 @@ class ImageProcessor:
 
         Args:
             image (Image): The input image.
-            store_intermediate_files (bool, optional): Whether to store intermediate 
+            store_intermediate_files (bool, optional): Whether to store intermediate
             files. Defaults to False.
 
         Returns:
@@ -235,13 +235,13 @@ class ImageProcessor:
         Args:
             image (Image): The input image.
 
-            store_to_file (bool, optional): Whether to store the image to a file. 
+            store_to_file (bool, optional): Whether to store the image to a file.
             Defaults to False.
-            raw_refs (bool, optional): Whether to draw raw reference images. 
+            raw_refs (bool, optional): Whether to draw raw reference images.
             Defaults to False.
-            draw_digitals (bool, optional): Whether to draw digital images. 
+            draw_digitals (bool, optional): Whether to draw digital images.
             Defaults to True.
-            draw_analogs (bool, optional): Whether to draw analog images. 
+            draw_analogs (bool, optional): Whether to draw analog images.
             Defaults to True.
 
         Returns:

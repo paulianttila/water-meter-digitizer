@@ -22,6 +22,6 @@ class DigitalCounterCNN(CNNBase):
         )
         super()._loadModel()
 
-    def _readout_single_image(self, image: Image) -> int: 
+    def _readout_single_image(self, image: Image) -> int:
         output_data = super()._readout_single_image(image)
         return np.argmax(output_data)

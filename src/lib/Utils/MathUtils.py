@@ -7,7 +7,7 @@ def fill_value_with_leading_zeros(length: int, value: str) -> str:
         value (str): The value to be filled with leading zeros.
 
     Returns:
-        str: The value with leading zeros, if the length of the value is less than 
+        str: The value with leading zeros, if the length of the value is less than
              the specified length.
              Otherwise, returns the original value.
 
@@ -56,7 +56,7 @@ def fill_with_predecessor_digits(value: str, predecessor: str) -> str:
 
 def str2bool(val):
     """
-    Converts a string representation of a boolean value to its corresponding boolean 
+    Converts a string representation of a boolean value to its corresponding boolean
     value.
 
     Args:
