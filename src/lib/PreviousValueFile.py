@@ -6,9 +6,7 @@ import time
 logger = logging.getLogger(__name__)
 
 
-def loadPreviousValueFromFile(
-    file: str, section: str, readPreValueFromFileMaxAge=None
-):
+def loadPreviousValueFromFile(file: str, section: str, readPreValueFromFileMaxAge=None):
     try:
         config = configparser.ConfigParser()
         config.read(file)

@@ -190,6 +190,6 @@ class Config:
                     maxRateValue,
                     usePreviuosValue,
                     preValueFromFileMaxAge,
-                    useExtendedResolution
+                    useExtendedResolution,
                 )
             )

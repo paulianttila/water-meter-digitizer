@@ -21,6 +21,6 @@ WORKDIR /config
 COPY ./config/ ./
 
 WORKDIR /app
-COPY ./code/ ./
+COPY ./src/ ./
 
 CMD ["python", "./meter.py"]

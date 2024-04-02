@@ -15,5 +15,6 @@ def fillWithPredecessorDigits(value: str, predecessor: str) -> str:
         newVal = f"{v}{newVal}"
     return newVal
 
+
 def str2bool(val):
     return val.lower() in ("yes", "true", "1")

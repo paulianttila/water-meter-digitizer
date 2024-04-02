@@ -44,8 +44,9 @@ def healthcheck():
 
 @app.get("/image_tmp/{image}")
 def getImage(image: str):
+    logger.info(f"Getting image: {image}")
     return FileResponse(
-        f"{imageTmpFolder}/{image}", media_type="image/jpg", filename=image
+        f"{imageTmpDir}/{image}", media_type="image/jpg", filename=image
     )
 
 
@@ -68,7 +69,7 @@ def reloadConfig():
     meter = MeterProcessor(  # noqa: F841
         configFile=f"{configDir}/config.ini",
         prevValueFile=f"{configDir}/prevalue.ini",
-        imageTmpFolder=imageTmpFolder,
+        imageTmpDir=imageTmpDir,
     )
     return "Configuration reloaded"
 
@@ -144,11 +145,11 @@ if __name__ == "__main__":
     logging.getLogger("lib.PreviousValueFile").setLevel(logger.level)
 
     configDir = os.environ.get("CONFIG_DIR", "/config")
-    imageTmpFolder = os.environ.get("IMAGE_TMP", "/image_tmp")
+    imageTmpDir = os.environ.get("IMAGE_TMP", "/image_tmp")
     meter = MeterProcessor(
         configFile=f"{configDir}/config.ini",
         prevValueFile=f"{configDir}/prevalue.ini",
-        imageTmpFolder=imageTmpFolder,
+        imageTmpFolder=imageTmpDir,
     )
 
     port = 3000
