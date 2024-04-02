@@ -42,6 +42,11 @@ class MeterConfig:
 
 @dataclass
 class Config:
+    log_level: str = "INFO"
+    image_tmp_dir: str = "/image_tmp"
+    config_dir: str = "/config"
+    prevoius_value_file: str = "/config/prevalue.ini"
+
     ##################  LoadFileFromHTTP Parameters ########################
     http_load_image_timeout: int = 30
     http_image_url: str = ""
@@ -72,15 +77,23 @@ class Config:
     ################## Meter Parameters ###############################
     meter_configs: List[MeterConfig] = field(default_factory=list)
 
-    def parseConfig(self, iniFile: str = "/config/config.ini"):
+    def load_config(self, ini_file: str = "config.ini"):
         # sourcery skip: avoid-builtin-shadow
-        if not os.path.exists(iniFile):
-            raise ConfigurationMissing("Configuration file '{iniFile}' not found")
+        if not os.path.exists(ini_file):
+            raise ConfigurationMissing("Configuration file '{ini_file}' not found")
 
         config = configparser.ConfigParser(
             interpolation=configparser.ExtendedInterpolation(), allow_no_value=True
         )
-        config.read(iniFile)
+        config.read(ini_file)
+
+        ################## General Parameters ##################################
+        self.log_level = config.get("DEFAULT", "LogLevel", fallback="INFO")
+        self.image_tmp_dir = config.get("DEFAULT", "ImageTmpDir", fallback="/image_tmp")
+        self.config_dir = config.get("DEFAULT", "ConfigDir", fallback="/config")
+        self.prevoius_value_file = config.get(
+            "DEFAULT", "PreviousValueFile", fallback="/config/prevalue.ini"
+        )
 
         ##################  LoadFileFromHTTP Parameters ########################
         self.http_load_image_timeout = config.getint(

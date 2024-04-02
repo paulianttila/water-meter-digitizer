@@ -9,11 +9,9 @@ services:
     security_opt:
       - no-new-privileges:true
     environment:
-      - LOG_LEVEL=DEBUG
       - TZ=Europe/Helsinki
     volumes:
         - ${DIR_DATA:-.}/config:/config
-        - ${DIR_DATA:-.}/log:/log
         - temp:/image_tmp
     ports:
         - 3000:3000

@@ -1,6 +1,7 @@
 import dataclasses
 import json
 import signal
+from lib.Config import Config
 from lib.Utils.ImageLoader import DownloadFailure
 from lib.MeterProcessor import MeterProcessor
 import os
@@ -14,8 +15,10 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 import uvicorn
 
+
 VERSION = "8.0.0"
 meter = None
+config = None
 
 logging.basicConfig(
     stream=sys.stdout,
@@ -46,7 +49,7 @@ def healthcheck():
 def get_image(image: str):
     logger.info(f"Getting image: {image}")
     return FileResponse(
-        f"{image_tmp_dir}/{image}", media_type="image/jpg", filename=image
+        f"{config.image_tmp_dir}/{image}", media_type="image/jpg", filename=image
     )
 
 
@@ -66,11 +69,7 @@ def reload_config():
     global meter
     del meter
     gc.collect()
-    meter = MeterProcessor(  # noqa: F841
-        config_file=f"{config_dir}/config.ini",
-        prev_value_file=f"{config_dir}/prevalue.ini",
-        image_tmp_dir=image_tmp_dir,
-    )
+    init_app()
     return "Configuration reloaded"
 
 
@@ -131,28 +130,27 @@ def get_meters(
     )
 
 
-if __name__ == "__main__":
-    log_level = os.environ.get("LOG_LEVEL")
-    if log_level is not None:
-        logger.setLevel(log_level)
+def init_app():
+    global meter, config
+    ini_file = os.environ.get("INI_FILE", "/config/config.ini")
+    config = Config()
+    config.load_config(ini_file)
+    logger.setLevel(config.log_level)
 
     logging.getLogger("lib.CNN.CNNBase").setLevel(logger.level)
     logging.getLogger("lib.CNN.AnalogNeedleCNN").setLevel(logger.level)
     logging.getLogger("lib.CNN.DigitalCounterCNN").setLevel(logger.level)
     logging.getLogger("lib.Utils.ImageLoader").setLevel(logger.level)
-    logging.getLogger("lib.Utils.ImageProcesor").setLevel(logger.level)
+    logging.getLogger("lib.Utils.ImageProcessor").setLevel(logger.level)
     logging.getLogger("lib.Config").setLevel(logger.level)
     logging.getLogger("lib.MeterProcessor").setLevel(logger.level)
     logging.getLogger("lib.PreviousValueFile").setLevel(logger.level)
 
-    config_dir = os.environ.get("CONFIG_DIR", "/config")
-    image_tmp_dir = os.environ.get("IMAGE_TMP", "/image_tmp")
-    meter = MeterProcessor(
-        config_file=f"{config_dir}/config.ini",
-        prev_value_file=f"{config_dir}/prevalue.ini",
-        image_tmp_dir=image_tmp_dir,
-    )
+    meter = MeterProcessor(config=config)
 
+
+if __name__ == "__main__":
+    init_app()
     port = 3000
     logger.info(f"Meter is serving at port {port}")
     uvicorn.run(app, host="0.0.0.0", port=port)  # nosec B104

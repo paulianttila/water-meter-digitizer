@@ -68,20 +68,14 @@ class ValueError(Exception):
 
 
 class MeterProcessor:
-    def __init__(
-        self,
-        config_file: str = "/config/config.ini",
-        prev_value_file: str = "/config/prevalue.ini",
-        image_tmp_dir: str = "/tmp_images",  # nosec B108
-    ):
+    def __init__(self, config: Config):
         logger.debug("Start Init Meter Reader")
-        self.prev_value_file = prev_value_file
-        self.image_tmp_dir = image_tmp_dir
-        self.config = Config()
-        self.config.parseConfig(config_file)
+        self.config = config
         self._init_analog()
         self._init_digital()
-        self.image_processor = ImageProcessor(self.config, image_tmp_dir=image_tmp_dir)
+        self.image_processor = ImageProcessor(
+            self.config, image_tmp_dir=config.image_tmp_dir
+        )
 
     def get_roi_image(self, url: str = None, timeout: int = 0) -> str:
         """
@@ -219,7 +213,7 @@ class MeterProcessor:
             raise ValueError("Downloaded image file is corrupted")
 
         if store_intermediate_files:
-            save_file(f"{self.image_tmp_dir}/original.jpg", data)
+            save_file(f"{self.config.image_tmp_dir}/original.jpg", data)
         return data
 
     def _cut_images(
@@ -277,7 +271,7 @@ class MeterProcessor:
 
         if meter.config.use_previuos_value:
             meter.previous_value = load_previous_value_from_file(
-                self.prev_value_file,
+                self.config.prevoius_value_file,
                 meter.name,
                 meter.config.pre_value_from_file_max_age,
             )
@@ -292,7 +286,9 @@ class MeterProcessor:
                 meter.value, meter.previous_value
             )
             self._check_consistency(meter, meter.value, meter.previous_value)
-            save_previous_value_to_file(self.prev_value_file, meter.name, meter.value)
+            save_previous_value_to_file(
+                self.config.prevoius_value_file, meter.name, meter.value
+            )
 
     def _adapt_prevalue_to_macth_len(self, new_value: str, previous_value: str) -> str:
         if len(new_value) > len(previous_value):

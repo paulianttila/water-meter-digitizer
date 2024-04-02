@@ -9,12 +9,6 @@ trap "clean_up" EXIT
 
 PWD=$(pwd)
 
-# set configuration for test app
-export LOG_LEVEL=DEBUG
-export ROOT_DIR=${PWD}/src
-export CONFIG_DIR=${PWD}/config
-export IMAGE_TMP=${PWD}/image_tmp
-
 TEST_APP_PID=
 
 start_test_app() {
