@@ -1,0 +1,85 @@
+---
+
+test_name: Make sure app works
+
+includes:
+  - !include variables.yaml
+
+stages:
+  - name: test index.html
+    request:
+      url: 'http://{url}/'
+      method: GET
+      timeout: 3
+    response:
+      status_code: 200
+      headers:
+        content-type: text/html; charset=utf-8
+
+  - name: test version
+    request:
+      url: 'http://{url}/version'
+      method: GET
+      timeout: 3
+    response:
+      status_code: 200
+
+  - name: test healthy check OK
+    request:
+      url: 'http://{url}/healthcheck'
+      method: GET
+      timeout: 3
+    response:
+      status_code: 200
+
+  - name: test meters in JSON format
+    request:
+      url: 'http://{url}/meters?format=json'
+      method: GET
+      timeout: 3
+    response:
+      status_code: 200
+      headers:
+        content-type: application/json
+      json:
+        meters:
+          - name: digital
+            value: "00453"
+          - name: analog
+            value: "9024"
+          - name: total
+            value: "00453.90240"
+        digitalResults:
+          digit1: "0"
+          digit2: "0"
+          digit3: "40"
+          digit4: "49"
+          digit5: "26"
+        analogResults:
+          analog1: "9.97"
+          analog2: "0.94"
+          analog3: "2.51"
+          analog4: "4.06"
+        error: ""
+
+  - name: test meters in HTML format
+    request:
+      url: 'http://{url}/meters'
+      method: GET
+      timeout: 3
+    response:
+      status_code: 200
+      headers:
+        content-type: text/html; charset=utf-8
+
+  - name: test roi
+    request:
+      url: 'http://{url}/roi'
+      method: GET
+      timeout: 3
+    response:
+      status_code: 200
+      headers:
+        content-type: text/html; charset=utf-8
+      verify_response_with:
+        function: testing_utils:check_roi_image

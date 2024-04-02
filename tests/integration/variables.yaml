@@ -1,0 +1,6 @@
+---
+name: common variables
+description: Common variables for all tests
+
+variables:
+  url: localhost:3000

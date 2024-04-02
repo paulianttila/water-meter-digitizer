@@ -1,0 +1,38 @@
+---
+
+test_name: Make sure images are available
+
+includes:
+  - !include variables.yaml
+
+marks:
+  - parametrize:
+      key: PICTURES
+      vals:
+        - roi.jpg
+        - original.jpg
+        - aligned.jpg
+        - rotated.jpg
+        - analog1.jpg
+        - analog2.jpg
+        - analog3.jpg
+        - analog4.jpg
+        - digit1.jpg
+        - digit2.jpg
+        - digit3.jpg
+        - digit4.jpg
+        - digit5.jpg
+
+stages:
+  - name: test pics
+    request:
+      url: 'http://{url}/image_tmp/{PICTURES}'
+      method: GET
+      timeout: 3
+    response:
+      status_code: 
+        - 200
+      headers:
+        content-type: image/jpg
+      verify_response_with:
+        function: testing_utils:check_image
