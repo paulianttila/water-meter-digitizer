@@ -1,3 +1,4 @@
+import argparse
 import dataclasses
 import json
 import signal
@@ -17,6 +18,8 @@ import uvicorn
 
 
 VERSION = "8.0.0"
+
+config_file = os.environ.get("CONFIG_FILE", "/config/config.ini")
 meter = None
 config = None
 
@@ -132,9 +135,8 @@ def get_meters(
 
 def init_app():
     global meter, config
-    ini_file = os.environ.get("INI_FILE", "/config/config.ini")
     config = Config()
-    config.load_config(ini_file=ini_file)
+    config.load_config(ini_file=config_file)
     logger.setLevel(config.log_level)
 
     logging.getLogger("lib.CNN.CNNBase").setLevel(logger.level)
@@ -150,6 +152,20 @@ def init_app():
 
 
 if __name__ == "__main__":
+
+    parser = argparse.ArgumentParser(
+        prog="meter", description="Meter reading application"
+    )
+    parser.add_argument(
+        "-c",
+        "--config",
+        dest="config_file",
+        type=str,
+        help="Configuration file",
+        default=config_file,
+    )
+    args = parser.parse_args()
+    config_file = args.config_file
     init_app()
     port = 3000
     logger.info(f"Meter is serving at port {port}")
