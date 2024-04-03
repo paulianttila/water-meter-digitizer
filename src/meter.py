@@ -88,13 +88,17 @@ def get_roi(request: Request, url: str = None, timeout: int = 0):
         return f"Error: {e}"
 
 
-@app.get("/setPreviousValue", response_class=HTMLResponse)
-def set_previous_value(value: float):
-    result = meter.setPreviousValue(value)
-    return f"Last value set to: {result}"
+@app.get("/setPreviousValue")
+def set_previous_value(name: str, value: str):
+    try:
+        meter.save_previous_value(name, value)
+        err = ""
+    except Exception as e:
+        err = f"{e}"
+    return Response(json.dumps({"error": err}), media_type="application/json")
 
 
-@app.get("/meters")
+@app.get("/meter")
 def get_meters(
     request: Request,
     format: str = "html",

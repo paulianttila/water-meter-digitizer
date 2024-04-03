@@ -142,6 +142,29 @@ class MeterProcessor:
         )
         return result
 
+    def save_previous_value(self, meter_name: str, value: str) -> None:
+            """
+            Saves the previous value of a meter to a file.
+
+            Args:
+                meter_name (str): The name of the meter.
+                value (str): The value of the meter.
+
+            Raises:
+                ValueError: If the meter does not exist or if the value is not a number.
+            """
+            meter_found = any(
+                meter.name == meter_name for meter in self.config.meter_configs
+            )
+            if not meter_found:
+                raise ValueError(f"Meter {meter_name} does not exist")
+
+            if value is None or not value.isnumeric():
+                raise ValueError(f"Value {value} is not a number")
+            save_previous_value_to_file(
+                self.config.prevoius_value_file, meter_name, value
+            )
+    
     def _get_meter_values(self, available_values: dict):
         meters = []
         for meter_config in self.config.meter_configs:
