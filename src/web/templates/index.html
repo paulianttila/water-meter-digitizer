@@ -4,18 +4,18 @@
     Meter v{{ version }}
     <h1>Links</h1>
     <h2>HTML format</h2>
-    <a href="meters?usePreviuosValue=True&simpleOutput=True">Meter value with previous value filling</a><br>
-    <a href="meters?usePreviuosValue=False&simpleOutput=True">Meter value without previous value filling</a><br>
-    <a href="meters?usePreviuosValue=True&simpleOutput=False">Meter value with previous value filling and full details</a><br>
-    <a href="meters?usePreviuosValue=False&simpleOutput=False">Meter value without previous value filling and full details</a><br>
+    <a href="meter?usePreviuosValue=True&simpleOutput=True">Meter value with previous value filling</a><br>
+    <a href="meter?usePreviuosValue=False&simpleOutput=True">Meter value without previous value filling</a><br>
+    <a href="meter?usePreviuosValue=True&simpleOutput=False">Meter value with previous value filling and full details</a><br>
+    <a href="meter?usePreviuosValue=False&simpleOutput=False">Meter value without previous value filling and full details</a><br>
     <a href="roi">Region Of Interest image</a><br>
     <h2>JSON format</h2>
-    <a href="meters?format=json&usePreviuosValue=True">Meter value with previous value filling</a><br>
-    <a href="meters?format=json&usePreviuosValue=False">Meter value without previous value filling</a><br>
+    <a href="meter?format=json&usePreviuosValue=True">Meter value with previous value filling</a><br>
+    <a href="meter?format=json&usePreviuosValue=False">Meter value without previous value filling</a><br>
     <h2>Set previous value</h2>
-    Set previous value by &lt;ip&gt;:&lt;port&gt;/setPreValue.html?value=&lt;value&gt;
+    Set previous value by &lt;ip&gt;:&lt;port&gt;/setPreviousValue.html?meter=&lt;name&gt;value=&lt;value&gt;
     <br><br>
-    Example: 192.168.10.23:3000/setPreviousValue?value=452.9124
+    Example: 192.168.10.23:3000/setPreviousValue?name=total&value=452.9124
     <h2>Reload configuration</h2>
     <a href="reload">Reload</a>
 </body>
