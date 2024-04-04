@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 
 import io
+import imutils
 import os
 from typing import List
 import numpy as np
@@ -95,7 +96,13 @@ class ImageProcessor:
         success, buffer = cv2.imencode(".jpg", image)
         return buffer.tobytes()
 
-    def rotate(self, image: Image, store_intermediate_files: bool = False) -> Image:
+    def rotate(
+        self,
+        image: Image,
+        angle: float,
+        keep_org_size: bool = True,
+        store_intermediate_files: bool = False,
+    ) -> Image:
         """
         Rotates an image.
 
@@ -108,7 +115,9 @@ class ImageProcessor:
 
             Image: The rotated image.
         """
-        image = self._rotate_image(image)
+        image = self._rotate_image(
+            image=image, angle=angle, keep_org_size=keep_org_size
+        )
         if store_intermediate_files:
             cv2.imwrite(f"{self.image_tmp_dir}/rotated.jpg", image)
         return image
@@ -214,12 +223,15 @@ class ImageProcessor:
         min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(res)
         return min_loc if method in [cv2.TM_SQDIFF, cv2.TM_SQDIFF_NORMED] else max_loc
 
-    def _rotate_image(self, image: Image) -> Image:
+    def _rotate_image(
+        self, image: Image, angle: float, keep_org_size: bool = True
+    ) -> Image:
         h, w, ch = image.shape
-        center = (w / 2, h / 2)
-        M = cv2.getRotationMatrix2D(center, self.config.alignment_rotate_angle, 1.0)
-        image = cv2.warpAffine(image, M, (w, h))
-        return image
+        newimg = imutils.rotate_bound(image, angle)
+        return cv2.resize(newimg, (w, h)) if keep_org_size else newimg
+
+    def _crop_image(self, image: Image, x: int, y: int, w: int, h: int) -> Image:
+        return image[y : y + h, x : x + w]
 
     def draw_roi(
         self,
