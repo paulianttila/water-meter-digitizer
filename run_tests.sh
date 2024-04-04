@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
 
+# To run tests locally
+# export CONFIG_FILE=/<PATH>/config.ini
+
 TAVERN_LOG_LEVEL=INFO
 
 # exit when any command fails
