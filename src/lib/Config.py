@@ -38,6 +38,7 @@ class MeterConfig:
     use_previuos_value: bool
     pre_value_from_file_max_age: int
     use_extended_resolution: bool = False
+    unit: str = None
 
 
 @dataclass
@@ -127,13 +128,14 @@ class Config:
         self.digit_do_image_logging = config.has_option("Digits", "LogImageLocation")
         self.digit_image_log_dir = config.get("Digits", "LogImageLocation", fallback="")
 
-        digits = config.get("Digits", "names")
-        for name in [x.strip() for x in digits.split(",")]:
-            x1 = int(config[f"Digits.{name}"]["x"])
-            y1 = int(config[f"Digits.{name}"]["y"])
-            w = int(config[f"Digits.{name}"]["dx"])
-            h = int(config[f"Digits.{name}"]["dy"])
-            self.cut_digital_digit.append(ImagePosition(name, x1, y1, w, h))
+        if self.digital_readout_enabled:
+            digits = config.get("Digits", "names")
+            for name in [x.strip() for x in digits.split(",")]:
+                x1 = int(config[f"Digits.{name}"]["x"])
+                y1 = int(config[f"Digits.{name}"]["y"])
+                w = int(config[f"Digits.{name}"]["dx"])
+                h = int(config[f"Digits.{name}"]["dy"])
+                self.cut_digital_digit.append(ImagePosition(name, x1, y1, w, h))
 
         ##################  AnalogReadOut Parameters ########################
 
@@ -152,13 +154,14 @@ class Config:
             "Analog", "LogImageLocation", fallback=""
         )
 
-        analogs = config.get("Analog", "names")
-        for name in [x.strip() for x in analogs.split(",")]:
-            x1 = int(config[f"Analog.{name}"]["x"])
-            y1 = int(config[f"Analog.{name}"]["y"])
-            w = int(config[f"Analog.{name}"]["dx"])
-            h = int(config[f"Analog.{name}"]["dy"])
-            self.cut_analog_counter.append(ImagePosition(name, x1, y1, w, h))
+        if self.analog_readout_enabled:
+            analogs = config.get("Analog", "names")
+            for name in [x.strip() for x in analogs.split(",")]:
+                x1 = int(config[f"Analog.{name}"]["x"])
+                y1 = int(config[f"Analog.{name}"]["y"])
+                w = int(config[f"Analog.{name}"]["dx"])
+                h = int(config[f"Analog.{name}"]["dy"])
+                self.cut_analog_counter.append(ImagePosition(name, x1, y1, w, h))
 
         ################## Alignment Parameters ###############################
         self.alignment_rotate_angle = config.getfloat(
@@ -194,6 +197,8 @@ class Config:
             use_extended_resolution = config.getboolean(
                 f"Meter.{name}", "UseExtendedResolution", fallback=False
             )
+            unit = config.get(f"Meter.{name}", "Unit", fallback=None)
+
             self.meter_configs.append(
                 MeterConfig(
                     name,
@@ -204,5 +209,6 @@ class Config:
                     use_previuos_value,
                     pre_value_from_file_max_age,
                     use_extended_resolution,
+                    unit,
                 )
             )
