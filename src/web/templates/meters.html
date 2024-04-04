@@ -3,7 +3,7 @@
 <body>
     <h1>Meters</h1>
     {% for meter in result.meters %}
-    <p>{{ meter.name }}: {{ meter.value }}</p>
+    <p>{{ meter.name }}: {{ meter.value }} {{ meter.unit }}</p>
     {% endfor %}
     <h2>Aligned Image</h2>
     <img src=/image_tmp/aligned.jpg></img></p>
@@ -15,7 +15,5 @@
     {% for image, value in result.analog_results.items() %} 
     <img src=/image_tmp/{{ image }}.jpg></img>{{ value }}
     {% endfor %}
-    <h2>Region Of Interest (ROI)</h2>
-    <img src=/image_tmp/roi.jpg></img>
 </body>
 </html>
