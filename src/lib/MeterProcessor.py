@@ -20,6 +20,7 @@ from lib.Config import Config, MeterConfig
 import math
 import time
 import logging
+from PIL import Image
 
 logger = logging.getLogger(__name__)
 
@@ -38,6 +39,7 @@ class ValueResult:
 class MeterValue:
     name: str
     value: str
+    unit: str = None
 
 
 @dataclass
@@ -93,14 +95,12 @@ class MeterProcessor:
             Any exceptions that may occur during the image processing.
 
         """
-        data = self._download_image(url, timeout)
-        image = self.image_processor.conv_bytes_to_image(data)
-        image = self.image_processor.rotate(image)
-        image = self.image_processor.align(image)
+        data = self._download_image(url=url, timeout=timeout)
+        image = self._preprocess_image_bytes(data)
         logger.debug("Draw ROI")
-        image = self.image_processor.draw_roi(image)
-        image = self.image_processor.convert_bgr_to_rgb(image)
-        b = self.image_processor.conv_rgb_image_to_bytes(image)
+        image = self.image_processor.draw_roi(image=image)
+        image = self.image_processor.convert_bgr_to_rgb(image=image)
+        b = self.image_processor.conv_rgb_image_to_bytes(image=image)
         return base64.b64encode(b).decode()
 
     def get_meters(
@@ -124,9 +124,14 @@ class MeterProcessor:
             MeterResult: The result object containing the meter values.
 
         """
-        data = self._download_image(url, timeout, store_intermediate_files=save_images)
+        data = self._download_image(
+            url=url, timeout=timeout, store_intermediate_files=save_images
+        )
         starttime = time.time()
-        cut_images = self._cut_images(data, store_intermediate_files=save_images)
+        image = self._preprocess_image_bytes(
+            data=data, store_intermediate_files=save_images
+        )
+        cut_images = self._cut_images(image, store_intermediate_files=save_images)
         self._doCCN(cut_images)
         available_values = self._evaluate_ccn_results()
         meters = self._get_meter_values(available_values)
@@ -179,23 +184,26 @@ class MeterProcessor:
 
     def _evaluate_ccn_results(self) -> dict[str, int]:
         available_values = {}
-        model = self._solve_model(
-            self.config.analog_model, self.analog_counter_reader.getModelDetails()
-        )
-        for item in self.cnn_analog_results:
-            val = self._evaluate_analog_counter(
-                name=item.name, new_value=item.value, model=model
-            )
-            available_values[item.name] = val
 
-        model = self._solve_model(
-            self.config.digit_model, self.digital_counter_reader.getModelDetails()
-        )
-        for item in self.cnn_digital_results:
-            val = self._evaluate_digital_counter(
-                name=item.name, new_value=item.value, model=model
+        if self.config.analog_readout_enabled:
+            model = self._solve_model(
+                self.config.analog_model, self.analog_counter_reader.getModelDetails()
             )
-            available_values[item.name] = val
+            for item in self.cnn_analog_results:
+                val = self._evaluate_analog_counter(
+                    name=item.name, new_value=item.value, model=model
+                )
+                available_values[item.name] = val
+
+        if self.config.digital_readout_enabled:
+            model = self._solve_model(
+                self.config.digit_model, self.digital_counter_reader.getModelDetails()
+            )
+            for item in self.cnn_digital_results:
+                val = self._evaluate_digital_counter(
+                    name=item.name, new_value=item.value, model=model
+                )
+                available_values[item.name] = val
         logger.debug(f"Available values: {available_values}")
         return available_values
 
@@ -211,7 +219,12 @@ class MeterProcessor:
             digital_results[item.name] = val
 
         meter_results = [
-            MeterValue(name=meter.name, value=meter.value) for meter in meters
+            MeterValue(
+                name=meter.name,
+                value=meter.value,
+                unit=meter.config.unit if meter.config.unit is not None else "",
+            )
+            for meter in meters
         ]
         return MeterResult(
             meters=meter_results,
@@ -238,15 +251,27 @@ class MeterProcessor:
         return data
 
     def _cut_images(
-        self, data: bytes, store_intermediate_files: bool = False
+        self, image: Image, store_intermediate_files: bool = False
     ) -> CutResult:
-        image = self.image_processor.conv_bytes_to_image(data)
-        image = self.image_processor.rotate(image, store_intermediate_files)
-        image = self.image_processor.align(image, store_intermediate_files)
-        cut_images = self.image_processor.cut(image, store_intermediate_files)
+        cut_images = self.image_processor.cut(
+            image=image, store_intermediate_files=store_intermediate_files
+        )
         if store_intermediate_files:
-            self.image_processor.draw_roi(image, store_to_file=True)
+            self.image_processor.draw_roi(image=image, store_to_file=True)
         return cut_images
+
+    def _preprocess_image_bytes(
+        self, data: bytes, store_intermediate_files: bool = False
+    ) -> Image:
+        image = self.image_processor.conv_bytes_to_image(data=data)
+        image = self.image_processor.rotate(
+            image=image,
+            angle=self.config.alignment_rotate_angle,
+            store_intermediate_files=store_intermediate_files,
+        )
+        return self.image_processor.align(
+            image=image, store_intermediate_files=store_intermediate_files
+        )
 
     def _doCCN(self, images: CutResult) -> None:
         self.cnn_analog_results = []
