@@ -1,4 +1,4 @@
-from src.lib.Config import (
+from src.Config import (
     Config,
     ConfigurationMissing,
     ImagePosition,
