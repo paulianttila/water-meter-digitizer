@@ -26,6 +26,8 @@ class RefImages:
     file_name: str
     x: int
     y: int
+    w: int = 0
+    h: int = 0
 
 
 @dataclass
