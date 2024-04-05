@@ -7,7 +7,7 @@ import time
 logger = logging.getLogger(__name__)
 
 
-def load_previous_value_from_file(file: str, section: str, max_age=None):
+def load_previous_value_from_file(file: str, section: str, max_age_minutes: int = None):
     if not os.path.exists(file):
         raise ValueError(f"File '{file}' does not exist.")
 
@@ -15,15 +15,15 @@ def load_previous_value_from_file(file: str, section: str, max_age=None):
     config.read(file)
 
     try:
-        if max_age is not None and max_age > 0:
+        if max_age_minutes is not None and max_age_minutes > 0:
             time = config.get(section, "Time")
-            valueTime = datetime.strptime(time, "%Y.%m.%d %H:%M:%S")
-            diff = (datetime.now() - valueTime).days * 24 * 60
+            value_time = datetime.strptime(time, "%Y.%m.%d %H:%M:%S")
+            diff_minutes = (datetime.now() - value_time).total_seconds() / 60
 
-            if diff > max_age:
+            if diff_minutes > max_age_minutes:
                 raise ValueError(
                     f"Previous value not loaded from file as value is too old: "
-                    f"({str(diff)} minutes)."
+                    f"{str(diff_minutes)} minutes"
                 )
 
         previous_value = config.get(section, "Value")
