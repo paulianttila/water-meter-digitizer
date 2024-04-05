@@ -45,7 +45,11 @@ class ImageProcessor:
         for item in self.config.alignment_ref_images:
             if os.path.exists(item.file_name):
                 logger.debug(f"Use reference image {item.file_name}")
-                self.reference_images.append(cv2.imread(item.file_name))
+                img = cv2.imread(item.file_name)
+                h, w, ch = img.shape
+                item.w = w
+                item.h = h
+                self.reference_images.append(img)
             else:
                 logger.warning(f"Reference Image {item.file_name} not found")
 
