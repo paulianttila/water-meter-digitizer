@@ -1,7 +1,13 @@
-import base64
 from dataclasses import dataclass
-import re
 from typing import List, Union
+import base64
+import re
+import math
+import time
+import logging
+
+from PIL import Image
+
 from Utils.FileUtils import save_file
 from PreviousValueFile import (
     load_previous_value_from_file,
@@ -17,10 +23,6 @@ from CNN.DigitalCounterCNN import DigitalCounterCNN
 from CNN.AnalogNeedleCNN import AnalogNeedleCNN
 from Utils.ImageLoader import load_image_from_url
 from Config import Config, MeterConfig
-import math
-import time
-import logging
-from PIL import Image
 
 logger = logging.getLogger(__name__)
 

@@ -1,5 +1,5 @@
-import os
 from shutil import copyfile
+import os
 import time
 
 

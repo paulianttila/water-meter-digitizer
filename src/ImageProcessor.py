@@ -1,13 +1,14 @@
 from dataclasses import dataclass
-
-import io
-import imutils
-import os
 from typing import List
+import io
+import os
+import logging
+
+from PIL import Image
+import imutils
 import numpy as np
 import cv2
-from PIL import Image
-import logging
+
 from Config import Config, ImagePosition
 
 logger = logging.getLogger(__name__)

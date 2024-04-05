@@ -1,8 +1,8 @@
+from dataclasses import dataclass, field
+from typing import List
 import configparser
 import os
 import logging
-from dataclasses import dataclass, field
-from typing import List
 
 logger = logging.getLogger(__name__)
 

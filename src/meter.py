@@ -2,19 +2,21 @@ import argparse
 import dataclasses
 import json
 import signal
-from Config import Config
-from Utils.ImageLoader import DownloadFailure
-from MeterProcessor import MeterProcessor
 import os
 import gc
 import logging
 import sys
+
 from fastapi import FastAPI, Response, Request
 from fastapi.responses import HTMLResponse
 from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 import uvicorn
+
+from Config import Config
+from Utils.ImageLoader import DownloadFailure
+from MeterProcessor import MeterProcessor
 
 
 VERSION = "8.0.0"

@@ -1,7 +1,9 @@
-from CNN.CNNBase import CNNBase
+import logging
+
 from PIL import Image
 import numpy as np
-import logging
+
+from CNN.CNNBase import CNNBase
 
 logger = logging.getLogger(__name__)
 
