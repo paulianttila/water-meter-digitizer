@@ -1,17 +1,21 @@
 import configparser
 from datetime import datetime
 import logging
+import os
 import time
 
 logger = logging.getLogger(__name__)
 
 
 def load_previous_value_from_file(file: str, section: str, max_age=None):
-    try:
-        config = configparser.ConfigParser()
-        config.read(file)
+    if not os.path.exists(file):
+        raise ValueError(f"File '{file}' does not exist.")
 
-        if max_age is not None:
+    config = configparser.ConfigParser()
+    config.read(file)
+
+    try:
+        if max_age is not None and max_age > 0:
             time = config.get(section, "Time")
             valueTime = datetime.strptime(time, "%Y.%m.%d %H:%M:%S")
             diff = (datetime.now() - valueTime).days * 24 * 60
@@ -33,9 +37,18 @@ def load_previous_value_from_file(file: str, section: str, max_age=None):
 
 def save_previous_value_to_file(file: str, section: str, value: str):
     config = configparser.ConfigParser()
-    config.read(file)
     now = time.strftime("%Y.%m.%d %H:%M:%S", time.localtime())
-    config[section]["Time"] = now
-    config[section]["Value"] = value
+
+    if os.path.exists(file):
+        config.read(file)
+        if config.has_section(section) is False:
+            config.add_section(section)
+        config.set(section, "Time", now)
+        config.set(section, "Value", value)
+    else:
+        config[section] = {
+            "Time": now,
+            "Value": value,
+        }
     with open(file, "w") as cfg:
         config.write(cfg)

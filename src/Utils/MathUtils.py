@@ -27,6 +27,9 @@ def fill_value_with_ending_zeros(length: int, value: str) -> str:
         str: The value filled with ending zeros.
 
     """
+    if value.startswith("-"):
+        length += 1
+
     while len(value) < length:
         value = f"{value}0"
     return value
@@ -47,6 +50,8 @@ def fill_with_predecessor_digits(value: str, predecessor: str) -> str:
         >>> fill_with_predecessor_digits("1N3N", "1234")
         '1234'
     """
+    if len(value) != len(predecessor):
+        return value
     newVal = ""
     for i in range(len(value) - 1, -1, -1):
         v = predecessor[i] if value[i] == "N" else value[i]
