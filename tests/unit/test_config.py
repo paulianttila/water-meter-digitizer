@@ -75,7 +75,7 @@ def test_config():
             allow_negative_rates=False,
             max_rate_value=0.2,
             use_previuos_value=True,
-            pre_value_from_file_max_age=3000,
+            pre_value_from_file_max_age=0,
             use_extended_resolution=True,
         ),
     ]
