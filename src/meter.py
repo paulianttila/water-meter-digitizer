@@ -2,9 +2,9 @@ import argparse
 import dataclasses
 import json
 import signal
-from lib.Config import Config
-from lib.Utils.ImageLoader import DownloadFailure
-from lib.MeterProcessor import MeterProcessor
+from Config import Config
+from Utils.ImageLoader import DownloadFailure
+from MeterProcessor import MeterProcessor
 import os
 import gc
 import logging

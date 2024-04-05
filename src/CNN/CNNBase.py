@@ -8,7 +8,7 @@ import os
 import logging
 from importlib import util
 
-from lib.Utils.ImageProcessor import CutImage
+from ImageProcessor import CutImage
 
 with contextlib.suppress(ImportError):
     import tflite_runtime.interpreter as tflite

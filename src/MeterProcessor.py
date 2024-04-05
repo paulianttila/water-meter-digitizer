@@ -2,21 +2,21 @@ import base64
 from dataclasses import dataclass
 import re
 from typing import List, Union
-from lib.Utils.FileUtils import save_file
-from lib.PreviousValueFile import (
+from Utils.FileUtils import save_file
+from PreviousValueFile import (
     load_previous_value_from_file,
     save_previous_value_to_file,
 )
-from lib.Utils.MathUtils import (
+from Utils.MathUtils import (
     fill_value_with_ending_zeros,
     fill_with_predecessor_digits,
 )
-from lib.CNN.CNNBase import ModelDetails, ReadoutResult
-from lib.Utils.ImageProcessor import CutResult, ImageProcessor
-from lib.CNN.DigitalCounterCNN import DigitalCounterCNN
-from lib.CNN.AnalogNeedleCNN import AnalogNeedleCNN
-from lib.Utils.ImageLoader import load_image_from_url
-from lib.Config import Config, MeterConfig
+from CNN.CNNBase import ModelDetails, ReadoutResult
+from ImageProcessor import CutResult, ImageProcessor
+from CNN.DigitalCounterCNN import DigitalCounterCNN
+from CNN.AnalogNeedleCNN import AnalogNeedleCNN
+from Utils.ImageLoader import load_image_from_url
+from Config import Config, MeterConfig
 import math
 import time
 import logging

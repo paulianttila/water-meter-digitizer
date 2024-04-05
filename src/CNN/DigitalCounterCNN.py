@@ -1,4 +1,4 @@
-from lib.CNN.CNNBase import CNNBase
+from CNN.CNNBase import CNNBase
 from PIL import Image
 import numpy as np
 import logging

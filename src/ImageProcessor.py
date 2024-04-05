@@ -8,7 +8,7 @@ import numpy as np
 import cv2
 from PIL import Image
 import logging
-from lib.Config import Config, ImagePosition
+from Config import Config, ImagePosition
 
 logger = logging.getLogger(__name__)
 
