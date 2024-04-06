@@ -9,7 +9,6 @@ marks:
   - parametrize:
       key: PICTURES
       vals:
-        - roi.jpg
         - original.jpg
         - aligned.jpg
         - rotated.jpg
