@@ -44,10 +44,10 @@ class Config:
     image_tmp_dir: str = "/image_tmp"
     config_dir: str = "/config"
     prevoius_value_file: str = "/config/prevalue.ini"
-    image_source: ImageSource = ImageSource()
-    digital_readout: CNNParams = CNNParams()
-    analog_readout: CNNParams = CNNParams()
-    alignment: Alignment = Alignment()
+    image_source: ImageSource = field(default_factory=ImageSource)
+    digital_readout: CNNParams = field(default_factory=CNNParams)
+    analog_readout: CNNParams = field(default_factory=CNNParams)
+    alignment: Alignment = field(default_factory=Alignment)
     meter_configs: List[MeterConfig] = field(default_factory=list)
 
     def set_log_level(self, level: str) -> "Config":
