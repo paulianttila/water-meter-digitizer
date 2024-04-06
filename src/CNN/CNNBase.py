@@ -1,15 +1,14 @@
-from dataclasses import dataclass
 from typing import List
 import contextlib
 import time
 import os
 import logging
+from importlib import util
 
 from PIL import Image
 import numpy as np
 
-from importlib import util
-from ImageProcessor import CutImage
+from DataClasses import CutImage, ModelDetails, ReadoutResult
 
 with contextlib.suppress(ImportError):
     import tflite_runtime.interpreter as tflite
@@ -21,21 +20,6 @@ spam_spec = util.find_spec("tflite_runtime")
 found_tflite = spam_spec is not None
 
 logger = logging.getLogger(__name__)
-
-
-@dataclass
-class ReadoutResult:
-    name: str
-    value: float
-
-
-@dataclass
-class ModelDetails:
-    name: str
-    xsize: int
-    ysize: int
-    channels: int
-    numer_output: int
 
 
 class CNNBase:

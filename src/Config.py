@@ -4,6 +4,8 @@ import configparser
 import os
 import logging
 
+from DataClasses import ImagePosition, MeterConfig, RefImage
+
 logger = logging.getLogger(__name__)
 
 
@@ -12,35 +14,28 @@ class ConfigurationMissing(Exception):
 
 
 @dataclass
-class ImagePosition:
-    name: str
-    x1: int
-    y1: int
-    w: int = 0
-    h: int = 0
+class ImageSource:
+    url: str = ""
+    timeout: int = 30
+    min_size: int = 10000
+    log_dir: str = "/log"
+    log_only_false_pictures: bool = True
 
 
 @dataclass
-class RefImages:
-    name: str
-    file_name: str
-    x: int
-    y: int
-    w: int = 0
-    h: int = 0
+class CNNParams:
+    enabled: bool = False
+    model_file: str = ""
+    model: str = ""
+    do_image_logging: bool = False
+    image_log_dir: str = ""
+    cut_images: List[ImagePosition] = field(default_factory=list)
 
 
 @dataclass
-class MeterConfig:
-    name: str
-    format: str
-    consistency_enabled: bool
-    allow_negative_rates: bool
-    max_rate_value: float
-    use_previuos_value: bool
-    pre_value_from_file_max_age: int
-    use_extended_resolution: bool = False
-    unit: str = None
+class Alignment:
+    rotate_angle: float = 0.0
+    ref_images: List[RefImage] = field(default_factory=list)
 
 
 @dataclass
@@ -49,38 +44,40 @@ class Config:
     image_tmp_dir: str = "/image_tmp"
     config_dir: str = "/config"
     prevoius_value_file: str = "/config/prevalue.ini"
-
-    ##################  LoadFileFromHTTP Parameters ########################
-    http_load_image_timeout: int = 30
-    http_image_url: str = ""
-    http_image_min_size: int = 10000
-    http_image_log_dir: str = ""
-    http_log_only_false_pictures: bool = False
-
-    ##################  DigitalReadOut Parameters ########################
-    digital_readout_enabled: bool = True
-    digit_model_file: str = ""
-    digit_model: str = ""
-    digit_do_image_logging: bool = False
-    digit_image_log_dir: str = "/log"
-    cut_digital_digit: List[ImagePosition] = field(default_factory=list)
-
-    ##################  AnalogReadOut Parameters ########################
-    analog_readout_enabled: bool = False
-    analog_model_file: str = ""
-    analog_model: str = ""
-    analog_do_image_logging: bool = False
-    analog_image_log_dir: str = ""
-    cut_analog_counter: List[ImagePosition] = field(default_factory=list)
-
-    ################## Alignment Parameters ###############################
-    alignment_rotate_angle: float = 0.0
-    alignment_ref_images: List[RefImages] = field(default_factory=list)
-
-    ################## Meter Parameters ###############################
+    image_source: ImageSource = ImageSource()
+    digital_readout: CNNParams = CNNParams()
+    analog_readout: CNNParams = CNNParams()
+    alignment: Alignment = Alignment()
     meter_configs: List[MeterConfig] = field(default_factory=list)
 
-    def load_config(self, ini_file: str = "config.ini"):
+    def set_log_level(self, level: str) -> "Config":
+        self.log_level = level
+
+    def set_image_tmp_dir(self, dir: str) -> "Config":
+        self.image_tmp_dir = dir
+
+    def set_config_dir(self, dir: str) -> "Config":
+        self.config_dir = dir
+
+    def set_previous_value_file(self, file: str) -> "Config":
+        self.prevoius_value_file = file
+
+    def set_image_source(self, imageSource: ImageSource) -> "Config":
+        self.imageSource = imageSource
+
+    def set_digital_readout(self, digitalReadout: CNNParams) -> "Config":
+        self.digital_readout = digitalReadout
+
+    def set_analog_readout(self, analogReadout: CNNParams) -> "Config":
+        self.analog_readout = analogReadout
+
+    def set_alignment(self, alignment: Alignment) -> "Config":
+        self.alignment = alignment
+
+    def add_meter_config(self, config: MeterConfig) -> "Config":
+        self.meter_configs.append(config)
+
+    def load_from_file(self, ini_file: str = "config.ini") -> "Config":
         # sourcery skip: avoid-builtin-shadow
         if not os.path.exists(ini_file):
             raise ConfigurationMissing(f"Configuration file '{ini_file}' not found")
@@ -90,7 +87,7 @@ class Config:
         )
         config.read(ini_file)
 
-        ################## General Parameters ##################################
+        ################## General Parameters ##########################################
         self.log_level = config.get("DEFAULT", "LogLevel", fallback="INFO")
         self.image_tmp_dir = config.get("DEFAULT", "ImageTmpDir", fallback="/image_tmp")
         self.config_dir = config.get("DEFAULT", "ConfigDir", fallback="/config")
@@ -98,86 +95,48 @@ class Config:
             "DEFAULT", "PreviousValueFile", fallback="/config/prevalue.ini"
         )
 
-        ##################  LoadFileFromHTTP Parameters ########################
-        self.http_load_image_timeout = config.getint(
-            "ImageSource", "TimeoutLoadImage", fallback=30
-        )
-
-        self.http_image_url = config.get("ImageSource", "URLImageSource", fallback="")
-
-        self.http_image_min_size = config.getint(
-            "ImageSource", "MinImageSize", fallback=10000
-        )
-        self.http_image_log_dir = config.get(
-            "ImageSource", "LogImageLocation", fallback=""
-        )
-
-        self.http_log_only_false_pictures = config.getboolean(
+        ##################  Image Source Parameters ####################################
+        url = config.get("ImageSource", "URLImageSource", fallback="")
+        timeout = config.getint("ImageSource", "TimeoutLoadImage", fallback=30)
+        min_size = config.getint("ImageSource", "MinImageSize", fallback=10000)
+        log_dir = config.get("ImageSource", "LogImageLocation", fallback="")
+        log_only_false_pictures = config.getboolean(
             "ImageSource", "LogOnlyFalsePictures", fallback=False
         )
-
-        ##################  DigitalReadOut Parameters ########################
-
-        self.digital_readout_enabled = config.getboolean(
-            "DigitalReadOut", "Enabled", fallback=True
+        self.image_source = ImageSource(
+            url=url,
+            timeout=timeout,
+            min_size=min_size,
+            log_dir=log_dir,
+            log_only_false_pictures=log_only_false_pictures,
         )
+        ##################  DigitalReadOut Parameters ##################################
 
-        self.digit_model_file = config.get("Digits", "Modelfile", fallback="")
-        self.digit_model = config.get("Digits", "Model", fallback="auto").lower()
-        if self.digit_model not in ["auto", "digital", "digital100"]:
-            raise ValueError(f"Unsupported model: {self.digit_model}")
+        digital_readout = self._load_cnn_parames("Digits", config)
+        self.digital_readout = digital_readout
 
-        self.digit_do_image_logging = config.has_option("Digits", "LogImageLocation")
-        self.digit_image_log_dir = config.get("Digits", "LogImageLocation", fallback="")
+        ##################  AnalogReadOut Parameters ###################################
 
-        if self.digital_readout_enabled:
-            digits = config.get("Digits", "names")
-            for name in [x.strip() for x in digits.split(",")]:
-                x1 = int(config[f"Digits.{name}"]["x"])
-                y1 = int(config[f"Digits.{name}"]["y"])
-                w = int(config[f"Digits.{name}"]["dx"])
-                h = int(config[f"Digits.{name}"]["dy"])
-                self.cut_digital_digit.append(ImagePosition(name, x1, y1, w, h))
+        analog_readout = self._load_cnn_parames("Analog", config)
+        self.analog_readout = analog_readout
 
-        ##################  AnalogReadOut Parameters ########################
-
-        self.analog_readout_enabled = config.getboolean(
-            "AnalogReadOut", "Enabled", fallback=False
-        )
-        if self.digit_model not in ["auto", "analog", "analog100"]:
-            raise ValueError(f"Unsupported model: {self.digit_model}")
-
-        self.analog_model_file = config.get("Analog", "Modelfile", fallback="")
-        self.analog_model = config.get("Digits", "Model", fallback="auto").lower()
-        if self.digit_model not in ["auto", "analog", "analog100"]:
-            raise ValueError(f"Unsupported model: {self.digit_model}")
-        self.analog_do_image_logging = config.has_option("Analog", "LogImageLocation")
-        self.analog_image_log_dir = config.get(
-            "Analog", "LogImageLocation", fallback=""
-        )
-
-        if self.analog_readout_enabled:
-            analogs = config.get("Analog", "names")
-            for name in [x.strip() for x in analogs.split(",")]:
-                x1 = int(config[f"Analog.{name}"]["x"])
-                y1 = int(config[f"Analog.{name}"]["y"])
-                w = int(config[f"Analog.{name}"]["dx"])
-                h = int(config[f"Analog.{name}"]["dy"])
-                self.cut_analog_counter.append(ImagePosition(name, x1, y1, w, h))
-
-        ################## Alignment Parameters ###############################
-        self.alignment_rotate_angle = config.getfloat(
+        ################## Alignment Parameters ########################################
+        rotate_angle = config.getfloat(
             "Alignment", "InitialRotationAngle", fallback=0.0
         )
 
         refs = config.get("Alignment", "Refs", fallback="")
+        ref_images = []
         for name in [x.strip() for x in refs.split(",")]:
             image = config.get(f"Alignment.{name}", "image", fallback="")
             x = config.getint(f"Alignment.{name}", "x", fallback=0)
             y = config.getint(f"Alignment.{name}", "y", fallback=0)
-            self.alignment_ref_images.append(RefImages(name, image, x, y))
+            w = config.getint(f"Alignment.{name}", "w", fallback=0)
+            h = config.getint(f"Alignment.{name}", "h", fallback=0)
+            ref_images.append(RefImage(name=name, x=x, y=y, w=w, h=h, file_name=image))
+        self.alignment = Alignment(rotate_angle=rotate_angle, ref_images=ref_images)
 
-        ################## Meter Parameters ###############################
+        ################## Meter Parameters ############################################
         meterVals = config.get("Meters", "Names", fallback="")
         for name in [x.strip() for x in meterVals.split(",")]:
             format = config.get(f"Meter.{name}", "Value", fallback="")
@@ -203,14 +162,47 @@ class Config:
 
             self.meter_configs.append(
                 MeterConfig(
-                    name,
-                    format,
-                    consistency_enabled,
-                    allow_negative_rates,
-                    max_rate_value,
-                    use_previuos_value,
-                    pre_value_from_file_max_age,
-                    use_extended_resolution,
-                    unit,
+                    name=name,
+                    format=format,
+                    consistency_enabled=consistency_enabled,
+                    allow_negative_rates=allow_negative_rates,
+                    max_rate_value=max_rate_value,
+                    use_previuos_value=use_previuos_value,
+                    pre_value_from_file_max_age=pre_value_from_file_max_age,
+                    use_extended_resolution=use_extended_resolution,
+                    unit=unit,
                 )
             )
+        return self
+
+    def _load_cnn_parames(
+        self, section: str, config: configparser.ConfigParser
+    ) -> CNNParams:
+        readout_enabled = config.getboolean(section, "Enabled", fallback=False)
+        model_file = config.get(section, "Modelfile", fallback="")
+        model = config.get(section, "Model", fallback="auto").lower()
+        do_image_logging = config.has_option(section, "LogImageLocation")
+        image_log_dir = config.get(section, "LogImageLocation", fallback="")
+        images = []
+        if readout_enabled:
+            names = config.get(section, "names", fallback="")
+            if names == "":
+                raise ConfigurationMissing(
+                    f"Section {section} is missing names. "
+                    f"Please add a comma separated list of names or disable "
+                    f"the {section} readout."
+                )
+            for name in [x.strip() for x in names.split(",")]:
+                x = config.getint(f"{section}.{name}", "x", fallback=0)
+                y = config.getint(f"{section}.{name}", "y", fallback=0)
+                w = config.getint(f"{section}.{name}", "w", fallback=0)
+                h = config.getint(f"{section}.{name}", "h", fallback=0)
+                images.append(ImagePosition(name=name, x=x, y=y, w=w, h=h))
+        return CNNParams(
+            enabled=readout_enabled,
+            model_file=model_file,
+            model=model,
+            do_image_logging=do_image_logging,
+            image_log_dir=image_log_dir,
+            cut_images=images,
+        )

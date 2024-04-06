@@ -47,3 +47,8 @@ max-complexity = 10
 [tool.bandit]
 exclude_dirs = ["tests", ".venv", "dist", "build", "setup.py"]
 skips = []
+
+[tool.pytest.ini_options]
+pythonpath = [
+  ".", "src",
+]

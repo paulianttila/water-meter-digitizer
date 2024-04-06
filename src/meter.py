@@ -15,14 +15,16 @@ from fastapi.templating import Jinja2Templates
 import uvicorn
 
 from Config import Config
-from Utils.ImageLoader import DownloadFailure
-from MeterProcessor import MeterProcessor
+from Utils.DownloadUtils import DownloadFailure
+import Utils.ImageUtils as ImageUtils
+from Processor import CNNType, Processor
+import PreviousValueFile
 
 
 VERSION = "8.0.0"
 
 config_file = os.environ.get("CONFIG_FILE", "/config/config.ini")
-meter = None
+processor = None
 config = None
 
 logging.basicConfig(
@@ -71,17 +73,43 @@ def do_exit():
 
 @app.get("/reload", response_class=HTMLResponse)
 def reload_config():
-    global meter
-    del meter
+    global processor
+    del processor
     gc.collect()
     init_app()
     return "Configuration reloaded"
 
 
 @app.get("/roi", response_class=HTMLResponse)
-def get_roi(request: Request, url: str = None, timeout: int = 0):
+def get_roi(
+    request: Request,
+    url: str = None,
+    draw_refs: bool = True,
+    draw_digital: bool = True,
+    draw_analog: bool = True,
+):
     try:
-        base64image = meter.get_roi_image(url, timeout)
+        url = url or config.image_source.url
+        timeout = config.image_source.timeout
+
+        processor.download_image(
+            url, timeout, config.image_source.min_size
+        ).rotate_image(config.alignment.rotate_angle).align_image(
+            config.alignment.ref_images
+        )
+
+        if draw_refs:
+            for img in config.alignment.ref_images:
+                if img.w == 0 or img.h == 0:
+                    img.h, img.w, ch = ImageUtils.image_shape_from_file(img.file_name)
+            processor.draw_roi(config.alignment.ref_images, (0, 255, 0))
+        if draw_digital:
+            processor.draw_roi(config.digital_readout.cut_images, (255, 0, 0))
+        if draw_analog:
+            processor.draw_roi(config.analog_readout.cut_images, (0, 0, 255))
+
+        base64image = processor.get_image_as_base64_str()
+
         return templates.TemplateResponse(
             "roi.html",
             context={"request": request, "data": base64image},
@@ -93,7 +121,11 @@ def get_roi(request: Request, url: str = None, timeout: int = 0):
 @app.get("/setPreviousValue")
 def set_previous_value(name: str, value: str):
     try:
-        meter.save_previous_value(name, value)
+        if value is None or not value.isnumeric():
+            raise ValueError(f"Value {value} is not a number")
+        PreviousValueFile.save_previous_value_to_file(
+            config.prevoius_value_file, name, value
+        )
         err = ""
     except Exception as e:
         err = f"{e}"
@@ -105,16 +137,29 @@ def get_meters(
     request: Request,
     format: str = "html",
     url: str = None,
-    timeout: int = 0,
 ):
     if format not in ["html", "json"]:
         return Response("Invalid format. Use 'html' or 'json'", media_type="text/html")
 
     try:
-        result = meter.get_meters(
-            url=url,
-            timeout=timeout,
-            save_images=format == "html",
+        url = url or config.image_source.url
+        timeout = config.image_source.timeout
+        result = (
+            processor.download_image(url, timeout, config.image_source.min_size)
+            .save_image(f"{config.image_tmp_dir}/original.jpg")
+            .rotate_image(config.alignment.rotate_angle)
+            .save_image(f"{config.image_tmp_dir}/rotated.jpg")
+            .align_image(config.alignment.ref_images)
+            .save_image(f"{config.image_tmp_dir}/aligned.jpg")
+            .start_image_cutting()
+            .cut_images(config.digital_readout.cut_images, CNNType.ANALOG)
+            .cut_images(config.analog_readout.cut_images, CNNType.DIGITAL)
+            .stop_image_cutting()
+            .save_cutted_images(config.image_tmp_dir)
+            .execute_analog_ccn()
+            .execute_digital_ccn()
+            .evaluate_ccn_results()
+            .get_meter_values(config.meter_configs)
         )
     except Exception as e:
         logger.warning(f"Error occured: {str(e)}")
@@ -140,21 +185,28 @@ def get_meters(
 
 
 def init_app():
-    global meter, config
-    config = Config()
-    config.load_config(ini_file=config_file)
+    global processor, config
+    config = Config().load_from_file(ini_file=config_file)
     logger.setLevel(config.log_level)
 
     logging.getLogger("lib.CNN.CNNBase").setLevel(logger.level)
     logging.getLogger("lib.CNN.AnalogNeedleCNN").setLevel(logger.level)
     logging.getLogger("lib.CNN.DigitalCounterCNN").setLevel(logger.level)
     logging.getLogger("lib.Utils.ImageLoader").setLevel(logger.level)
-    logging.getLogger("lib.Utils.ImageProcessor").setLevel(logger.level)
     logging.getLogger("lib.Config").setLevel(logger.level)
-    logging.getLogger("lib.MeterProcessor").setLevel(logger.level)
+    logging.getLogger("lib.Processor").setLevel(logger.level)
     logging.getLogger("lib.PreviousValueFile").setLevel(logger.level)
 
-    meter = MeterProcessor(config=config)
+    processor = Processor()
+    (
+        processor.init_analog_model(
+            config.analog_readout.model_file, config.analog_readout.model
+        )
+        .init_digital_model(
+            config.digital_readout.model_file, config.digital_readout.model
+        )
+        .use_previous_value_file(config.prevoius_value_file)
+    )
 
 
 if __name__ == "__main__":
