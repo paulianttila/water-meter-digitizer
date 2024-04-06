@@ -151,6 +151,23 @@ def get_meters(
             .save_image(f"{config.image_tmp_dir}/rotated.jpg")
             .align_image(config.alignment.ref_images)
             .save_image(f"{config.image_tmp_dir}/aligned.jpg")
+            .crop_image(
+                config.crop.enabled,
+                config.crop.x,
+                config.crop.y,
+                config.crop.w,
+                config.crop.h,
+            )
+            .save_image(f"{config.image_tmp_dir}/cropped.jpg")
+            .resize_image(config.resize.enabled, config.resize.w, config.resize.h)
+            .save_image(f"{config.image_tmp_dir}/resized.jpg")
+            .adjust_brightness(
+                config.image_processing.enabled, config.image_processing.brightness
+            )
+            .adjust_contrast(
+                config.image_processing.enabled, config.image_processing.contrast
+            )
+            .save_image(f"{config.image_tmp_dir}/processed.jpg")
             .start_image_cutting()
             .cut_images(config.digital_readout.cut_images, CNNType.ANALOG)
             .cut_images(config.analog_readout.cut_images, CNNType.DIGITAL)

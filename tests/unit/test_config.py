@@ -44,6 +44,20 @@ def test_config():
         ),
     ]
 
+    assert config.crop.enabled is False
+    assert config.crop.x == 100
+    assert config.crop.y == 200
+    assert config.crop.w == 300
+    assert config.crop.h == 400
+
+    assert config.resize.enabled is False
+    assert config.resize.w == 640
+    assert config.resize.h == 480
+
+    assert config.image_processing.enabled is False
+    assert config.image_processing.contrast == 1.0
+    assert config.image_processing.brightness == 0
+
     assert config.digital_readout.enabled is True
     assert (
         config.digital_readout.model_file

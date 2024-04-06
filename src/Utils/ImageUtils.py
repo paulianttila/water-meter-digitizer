@@ -137,3 +137,18 @@ def cut_image(
     cropImg = source[y : y + h, x : x + w]
     cropImg = cv2.cvtColor(cropImg, cv2.COLOR_BGR2RGB)
     return Image.fromarray(cropImg)
+
+
+def crop_image(image: Image, x: int, y: int, w: int, h: int) -> Image:
+    return image[y : y + h, x : x + w]
+
+
+def resize_image(image: Image, width: int, height: int) -> Image:
+    return cv2.resize(image, (width, height), interpolation=cv2.INTER_AREA)
+
+
+def adjust_contrast_brightness(
+    image: Image, contrast: float = 1.0, brightness: int = 0
+) -> Image:
+    brightness += int(round(255 * (1 - contrast) / 2))
+    return cv2.addWeighted(image, contrast, image, 0, brightness)

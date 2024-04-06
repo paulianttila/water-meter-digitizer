@@ -39,6 +39,29 @@ class Alignment:
 
 
 @dataclass
+class Crop:
+    enabled: bool = False
+    x: int = 0
+    y: int = 0
+    w: int = 0
+    h: int = 0
+
+
+@dataclass
+class Resize:
+    enabled: bool = False
+    w: int = 0
+    h: int = 0
+
+
+@dataclass
+class ImageProcessing:
+    enabled: bool = False
+    contrast: float = 0.0
+    brightness: Resize = 0
+
+
+@dataclass
 class Config:
     log_level: str = "INFO"
     image_tmp_dir: str = "/image_tmp"
@@ -49,6 +72,9 @@ class Config:
     analog_readout: CNNParams = field(default_factory=CNNParams)
     alignment: Alignment = field(default_factory=Alignment)
     meter_configs: List[MeterConfig] = field(default_factory=list)
+    crop: Crop = field(default_factory=Crop)
+    resize: Resize = field(default_factory=Resize)
+    image_processing: ImageProcessing = field(default_factory=ImageProcessing)
 
     def set_log_level(self, level: str) -> "Config":
         self.log_level = level
@@ -73,6 +99,15 @@ class Config:
 
     def set_alignment(self, alignment: Alignment) -> "Config":
         self.alignment = alignment
+
+    def set_crop(self, crop: Crop) -> "Config":
+        self.crop = crop
+
+    def set_resize(self, resize: Resize) -> "Config":
+        self.resize = resize
+
+    def set_image_processing(self, imageProcessing: ImageProcessing) -> "Config":
+        self.image_processing = imageProcessing
 
     def add_meter_config(self, config: MeterConfig) -> "Config":
         self.meter_configs.append(config)
@@ -121,9 +156,7 @@ class Config:
         self.analog_readout = analog_readout
 
         ################## Alignment Parameters ########################################
-        rotate_angle = config.getfloat(
-            "Alignment", "InitialRotationAngle", fallback=0.0
-        )
+        rotate_angle = config.getfloat("Alignment", "RotationAngle", fallback=0.0)
 
         refs = config.get("Alignment", "Refs", fallback="")
         ref_images = []
@@ -135,6 +168,36 @@ class Config:
             h = config.getint(f"Alignment.{name}", "h", fallback=0)
             ref_images.append(RefImage(name=name, x=x, y=y, w=w, h=h, file_name=image))
         self.alignment = Alignment(rotate_angle=rotate_angle, ref_images=ref_images)
+
+        ################## Crop Parameters #############################################
+        crop_enabled = config.getboolean("Crop", "Enabled", fallback=False)
+        crop_x = config.getint("Crop", "x", fallback=0)
+        crop_y = config.getint("Crop", "y", fallback=0)
+        crop_w = config.getint("Crop", "w", fallback=0)
+        crop_h = config.getint("Crop", "h", fallback=0)
+        self.crop = Crop(enabled=crop_enabled, x=crop_x, y=crop_y, w=crop_w, h=crop_h)
+
+        ################## Resize Parameters #############################################
+        resize_enabled = config.getboolean("Resize", "Enabled", fallback=False)
+        resize_w = config.getint("Resize", "w", fallback=0)
+        resize_h = config.getint("Resize", "h", fallback=0)
+        self.resize = Resize(enabled=resize_enabled, w=resize_w, h=resize_h)
+
+        ################## Image Processing Parameters #################################
+        image_processing_enabled = config.getboolean(
+            "ImageProcessing", "Enabled", fallback=False
+        )
+        image_processing_contrast = config.getfloat(
+            "ImageProcessing", "Contrast", fallback=0.0
+        )
+        image_processing_brightness = config.getint(
+            "ImageProcessing", "Brightness", fallback=0
+        )
+        self.image_processing = ImageProcessing(
+            enabled=image_processing_enabled,
+            contrast=image_processing_contrast,
+            brightness=image_processing_brightness,
+        )
 
         ################## Meter Parameters ############################################
         meterVals = config.get("Meters", "Names", fallback="")
