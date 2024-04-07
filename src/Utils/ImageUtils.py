@@ -152,3 +152,7 @@ def adjust_contrast_brightness(
 ) -> Image:
     brightness += int(round(255 * (1 - contrast) / 2))
     return cv2.addWeighted(image, contrast, image, 0, brightness)
+
+
+def convert_to_gray_scale(image: Image) -> Image:
+    return cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)

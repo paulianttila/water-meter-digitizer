@@ -57,7 +57,8 @@ def test_config():
     assert config.image_processing.enabled is False
     assert config.image_processing.contrast == 1.0
     assert config.image_processing.brightness == 0
-
+    assert config.image_processing.grayscale is False
+    
     assert config.digital_readout.enabled is True
     assert (
         config.digital_readout.model_file

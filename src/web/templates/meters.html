@@ -6,7 +6,7 @@
     <p>{{ meter.name }}: {{ meter.value }} {{ meter.unit }}</p>
     {% endfor %}
     <h2>Image</h2>
-    <img src=/image_tmp/processed.jpg></img></p>
+    <img src=/image_tmp/final.jpg></img></p>
     <h2>Digital counters</h2>
     {% for image, value in result.digital_results.items() %}
     <img src=/image_tmp/{{ image }}.jpg></img>{{ value }}

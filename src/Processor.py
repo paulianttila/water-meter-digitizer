@@ -144,32 +144,28 @@ class Processor:
         self.image = ImageUtils.rotate(self.image, angle)
         return self
 
-    def crop_image(self, enabled: bool, x: int, y: int, w: int, h: int) -> "Processor":
-        if enabled:
-            logger.debug(f"Crop image: x={x}, y={y}, w={w}, h={h}")
-            self.image = ImageUtils.crop_image(self.image, x, y, w, h)
+    def crop_image(self, x: int, y: int, w: int, h: int) -> "Processor":
+        self.image = ImageUtils.crop_image(self.image, x, y, w, h)
         return self
 
-    def resize_image(self, enabled: bool, width: int, height: int) -> "Processor":
-        if enabled:
-            logger.debug(f"Resize image: {width}, {height}")
-            self.image = ImageUtils.resize_image(self.image, width, height)
+    def resize_image(self, width: int, height: int) -> "Processor":
+        self.image = ImageUtils.resize_image(self.image, width, height)
         return self
 
-    def adjust_contrast(self, enabled: bool, contrast: int) -> "Processor":
-        if enabled:
-            logger.debug(f"Adjust contrast: {contrast}")
-            self.image = ImageUtils.adjust_contrast_brightness(
-                image=self.image, contrast=contrast
-            )
+    def adjust_contrast(self, contrast: int) -> "Processor":
+        self.image = ImageUtils.adjust_contrast_brightness(
+            image=self.image, contrast=contrast
+        )
         return self
 
-    def adjust_brightness(self, enabled: bool, brightness: int) -> "Processor":
-        if enabled:
-            logger.debug(f"Adjust brightness: {brightness}")
-            self.image = ImageUtils.adjust_contrast_brightness(
-                image=self.image, brightness=brightness
-            )
+    def adjust_brightness(self, brightness: int) -> "Processor":
+        self.image = ImageUtils.adjust_contrast_brightness(
+            image=self.image, brightness=brightness
+        )
+        return self
+
+    def to_gray_scale(self) -> "Processor":
+        self.image = ImageUtils.convert_to_gray_scale(self.image)
         return self
 
     def align_image(self, align_images: List[ImagePosition]) -> "Processor":

@@ -59,6 +59,7 @@ class ImageProcessing:
     enabled: bool = False
     contrast: float = 0.0
     brightness: Resize = 0
+    grayscale: bool = False
 
 
 @dataclass
@@ -75,42 +76,6 @@ class Config:
     crop: Crop = field(default_factory=Crop)
     resize: Resize = field(default_factory=Resize)
     image_processing: ImageProcessing = field(default_factory=ImageProcessing)
-
-    def set_log_level(self, level: str) -> "Config":
-        self.log_level = level
-
-    def set_image_tmp_dir(self, dir: str) -> "Config":
-        self.image_tmp_dir = dir
-
-    def set_config_dir(self, dir: str) -> "Config":
-        self.config_dir = dir
-
-    def set_previous_value_file(self, file: str) -> "Config":
-        self.prevoius_value_file = file
-
-    def set_image_source(self, imageSource: ImageSource) -> "Config":
-        self.imageSource = imageSource
-
-    def set_digital_readout(self, digitalReadout: CNNParams) -> "Config":
-        self.digital_readout = digitalReadout
-
-    def set_analog_readout(self, analogReadout: CNNParams) -> "Config":
-        self.analog_readout = analogReadout
-
-    def set_alignment(self, alignment: Alignment) -> "Config":
-        self.alignment = alignment
-
-    def set_crop(self, crop: Crop) -> "Config":
-        self.crop = crop
-
-    def set_resize(self, resize: Resize) -> "Config":
-        self.resize = resize
-
-    def set_image_processing(self, imageProcessing: ImageProcessing) -> "Config":
-        self.image_processing = imageProcessing
-
-    def add_meter_config(self, config: MeterConfig) -> "Config":
-        self.meter_configs.append(config)
 
     def load_from_file(self, ini_file: str = "config.ini") -> "Config":
         # sourcery skip: avoid-builtin-shadow
@@ -131,7 +96,7 @@ class Config:
         )
 
         ##################  Image Source Parameters ####################################
-        url = config.get("ImageSource", "URLImageSource", fallback="")
+        url = config.get("ImageSource", "URL", fallback="")
         timeout = config.getint("ImageSource", "TimeoutLoadImage", fallback=30)
         min_size = config.getint("ImageSource", "MinImageSize", fallback=10000)
         log_dir = config.get("ImageSource", "LogImageLocation", fallback="")
@@ -193,10 +158,14 @@ class Config:
         image_processing_brightness = config.getint(
             "ImageProcessing", "Brightness", fallback=0
         )
+        image_processing_grayscale = config.getboolean(
+            "ImageProcessing", "GrayScale", fallback=False
+        )
         self.image_processing = ImageProcessing(
             enabled=image_processing_enabled,
             contrast=image_processing_contrast,
             brightness=image_processing_brightness,
+            grayscale=image_processing_grayscale,
         )
 
         ################## Meter Parameters ############################################
