@@ -38,7 +38,7 @@ stages:
 
   - name: test meters in JSON format
     request:
-      url: 'http://{url}/meter?format=json'
+      url: 'http://{url}/meter?format=json&saveimages=true'
       method: GET
       timeout: 3
     response:
