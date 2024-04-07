@@ -88,6 +88,7 @@ class Processor:
         self.previous_value_file = None
         self.cnn_digital_results = []
         self.cnn_analog_results = []
+        self.enable_img_saving = False
 
     def init_analog_model(
         self, modelfile: str, model: str, image_log_dir: str = None
@@ -96,6 +97,10 @@ class Processor:
         self.analog_counter_reader = AnalogNeedleCNN(
             modelfile=modelfile, dx=32, dy=32, image_log_dir=image_log_dir
         )
+        return self
+
+    def enable_image_saving(self, state: bool = True) -> "Processor":
+        self.enable_img_saving = state
         return self
 
     def use_previous_value_file(self, previous_value_file: str) -> "Processor":
@@ -124,7 +129,8 @@ class Processor:
         return base64.b64encode(b).decode()
 
     def save_image(self, path: str) -> "Processor":
-        ImageUtils.save_image(self.image, path)
+        if self.enable_img_saving:
+            ImageUtils.save_image(self.image, path)
         return self
 
     def download_image(

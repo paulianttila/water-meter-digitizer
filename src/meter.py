@@ -137,6 +137,7 @@ def get_meters(
     request: Request,
     format: str = "html",
     url: str = None,
+    saveimages: bool = False,
 ):
     if format not in ["html", "json"]:
         return Response("Invalid format. Use 'html' or 'json'", media_type="text/html")
@@ -146,7 +147,8 @@ def get_meters(
         timeout = config.image_source.timeout
 
         (
-            processor.download_image(url, timeout, config.image_source.min_size)
+            processor.enable_image_saving(saveimages)
+            .download_image(url, timeout, config.image_source.min_size)
             .save_image(f"{config.image_tmp_dir}/original.jpg")
             .rotate_image(config.alignment.rotate_angle)
             .save_image(f"{config.image_tmp_dir}/rotated.jpg")
@@ -173,15 +175,21 @@ def get_meters(
             )
 
         if config.image_processing.enabled:
+            if config.image_processing.grayscale:
+                (
+                    processor.to_gray_scale().save_image(
+                        f"{config.image_tmp_dir}/gray.jpg"
+                    )
+                )
             (
-                processor.to_gray_scale()
-                .adjust_brightness(config.image_processing.brightness)
+                processor.adjust_brightness(config.image_processing.brightness)
                 .adjust_contrast(config.image_processing.contrast)
                 .save_image(f"{config.image_tmp_dir}/processed.jpg")
             )
 
         result = (
-            processor.save_image(f"{config.image_tmp_dir}/final.jpg")
+            processor.enable_image_saving(True)  # Force final image saving
+            .save_image(f"{config.image_tmp_dir}/final.jpg")
             .start_image_cutting()
             .cut_images(config.digital_readout.cut_images, CNNType.ANALOG)
             .cut_images(config.analog_readout.cut_images, CNNType.DIGITAL)
