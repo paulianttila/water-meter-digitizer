@@ -35,11 +35,33 @@ run_tests() {
 }
 
 clean_up() {
+  if [ -z "${TEST_APP_PID}" ]; then
+    return
+  fi
   echo "Stop test app, PID=${TEST_APP_PID}"
   kill -9 ${TEST_APP_PID}
 }
 
 echo "Current folder: ${PWD}"
+
+while getopts ":sa" option; do
+   case $option in
+      s)
+        set +e
+        ruff check --output-format=github .
+        black --check .
+        bandit -c pyproject.toml -r .
+        exit;;
+      a)
+        set +e
+        start_test_app
+        run_tests
+        ruff check --output-format=github .
+        black --check .
+        bandit -c pyproject.toml -r .
+        exit;;
+   esac
+done
 
 start_test_app
 run_tests
