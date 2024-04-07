@@ -142,7 +142,7 @@ class Config:
         crop_h = config.getint("Crop", "h", fallback=0)
         self.crop = Crop(enabled=crop_enabled, x=crop_x, y=crop_y, w=crop_w, h=crop_h)
 
-        ################## Resize Parameters #############################################
+        ################## Resize Parameters ###########################################
         resize_enabled = config.getboolean("Resize", "Enabled", fallback=False)
         resize_w = config.getint("Resize", "w", fallback=0)
         resize_h = config.getint("Resize", "h", fallback=0)
