@@ -58,7 +58,7 @@ class CNNBase:
         ysize = self.input_details[0]["shape"][2]
         channels = self.input_details[0]["shape"][3]
         numeroutput = self.output_details[0]["shape"][1]
-        logger.info(
+        logger.debug(
             f"Model '{self.modelfile}' loaded. "
             f"ModelSize: {xsize}x{ysize}x{channels}. "
             f"Output: {numeroutput}"
