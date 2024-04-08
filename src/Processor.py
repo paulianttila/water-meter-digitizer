@@ -78,6 +78,7 @@ class ValueError(Exception):
 
 class Processor:
     def __init__(self):
+        self.condition = None
         self.image = None
         self.cutted_analog_images = [CutImage]
         self.cutted_digital_images = [CutImage]
@@ -90,6 +91,29 @@ class Processor:
         self.cnn_analog_results = []
         self.enable_img_saving = False
 
+    def _conditional_func(func):
+        def wrapper(self, *args, **kwargs):
+            if self.condition is not None and self.condition is False:
+                return self
+
+            func(self, *args, **kwargs)
+            return self
+
+        return wrapper
+
+    def if_(self, a):
+        self.condition = a
+        return self
+
+    def else_(self):
+        self.condition = self.condition is False
+        return self
+
+    def endif_(self):
+        self.condition = None
+        return self
+
+    @_conditional_func
     def init_analog_model(
         self, modelfile: str, model: str, image_log_dir: str = None
     ) -> "Processor":
@@ -99,14 +123,17 @@ class Processor:
         )
         return self
 
+    @_conditional_func
     def enable_image_saving(self, state: bool = True) -> "Processor":
         self.enable_img_saving = state
         return self
 
+    @_conditional_func
     def use_previous_value_file(self, previous_value_file: str) -> "Processor":
         self.previous_value_file = previous_value_file
         return self
 
+    @_conditional_func
     def init_digital_model(
         self, modelfile: str, model: str, image_log_dir: str = None
     ) -> "Processor":
@@ -116,10 +143,12 @@ class Processor:
         )
         return self
 
+    @_conditional_func
     def set_image(self, image: Image) -> "Processor":
         self.image = image
         return self
 
+    @_conditional_func
     def get_image(self) -> Image:
         return self.image
 
@@ -128,11 +157,13 @@ class Processor:
         b = ImageUtils.conv_rgb_image_to_bytes(image=image)
         return base64.b64encode(b).decode()
 
+    @_conditional_func
     def save_image(self, path: str) -> "Processor":
         if self.enable_img_saving:
             ImageUtils.save_image(self.image, path)
         return self
 
+    @_conditional_func
     def download_image(
         self, url: str, timeout: int, min_image_size: int = 0
     ) -> "Processor":
@@ -145,39 +176,47 @@ class Processor:
         self.image = ImageUtils.bytes_to_image(data)
         return self
 
+    @_conditional_func
     def rotate_image(self, angle: float) -> "Processor":
         logger.debug(f"Rotate image by {angle} degrees")
         self.image = ImageUtils.rotate(self.image, angle)
         return self
 
+    @_conditional_func
     def crop_image(self, x: int, y: int, w: int, h: int) -> "Processor":
         self.image = ImageUtils.crop_image(self.image, x, y, w, h)
         return self
 
+    @_conditional_func
     def resize_image(self, width: int, height: int) -> "Processor":
         self.image = ImageUtils.resize_image(self.image, width, height)
         return self
 
+    @_conditional_func
     def adjust_contrast(self, contrast: int) -> "Processor":
         self.image = ImageUtils.adjust_contrast_brightness(
             image=self.image, contrast=contrast
         )
         return self
 
+    @_conditional_func
     def adjust_brightness(self, brightness: int) -> "Processor":
         self.image = ImageUtils.adjust_contrast_brightness(
             image=self.image, brightness=brightness
         )
         return self
 
+    @_conditional_func
     def to_gray_scale(self) -> "Processor":
         self.image = ImageUtils.convert_to_gray_scale(self.image)
         return self
 
+    @_conditional_func
     def align_image(self, align_images: List[ImagePosition]) -> "Processor":
         self.image = ImageUtils.align(self.image, align_images)
         return self
 
+    @_conditional_func
     def draw_roi(
         self, images: List[ImagePosition], bgr_colour: tuple[int, int, int]
     ) -> "Processor":
@@ -200,6 +239,7 @@ class Processor:
             )
         return self
 
+    @_conditional_func
     def cut_images(self, positions: List[ImagePosition], type: CNNType) -> "Processor":
         for img in positions:
             image = ImageUtils.cut_image(self.image, img)
@@ -209,19 +249,23 @@ class Processor:
                 self.cutted_digital_images.append(CutImage(name=img.name, image=image))
         return self
 
+    @_conditional_func
     def start_image_cutting(self) -> "Processor":
         self.cutted_analog_images = []
         self.cutted_digital_images = []
         return self
 
+    @_conditional_func
     def stop_image_cutting(self) -> "Processor":
         return self
 
+    @_conditional_func
     def save_cutted_images(self, path: str) -> "Processor":
         for img in self.cutted_analog_images + self.cutted_digital_images:
             ImageUtils.save_image(img.image, f"{path}/{img.name}.jpg")
         return self
 
+    @_conditional_func
     def execute_analog_ccn(self) -> "Processor":
         if self.analog_counter_reader is None and self.digital_counter_reader is None:
             raise ValueError("No CNN reader initialized")
@@ -232,6 +276,7 @@ class Processor:
             logger.debug(f"Analog CNN results: {self.cnn_analog_results}")
         return self
 
+    @_conditional_func
     def execute_digital_ccn(self) -> "Processor":
         if self.digital_counter_reader is not None:
             self.cnn_digital_results = self.digital_counter_reader.readout(
@@ -240,6 +285,7 @@ class Processor:
             logger.debug(f"Digital CNN results: {self.cnn_digital_results}")
         return self
 
+    @_conditional_func
     def evaluate_ccn_results(self) -> "Processor":
         available_values = {}
 

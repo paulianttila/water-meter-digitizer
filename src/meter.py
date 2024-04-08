@@ -92,23 +92,26 @@ def get_roi(
         url = url or config.image_source.url
         timeout = config.image_source.timeout
 
-        processor.download_image(
-            url, timeout, config.image_source.min_size
-        ).rotate_image(config.alignment.rotate_angle).align_image(
-            config.alignment.ref_images
-        )
-
         if draw_refs:
             for img in config.alignment.ref_images:
                 if img.w == 0 or img.h == 0:
                     img.h, img.w, ch = ImageUtils.image_shape_from_file(img.file_name)
-            processor.draw_roi(config.alignment.ref_images, (0, 255, 0))
-        if draw_digital:
-            processor.draw_roi(config.digital_readout.cut_images, (255, 0, 0))
-        if draw_analog:
-            processor.draw_roi(config.analog_readout.cut_images, (0, 0, 255))
 
-        base64image = processor.get_image_as_base64_str()
+        base64image = (
+            processor.download_image(url, timeout, config.image_source.min_size)
+            .rotate_image(config.alignment.rotate_angle)
+            .align_image(config.alignment.ref_images)
+            .if_(draw_refs)
+            .draw_roi(config.alignment.ref_images, (0, 255, 0))
+            .endif_()
+            .if_(draw_digital)
+            .draw_roi(config.digital_readout.cut_images, (255, 0, 0))
+            .endif_()
+            .if_(draw_analog)
+            .draw_roi(config.analog_readout.cut_images, (0, 0, 255))
+            .endif_()
+            .get_image_as_base64_str()
+        )
 
         return templates.TemplateResponse(
             "roi.html",
@@ -146,7 +149,7 @@ def get_meters(
         url = url or config.image_source.url
         timeout = config.image_source.timeout
 
-        (
+        result = (
             processor.enable_image_saving(saveimages)
             .download_image(url, timeout, config.image_source.min_size)
             .save_image(f"{config.image_tmp_dir}/original.jpg")
@@ -154,41 +157,24 @@ def get_meters(
             .save_image(f"{config.image_tmp_dir}/rotated.jpg")
             .align_image(config.alignment.ref_images)
             .save_image(f"{config.image_tmp_dir}/aligned.jpg")
-        )
-
-        if config.crop.enabled:
-            (
-                processor.crop_image(
-                    config.crop.x,
-                    config.crop.y,
-                    config.crop.w,
-                    config.crop.h,
-                ).save_image(f"{config.image_tmp_dir}/cropped.jpg")
-            )
-
-        if config.resize.enabled:
-            (
-                processor.resize_image(
-                    config.resize.w,
-                    config.resize.h,
-                ).save_image(f"{config.image_tmp_dir}/resized.jpg")
-            )
-
-        if config.image_processing.enabled:
-            if config.image_processing.grayscale:
-                (
-                    processor.to_gray_scale().save_image(
-                        f"{config.image_tmp_dir}/gray.jpg"
-                    )
-                )
-            (
-                processor.adjust_brightness(config.image_processing.brightness)
-                .adjust_contrast(config.image_processing.contrast)
-                .save_image(f"{config.image_tmp_dir}/processed.jpg")
-            )
-
-        result = (
-            processor.enable_image_saving(True)  # Force final image saving
+            .if_(config.crop.enabled)
+            .crop_image(config.crop.x, config.crop.y, config.crop.w, config.crop.h)
+            .save_image(f"{config.image_tmp_dir}/cropped.jpg")
+            .endif_()
+            .if_(config.resize.enabled)
+            .resize_image(config.resize.w, config.resize.h)
+            .save_image(f"{config.image_tmp_dir}/resized.jpg")
+            .endif_()
+            .if_(config.image_processing.enabled and config.image_processing.grayscale)
+            .to_gray_scale()
+            .save_image(f"{config.image_tmp_dir}/gray.jpg")
+            .endif_()
+            .if_(config.image_processing.enabled)
+            .adjust_brightness(config.image_processing.brightness)
+            .adjust_contrast(config.image_processing.contrast)
+            .save_image(f"{config.image_tmp_dir}/processed.jpg")
+            .endif_()
+            .enable_image_saving(True)  # Force final image saving
             .save_image(f"{config.image_tmp_dir}/final.jpg")
             .start_image_cutting()
             .cut_images(config.digital_readout.cut_images, CNNType.ANALOG)
