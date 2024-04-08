@@ -221,7 +221,8 @@ def init_app():
     logging.getLogger("Config").setLevel(logger.level)
     logging.getLogger("Processor").setLevel(logger.level)
     logging.getLogger("PreviousValueFile").setLevel(logger.level)
-    logging.getLogger("urllib3").setLevel(logger.level)
+    logging.getLogger("urllib3").setLevel(logging.WARNING)
+    logging.getLogger("asyncio").setLevel(logging.WARNING)
 
     processor = Processor()
     (
