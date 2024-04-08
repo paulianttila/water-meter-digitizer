@@ -255,7 +255,7 @@ if __name__ == "__main__":
     logger.info(f"Meter is serving at port {port}")
     uvicorn.run(
         app,
-        host="0.0.0.0",
+        host="0.0.0.0",  # nosec B104
         port=port,
         log_level="info" if logger.level == logging.DEBUG else "warning",
-    )  # nosec B104
+    )
