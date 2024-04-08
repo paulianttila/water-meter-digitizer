@@ -54,7 +54,7 @@ def healthcheck():
 
 @app.get("/image_tmp/{image}")
 def get_image(image: str):
-    logger.info(f"Getting image: {image}")
+    logger.debug(f"Getting image: {image}")
     return FileResponse(
         f"{config.image_tmp_dir}/{image}", media_type="image/jpg", filename=image
     )
@@ -214,13 +214,14 @@ def init_app():
     config = Config().load_from_file(ini_file=config_file)
     logger.setLevel(config.log_level)
 
-    logging.getLogger("lib.CNN.CNNBase").setLevel(logger.level)
-    logging.getLogger("lib.CNN.AnalogNeedleCNN").setLevel(logger.level)
-    logging.getLogger("lib.CNN.DigitalCounterCNN").setLevel(logger.level)
-    logging.getLogger("lib.Utils.ImageLoader").setLevel(logger.level)
-    logging.getLogger("lib.Config").setLevel(logger.level)
-    logging.getLogger("lib.Processor").setLevel(logger.level)
-    logging.getLogger("lib.PreviousValueFile").setLevel(logger.level)
+    logging.getLogger("CNN.CNNBase").setLevel(logger.level)
+    logging.getLogger("CNN.AnalogNeedleCNN").setLevel(logger.level)
+    logging.getLogger("CNN.DigitalCounterCNN").setLevel(logger.level)
+    logging.getLogger("Utils.DownloadUtils").setLevel(logger.level)
+    logging.getLogger("Config").setLevel(logger.level)
+    logging.getLogger("Processor").setLevel(logger.level)
+    logging.getLogger("PreviousValueFile").setLevel(logger.level)
+    logging.getLogger("urllib3").setLevel(logger.level)
 
     processor = Processor()
     (
@@ -252,4 +253,9 @@ if __name__ == "__main__":
     init_app()
     port = 3000
     logger.info(f"Meter is serving at port {port}")
-    uvicorn.run(app, host="0.0.0.0", port=port)  # nosec B104
+    uvicorn.run(
+        app,
+        host="0.0.0.0",
+        port=port,
+        log_level="info" if logger.level == logging.DEBUG else "warning",
+    )  # nosec B104

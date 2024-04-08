@@ -332,7 +332,7 @@ class Processor:
                 config=meter_config,
             )
             meters.append(meter)
-        logger.info(f" Meters: {meters}")
+        logger.debug(f" Meters: {meters}")
         return meters
 
     def _gen_result(self, meters: List[Meter]) -> MeterResult:
