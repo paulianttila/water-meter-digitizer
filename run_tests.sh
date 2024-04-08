@@ -44,7 +44,7 @@ clean_up() {
 
 echo "Current folder: ${PWD}"
 
-while getopts ":sa" option; do
+while getopts ":sau" option; do
    case $option in
       s)
         set +e
@@ -59,6 +59,9 @@ while getopts ":sa" option; do
         ruff check --output-format=github .
         black --check .
         bandit -c pyproject.toml -r .
+        exit;;
+      u)
+        python -m pytest tests/unit
         exit;;
    esac
 done
