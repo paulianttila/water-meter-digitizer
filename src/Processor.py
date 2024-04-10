@@ -158,6 +158,7 @@ class Processor:
     @_conditional_func
     def save_image(self, path: str, forcesave: bool = False) -> "Processor":
         if self.enable_img_saving or forcesave:
+            logger.debug(f"Save image to {path}")
             ImageUtils.save_image(self.image, path)
         return self
 
@@ -182,11 +183,13 @@ class Processor:
 
     @_conditional_func
     def crop_image(self, x: int, y: int, w: int, h: int) -> "Processor":
+        logger.debug(f"Crop image to x:{x}, y:{y}, w:{w}, h:{h}")
         self.image = ImageUtils.crop_image(self.image, x, y, w, h)
         return self
 
     @_conditional_func
     def resize_image(self, width: int, height: int) -> "Processor":
+        logger.debug(f"Resize image to width:{width}, height:{height}")
         self.image = ImageUtils.resize_image(self.image, width, height)
         return self
 
@@ -198,6 +201,10 @@ class Processor:
         sharpness: float = 1.0,
         color: float = 1.0,
     ) -> "Processor":
+        logger.debug(
+            f"Adjust image contrast:{contrast}, brightness:{brightness}, "
+            f"sharpness:{sharpness}, color:{color}"
+        )
         self.image = ImageUtils.adjust_image(
             self.image,
             contrast=contrast,
@@ -209,11 +216,13 @@ class Processor:
 
     @_conditional_func
     def to_gray_scale(self) -> "Processor":
+        logger.debug("Convert image to gray scale")
         self.image = ImageUtils.convert_to_gray_scale(self.image)
         return self
 
     @_conditional_func
     def align_image(self, align_images: List[ImagePosition]) -> "Processor":
+        logger.debug(f"Align image to {align_images}")
         self.image = ImageUtils.align(self.image, align_images)
         return self
 
