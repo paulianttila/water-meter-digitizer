@@ -145,7 +145,7 @@ class Processor:
 
     @_conditional_func
     def set_image(self, image: Image) -> "Processor":
-        self.image = image
+        self.image = ImageUtils.conv_to_image(image)
         return self
 
     @_conditional_func
@@ -153,13 +153,11 @@ class Processor:
         return self.image
 
     def get_image_as_base64_str(self) -> str:
-        image = ImageUtils.convert_bgr_to_rgb(image=self.image)
-        b = ImageUtils.conv_rgb_image_to_bytes(image=image)
-        return base64.b64encode(b).decode()
+        return ImageUtils.conv_image_base64str(image=self.image)
 
     @_conditional_func
-    def save_image(self, path: str) -> "Processor":
-        if self.enable_img_saving:
+    def save_image(self, path: str, forcesave: bool = False) -> "Processor":
+        if self.enable_img_saving or forcesave:
             ImageUtils.save_image(self.image, path)
         return self
 
@@ -193,16 +191,19 @@ class Processor:
         return self
 
     @_conditional_func
-    def adjust_contrast(self, contrast: int) -> "Processor":
-        self.image = ImageUtils.adjust_contrast_brightness(
-            image=self.image, contrast=contrast
-        )
-        return self
-
-    @_conditional_func
-    def adjust_brightness(self, brightness: int) -> "Processor":
-        self.image = ImageUtils.adjust_contrast_brightness(
-            image=self.image, brightness=brightness
+    def adjust_image(
+        self,
+        contrast: float = 1.0,
+        brightness: float = 1.0,
+        sharpness: float = 1.0,
+        color: float = 1.0,
+    ) -> "Processor":
+        self.image = ImageUtils.adjust_image(
+            self.image,
+            contrast=contrast,
+            brightness=brightness,
+            sharpness=sharpness,
+            color=color,
         )
         return self
 
@@ -218,7 +219,7 @@ class Processor:
 
     @_conditional_func
     def draw_roi(
-        self, images: List[ImagePosition], bgr_colour: tuple[int, int, int]
+        self, images: List[ImagePosition], rgb_colour: tuple = (255, 0, 0)
     ) -> "Processor":
         for img in images:
             self.image = ImageUtils.draw_rectangle(
@@ -227,15 +228,15 @@ class Processor:
                 img.y,
                 img.w,
                 img.h,
-                colour=bgr_colour,
+                rgb_colour=rgb_colour,
                 thickness=3,
             )
             self.image = ImageUtils.draw_text(
                 self.image,
                 img.name,
                 img.x,
-                img.y - 8,
-                colour=bgr_colour,
+                img.y - 15,
+                rgb_colour=rgb_colour,
             )
         return self
 

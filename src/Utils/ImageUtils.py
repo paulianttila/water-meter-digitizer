@@ -1,7 +1,7 @@
+import base64
 import io
 from typing import List
-from PIL import Image
-import imutils
+from PIL import Image, ImageEnhance, ImageOps, ImageDraw, ImageFont
 import numpy as np
 import cv2
 
@@ -9,6 +9,8 @@ from DataClasses import ImagePosition, RefImage
 
 
 def save_image(image: Image, file_name: str) -> None:
+    if image is None:
+        raise ValueError("No image to save")
     if isinstance(image, Image.Image):
         Image.Image.save(image, file_name, "JPEG")
     elif isinstance(image, np.ndarray):
@@ -16,43 +18,78 @@ def save_image(image: Image, file_name: str) -> None:
 
 
 def bytes_to_image(data: bytes) -> Image:
-    _verify(data)
-    return cv2.imdecode(np.frombuffer(data, np.uint8), cv2.IMREAD_COLOR)
+    image = Image.open(io.BytesIO(data))
+    if image.format not in ["JPEG", "PNG"]:
+        raise ValueError("Invalid image format")
+    if image.mode != "RGB":
+        image = image.convert("RGB")
+    return image
 
 
-def image_shape(image: Image) -> tuple:
-    return image.shape
+def conv_image_base64str(image: Image) -> str:
+    if image is None:
+        raise ValueError("No image to convert")
+    buffered = io.BytesIO()
+    image.save(buffered, format="JPEG")
+    return base64.b64encode(buffered.getvalue()).decode("utf-8")
 
 
-def image_shape_from_file(file_name: str) -> tuple:
-    image = cv2.imread(file_name)
-    return image.shape
+def conv_to_image(image: Image) -> Image:
+    if isinstance(image, Image.Image):
+        return image
+    elif isinstance(image, np.ndarray):
+        return Image.fromarray(image)
+    else:
+        raise ValueError("Invalid image")
 
 
-def _verify(data: bytes) -> bool:
-    try:
-        image = Image.open(io.BytesIO(data))
-        image.verify()
-    except Exception as e:
-        raise ValueError("Invalid image") from e
+def convert_image_to_np_array(image: Image) -> np.ndarray:
+    if isinstance(image, Image.Image):
+        return np.array(image)
+    elif isinstance(image, np.ndarray):
+        return image
+    else:
+        raise ValueError("Invalid image")
+
+
+def convert_np_array_to_image(data: np.ndarray) -> np.ndarray:
+    if isinstance(data, np.ndarray):
+        return Image.fromarray(data)
+    elif isinstance(data, Image.Image):
+        return data
+    else:
+        raise ValueError("Invalid image")
+
+
+def image_size(image: Image) -> tuple:
+    if image is None:
+        raise ValueError("No image for size check")
+    return image.size
+
+
+def image_size_from_file(file_name: str) -> tuple:
+    image = Image.open(file_name)
+    return image.size
 
 
 def rotate(image: Image, angle: float, keep_org_size: bool = True) -> Image:
     if image is None:
         raise ValueError("No image to rotate")
-    h, w, ch = image.shape
-    newimg = imutils.rotate_bound(image, angle)
-    return cv2.resize(newimg, (w, h)) if keep_org_size else newimg
+
+    expand = not keep_org_size
+    return image.rotate(angle, expand=expand)
 
 
 def align(image: Image, reference_images: List[RefImage]) -> Image:
-    h, w, ch = image.shape
+    if image is None:
+        raise ValueError("No image to align")
+    data = convert_image_to_np_array(image)
+    w, h = image.size
 
     ref_image_cordinates = [
-        _get_ref_coordinate(image, cv2.imread(reference_images[i].file_name))  # TODO
+        _get_ref_coordinate(data, cv2.imread(reference_images[i].file_name))  # TODO
         for i in range(len(reference_images))
     ]
-
     alignment_ref_pos = [
         (
             reference_images[i].x,
@@ -63,7 +100,8 @@ def align(image: Image, reference_images: List[RefImage]) -> Image:
     pts1 = np.float32(ref_image_cordinates)
     pts2 = np.float32(alignment_ref_pos)
     M = cv2.getAffineTransform(pts1, pts2)
-    return cv2.warpAffine(image, M, (w, h))
+    img = cv2.warpAffine(data, M, (w, h))
+    return convert_np_array_to_image(img)
 
 
 def _get_ref_coordinate(image: Image, template):
@@ -82,16 +120,17 @@ def draw_rectangle(
     y: int,
     w: int,
     h: int,
-    colour: tuple = (255, 0, 0),
+    rgb_colour: tuple = (255, 0, 0),
     thickness: int = 3,
 ) -> Image:
-    return cv2.rectangle(
-        img=image,
-        pt1=(x, y),
-        pt2=(x + w, y + h),
-        color=colour,
-        thickness=thickness,
+    if image is None:
+        raise ValueError("No image to draw")
+    ImageDraw.Draw(image).rectangle(
+        [(x, y), (x + w, y + h)],
+        outline=rgb_colour,
+        width=thickness,
     )
+    return image
 
 
 def draw_text(
@@ -99,60 +138,64 @@ def draw_text(
     text: str,
     x: int,
     y: int,
-    colour: tuple = (255, 0, 0),
-    font=cv2.FONT_HERSHEY_SIMPLEX,
-    font_scale: float = 0.5,
+    rgb_colour: tuple = (255, 0, 0),
     thickness: int = 1,
+    font_size: int = 12,
 ) -> Image:
-    return cv2.putText(
-        img=image,
-        text=text,
-        org=(x, y),
-        fontFace=font,
-        fontScale=font_scale,
-        color=colour,
-        thickness=thickness,
+
+    if image is None:
+        raise ValueError("No image to draw")
+    font = ImageFont.load_default(size=font_size)
+    ImageDraw.Draw(image).text(
+        (x, y),
+        text,
+        fill=rgb_colour,
+        font=font,
+        width=thickness,
     )
-
-
-def convert_bgr_to_rgb(image: Image) -> Image:
-    success, buffer = cv2.imencode(".jpg", image)
-    return conv_bytes_to_image(buffer.tobytes())
-
-
-def conv_bytes_to_image(data: bytes) -> Image:
-    return cv2.imdecode(np.frombuffer(data, np.uint8), cv2.IMREAD_COLOR)
-
-
-def conv_rgb_image_to_bytes(image: Image) -> bytes:
-    success, buffer = cv2.imencode(".jpg", image)
-    return buffer.tobytes()
+    return image
 
 
 def cut_image(
-    source: Image,
+    image: Image,
     img_position: ImagePosition,
 ) -> Image:
+
+    if image is None:
+        raise ValueError("No image to cut")
     x, y, w, h = img_position.x, img_position.y, img_position.w, img_position.h
-    cropImg = source[y : y + h, x : x + w]
-    cropImg = cv2.cvtColor(cropImg, cv2.COLOR_BGR2RGB)
-    return Image.fromarray(cropImg)
+    return image.crop((x, y, x + w, y + h))
 
 
 def crop_image(image: Image, x: int, y: int, w: int, h: int) -> Image:
-    return image[y : y + h, x : x + w]
+    if image is None:
+        raise ValueError("No image to crop")
+    return image.crop((x, y, x + w, y + h))
 
 
 def resize_image(image: Image, width: int, height: int) -> Image:
-    return cv2.resize(image, (width, height), interpolation=cv2.INTER_AREA)
+    if image is None:
+        raise ValueError("No image to resize")
+    return image.resize((width, height))
 
 
-def adjust_contrast_brightness(
-    image: Image, contrast: float = 1.0, brightness: int = 0
+def adjust_image(
+    image: Image,
+    contrast: float = 1.0,
+    brightness: float = 1.0,
+    sharpness: float = 1.0,
+    color: float = 1.0,
 ) -> Image:
-    brightness += int(round(255 * (1 - contrast) / 2))
-    return cv2.addWeighted(image, contrast, image, 0, brightness)
+    if image is None:
+        raise ValueError("No image to adjust")
+    image = ImageEnhance.Contrast(image).enhance(contrast)
+    image = ImageEnhance.Brightness(image).enhance(brightness)
+    image = ImageEnhance.Sharpness(image).enhance(sharpness)
+    image = ImageEnhance.Color(image).enhance(color)
+    return image
 
 
 def convert_to_gray_scale(image: Image) -> Image:
-    return cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
+    if image is None:
+        raise ValueError("No image to convert to gray scale")
+    return ImageOps.grayscale(image)

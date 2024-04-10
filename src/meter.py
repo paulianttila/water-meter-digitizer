@@ -95,7 +95,7 @@ def get_roi(
         if draw_refs:
             for img in config.alignment.ref_images:
                 if img.w == 0 or img.h == 0:
-                    img.h, img.w, ch = ImageUtils.image_shape_from_file(img.file_name)
+                    img.w, img.h = ImageUtils.image_size_from_file(img.file_name)
 
         base64image = (
             processor.download_image(url, timeout, config.image_source.min_size)
@@ -170,12 +170,15 @@ def get_meters(
             .save_image(f"{config.image_tmp_dir}/gray.jpg")
             .endif_()
             .if_(config.image_processing.enabled)
-            .adjust_brightness(config.image_processing.brightness)
-            .adjust_contrast(config.image_processing.contrast)
+            .adjust_image(
+                brightness=config.image_processing.brightness,
+                contrast=config.image_processing.contrast,
+                sharpness=config.image_processing.sharpness,
+                color=config.image_processing.color,
+            )
             .save_image(f"{config.image_tmp_dir}/processed.jpg")
             .endif_()
-            .enable_image_saving(True)  # Force final image saving
-            .save_image(f"{config.image_tmp_dir}/final.jpg")
+            .save_image(f"{config.image_tmp_dir}/final.jpg", True)
             .start_image_cutting()
             .cut_images(config.digital_readout.cut_images, CNNType.ANALOG)
             .cut_images(config.analog_readout.cut_images, CNNType.DIGITAL)
@@ -223,6 +226,7 @@ def init_app():
     logging.getLogger("PreviousValueFile").setLevel(logger.level)
     logging.getLogger("urllib3").setLevel(logging.WARNING)
     logging.getLogger("asyncio").setLevel(logging.WARNING)
+    logging.getLogger("PIL").setLevel(logging.WARNING)
 
     processor = Processor()
     (
@@ -249,6 +253,7 @@ if __name__ == "__main__":
         help="Configuration file",
         default=config_file,
     )
+
     args = parser.parse_args()
     config_file = args.config_file
     init_app()

@@ -57,8 +57,10 @@ class Resize:
 @dataclass
 class ImageProcessing:
     enabled: bool = False
-    contrast: float = 0.0
-    brightness: Resize = 0
+    contrast: float = 1.0
+    brightness: float = 1.0
+    color: float = 1.0
+    sharpness: float = 1.0
     grayscale: bool = False
 
 
@@ -153,10 +155,16 @@ class Config:
             "ImageProcessing", "Enabled", fallback=False
         )
         image_processing_contrast = config.getfloat(
-            "ImageProcessing", "Contrast", fallback=0.0
+            "ImageProcessing", "Contrast", fallback=1.0
         )
-        image_processing_brightness = config.getint(
-            "ImageProcessing", "Brightness", fallback=0
+        image_processing_brightness = config.getfloat(
+            "ImageProcessing", "Brightness", fallback=1.0
+        )
+        image_processing_color = config.getfloat(
+            "ImageProcessing", "Color", fallback=1.0
+        )
+        image_processing_sharpness = config.getfloat(
+            "ImageProcessing", "Sharpness", fallback=1.0
         )
         image_processing_grayscale = config.getboolean(
             "ImageProcessing", "GrayScale", fallback=False
@@ -165,6 +173,8 @@ class Config:
             enabled=image_processing_enabled,
             contrast=image_processing_contrast,
             brightness=image_processing_brightness,
+            color=image_processing_color,
+            sharpness=image_processing_sharpness,
             grayscale=image_processing_grayscale,
         )
 

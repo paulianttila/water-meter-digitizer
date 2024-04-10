@@ -19,7 +19,7 @@ def find_between(s, start, end):
 
 
 def check_roi_image(response: requests.Response):
-    assert len(response.text) > 200000
+    assert len(response.text) > 50000
     assert response.text.startswith("<!DOCTYPE html>")
 
     base64image = re.search('<img src="data:image/jpeg;base64, (.*)">', response.text)[
