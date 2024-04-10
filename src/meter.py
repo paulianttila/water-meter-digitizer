@@ -23,6 +23,10 @@ import PreviousValueFile
 
 VERSION = "8.0.0"
 
+COLOR_RED = (255, 0, 0)
+COLOR_GREEN = (0, 255, 0)
+COLOR_BLUE = (0, 0, 255)
+
 config_file = os.environ.get("CONFIG_FILE", "/config/config.ini")
 processor = None
 config = None
@@ -93,6 +97,8 @@ def get_roi(
         timeout = config.image_source.timeout
 
         if draw_refs:
+            # Check if the image width and height is set in the config file
+            # for the reference images. If not, auto fill them from the file.
             for img in config.alignment.ref_images:
                 if img.w == 0 or img.h == 0:
                     img.w, img.h = ImageUtils.image_size_from_file(img.file_name)
@@ -102,13 +108,13 @@ def get_roi(
             .rotate_image(config.alignment.rotate_angle)
             .align_image(config.alignment.ref_images)
             .if_(draw_refs)
-            .draw_roi(config.alignment.ref_images, (0, 255, 0))
+            .draw_roi(config.alignment.ref_images, COLOR_GREEN)
             .endif_()
             .if_(draw_digital)
-            .draw_roi(config.digital_readout.cut_images, (255, 0, 0))
+            .draw_roi(config.digital_readout.cut_images, COLOR_RED)
             .endif_()
             .if_(draw_analog)
-            .draw_roi(config.analog_readout.cut_images, (0, 0, 255))
+            .draw_roi(config.analog_readout.cut_images, COLOR_BLUE)
             .endif_()
             .get_image_as_base64_str()
         )
