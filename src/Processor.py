@@ -1,7 +1,6 @@
 from dataclasses import dataclass
 from enum import Enum
 from typing import List, Union
-import base64
 import re
 import math
 import logging
