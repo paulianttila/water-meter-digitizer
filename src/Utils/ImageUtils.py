@@ -198,4 +198,4 @@ def adjust_image(
 def convert_to_gray_scale(image: Image) -> Image:
     if image is None:
         raise ValueError("No image to convert to gray scale")
-    return ImageOps.grayscale(image)
+    return ImageOps.grayscale(image).convert("RGB")
