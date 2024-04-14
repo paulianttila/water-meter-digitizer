@@ -79,15 +79,29 @@ class Config:
     resize: Resize = field(default_factory=Resize)
     image_processing: ImageProcessing = field(default_factory=ImageProcessing)
 
+    def load_from_string(self, config_string: str) -> "Config":
+        config = configparser.ConfigParser(
+            interpolation=configparser.ExtendedInterpolation(),
+            allow_no_value=True,
+            inline_comment_prefixes=("#", ";"),
+        )
+        config.read_string(config_string)
+        return self.load_config(config)
+
     def load_from_file(self, ini_file: str = "config.ini") -> "Config":
         # sourcery skip: avoid-builtin-shadow
         if not os.path.exists(ini_file):
             raise ConfigurationMissing(f"Configuration file '{ini_file}' not found")
 
         config = configparser.ConfigParser(
-            interpolation=configparser.ExtendedInterpolation(), allow_no_value=True
+            interpolation=configparser.ExtendedInterpolation(),
+            allow_no_value=True,
+            inline_comment_prefixes=("#", ";"),
         )
         config.read(ini_file)
+        return self.load_config(config)
+
+    def load_config(self, config: configparser.ConfigParser) -> "Config":
 
         ################## General Parameters ##########################################
         self.log_level = config.get("DEFAULT", "LogLevel", fallback="INFO")
@@ -99,8 +113,8 @@ class Config:
 
         ##################  Image Source Parameters ####################################
         url = config.get("ImageSource", "URL", fallback="")
-        timeout = config.getint("ImageSource", "TimeoutLoadImage", fallback=30)
-        min_size = config.getint("ImageSource", "MinImageSize", fallback=10000)
+        timeout = config.getint("ImageSource", "Timeout", fallback=30)
+        min_size = config.getint("ImageSource", "MinSize", fallback=10000)
         log_dir = config.get("ImageSource", "LogImageLocation", fallback="")
         log_only_false_pictures = config.getboolean(
             "ImageSource", "LogOnlyFalsePictures", fallback=False
