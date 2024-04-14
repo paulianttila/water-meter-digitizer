@@ -32,6 +32,7 @@ class CNNParams:
 class Alignment:
     rotate_angle: float = 0.0
     ref_images: List[RefImage] = field(default_factory=list)
+    post_rotate_angle: float = 0.0
 
 
 @dataclass
@@ -128,6 +129,9 @@ class Config:
 
         ################## Alignment Parameters ########################################
         rotate_angle = config.getfloat("Alignment", "RotationAngle", fallback=0.0)
+        post_rotate_angle = config.getfloat(
+            "Alignment", "PostRotationAngle", fallback=0.0
+        )
 
         refs = config.get("Alignment", "Refs", fallback="")
         ref_images = []
@@ -138,7 +142,11 @@ class Config:
             w = config.getint(f"Alignment.{name}", "w", fallback=0)
             h = config.getint(f"Alignment.{name}", "h", fallback=0)
             ref_images.append(RefImage(name=name, x=x, y=y, w=w, h=h, file_name=image))
-        self.alignment = Alignment(rotate_angle=rotate_angle, ref_images=ref_images)
+        self.alignment = Alignment(
+            rotate_angle=rotate_angle,
+            ref_images=ref_images,
+            post_rotate_angle=post_rotate_angle,
+        )
 
         ################## Crop Parameters #############################################
         crop_enabled = config.getboolean("Crop", "Enabled", fallback=False)

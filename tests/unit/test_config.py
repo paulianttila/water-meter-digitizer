@@ -15,6 +15,7 @@ def test_config():
     assert config.image_source.min_size == 20000
 
     assert config.alignment.rotate_angle == 180
+    assert config.alignment.post_rotate_angle == 0
     assert config.alignment.ref_images == [
         RefImage(
             name="ref0",

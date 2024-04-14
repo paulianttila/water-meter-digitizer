@@ -201,6 +201,8 @@ def get_meter_data(url: str = None, saveimages: bool = False) -> MeterResult:
         .save_image("rotated")
         .align_image(config.alignment.ref_images)
         .save_image("aligned")
+        .rotate_image(config.alignment.post_rotate_angle)
+        .save_image("post_rotated")
         .if_(config.crop.enabled)
         .crop_image(config.crop.x, config.crop.y, config.crop.w, config.crop.h)
         .save_image("cropped")
