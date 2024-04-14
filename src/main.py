@@ -14,6 +14,7 @@ import uvicorn
 
 from Config import Config
 
+from decorators.Decorators import log_execution_time
 from utils.DownloadUtils import DownloadFailure
 import utils.ImageUtils as ImageUtils
 from processor.DigitizerProcessor import DigitizerProcessor, MeterResult
@@ -45,6 +46,7 @@ templates = Jinja2Templates(directory="web/templates")
 
 
 @app.get("/", response_class=HTMLResponse)
+@log_execution_time
 def get_index(request: Request):
     return templates.TemplateResponse(
         "index.html", context={"request": request, "version": VERSION}
@@ -52,11 +54,13 @@ def get_index(request: Request):
 
 
 @app.get("/healthcheck", response_class=HTMLResponse)
+@log_execution_time
 def healthcheck():
     return "Health - OK"
 
 
 @app.get("/image_tmp/{image}")
+@log_execution_time
 def get_image(image: str):
     image = image.replace(".jpg", "")
     logger.debug(f"Getting image: {image}")
@@ -68,23 +72,27 @@ def get_image(image: str):
 
 
 @app.get("/version")
+@log_execution_time
 def get_version():
     return Response(json.dumps({"version": VERSION}), media_type="application/json")
 
 
 @app.get("/exit", response_class=HTMLResponse)
+@log_execution_time
 def do_exit():
     os.kill(os.getpid(), signal.SIGTERM)
     return "App will exit in immidiately"
 
 
 @app.get("/reload", response_class=HTMLResponse)
+@log_execution_time
 def reload_config():
     init_config()
     return "Configuration reloaded"
 
 
 @app.get("/roi", response_class=HTMLResponse)
+@log_execution_time
 def get_roi(
     request: Request,
     url: str = None,
@@ -129,6 +137,7 @@ def get_roi(
 
 
 @app.get("/setPreviousValue")
+@log_execution_time
 def set_previous_value(name: str, value: str):
     try:
         if value is None or not value.isnumeric():
@@ -143,6 +152,7 @@ def set_previous_value(name: str, value: str):
 
 
 @app.get("/meter")
+@log_execution_time
 def get_meters(
     request: Request,
     format: str = "html",
@@ -177,6 +187,7 @@ def get_meters(
     )
 
 
+@log_execution_time
 def get_meter_data(url: str = None, saveimages: bool = False) -> MeterResult:
     url = url or config.image_source.url
     timeout = config.image_source.timeout
@@ -261,6 +272,7 @@ def save_config_file(data: str) -> None:
         f.write(data)
 
 
+@log_execution_time
 def init_config():
     global config
     config = Config().load_from_file(ini_file=config_file)
@@ -271,6 +283,7 @@ def init_config():
     logging.getLogger("CNN.DigitalCounterCNN").setLevel(logger.level)
     logging.getLogger("Utils.DownloadUtils").setLevel(logger.level)
     logging.getLogger("Config").setLevel(logger.level)
+    logging.getLogger("Decorators").setLevel(logger.level)
     logging.getLogger("Processor").setLevel(logger.level)
     logging.getLogger("PreviousValueFile").setLevel(logger.level)
     logging.getLogger("urllib3").setLevel(logging.WARNING)

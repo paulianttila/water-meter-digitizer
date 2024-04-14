@@ -17,6 +17,7 @@ from cnn.CNNBase import ModelDetails
 from cnn.DigitalCounterCNN import DigitalCounterCNN
 from cnn.AnalogNeedleCNN import AnalogNeedleCNN
 from DataClasses import MeterConfig, CutImage
+from decorators.Decorators import log_execution_time
 
 
 logger = logging.getLogger(__name__)
@@ -78,6 +79,7 @@ class DigitizerProcessor:
         self.cnn_digital_results = []
         self.cnn_analog_results = []
 
+    @log_execution_time
     def init_analog_model(
         self, modelfile: str, model: str, image_log_dir: str = None
     ) -> "DigitizerProcessor":
@@ -89,6 +91,7 @@ class DigitizerProcessor:
         self.previous_value_file = previous_value_file
         return self
 
+    @log_execution_time
     def init_digital_model(
         self, modelfile: str, model: str, image_log_dir: str = None
     ) -> "DigitizerProcessor":
@@ -98,6 +101,7 @@ class DigitizerProcessor:
         )
         return self
 
+    @log_execution_time
     def execute_analog_ccn(self, images: List[CutImage]) -> "DigitizerProcessor":
         if self.analog_counter_reader is None and self.digital_counter_reader is None:
             raise ValueError("No CNN reader initialized")
@@ -110,6 +114,7 @@ class DigitizerProcessor:
             logger.debug(f"Analog CNN results: {self.cnn_analog_results}")
         return self
 
+    @log_execution_time
     def execute_digital_ccn(self, images: List[CutImage]) -> "DigitizerProcessor":
         if self.digital_counter_reader is not None:
             result = []
