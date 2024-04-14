@@ -2,7 +2,7 @@ import os
 import tempfile
 
 import pytest
-from src.PreviousValueFile import (
+from previous_value import (
     load_previous_value_from_file,
     save_previous_value_to_file,
 )

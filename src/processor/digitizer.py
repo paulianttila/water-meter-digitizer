@@ -5,19 +5,19 @@ import math
 import logging
 
 
-from PreviousValueFile import (
+from previous_value import (
     load_previous_value_from_file,
     save_previous_value_to_file,
 )
-from utils.MathUtils import (
+from utils.math import (
     fill_value_with_ending_zeros,
     fill_with_predecessor_digits,
 )
-from cnn.CNNBase import ModelDetails
-from cnn.DigitalCounterCNN import DigitalCounterCNN
-from cnn.AnalogNeedleCNN import AnalogNeedleCNN
-from DataClasses import MeterConfig, CutImage
-from decorators.Decorators import log_execution_time
+from cnn.base import ModelDetails
+from cnn.digital_counter_cnn import DigitalCounterCNN
+from cnn.analog_needle_cnn import AnalogNeedleCNN
+from data_classes import MeterConfig, CutImage
+from decorators.decorators import log_execution_time
 
 
 logger = logging.getLogger(__name__)

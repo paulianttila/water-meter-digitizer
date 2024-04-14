@@ -1,5 +1,5 @@
-from Config import Config, ConfigurationMissing
-from DataClasses import ImagePosition, MeterConfig, RefImage
+from configuration import Config, ConfigurationMissing
+from data_classes import ImagePosition, MeterConfig, RefImage
 
 
 def test_config():

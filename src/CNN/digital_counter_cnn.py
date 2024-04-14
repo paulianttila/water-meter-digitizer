@@ -3,7 +3,7 @@ import logging
 from PIL import Image
 import numpy as np
 
-from cnn.CNNBase import CNNBase
+from cnn.base import CNNBase
 
 logger = logging.getLogger(__name__)
 

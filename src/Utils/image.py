@@ -5,7 +5,7 @@ from PIL import Image, ImageEnhance, ImageOps, ImageDraw, ImageFont
 import numpy as np
 import cv2
 
-from DataClasses import ImagePosition, RefImage
+from data_classes import ImagePosition, RefImage
 
 
 def save_image(image: Image, file_name: str) -> None:

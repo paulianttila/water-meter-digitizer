@@ -12,14 +12,13 @@ from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 import uvicorn
 
-from Config import Config
-
-from decorators.Decorators import log_execution_time
-from utils.DownloadUtils import DownloadFailure
-import utils.ImageUtils as ImageUtils
-from processor.DigitizerProcessor import DigitizerProcessor, MeterResult
-from processor.ImageProcessor import ImageProcessor
-import PreviousValueFile
+from decorators.decorators import log_execution_time
+from configuration import Config
+from utils.download import DownloadFailure
+import utils.image
+from processor.digitizer import DigitizerProcessor, MeterResult
+from processor.image import ImageProcessor
+import previous_value as previous_value
 
 
 VERSION = "8.0.0"
@@ -67,7 +66,7 @@ def get_image(image: str):
     img = images.get(image)
     if img is None:
         raise HTTPException(status_code=404, detail="Image not found")
-    image_bytes = ImageUtils.convert_image_to_bytes(img)
+    image_bytes = utils.image.convert_image_to_bytes(img)
     return Response(content=image_bytes, media_type="image/jpg")
 
 
@@ -109,7 +108,7 @@ def get_roi(
             # for the reference images. If not, auto fill them from the file.
             for img in config.alignment.ref_images:
                 if img.w == 0 or img.h == 0:
-                    img.w, img.h = ImageUtils.image_size_from_file(img.file_name)
+                    img.w, img.h = utils.image.image_size_from_file(img.file_name)
 
         base64image = (
             ImageProcessor()
@@ -142,7 +141,7 @@ def set_previous_value(name: str, value: str):
     try:
         if value is None or not value.isnumeric():
             raise ValueError(f"Value {value} is not a number")
-        PreviousValueFile.save_previous_value_to_file(
+        previous_value.save_previous_value_to_file(
             config.prevoius_value_file, name, value
         )
         err = ""
@@ -261,7 +260,7 @@ def get_meter_data(url: str = None, saveimages: bool = False) -> MeterResult:
 
 def get_image_as_base64_str(image_name: str):
     img = images.get(image_name)
-    return ImageUtils.convert_image_base64str(img)
+    return utils.image.convert_image_base64str(img)
 
 
 def load_config_file() -> str:

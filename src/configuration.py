@@ -4,7 +4,7 @@ import configparser
 import os
 import logging
 
-from DataClasses import ImagePosition, MeterConfig, RefImage
+from data_classes import ImagePosition, MeterConfig, RefImage
 
 logger = logging.getLogger(__name__)
 

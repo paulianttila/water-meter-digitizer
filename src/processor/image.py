@@ -3,9 +3,8 @@ import logging
 
 from PIL import Image
 
-from DataClasses import CutImage, ImagePosition
-from utils import ImageUtils
-from utils import DownloadUtils
+from data_classes import CutImage, ImagePosition
+import utils
 
 logger = logging.getLogger(__name__)
 
@@ -47,12 +46,12 @@ class ImageProcessor:
 
     @_conditional_func
     def set_image(self, image: Image) -> "ImageProcessor":
-        self.image = ImageUtils.convert_to_image(image)
+        self.image = image.convert_to_image(image)
         return self
 
     @_conditional_func
     def set_image_from_base64_str(self, data: str) -> "ImageProcessor":
-        self.image = ImageUtils.convert_base64_str_to_image(data)
+        self.image = utils.image.convert_base64_str_to_image(data)
         return self
 
     @_conditional_func
@@ -68,7 +67,7 @@ class ImageProcessor:
         return self.pictures.copy()
 
     def get_image_as_base64_str(self) -> str:
-        return ImageUtils.convert_image_base64str(image=self.image)
+        return utils.image.convert_image_base64str(image=self.image)
 
     @_conditional_func
     def save_image(self, name: str, force_save: bool = False) -> "ImageProcessor":
@@ -82,31 +81,31 @@ class ImageProcessor:
         self, url: str, timeout: int, min_image_size: int = 0
     ) -> "ImageProcessor":
         logger.debug(f"Download image from {url}")
-        data = DownloadUtils.load_file_from_url(
+        data = utils.download.load_file_from_url(
             url=url,
             timeout=timeout,
             min_file_size=min_image_size,
         )
-        self.image = ImageUtils.bytes_to_image(data)
+        self.image = utils.image.bytes_to_image(data)
         self.pictures.clear()
         return self
 
     @_conditional_func
     def rotate_image(self, angle: float) -> "ImageProcessor":
         logger.debug(f"Rotate image by {angle} degrees")
-        self.image = ImageUtils.rotate(self.image, angle, keep_org_size=False)
+        self.image = utils.image.rotate(self.image, angle, keep_org_size=False)
         return self
 
     @_conditional_func
     def crop_image(self, x: int, y: int, w: int, h: int) -> "ImageProcessor":
         logger.debug(f"Crop image to x:{x}, y:{y}, w:{w}, h:{h}")
-        self.image = ImageUtils.crop_image(self.image, x, y, w, h)
+        self.image = utils.image.crop_image(self.image, x, y, w, h)
         return self
 
     @_conditional_func
     def resize_image(self, width: int, height: int) -> "ImageProcessor":
         logger.debug(f"Resize image to width:{width}, height:{height}")
-        self.image = ImageUtils.resize_image(self.image, width, height)
+        self.image = utils.image.resize_image(self.image, width, height)
         return self
 
     @_conditional_func
@@ -121,7 +120,7 @@ class ImageProcessor:
             f"Adjust image contrast:{contrast}, brightness:{brightness}, "
             f"sharpness:{sharpness}, color:{color}"
         )
-        self.image = ImageUtils.adjust_image(
+        self.image = utils.image.adjust_image(
             self.image,
             contrast=contrast,
             brightness=brightness,
@@ -133,25 +132,25 @@ class ImageProcessor:
     @_conditional_func
     def to_gray_scale(self) -> "ImageProcessor":
         logger.debug("Convert image to gray scale")
-        self.image = ImageUtils.convert_to_gray_scale(self.image)
+        self.image = utils.image.convert_to_gray_scale(self.image)
         return self
 
     @_conditional_func
     def align_image(self, align_images: List[ImagePosition]) -> "ImageProcessor":
         logger.debug(f"Align image to {align_images}")
-        self.image = ImageUtils.align(self.image, align_images)
+        self.image = utils.image.align(self.image, align_images)
         return self
 
     @_conditional_func
     def cut_image(self, position: ImagePosition) -> "ImageProcessor":
-        image = ImageUtils.cut_image(self.image, position)
+        image = utils.image.cut_image(self.image, position)
         self.cutted_images.append(CutImage(name=position.name, image=image))
         return self
 
     @_conditional_func
     def cut_images(self, positions: List[ImagePosition]) -> "ImageProcessor":
         for img in positions:
-            image = ImageUtils.cut_image(self.image, img)
+            image = utils.image.cut_image(self.image, img)
             self.cutted_images.append(CutImage(name=img.name, image=image))
         return self
 
@@ -179,7 +178,7 @@ class ImageProcessor:
     ) -> "ImageProcessor":
         thickness = 1
         for img in images:
-            self.image = ImageUtils.draw_rectangle(
+            self.image = utils.image.draw_rectangle(
                 self.image,
                 img.x,
                 img.y,
@@ -188,7 +187,7 @@ class ImageProcessor:
                 rgb_colour=rgb_colour,
                 thickness=thickness,
             )
-            self.image = ImageUtils.draw_text(
+            self.image = utils.image.draw_text(
                 self.image,
                 img.name,
                 img.x,

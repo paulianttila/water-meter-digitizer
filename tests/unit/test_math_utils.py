@@ -1,4 +1,4 @@
-from src.utils.MathUtils import (
+from utils.math import (
     fill_value_with_leading_zeros,
     fill_value_with_ending_zeros,
     fill_with_predecessor_digits,
