@@ -18,7 +18,7 @@ start_test_app() {
   # start the test app whch use framework
   echo "Start test app"
   cd src
-  python meter.py &
+  python main.py &
   sleep 2
   TEST_APP_PID=$!
   echo "PID=${TEST_APP_PID}"

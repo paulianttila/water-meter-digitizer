@@ -23,4 +23,4 @@ COPY ./config/ ./
 WORKDIR /app
 COPY ./src/ ./
 
-CMD ["python", "./meter.py"]
+CMD ["python", "./main.py"]
