@@ -9,13 +9,13 @@ from PreviousValueFile import (
     load_previous_value_from_file,
     save_previous_value_to_file,
 )
-from Utils.MathUtils import (
+from utils.MathUtils import (
     fill_value_with_ending_zeros,
     fill_with_predecessor_digits,
 )
-from CNN.CNNBase import ModelDetails
-from CNN.DigitalCounterCNN import DigitalCounterCNN
-from CNN.AnalogNeedleCNN import AnalogNeedleCNN
+from cnn.CNNBase import ModelDetails
+from cnn.DigitalCounterCNN import DigitalCounterCNN
+from cnn.AnalogNeedleCNN import AnalogNeedleCNN
 from DataClasses import MeterConfig, CutImage
 
 

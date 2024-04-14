@@ -4,8 +4,8 @@ import logging
 from PIL import Image
 
 from DataClasses import CutImage, ImagePosition
-from Utils import ImageUtils
-from Utils import DownloadUtils
+from utils import ImageUtils
+from utils import DownloadUtils
 
 logger = logging.getLogger(__name__)
 

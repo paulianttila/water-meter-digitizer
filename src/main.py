@@ -15,8 +15,8 @@ import uvicorn
 
 from Config import Config
 
-from Utils.DownloadUtils import DownloadFailure
-import Utils.ImageUtils as ImageUtils
+from utils.DownloadUtils import DownloadFailure
+import utils.ImageUtils as ImageUtils
 from processor.DigitizerProcessor import DigitizerProcessor, MeterResult
 from processor.ImageProcessor import ImageProcessor
 import PreviousValueFile
