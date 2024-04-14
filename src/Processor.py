@@ -54,6 +54,7 @@ class MeterResult:
     digital_results: dict
     analog_results: dict
     error: str
+    pictures: dict
 
 
 @dataclass
@@ -89,6 +90,7 @@ class Processor:
         self.cnn_digital_results = []
         self.cnn_analog_results = []
         self.enable_img_saving = False
+        self.pictures = {}
 
     def _conditional_func(func):
         def wrapper(self, *args, **kwargs):
@@ -144,21 +146,31 @@ class Processor:
 
     @_conditional_func
     def set_image(self, image: Image) -> "Processor":
-        self.image = ImageUtils.conv_to_image(image)
+        self.image = ImageUtils.convert_to_image(image)
+        return self
+
+    @_conditional_func
+    def set_image_from_base64_str(self, data: str) -> "Processor":
+        self.image = ImageUtils.convert_base64_str_to_image(data)
         return self
 
     @_conditional_func
     def get_image(self) -> Image:
         return self.image
 
+    def get_picture(self, name: str) -> Image:
+        if self.pictures.get(name) is not None:
+            return self.pictures.get(name, None)
+        raise ValueError(f"No image with name {name} available")
+
     def get_image_as_base64_str(self) -> str:
-        return ImageUtils.conv_image_base64str(image=self.image)
+        return ImageUtils.convert_image_base64str(image=self.image)
 
     @_conditional_func
-    def save_image(self, path: str, forcesave: bool = False) -> "Processor":
-        if self.enable_img_saving or forcesave:
-            logger.debug(f"Save image to {path}")
-            ImageUtils.save_image(self.image, path)
+    def save_image(self, name: str, force_save: bool = False) -> "Processor":
+        if self.enable_img_saving or force_save:
+            logger.debug(f"Store image by name {name}")
+            self.pictures[name] = self.image
         return self
 
     @_conditional_func
@@ -172,12 +184,13 @@ class Processor:
             min_file_size=min_image_size,
         )
         self.image = ImageUtils.bytes_to_image(data)
+        self.pictures.clear()
         return self
 
     @_conditional_func
     def rotate_image(self, angle: float) -> "Processor":
         logger.debug(f"Rotate image by {angle} degrees")
-        self.image = ImageUtils.rotate(self.image, angle)
+        self.image = ImageUtils.rotate(self.image, angle, keep_org_size=False)
         return self
 
     @_conditional_func
@@ -229,6 +242,7 @@ class Processor:
     def draw_roi(
         self, images: List[ImagePosition], rgb_colour: tuple = (255, 0, 0)
     ) -> "Processor":
+        thickness = 1
         for img in images:
             self.image = ImageUtils.draw_rectangle(
                 self.image,
@@ -237,7 +251,7 @@ class Processor:
                 img.w,
                 img.h,
                 rgb_colour=rgb_colour,
-                thickness=3,
+                thickness=thickness,
             )
             self.image = ImageUtils.draw_text(
                 self.image,
@@ -269,9 +283,9 @@ class Processor:
         return self
 
     @_conditional_func
-    def save_cutted_images(self, path: str) -> "Processor":
+    def save_cutted_images(self) -> "Processor":
         for img in self.cutted_analog_images + self.cutted_digital_images:
-            ImageUtils.save_image(img.image, f"{path}/{img.name}.jpg")
+            self.pictures[img.name] = img.image
         return self
 
     @_conditional_func
@@ -369,6 +383,7 @@ class Processor:
             digital_results=digital_results,
             analog_results=analog_results,
             error="",
+            pictures=self.pictures,
         )
 
     def _postprocess_meter_values(

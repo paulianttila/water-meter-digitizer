@@ -24,7 +24,7 @@ stages:
     response:
       status_code: 200
       headers:
-        content-type: text/html; charset=utf-8
+        content-type: application/json
 
   - name: test healthy check OK
     request:
@@ -36,6 +36,29 @@ stages:
       headers:
         content-type: text/html; charset=utf-8
 
+  - name: test meters in HTML format
+    request:
+      url: 'http://{url}/meter'
+      method: GET
+      timeout: 3
+    response:
+      status_code: 200
+      headers:
+        content-type: text/html; charset=utf-8
+
+  - name: test roi
+    request:
+      url: 'http://{url}/roi'
+      method: GET
+      timeout: 3
+    response:
+      status_code: 200
+      headers:
+        content-type: text/html; charset=utf-8
+      verify_response_with:
+        function: testing_utils:check_roi_image
+
+  # This test need to be the last one, because it will save the images, which will be used in the next test
   - name: test meters in JSON format
     request:
       url: 'http://{url}/meter?format=json&saveimages=true'
@@ -68,25 +91,4 @@ stages:
           analog3: "2.51"
           analog4: "4.06"
         error: ""
-
-  - name: test meters in HTML format
-    request:
-      url: 'http://{url}/meter'
-      method: GET
-      timeout: 3
-    response:
-      status_code: 200
-      headers:
-        content-type: text/html; charset=utf-8
-
-  - name: test roi
-    request:
-      url: 'http://{url}/roi'
-      method: GET
-      timeout: 3
-    response:
-      status_code: 200
-      headers:
-        content-type: text/html; charset=utf-8
-      verify_response_with:
-        function: testing_utils:check_roi_image
+        pictures: null

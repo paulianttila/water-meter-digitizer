@@ -17,6 +17,10 @@ def save_image(image: Image, file_name: str) -> None:
         cv2.imwrite(file_name, image)
 
 
+def load_image_from_file(file_name: str) -> Image:
+    return Image.open(file_name)
+
+
 def bytes_to_image(data: bytes) -> Image:
     image = Image.open(io.BytesIO(data))
     if image.format not in ["JPEG", "PNG"]:
@@ -26,15 +30,33 @@ def bytes_to_image(data: bytes) -> Image:
     return image
 
 
-def conv_image_base64str(image: Image) -> str:
+def convert_image_base64str(image: Image) -> str:
+    data = convert_image_to_bytes(image)
+    return base64.b64encode(data).decode("utf-8")
+
+
+def convert_image_to_bytes(image: Image) -> bytes:
     if image is None:
         raise ValueError("No image to convert")
-    buffered = io.BytesIO()
-    image.save(buffered, format="JPEG")
-    return base64.b64encode(buffered.getvalue()).decode("utf-8")
+    if isinstance(image, Image.Image):
+        buffered = io.BytesIO()
+        image.save(buffered, format="JPEG")
+        return buffered.getvalue()
+    elif isinstance(image, np.ndarray):
+        is_success, im_buf_arr = cv2.imencode(".jpg", image)
+        return im_buf_arr.tobytes()
+    else:
+        raise ValueError("Invalid image")
 
 
-def conv_to_image(image: Image) -> Image:
+def convert_base64_str_to_image(data: str) -> Image:
+    if data is None:
+        raise ValueError("No image to convert")
+
+    return bytes_to_image(base64.b64decode(data))
+
+
+def convert_to_image(image: Image) -> Image:
     if isinstance(image, Image.Image):
         return image
     elif isinstance(image, np.ndarray):
@@ -104,11 +126,27 @@ def align(image: Image, reference_images: List[RefImage]) -> Image:
     return convert_np_array_to_image(img)
 
 
-def _get_ref_coordinate(image: Image, template):
-    # method = cv2.TM_SQDIFF         #2
-    method = cv2.TM_SQDIFF_NORMED  # 1
-    # method = cv2.TM_CCORR_NORMED   #3
-    method = cv2.TM_CCOEFF_NORMED  # 4
+def _get_ref_coordinate(image: np.ndarray, template: np.ndarray) -> tuple:
+    """
+    Square difference (CV_TM_SQDIFF): This method calculates the squared difference
+        between the pixel intensities of the source image and template.
+        A lower score indicates a better match.
+    Normalized square difference (CV_TM_SQDIFF_NORMED): This is similar to the Square
+        Difference, but the result is normalized.
+    Cross-correlation (CV_TM_CCORR): It calculates the cross-correlation between
+        the source image and template. A higher score indicates a better match.
+    Normalized cross-correlation (CV_TM_CCORR_NORMED): In this method, the result of
+        cross-correlation is normalized.
+    Coefficient correlation (CV_TM_CCOEFF): This method calculates the correlation
+        coefficient between the source image and template.
+        A higher score indicates a better match.
+    Normalized coefficient correlation (CV_TM_CCOEFF_NORMED): In this method,
+        the correlation coefficient is normalized.
+    """
+    # method = cv2.TM_SQDIFF
+    # method = cv2.TM_SQDIFF_NORMED
+    # method = cv2.TM_CCORR_NORMED
+    method = cv2.TM_CCOEFF_NORMED
     res = cv2.matchTemplate(image, template, method)
     min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(res)
     return min_loc if method in [cv2.TM_SQDIFF, cv2.TM_SQDIFF_NORMED] else max_loc

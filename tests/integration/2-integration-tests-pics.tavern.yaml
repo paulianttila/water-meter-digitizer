@@ -7,11 +7,12 @@ includes:
 
 marks:
   - parametrize:
-      key: PICTURES
+      key: PICTURE
       vals:
         - original.jpg
-        - aligned.jpg
         - rotated.jpg
+        - aligned.jpg
+        - final.jpg
         - analog1.jpg
         - analog2.jpg
         - analog3.jpg
@@ -25,7 +26,7 @@ marks:
 stages:
   - name: test pics
     request:
-      url: 'http://{url}/image_tmp/{PICTURES}'
+      url: 'http://{url}/image_tmp/{PICTURE}'
       method: GET
       timeout: 3
     response:
