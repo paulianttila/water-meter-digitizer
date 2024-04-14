@@ -3,7 +3,6 @@ import dataclasses
 import json
 import signal
 import os
-import gc
 import logging
 import sys
 
@@ -29,7 +28,6 @@ COLOR_GREEN = (0, 255, 0)
 COLOR_BLUE = (0, 0, 255)
 
 config_file = os.environ.get("CONFIG_FILE", "/config/config.ini")
-processor = None
 config = None
 images = {}
 
@@ -82,10 +80,7 @@ def do_exit():
 
 @app.get("/reload", response_class=HTMLResponse)
 def reload_config():
-    global processor
-    del processor
-    gc.collect()
-    init_app()
+    init_config()
     return "Configuration reloaded"
 
 
@@ -234,8 +229,17 @@ def get_meter_data(url: str = None, saveimages: bool = False) -> MeterResult:
     )
     global images
     images = imageProcessor.get_pictures()
+
     return (
-        processor.execute_analog_ccn(analog_images)
+        DigitizerProcessor()
+        .init_analog_model(
+            config.analog_readout.model_file, config.analog_readout.model
+        )
+        .init_digital_model(
+            config.digital_readout.model_file, config.digital_readout.model
+        )
+        .use_previous_value_file(config.prevoius_value_file)
+        .execute_analog_ccn(analog_images)
         .execute_digital_ccn(digital_images)
         .evaluate_ccn_results()
         .get_meter_values(config.meter_configs)
@@ -257,8 +261,8 @@ def save_config_file(data: str) -> None:
         f.write(data)
 
 
-def init_app():
-    global processor, config
+def init_config():
+    global config
     config = Config().load_from_file(ini_file=config_file)
     logger.setLevel(config.log_level)
 
@@ -272,17 +276,6 @@ def init_app():
     logging.getLogger("urllib3").setLevel(logging.WARNING)
     logging.getLogger("asyncio").setLevel(logging.WARNING)
     logging.getLogger("PIL").setLevel(logging.WARNING)
-
-    processor = DigitizerProcessor()
-    (
-        processor.init_analog_model(
-            config.analog_readout.model_file, config.analog_readout.model
-        )
-        .init_digital_model(
-            config.digital_readout.model_file, config.digital_readout.model
-        )
-        .use_previous_value_file(config.prevoius_value_file)
-    )
 
 
 if __name__ == "__main__":
@@ -301,7 +294,7 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
     config_file = args.config_file
-    init_app()
+    init_config()
     port = 3000
     logger.info(f"Meter is serving at port {port}")
     uvicorn.run(
