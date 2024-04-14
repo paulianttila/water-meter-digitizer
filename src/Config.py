@@ -18,8 +18,6 @@ class ImageSource:
     url: str = ""
     timeout: int = 30
     min_size: int = 10000
-    log_dir: str = "/log"
-    log_only_false_pictures: bool = True
 
 
 @dataclass
@@ -27,8 +25,6 @@ class CNNParams:
     enabled: bool = False
     model_file: str = ""
     model: str = ""
-    do_image_logging: bool = False
-    image_log_dir: str = ""
     cut_images: List[ImagePosition] = field(default_factory=list)
 
 
@@ -115,16 +111,10 @@ class Config:
         url = config.get("ImageSource", "URL", fallback="")
         timeout = config.getint("ImageSource", "Timeout", fallback=30)
         min_size = config.getint("ImageSource", "MinSize", fallback=10000)
-        log_dir = config.get("ImageSource", "LogImageLocation", fallback="")
-        log_only_false_pictures = config.getboolean(
-            "ImageSource", "LogOnlyFalsePictures", fallback=False
-        )
         self.image_source = ImageSource(
             url=url,
             timeout=timeout,
             min_size=min_size,
-            log_dir=log_dir,
-            log_only_false_pictures=log_only_false_pictures,
         )
         ##################  DigitalReadOut Parameters ##################################
 
@@ -237,8 +227,6 @@ class Config:
         readout_enabled = config.getboolean(section, "Enabled", fallback=False)
         model_file = config.get(section, "Modelfile", fallback="")
         model = config.get(section, "Model", fallback="auto").lower()
-        do_image_logging = config.has_option(section, "LogImageLocation")
-        image_log_dir = config.get(section, "LogImageLocation", fallback="")
         images = []
         if readout_enabled:
             names = config.get(section, "names", fallback="")
@@ -258,7 +246,5 @@ class Config:
             enabled=readout_enabled,
             model_file=model_file,
             model=model,
-            do_image_logging=do_image_logging,
-            image_log_dir=image_log_dir,
             cut_images=images,
         )
