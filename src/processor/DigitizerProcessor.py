@@ -81,24 +81,38 @@ class DigitizerProcessor:
 
     @log_execution_time
     def init_analog_model(
-        self, modelfile: str, model: str, image_log_dir: str = None
+        self, modelfile: str, model_name: str
     ) -> "DigitizerProcessor":
-        self.analog_model = model
+        self.analog_model = model_name
         self.analog_counter_reader = AnalogNeedleCNN(modelfile=modelfile, dx=32, dy=32)
         return self
 
-    def use_previous_value_file(self, previous_value_file: str) -> "DigitizerProcessor":
-        self.previous_value_file = previous_value_file
+    def set_analog_model(
+        self, model: AnalogNeedleCNN, model_name: str
+    ) -> "DigitizerProcessor":
+        self.analog_model = model_name
+        self.analog_counter_reader = model
         return self
 
     @log_execution_time
     def init_digital_model(
-        self, modelfile: str, model: str, image_log_dir: str = None
+        self, modelfile: str, model_name: str
     ) -> "DigitizerProcessor":
-        self.digital_model = model
+        self.digital_model = model_name
         self.digital_counter_reader = DigitalCounterCNN(
             modelfile=modelfile, dx=20, dy=32
         )
+        return self
+
+    def set_digital_model(
+        self, model: DigitalCounterCNN, model_name: str
+    ) -> "DigitizerProcessor":
+        self.digital_model = model_name
+        self.digital_counter_reader = model
+        return self
+
+    def use_previous_value_file(self, previous_value_file: str) -> "DigitizerProcessor":
+        self.previous_value_file = previous_value_file
         return self
 
     @log_execution_time
