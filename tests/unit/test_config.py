@@ -13,8 +13,6 @@ def test_config():
     assert config.image_source.url == "file:///config/original.jpg"
     assert config.image_source.timeout == 10
     assert config.image_source.min_size == 20000
-    assert config.image_source.log_dir == "/log/source_image/"
-    assert config.image_source.log_only_false_pictures is True
 
     assert config.alignment.rotate_angle == 180
     assert config.alignment.ref_images == [
@@ -67,7 +65,6 @@ def test_config():
         == "/config/neuralnets/dig-class100_0168_s2_q.tflite"
     )
     assert config.digital_readout.model == "auto"
-    assert config.digital_readout.do_image_logging is False
     assert config.digital_readout.cut_images == [
         ImagePosition(name="digit1", x=215, y=97, w=42, h=75),
         ImagePosition(name="digit2", x=273, y=97, w=42, h=75),
@@ -81,7 +78,6 @@ def test_config():
         config.analog_readout.model_file == "/config/neuralnets/ana-cont_1209_s2.tflite"
     )
     assert config.analog_readout.model == "auto"
-    assert config.analog_readout.do_image_logging is False
     assert config.analog_readout.cut_images == [
         ImagePosition(name="analog1", x=491, y=307, w=115, h=115),
         ImagePosition(name="analog2", x=417, y=395, w=115, h=115),

@@ -1,11 +1,9 @@
 from dataclasses import dataclass
-from enum import Enum
 from typing import List, Union
 import re
 import math
 import logging
 
-from PIL import Image
 
 from PreviousValueFile import (
     load_previous_value_from_file,
@@ -15,20 +13,19 @@ from Utils.MathUtils import (
     fill_value_with_ending_zeros,
     fill_with_predecessor_digits,
 )
-from CNN.CNNBase import ModelDetails, ReadoutResult
+from CNN.CNNBase import ModelDetails
 from CNN.DigitalCounterCNN import DigitalCounterCNN
 from CNN.AnalogNeedleCNN import AnalogNeedleCNN
-from Config import ImagePosition, MeterConfig
-from Utils import ImageUtils
-from Utils import DownloadUtils
-from DataClasses import CutImage
+from DataClasses import MeterConfig, CutImage
+
 
 logger = logging.getLogger(__name__)
 
 
-class CNNType(Enum):
-    ANALOG = 1
-    DIGITAL = 2
+@dataclass
+class ReadoutResult:
+    name: str
+    value: float
 
 
 @dataclass
@@ -54,7 +51,6 @@ class MeterResult:
     digital_results: dict
     analog_results: dict
     error: str
-    pictures: dict
 
 
 @dataclass
@@ -71,17 +67,9 @@ class ConcistencyError(Exception):
     pass
 
 
-class ValueError(Exception):
-    ...
-    pass
-
-
-class Processor:
+class DigitizerProcessor:
     def __init__(self):
         self.condition = None
-        self.image = None
-        self.cutted_analog_images = [CutImage]
-        self.cutted_digital_images = [CutImage]
         self.analog_counter_reader = None
         self.digital_counter_reader = None
         self.analog_model = None
@@ -89,227 +77,50 @@ class Processor:
         self.previous_value_file = None
         self.cnn_digital_results = []
         self.cnn_analog_results = []
-        self.enable_img_saving = False
-        self.pictures = {}
 
-    def _conditional_func(func):
-        def wrapper(self, *args, **kwargs):
-            if self.condition is not None and self.condition is False:
-                return self
-
-            func(self, *args, **kwargs)
-            return self
-
-        return wrapper
-
-    def if_(self, a):
-        self.condition = a
-        return self
-
-    def else_(self):
-        self.condition = self.condition is False
-        return self
-
-    def endif_(self):
-        self.condition = None
-        return self
-
-    @_conditional_func
     def init_analog_model(
         self, modelfile: str, model: str, image_log_dir: str = None
-    ) -> "Processor":
+    ) -> "DigitizerProcessor":
         self.analog_model = model
-        self.analog_counter_reader = AnalogNeedleCNN(
-            modelfile=modelfile, dx=32, dy=32, image_log_dir=image_log_dir
-        )
+        self.analog_counter_reader = AnalogNeedleCNN(modelfile=modelfile, dx=32, dy=32)
         return self
 
-    @_conditional_func
-    def enable_image_saving(self, state: bool = True) -> "Processor":
-        self.enable_img_saving = state
-        return self
-
-    @_conditional_func
-    def use_previous_value_file(self, previous_value_file: str) -> "Processor":
+    def use_previous_value_file(self, previous_value_file: str) -> "DigitizerProcessor":
         self.previous_value_file = previous_value_file
         return self
 
-    @_conditional_func
     def init_digital_model(
         self, modelfile: str, model: str, image_log_dir: str = None
-    ) -> "Processor":
+    ) -> "DigitizerProcessor":
         self.digital_model = model
         self.digital_counter_reader = DigitalCounterCNN(
-            modelfile=modelfile, dx=20, dy=32, image_log_dir=image_log_dir
+            modelfile=modelfile, dx=20, dy=32
         )
         return self
 
-    @_conditional_func
-    def set_image(self, image: Image) -> "Processor":
-        self.image = ImageUtils.convert_to_image(image)
-        return self
-
-    @_conditional_func
-    def set_image_from_base64_str(self, data: str) -> "Processor":
-        self.image = ImageUtils.convert_base64_str_to_image(data)
-        return self
-
-    @_conditional_func
-    def get_image(self) -> Image:
-        return self.image
-
-    def get_picture(self, name: str) -> Image:
-        if self.pictures.get(name) is not None:
-            return self.pictures.get(name, None)
-        raise ValueError(f"No image with name {name} available")
-
-    def get_image_as_base64_str(self) -> str:
-        return ImageUtils.convert_image_base64str(image=self.image)
-
-    @_conditional_func
-    def save_image(self, name: str, force_save: bool = False) -> "Processor":
-        if self.enable_img_saving or force_save:
-            logger.debug(f"Store image by name {name}")
-            self.pictures[name] = self.image
-        return self
-
-    @_conditional_func
-    def download_image(
-        self, url: str, timeout: int, min_image_size: int = 0
-    ) -> "Processor":
-        logger.debug(f"Download image from {url}")
-        data = DownloadUtils.load_file_from_url(
-            url=url,
-            timeout=timeout,
-            min_file_size=min_image_size,
-        )
-        self.image = ImageUtils.bytes_to_image(data)
-        self.pictures.clear()
-        return self
-
-    @_conditional_func
-    def rotate_image(self, angle: float) -> "Processor":
-        logger.debug(f"Rotate image by {angle} degrees")
-        self.image = ImageUtils.rotate(self.image, angle, keep_org_size=False)
-        return self
-
-    @_conditional_func
-    def crop_image(self, x: int, y: int, w: int, h: int) -> "Processor":
-        logger.debug(f"Crop image to x:{x}, y:{y}, w:{w}, h:{h}")
-        self.image = ImageUtils.crop_image(self.image, x, y, w, h)
-        return self
-
-    @_conditional_func
-    def resize_image(self, width: int, height: int) -> "Processor":
-        logger.debug(f"Resize image to width:{width}, height:{height}")
-        self.image = ImageUtils.resize_image(self.image, width, height)
-        return self
-
-    @_conditional_func
-    def adjust_image(
-        self,
-        contrast: float = 1.0,
-        brightness: float = 1.0,
-        sharpness: float = 1.0,
-        color: float = 1.0,
-    ) -> "Processor":
-        logger.debug(
-            f"Adjust image contrast:{contrast}, brightness:{brightness}, "
-            f"sharpness:{sharpness}, color:{color}"
-        )
-        self.image = ImageUtils.adjust_image(
-            self.image,
-            contrast=contrast,
-            brightness=brightness,
-            sharpness=sharpness,
-            color=color,
-        )
-        return self
-
-    @_conditional_func
-    def to_gray_scale(self) -> "Processor":
-        logger.debug("Convert image to gray scale")
-        self.image = ImageUtils.convert_to_gray_scale(self.image)
-        return self
-
-    @_conditional_func
-    def align_image(self, align_images: List[ImagePosition]) -> "Processor":
-        logger.debug(f"Align image to {align_images}")
-        self.image = ImageUtils.align(self.image, align_images)
-        return self
-
-    @_conditional_func
-    def draw_roi(
-        self, images: List[ImagePosition], rgb_colour: tuple = (255, 0, 0)
-    ) -> "Processor":
-        thickness = 1
-        for img in images:
-            self.image = ImageUtils.draw_rectangle(
-                self.image,
-                img.x,
-                img.y,
-                img.w,
-                img.h,
-                rgb_colour=rgb_colour,
-                thickness=thickness,
-            )
-            self.image = ImageUtils.draw_text(
-                self.image,
-                img.name,
-                img.x,
-                img.y - 15,
-                rgb_colour=rgb_colour,
-            )
-        return self
-
-    @_conditional_func
-    def cut_images(self, positions: List[ImagePosition], type: CNNType) -> "Processor":
-        for img in positions:
-            image = ImageUtils.cut_image(self.image, img)
-            if type == CNNType.ANALOG:
-                self.cutted_analog_images.append(CutImage(name=img.name, image=image))
-            else:
-                self.cutted_digital_images.append(CutImage(name=img.name, image=image))
-        return self
-
-    @_conditional_func
-    def start_image_cutting(self) -> "Processor":
-        self.cutted_analog_images = []
-        self.cutted_digital_images = []
-        return self
-
-    @_conditional_func
-    def stop_image_cutting(self) -> "Processor":
-        return self
-
-    @_conditional_func
-    def save_cutted_images(self) -> "Processor":
-        for img in self.cutted_analog_images + self.cutted_digital_images:
-            self.pictures[img.name] = img.image
-        return self
-
-    @_conditional_func
-    def execute_analog_ccn(self) -> "Processor":
+    def execute_analog_ccn(self, images: List[CutImage]) -> "DigitizerProcessor":
         if self.analog_counter_reader is None and self.digital_counter_reader is None:
             raise ValueError("No CNN reader initialized")
         if self.analog_counter_reader is not None:
-            self.cnn_analog_results = self.analog_counter_reader.readout(
-                self.cutted_digital_images
-            )
+            result = []
+            for item in images:
+                value = self.analog_counter_reader.readout(item.image)
+                result.append(ReadoutResult(item.name, value))
+            self.cnn_analog_results = result
             logger.debug(f"Analog CNN results: {self.cnn_analog_results}")
         return self
 
-    @_conditional_func
-    def execute_digital_ccn(self) -> "Processor":
+    def execute_digital_ccn(self, images: List[CutImage]) -> "DigitizerProcessor":
         if self.digital_counter_reader is not None:
-            self.cnn_digital_results = self.digital_counter_reader.readout(
-                self.cutted_analog_images
-            )
+            result = []
+            for item in images:
+                value = self.digital_counter_reader.readout(item.image)
+                result.append(ReadoutResult(item.name, value))
+            self.cnn_digital_results = result
             logger.debug(f"Digital CNN results: {self.cnn_digital_results}")
         return self
 
-    @_conditional_func
-    def evaluate_ccn_results(self) -> "Processor":
+    def evaluate_ccn_results(self) -> "DigitizerProcessor":
         available_values = {}
 
         if self.analog_counter_reader is not None:
@@ -383,7 +194,6 @@ class Processor:
             digital_results=digital_results,
             analog_results=analog_results,
             error="",
-            pictures=self.pictures,
         )
 
     def _postprocess_meter_values(

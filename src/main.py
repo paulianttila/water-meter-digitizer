@@ -17,7 +17,8 @@ from Config import Config
 
 from Utils.DownloadUtils import DownloadFailure
 import Utils.ImageUtils as ImageUtils
-from Processor import CNNType, MeterResult, Processor
+from processor.DigitizerProcessor import DigitizerProcessor, MeterResult
+from processor.ImageProcessor import ImageProcessor
 import PreviousValueFile
 
 
@@ -30,6 +31,7 @@ COLOR_BLUE = (0, 0, 255)
 config_file = os.environ.get("CONFIG_FILE", "/config/config.ini")
 processor = None
 config = None
+images = {}
 
 logging.basicConfig(
     stream=sys.stdout,
@@ -60,7 +62,7 @@ def healthcheck():
 def get_image(image: str):
     image = image.replace(".jpg", "")
     logger.debug(f"Getting image: {image}")
-    img = processor.get_picture(image)
+    img = images.get(image)
     if img is None:
         raise HTTPException(status_code=404, detail="Image not found")
     image_bytes = ImageUtils.convert_image_to_bytes(img)
@@ -107,7 +109,8 @@ def get_roi(
                     img.w, img.h = ImageUtils.image_size_from_file(img.file_name)
 
         base64image = (
-            processor.download_image(url, timeout, config.image_source.min_size)
+            ImageProcessor()
+            .download_image(url, timeout, config.image_source.min_size)
             .rotate_image(config.alignment.rotate_angle)
             .align_image(config.alignment.ref_images)
             .if_(draw_refs)
@@ -165,7 +168,6 @@ def get_meters(
         return Response(f"Error: {e}", media_type="text/html")
 
     if format != "html":
-        result.pictures = None
         return Response(
             json.dumps(dataclasses.asdict(result)),
             media_type="application/json",
@@ -184,8 +186,9 @@ def get_meter_data(url: str = None, saveimages: bool = False) -> MeterResult:
     url = url or config.image_source.url
     timeout = config.image_source.timeout
 
-    return (
-        processor.enable_image_saving(saveimages)
+    imageProcessor = ImageProcessor()
+    (
+        imageProcessor.enable_image_saving(saveimages)
         .download_image(url, timeout, config.image_source.min_size)
         .save_image("original")
         .rotate_image(config.alignment.rotate_angle)
@@ -214,20 +217,33 @@ def get_meter_data(url: str = None, saveimages: bool = False) -> MeterResult:
         .save_image("processed")
         .endif_()
         .save_image("final", True)
-        .start_image_cutting()
-        .cut_images(config.digital_readout.cut_images, CNNType.ANALOG)
-        .cut_images(config.analog_readout.cut_images, CNNType.DIGITAL)
+    )
+    digital_images = (
+        imageProcessor.start_image_cutting()
+        .cut_images(config.digital_readout.cut_images)
         .stop_image_cutting()
         .save_cutted_images()
-        .execute_analog_ccn()
-        .execute_digital_ccn()
+        .get_cutted_images()
+    )
+    analog_images = (
+        imageProcessor.start_image_cutting()
+        .cut_images(config.analog_readout.cut_images)
+        .stop_image_cutting()
+        .save_cutted_images()
+        .get_cutted_images()
+    )
+    global images
+    images = imageProcessor.get_pictures()
+    return (
+        processor.execute_analog_ccn(analog_images)
+        .execute_digital_ccn(digital_images)
         .evaluate_ccn_results()
         .get_meter_values(config.meter_configs)
     )
 
 
 def get_image_as_base64_str(image_name: str):
-    img = processor.get_picture(image_name)
+    img = images.get(image_name)
     return ImageUtils.convert_image_base64str(img)
 
 
@@ -257,7 +273,7 @@ def init_app():
     logging.getLogger("asyncio").setLevel(logging.WARNING)
     logging.getLogger("PIL").setLevel(logging.WARNING)
 
-    processor = Processor()
+    processor = DigitizerProcessor()
     (
         processor.init_analog_model(
             config.analog_readout.model_file, config.analog_readout.model

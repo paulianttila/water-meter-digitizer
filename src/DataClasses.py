@@ -1,5 +1,4 @@
 from dataclasses import dataclass
-from typing import List
 
 from PIL import Image
 
@@ -35,24 +34,3 @@ class MeterConfig:
 class CutImage:
     name: str
     image: Image
-
-
-@dataclass
-class CutResult:
-    analog_images: List[CutImage]
-    digital_images: List[CutImage]
-
-
-@dataclass
-class ReadoutResult:
-    name: str
-    value: float
-
-
-@dataclass
-class ModelDetails:
-    name: str
-    xsize: int
-    ysize: int
-    channels: int
-    numer_output: int
