@@ -269,9 +269,33 @@ def load_config_file() -> str:
 
 
 def save_config_file(data: str) -> None:
-    with open(config_file, "w") as f:
-        f.write(data)
+    config = Config().load_from_string(data)
+    config.save_to_file(config_file, make_backup=True)
 
+def init_gui(app):
+    from callbacks import Callbacks
+    import gui.frontend as frontend
+
+    class CallbacksImpl(Callbacks):
+        def get_meter_data(self, url: str = None, saveimages: bool = False):
+            return get_meter_data(url=url, saveimages=saveimages)
+
+        def get_image_as_base64_str(self, image_name: str):
+            return get_image_as_base64_str(image_name)
+
+        def get_config(self) -> Config:
+            return config
+
+        def load_config_file(self):
+            return load_config_file()
+
+        def save_config_file(self, data: str):
+            return save_config_file(data)
+
+        def use_config(self):
+            init_config()
+
+    frontend.init(app, CallbacksImpl())
 
 @log_execution_time
 def init_config():
@@ -309,6 +333,8 @@ if __name__ == "__main__":
     args = parser.parse_args()
     config_file = args.config_file
     init_config()
+    init_gui(app)
+    
     port = 3000
     logger.info(f"Meter is serving at port {port}")
     uvicorn.run(
