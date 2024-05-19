@@ -272,6 +272,7 @@ def save_config_file(data: str) -> None:
     config = Config().load_from_string(data)
     config.save_to_file(config_file, make_backup=True)
 
+
 def init_gui(app):
     from callbacks import Callbacks
     import gui.frontend as frontend
@@ -296,6 +297,7 @@ def init_gui(app):
             init_config()
 
     frontend.init(app, CallbacksImpl())
+
 
 @log_execution_time
 def init_config():
@@ -334,7 +336,7 @@ if __name__ == "__main__":
     config_file = args.config_file
     init_config()
     init_gui(app)
-    
+
     port = 3000
     logger.info(f"Meter is serving at port {port}")
     uvicorn.run(
