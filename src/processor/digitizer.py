@@ -76,8 +76,8 @@ class DigitizerProcessor:
         self.analog_model = None
         self.digital_model = None
         self.previous_value_file = None
-        self.cnn_digital_results = []
-        self.cnn_analog_results = []
+        self.cnn_digital_results: list[ReadoutResult] = []
+        self.cnn_analog_results: list[ReadoutResult] = []
 
     @log_execution_time
     def init_analog_model(
