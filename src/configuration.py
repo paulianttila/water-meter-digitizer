@@ -1,4 +1,7 @@
 from dataclasses import dataclass, field
+import datetime
+import io
+import shutil
 from typing import List
 import configparser
 import os
@@ -67,6 +70,8 @@ class Config:
     image_tmp_dir: str = "/image_tmp"
     config_dir: str = "/config"
     prevoius_value_file: str = "/config/prevalue.ini"
+    digital_models_dir: str = "/config/neuralnets/digital"
+    analog_models_dir: str = "/config/neuralnets/analog"
     image_source: ImageSource = field(default_factory=ImageSource)
     digital_readout: CNNParams = field(default_factory=CNNParams)
     analog_readout: CNNParams = field(default_factory=CNNParams)
@@ -85,6 +90,11 @@ class Config:
         config.read_string(config_string)
         return self.load_config(config)
 
+    def save_to_string(self) -> str:
+        output = io.StringIO()
+        self._save_to_io(output)
+        return output.getvalue()
+
     def load_from_file(self, ini_file: str = "config.ini") -> "Config":
         # sourcery skip: avoid-builtin-shadow
         if not os.path.exists(ini_file):
@@ -98,12 +108,140 @@ class Config:
         config.read(ini_file)
         return self.load_config(config)
 
+    def create_backup(self, ini_file: str = "config.ini") -> "Config":
+        date = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
+        backup_file = f"{ini_file}_{date}.bak"
+        shutil.copyfile(ini_file, backup_file)
+        return self
+
+    def save_to_file(
+        self, ini_file: str = "config.ini", make_backup: bool = False
+    ) -> "Config":
+        if make_backup:
+            self.create_backup(ini_file)
+        with open(ini_file, "w") as configfile:
+            self._save_to_io(configfile)
+        return self
+
+    def _save_to_io(self, fp) -> "Config":
+        config = configparser.ConfigParser()
+        config["DEFAULT"] = {
+            "LogLevel": self.log_level,
+            "ImageTmpDir": self.image_tmp_dir,
+            "ConfigDir": self.config_dir,
+            "DigitalModelsDir": self.digital_models_dir,
+            "AnalogModelsDir": self.analog_models_dir,
+            "PreviousValueFile": self.prevoius_value_file,
+        }
+
+        config["ImageSource"] = {
+            "URL": self.image_source.url,
+            "Timeout": str(self.image_source.timeout),
+            "MinSize": str(self.image_source.min_size),
+        }
+
+        config["Crop"] = {
+            "Enabled": str(self.crop.enabled),
+            "x": str(self.crop.x),
+            "y": str(self.crop.y),
+            "w": str(self.crop.w),
+            "h": str(self.crop.h),
+        }
+
+        config["Resize"] = {
+            "Enabled": str(self.resize.enabled),
+            "w": str(self.resize.w),
+            "h": str(self.resize.h),
+        }
+
+        config["ImageProcessing"] = {
+            "Enabled": str(self.image_processing.enabled),
+            "Contrast": str(self.image_processing.contrast),
+            "Brightness": str(self.image_processing.brightness),
+            "Color": str(self.image_processing.color),
+            "Sharpness": str(self.image_processing.sharpness),
+            "GrayScale": str(self.image_processing.grayscale),
+        }
+
+        config["Alignment"] = {
+            "RotationAngle": str(self.alignment.rotate_angle),
+            "Refs": ", ".join([ref.name for ref in self.alignment.ref_images]),
+            "PostRotationAngle": str(self.alignment.post_rotate_angle),
+        }
+
+        for ref in self.alignment.ref_images:
+            config[f"Alignment.{ref.name}"] = {
+                "image": ref.file_name,
+                "x": str(ref.x),
+                "y": str(ref.y),
+                "w": str(ref.w),
+                "h": str(ref.h),
+            }
+
+        config["Meters"] = {
+            "Names": ", ".join([meter.name for meter in self.meter_configs]),
+        }
+
+        for meter in self.meter_configs:
+            config[f"Meter.{meter.name}"] = {
+                "Value": meter.format,
+                "ConsistencyEnabled": str(meter.consistency_enabled),
+                "AllowNegativeRates": str(meter.allow_negative_rates),
+                "MaxRateValue": str(meter.max_rate_value),
+                "UsePreviuosValueFilling": str(meter.use_previuos_value),
+                "PreValueFromFileMaxAge": str(meter.pre_value_from_file_max_age),
+                "UseExtendedResolution": str(meter.use_extended_resolution),
+                "Unit": meter.unit if meter.unit is not None else "",
+            }
+
+        config["Digits"] = {
+            "Enabled": str(self.digital_readout.enabled),
+            "ModelFile": self.digital_readout.model_file,
+            "Model": self.digital_readout.model,
+            "Names": ", ".join(
+                [image.name for image in self.digital_readout.cut_images]
+            ),
+        }
+
+        config["Analog"] = {
+            "Enabled": str(self.analog_readout.enabled),
+            "ModelFile": self.analog_readout.model_file,
+            "Model": self.analog_readout.model,
+            "Names": ", ".join(
+                [image.name for image in self.analog_readout.cut_images]
+            ),
+        }
+
+        for analog in self.analog_readout.cut_images:
+            config[f"Analog.{analog.name}"] = {
+                "x": str(analog.x),
+                "y": str(analog.y),
+                "w": str(analog.w),
+                "h": str(analog.h),
+            }
+
+        for digital in self.digital_readout.cut_images:
+            config[f"Digits.{digital.name}"] = {
+                "x": str(digital.x),
+                "y": str(digital.y),
+                "w": str(digital.w),
+                "h": str(digital.h),
+            }
+
+        config.write(fp, space_around_delimiters=False)
+
     def load_config(self, config: configparser.ConfigParser) -> "Config":
 
         ################## General Parameters ##########################################
         self.log_level = config.get("DEFAULT", "LogLevel", fallback="INFO")
         self.image_tmp_dir = config.get("DEFAULT", "ImageTmpDir", fallback="/image_tmp")
         self.config_dir = config.get("DEFAULT", "ConfigDir", fallback="/config")
+        self.digital_models_dir = config.get(
+            "DEFAULT", "DigitalModelsDir", fallback="/config/neuralnets/digital"
+        )
+        self.analog_models_dir = config.get(
+            "DEFAULT", "AnalogModelsDir", fallback="/config/neuralnets/analog"
+        )
         self.prevoius_value_file = config.get(
             "DEFAULT", "PreviousValueFile", fallback="/config/prevalue.ini"
         )

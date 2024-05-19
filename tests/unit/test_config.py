@@ -8,6 +8,8 @@ def test_config():
     assert config.log_level == "INFO"
     assert config.image_tmp_dir == "/image_tmp"
     assert config.config_dir == "/config"
+    assert config.digital_models_dir == "/config/neuralnets/digital"
+    assert config.analog_models_dir == "/config/neuralnets/analog"
     assert config.prevoius_value_file == "/config/prevalue.ini"
 
     assert config.image_source.url == "file:///config/original.jpg"
@@ -63,7 +65,7 @@ def test_config():
     assert config.digital_readout.enabled is True
     assert (
         config.digital_readout.model_file
-        == "/config/neuralnets/dig-class100_0168_s2_q.tflite"
+        == "/config/neuralnets/digital/dig-class100_0168_s2_q.tflite"
     )
     assert config.digital_readout.model == "auto"
     assert config.digital_readout.cut_images == [
@@ -76,7 +78,8 @@ def test_config():
 
     assert config.analog_readout.enabled is True
     assert (
-        config.analog_readout.model_file == "/config/neuralnets/ana-cont_1209_s2.tflite"
+        config.analog_readout.model_file
+        == "/config/neuralnets/analog/ana-cont_1209_s2.tflite"
     )
     assert config.analog_readout.model == "auto"
     assert config.analog_readout.cut_images == [
@@ -129,3 +132,16 @@ def test_config_file_missing():
         assert str(e) == "Configuration file 'config/missing.ini' not found"
     else:
         assert False
+
+
+def test_save():
+    TEMPFILENAME = "temp-file-for-unit-test.ini"
+    try:
+        config = Config().load_from_file("tests/unit/resource/config-for-save-test.ini")
+        config.save_to_file(TEMPFILENAME)
+        config2 = Config().load_from_file(TEMPFILENAME)
+        assert config == config2
+    finally:
+        import os
+
+        os.remove(TEMPFILENAME)
