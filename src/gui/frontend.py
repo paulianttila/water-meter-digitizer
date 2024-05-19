@@ -1,4 +1,6 @@
 import logging
+import random
+import string
 from fastapi import FastAPI
 from nicegui import ui
 
@@ -47,9 +49,13 @@ def init(fastapi_app: FastAPI, callbacks: Callbacks) -> None:
                     with ui.tab_panel(about):
                         about_page.show()
 
+    # Nothing special is stored in the cookie, so it's should fine to use random secret
+    secret = "".join(
+        random.choices(string.ascii_uppercase + string.digits, k=20)  # nosec
+    )
+
     ui.run_with(
         fastapi_app,
         mount_path="/gui",
-        # There is nothing secret stored in the storage, so this should be safe
-        storage_secret="x1Jusk9JbEjfmD4ykP1Y",  # nosec
+        storage_secret=secret,
     )
