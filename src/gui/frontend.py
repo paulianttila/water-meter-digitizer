@@ -50,5 +50,6 @@ def init(fastapi_app: FastAPI, callbacks: Callbacks) -> None:
     ui.run_with(
         fastapi_app,
         mount_path="/gui",
-        storage_secret="pick your private secret here",
+        # There is nothing secret stored in the storage, so this should be safe
+        storage_secret="x1Jusk9JbEjfmD4ykP1Y",  # nosec
     )
