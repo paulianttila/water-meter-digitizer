@@ -1,4 +1,4 @@
-# As latest tflite runtime is not build for OS X, use python 3.9 for development (not very optimal)
+# As latest tflite runtime is not build for OS X, use python 3.9 for development
 
 ./wheels/tflite_runtime-2.5.0.post1-cp39-cp39-macosx_12_0_arm64.whl
 fastapi==0.110.0
