@@ -74,6 +74,7 @@ mdurl==0.1.2
     # via markdown-it-py
 mypy-extensions==1.0.0
     # via black
+nicegui==1.4.25
 numpy==1.26.4
     # via
     #   -r requirements.txt
