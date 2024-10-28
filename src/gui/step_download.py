@@ -11,16 +11,21 @@ class DownloadImageStep(BaseStep):
     def __init__(
         self,
         name: str,
+        get_image_func: Callable[[], str],
+        set_image_func: Callable[[str], None],
         spinner=None,
-        get_image_func: Callable[[], None] = None,
-        set_image_func: Callable[[], None] = None,
     ) -> None:
-        self.url = None
-        super().__init__(name, spinner, get_image_func, set_image_func)
+        self.url: ui.input
+        super().__init__(
+            name,
+            get_image_func=get_image_func,
+            set_image_func=set_image_func,
+            spinner=spinner,
+        )
 
     @BaseStep.decorator_spinner
     @BaseStep.decorator_catch_err
-    async def download(self):
+    async def download(self) -> None:
         def do() -> str:
             return (
                 ImageProcessor()
@@ -34,7 +39,7 @@ class DownloadImageStep(BaseStep):
         if self.set_image_func is not None:
             self.set_image_func(self.image)
 
-    async def show(self, stepper, first_step=False, last_step=False):
+    async def show(self, stepper, first_step=False, last_step=False) -> None:
         with ui.step(self.name):
             with ui.row().classes("w-full items-center"):
                 self.url = ui.input(label="URL", placeholder="URL").classes("w-4/5")

@@ -55,6 +55,14 @@ class Resize:
 
 
 @dataclass
+class AutoContrast:
+    enabled: bool = False
+    cutoff_low: float = 2
+    cutoff_high: float = 45
+    ignore: int = 2
+
+
+@dataclass
 class ImageProcessing:
     enabled: bool = False
     contrast: float = 1.0
@@ -62,6 +70,8 @@ class ImageProcessing:
     color: float = 1.0
     sharpness: float = 1.0
     grayscale: bool = False
+    autocontrast: AutoContrast = field(default_factory=AutoContrast)
+    autocontrast_cut_images: AutoContrast = field(default_factory=AutoContrast)
 
 
 @dataclass
@@ -161,6 +171,24 @@ class Config:
             "Color": str(self.image_processing.color),
             "Sharpness": str(self.image_processing.sharpness),
             "GrayScale": str(self.image_processing.grayscale),
+            "AutoContrast": str(self.image_processing.autocontrast.enabled),
+            "AutoContrastCutoffLow": str(self.image_processing.autocontrast.cutoff_low),
+            "AutoContrastCutoffHigh": str(
+                self.image_processing.autocontrast.cutoff_high
+            ),
+            "AutoContrastIgnore": str(self.image_processing.autocontrast.ignore),
+            "AutoContrastCutImages": str(
+                self.image_processing.autocontrast_cut_images.enabled
+            ),
+            "AutoContrastCutImagesCutoffLow": str(
+                self.image_processing.autocontrast_cut_images.cutoff_low
+            ),
+            "AutoContrastCutImagesCutoffHigh": str(
+                self.image_processing.autocontrast_cut_images.cutoff_high
+            ),
+            "AutoContrastCutImagesIgnore": str(
+                self.image_processing.autocontrast_cut_images.ignore
+            ),
         }
 
         config["Alignment"] = {
@@ -229,6 +257,7 @@ class Config:
             }
 
         config.write(fp, space_around_delimiters=False)
+        return self
 
     def load_config(self, config: configparser.ConfigParser) -> "Config":
 
@@ -319,6 +348,32 @@ class Config:
         image_processing_grayscale = config.getboolean(
             "ImageProcessing", "GrayScale", fallback=False
         )
+        image_processing_autocontrast = config.getboolean(
+            "ImageProcessing", "AutoContrast", fallback=False
+        )
+        image_processing_autocontrast_cutoff_low = config.getfloat(
+            "ImageProcessing", "AutoContrastCutoffLow", fallback=2
+        )
+        image_processing_autocontrast_cutoff_high = config.getfloat(
+            "ImageProcessing", "AutoContrastCutoffHigh", fallback=45
+        )
+        image_processing_autocontrast_ignore = config.getint(
+            "ImageProcessing", "AutoContrastIgnore", fallback=2
+        )
+
+        image_processing_autocontrast_cut_images = config.getboolean(
+            "ImageProcessing", "AutoContrastCutImages", fallback=False
+        )
+        image_processing_autocontrast_cut_images_cutoff_low = config.getfloat(
+            "ImageProcessing", "AutoContrastCutImagesCutoffLow", fallback=2
+        )
+        image_processing_autocontrast_cut_images_cutoff_high = config.getfloat(
+            "ImageProcessing", "AutoContrastCutImagesCutoffHigh", fallback=45
+        )
+        image_processing_autocontrast_cut_images_ignore = config.getint(
+            "ImageProcessing", "AutoContrastCutImagesIgnore", fallback=2
+        )
+
         self.image_processing = ImageProcessing(
             enabled=image_processing_enabled,
             contrast=image_processing_contrast,
@@ -326,6 +381,18 @@ class Config:
             color=image_processing_color,
             sharpness=image_processing_sharpness,
             grayscale=image_processing_grayscale,
+            autocontrast=AutoContrast(
+                enabled=image_processing_autocontrast,
+                cutoff_low=image_processing_autocontrast_cutoff_low,
+                cutoff_high=image_processing_autocontrast_cutoff_high,
+                ignore=image_processing_autocontrast_ignore,
+            ),
+            autocontrast_cut_images=AutoContrast(
+                enabled=image_processing_autocontrast_cut_images,
+                cutoff_low=image_processing_autocontrast_cut_images_cutoff_low,
+                cutoff_high=image_processing_autocontrast_cut_images_cutoff_high,
+                ignore=image_processing_autocontrast_cut_images_ignore,
+            ),
         )
 
         ################## Meter Parameters ############################################
@@ -362,7 +429,7 @@ class Config:
                     use_previuos_value=use_previuos_value,
                     pre_value_from_file_max_age=pre_value_from_file_max_age,
                     use_extended_resolution=use_extended_resolution,
-                    unit=unit,
+                    unit=unit if unit is not None else "",
                 )
             )
         return self

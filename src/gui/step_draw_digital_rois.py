@@ -12,22 +12,22 @@ class DrawDigitalRoisStep(DrawRoisBaseStep):
         self,
         name: str,
         name_template: str,
+        get_image_func: Callable[[], str],
+        set_image_func: Callable[[str], None],
+        set_rois_to_svg_func: Callable[[str], None],
+        show_temp_draw_in_svg_func: Callable[[str], None],
+        digital_models_dir: str = "",
         spinner=None,
-        get_image_func: Callable[[], None] = None,
-        set_image_func: Callable[[], None] = None,
-        set_rois_to_svg_func: Callable[[], str] = None,
-        show_temp_draw_in_svg_func: Callable[[], str] = None,
-        digital_models_dir: str = None,
     ) -> None:
         super().__init__(
             name,
             name_template,
-            spinner,
-            get_image_func,
-            set_image_func,
-            self.draw_roi_func,
-            set_rois_to_svg_func,
-            show_temp_draw_in_svg_func,
+            get_image_func=get_image_func,
+            set_image_func=set_image_func,
+            draw_roi_func=self.draw_roi_func,
+            set_rois_to_svg_func=set_rois_to_svg_func,
+            show_temp_draw_in_svg_func=show_temp_draw_in_svg_func,
+            spinner=spinner,
         )
         self.digital_models_dir = digital_models_dir
 
@@ -39,7 +39,7 @@ class DrawDigitalRoisStep(DrawRoisBaseStep):
         h: int,
         color: str,
         text: str,
-    ):
+    ) -> str:
         style = f"stroke-width:3;stroke:{color};fill-opacity:0;stroke-opacity:0.9"
         style2 = f"stroke-width:1;stroke:{color};fill-opacity:0;stroke-opacity:0.9"
         style3 = f"font-size:10;fill:{color};"
@@ -52,12 +52,12 @@ class DrawDigitalRoisStep(DrawRoisBaseStep):
             f' style="{style2}" />'
         )
 
-    def show_digits(self):
+    def show_digits(self) -> None:
         start_time = time.time()
         digital_images = self.cut_images()
         digitizerProcessor = (
             DigitizerProcessor()
-            .init_digital_model(self.cnn_file.value, "auto")
+            .init_digital_model(self.cnn_file.value, "auto")  # type: ignore
             .execute_digital_ccn(digital_images)
             .evaluate_ccn_results()
         )
@@ -78,12 +78,12 @@ class DrawDigitalRoisStep(DrawRoisBaseStep):
                             )
         self.time.text = f"Time: {round(time.time() - start_time, 2)}s"
 
-    def select_all_rois(self):
+    def select_all_rois(self) -> None:
         state = self.select_all.value
         for roi in self.rois:
             roi.enabled = state
 
-    async def show(self, stepper, first_step=False, last_step=False):
+    async def show(self, stepper, first_step=False, last_step=False) -> None:
         with ui.step(self.name):
             with ui.row():
                 ui.button(

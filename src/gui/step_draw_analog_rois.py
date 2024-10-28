@@ -12,22 +12,22 @@ class DrawAnalogRoisStep(DrawRoisBaseStep):
         self,
         name: str,
         name_template: str,
+        get_image_func: Callable[[], str],
+        set_image_func: Callable[[str], None],
+        set_rois_to_svg_func: Callable[[str], None],
+        show_temp_draw_in_svg_func: Callable[[str], None],
+        analog_models_dir: str = "",
         spinner=None,
-        get_image_func: Callable[[], None] = None,
-        set_image_func: Callable[[], None] = None,
-        set_rois_to_svg_func: Callable[[], str] = None,
-        show_temp_draw_in_svg_func: Callable[[], str] = None,
-        analog_models_dir: str = None,
     ) -> None:
         super().__init__(
             name,
             name_template,
-            spinner,
-            get_image_func,
-            set_image_func,
-            self.draw_roi_func,
-            set_rois_to_svg_func,
-            show_temp_draw_in_svg_func,
+            get_image_func=get_image_func,
+            set_image_func=set_image_func,
+            draw_roi_func=self.draw_roi_func,
+            set_rois_to_svg_func=set_rois_to_svg_func,
+            show_temp_draw_in_svg_func=show_temp_draw_in_svg_func,
+            spinner=spinner,
         )
         self.analog_models_dir = analog_models_dir
 
@@ -57,7 +57,7 @@ class DrawAnalogRoisStep(DrawRoisBaseStep):
         analog_images = self.cut_images()
         digitizerProcessor = (
             DigitizerProcessor()
-            .init_analog_model(self.cnn_file.value, "auto")
+            .init_analog_model(self.cnn_file.value, "auto")  # type: ignore
             .execute_analog_ccn(analog_images)
             .evaluate_ccn_results()
         )
@@ -83,7 +83,7 @@ class DrawAnalogRoisStep(DrawRoisBaseStep):
         for roi in self.rois:
             roi.enabled = state
 
-    async def show(self, stepper, first_step=False, last_step=False):
+    async def show(self, stepper, first_step=False, last_step=False) -> None:
         with ui.step(self.name):
             with ui.row():
                 ui.button(

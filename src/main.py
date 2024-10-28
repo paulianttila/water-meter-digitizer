@@ -10,6 +10,7 @@ from fastapi import FastAPI, HTTPException, Response, Request
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
+from starlette.templating import _TemplateResponse
 import uvicorn
 
 from decorators.decorators import log_execution_time
@@ -19,6 +20,7 @@ import utils.image
 from processor.digitizer import DigitizerProcessor, MeterResult
 from processor.image import ImageProcessor
 import previous_value as previous_value
+from PIL.Image import Image
 
 
 VERSION = "8.0.0"
@@ -28,8 +30,8 @@ COLOR_GREEN = (0, 255, 0)
 COLOR_BLUE = (0, 0, 255)
 
 config_file = os.environ.get("CONFIG_FILE", "/config/config.ini")
-config = None
-images = {}
+config = Config()
+images: dict[str, Image] = {}
 
 logging.basicConfig(
     stream=sys.stdout,
@@ -46,7 +48,7 @@ templates = Jinja2Templates(directory="web/templates")
 
 @app.get("/", response_class=HTMLResponse)
 @log_execution_time
-def get_index(request: Request):
+def get_index(request: Request) -> _TemplateResponse:
     return templates.TemplateResponse(
         "index.html", context={"request": request, "version": VERSION}
     )
@@ -60,7 +62,7 @@ def healthcheck():
 
 @app.get("/image_tmp/{image}")
 @log_execution_time
-def get_image(image: str):
+def get_image(image: str) -> Response:
     image = image.replace(".jpg", "")
     logger.debug(f"Getting image: {image}")
     img = images.get(image)
@@ -72,7 +74,7 @@ def get_image(image: str):
 
 @app.get("/version")
 @log_execution_time
-def get_version():
+def get_version() -> Response:
     return Response(json.dumps({"version": VERSION}), media_type="application/json")
 
 
@@ -94,7 +96,7 @@ def reload_config():
 @log_execution_time
 def get_roi(
     request: Request,
-    url: str = None,
+    url: str = "",
     draw_refs: bool = True,
     draw_digital: bool = True,
     draw_analog: bool = True,
@@ -137,7 +139,7 @@ def get_roi(
 
 @app.get("/setPreviousValue")
 @log_execution_time
-def set_previous_value(name: str, value: str):
+def set_previous_value(name: str, value: str) -> Response:
     try:
         if value is None or not value.isnumeric():
             raise ValueError(f"Value {value} is not a number")
@@ -155,7 +157,7 @@ def set_previous_value(name: str, value: str):
 def get_meters(
     request: Request,
     format: str = "html",
-    url: str = None,
+    url: str = "",
     saveimages: bool = False,
 ):
     if format not in ["html", "json"]:
@@ -187,7 +189,7 @@ def get_meters(
 
 
 @log_execution_time
-def get_meter_data(url: str = None, saveimages: bool = False) -> MeterResult:
+def get_meter_data(url: str = "", saveimages: bool = False) -> MeterResult:
     url = url or config.image_source.url
     timeout = config.image_source.timeout
 
@@ -221,20 +223,42 @@ def get_meter_data(url: str = None, saveimages: bool = False) -> MeterResult:
             sharpness=config.image_processing.sharpness,
             color=config.image_processing.color,
         )
+        .if_(config.image_processing.enabled and config.image_processing.autocontrast)
+        .autocontrast_image(
+            cutoff_low=config.image_processing.autocontrast.cutoff_low,
+            cutoff_high=config.image_processing.autocontrast.cutoff_high,
+            ignore=config.image_processing.autocontrast.ignore,
+        )
         .save_image("processed")
         .endif_()
         .save_image("final", True)
     )
+    autocontrast = (
+        config.image_processing.enabled
+        and config.image_processing.autocontrast_cut_images.enabled
+    )
     digital_images = (
         imageProcessor.start_image_cutting()
-        .cut_images(config.digital_readout.cut_images)
+        .cut_images(
+            config.digital_readout.cut_images,
+            autocontrast=autocontrast,
+            cutoff_low=config.image_processing.autocontrast_cut_images.cutoff_low,
+            cutoff_high=config.image_processing.autocontrast_cut_images.cutoff_high,
+            ignore=config.image_processing.autocontrast_cut_images.ignore,
+        )
         .stop_image_cutting()
         .save_cutted_images()
         .get_cutted_images()
     )
     analog_images = (
         imageProcessor.start_image_cutting()
-        .cut_images(config.analog_readout.cut_images)
+        .cut_images(
+            config.analog_readout.cut_images,
+            autocontrast=autocontrast,
+            cutoff_low=config.image_processing.autocontrast_cut_images.cutoff_low,
+            cutoff_high=config.image_processing.autocontrast_cut_images.cutoff_high,
+            ignore=config.image_processing.autocontrast_cut_images.ignore,
+        )
         .stop_image_cutting()
         .save_cutted_images()
         .get_cutted_images()
@@ -258,8 +282,10 @@ def get_meter_data(url: str = None, saveimages: bool = False) -> MeterResult:
     )
 
 
-def get_image_as_base64_str(image_name: str):
+def get_image_as_base64_str(image_name: str) -> str:
     img = images.get(image_name)
+    if img is None:
+        raise HTTPException(status_code=404, detail="Image not found")
     return utils.image.convert_image_base64str(img)
 
 
@@ -273,34 +299,36 @@ def save_config_file(data: str) -> None:
     config.save_to_file(config_file, make_backup=True)
 
 
-def init_gui(app):
+def init_gui(app) -> None:
     from callbacks import Callbacks
     import gui.frontend as frontend
 
     class CallbacksImpl(Callbacks):
-        def get_meter_data(self, url: str = None, saveimages: bool = False):
+        def get_meter_data(
+            self, url: str = "", saveimages: bool = False
+        ) -> MeterResult:
             return get_meter_data(url=url, saveimages=saveimages)
 
-        def get_image_as_base64_str(self, image_name: str):
+        def get_image_as_base64_str(self, image_name: str) -> str:
             return get_image_as_base64_str(image_name)
 
         def get_config(self) -> Config:
             return config
 
-        def load_config_file(self):
+        def load_config_file(self) -> str:
             return load_config_file()
 
-        def save_config_file(self, data: str):
+        def save_config_file(self, data: str) -> None:
             return save_config_file(data)
 
-        def use_config(self):
+        def use_config(self) -> None:
             init_config()
 
     frontend.init(app, CallbacksImpl())
 
 
 @log_execution_time
-def init_config():
+def init_config() -> None:
     global config
     config = Config().load_from_file(ini_file=config_file)
     logger.setLevel(config.log_level)

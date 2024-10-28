@@ -15,20 +15,25 @@ class FinalStep(BaseStep):
         self,
         name: str,
         callbacks: Callbacks,
+        get_image_func: Callable[[], str],
+        set_image_func: Callable[[str], None],
+        save_refs_func: Callable[[], None],
         spinner=None,
-        get_image_func: Callable[[], None] = None,
-        set_image_func: Callable[[], None] = None,
-        save_refs_func: Callable[[], None] = None,
     ) -> None:
-        super().__init__(name, spinner, get_image_func, set_image_func)
+        super().__init__(
+            name,
+            get_image_func=get_image_func,
+            set_image_func=set_image_func,
+            spinner=spinner,
+        )
         self.save_refs_func = save_refs_func
         self.callbacks = callbacks
-        self.editor = None
+        self.editor: ui.textarea
 
     def set_config(self, config: Config):
         self.editor.value = config.save_to_string()
 
-    def save_config(self):
+    def save_config(self) -> None:
         if self.syntax_check() is True:
             self.save_refs_func()
             self.callbacks.save_config_file(self.editor.value)
@@ -36,7 +41,7 @@ class FinalStep(BaseStep):
             ui.notify("Config saved", type="positive")
         self.txt = self.editor.value
 
-    def show_config(self):
+    def show_config(self) -> None:
         try:
             config = Config()
             config.load_from_string(self.editor.value)
@@ -49,7 +54,7 @@ class FinalStep(BaseStep):
         except Exception as e:
             ui.notify(f"Syntax error: {e}", type="negative")
 
-    def use_config(self):
+    def use_config(self) -> None:
         self.callbacks.use_config()
         self.new_config_saved = False
         ui.notify("Config taken in use", type="positive")
@@ -64,7 +69,7 @@ class FinalStep(BaseStep):
             ui.notify(f"Syntax error: {e}", type="negative")
             return False
 
-    async def show(self, stepper, first_step=False, last_step=False):
+    async def show(self, stepper, first_step=False, last_step=False) -> None:
         with ui.step(self.name):
             with ui.row():
                 ui.button(icon="verified", on_click=self.syntax_check).tooltip(

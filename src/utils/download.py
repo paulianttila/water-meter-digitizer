@@ -30,8 +30,8 @@ def load_file_from_url(url: str, timeout: int = 10, min_file_size: int = 0) -> b
         small.
 
     """
+    startTime = time.time()
     try:
-        startTime = time.time()
         data = _read_file_from_url(url, timeout)
         size = len(data)
         if size < min_file_size:
@@ -46,7 +46,7 @@ def load_file_from_url(url: str, timeout: int = 10, min_file_size: int = 0) -> b
         logger.debug(f"File downloaded in {time.time() - startTime:.3f} sec")
 
 
-def _read_file_from_url(url: str, timeout: int) -> None:
+def _read_file_from_url(url: str, timeout: int) -> bytes:
     # Todo: limit file to one folder for security reasons
     if url.startswith("file://"):
         file = url[7:]

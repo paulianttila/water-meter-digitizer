@@ -1,7 +1,10 @@
 import base64
 import io
 from typing import List
-from PIL import Image, ImageEnhance, ImageOps, ImageDraw, ImageFont
+from PIL.Image import Image
+import PIL.Image
+import PIL.ImageEnhance
+from PIL import ImageOps, ImageDraw, ImageFont
 import numpy as np
 import cv2
 
@@ -11,18 +14,18 @@ from data_classes import ImagePosition, RefImage
 def save_image(image: Image, file_name: str) -> None:
     if image is None:
         raise ValueError("No image to save")
-    if isinstance(image, Image.Image):
-        Image.Image.save(image, file_name, "JPEG")
+    if isinstance(image, Image):
+        Image.save(image, file_name, "JPEG")
     elif isinstance(image, np.ndarray):
         cv2.imwrite(file_name, image)
 
 
 def load_image_from_file(file_name: str) -> Image:
-    return Image.open(file_name)
+    return PIL.Image.open(file_name)
 
 
 def bytes_to_image(data: bytes) -> Image:
-    image = Image.open(io.BytesIO(data))
+    image = PIL.Image.open(io.BytesIO(data))
     if image.format not in ["JPEG", "PNG"]:
         raise ValueError("Invalid image format")
     if image.mode != "RGB":
@@ -38,7 +41,7 @@ def convert_image_base64str(image: Image) -> str:
 def convert_image_to_bytes(image: Image) -> bytes:
     if image is None:
         raise ValueError("No image to convert")
-    if isinstance(image, Image.Image):
+    if isinstance(image, Image):
         buffered = io.BytesIO()
         image.save(buffered, format="JPEG")
         return buffered.getvalue()
@@ -57,7 +60,7 @@ def convert_base64_str_to_image(data: str) -> Image:
 
 
 def convert_to_image(image: Image) -> Image:
-    if isinstance(image, Image.Image):
+    if isinstance(image, Image):
         return image
     elif isinstance(image, np.ndarray):
         return Image.fromarray(image)
@@ -66,7 +69,7 @@ def convert_to_image(image: Image) -> Image:
 
 
 def convert_image_to_np_array(image: Image) -> np.ndarray:
-    if isinstance(image, Image.Image):
+    if isinstance(image, Image):
         return np.array(image)
     elif isinstance(image, np.ndarray):
         return image
@@ -74,10 +77,10 @@ def convert_image_to_np_array(image: Image) -> np.ndarray:
         raise ValueError("Invalid image")
 
 
-def convert_np_array_to_image(data: np.ndarray) -> np.ndarray:
+def convert_np_array_to_image(data: np.ndarray) -> Image:
     if isinstance(data, np.ndarray):
-        return Image.fromarray(data)
-    elif isinstance(data, Image.Image):
+        return PIL.Image.fromarray(data)
+    elif isinstance(data, Image):
         return data
     else:
         raise ValueError("Invalid image")
@@ -90,7 +93,7 @@ def image_size(image: Image) -> tuple:
 
 
 def image_size_from_file(file_name: str) -> tuple:
-    image = Image.open(file_name)
+    image = PIL.Image.open(file_name)
     return image.size
 
 
@@ -119,14 +122,14 @@ def align(image: Image, reference_images: List[RefImage]) -> Image:
         )
         for i in range(len(reference_images))
     ]
-    pts1 = np.float32(ref_image_cordinates)
-    pts2 = np.float32(alignment_ref_pos)
-    M = cv2.getAffineTransform(pts1, pts2)
+    pts1 = np.float32(ref_image_cordinates)  # type: ignore
+    pts2 = np.float32(alignment_ref_pos)  # type: ignore
+    M = cv2.getAffineTransform(pts1, pts2)  # type: ignore
     img = cv2.warpAffine(data, M, (w, h))
     return convert_np_array_to_image(img)
 
 
-def _get_ref_coordinate(image: np.ndarray, template: np.ndarray) -> tuple:
+def _get_ref_coordinate(image: np.ndarray, template: np.ndarray) -> tuple[int, int]:
     """
     Square difference (CV_TM_SQDIFF): This method calculates the squared difference
         between the pixel intensities of the source image and template.
@@ -149,7 +152,8 @@ def _get_ref_coordinate(image: np.ndarray, template: np.ndarray) -> tuple:
     method = cv2.TM_CCOEFF_NORMED
     res = cv2.matchTemplate(image, template, method)
     min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(res)
-    return min_loc if method in [cv2.TM_SQDIFF, cv2.TM_SQDIFF_NORMED] else max_loc
+    point = min_loc if method in [cv2.TM_SQDIFF, cv2.TM_SQDIFF_NORMED] else max_loc
+    return (point[0], point[1])
 
 
 def draw_rectangle(
@@ -164,7 +168,7 @@ def draw_rectangle(
     if image is None:
         raise ValueError("No image to draw")
     ImageDraw.Draw(image).rectangle(
-        [(x, y), (x + w, y + h)],
+        xy=((x, y), (x + w, y + h)),
         outline=rgb_colour,
         width=thickness,
     )
@@ -226,10 +230,10 @@ def adjust_image(
 ) -> Image:
     if image is None:
         raise ValueError("No image to adjust")
-    image = ImageEnhance.Contrast(image).enhance(contrast)
-    image = ImageEnhance.Brightness(image).enhance(brightness)
-    image = ImageEnhance.Sharpness(image).enhance(sharpness)
-    image = ImageEnhance.Color(image).enhance(color)
+    image = PIL.ImageEnhance.Contrast(image).enhance(contrast)
+    image = PIL.ImageEnhance.Brightness(image).enhance(brightness)
+    image = PIL.ImageEnhance.Sharpness(image).enhance(sharpness)
+    image = PIL.ImageEnhance.Color(image).enhance(color)
     return image
 
 
@@ -237,3 +241,16 @@ def convert_to_gray_scale(image: Image) -> Image:
     if image is None:
         raise ValueError("No image to convert to gray scale")
     return ImageOps.grayscale(image).convert("RGB")
+
+
+def autocontrast_image(
+    image: Image, cutoff_low: float = 2, cutoff_high: float = 45, ignore: int = 2
+) -> Image:
+    if image is None:
+        raise ValueError("No image to autocontrast")
+    if isinstance(image, Image):
+        return ImageOps.autocontrast(
+            image, cutoff=(cutoff_low, cutoff_high), ignore=ignore
+        )
+    if isinstance(image, np.ndarray):
+        return image

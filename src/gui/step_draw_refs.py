@@ -10,21 +10,21 @@ class DrawRefsStep(DrawRoisBaseStep):
         self,
         name: str,
         name_template: str,
+        get_image_func: Callable[[], str],
+        set_image_func: Callable[[str], None],
+        set_rois_to_svg_func: Callable[[str], None],
+        show_temp_draw_in_svg_func: Callable[[str], None],
         spinner=None,
-        get_image_func: Callable[[], None] = None,
-        set_image_func: Callable[[], None] = None,
-        set_rois_to_svg_func: Callable[[], str] = None,
-        show_temp_draw_in_svg_func: Callable[[], str] = None,
     ) -> None:
         super().__init__(
             name,
             name_template,
-            spinner,
-            get_image_func,
-            set_image_func,
-            self.draw_roi_func,
-            set_rois_to_svg_func,
-            show_temp_draw_in_svg_func,
+            get_image_func=get_image_func,
+            set_image_func=set_image_func,
+            draw_roi_func=self.draw_roi_func,
+            set_rois_to_svg_func=set_rois_to_svg_func,
+            show_temp_draw_in_svg_func=show_temp_draw_in_svg_func,
+            spinner=spinner,
         )
 
     def draw_roi_func(
@@ -43,17 +43,17 @@ class DrawRefsStep(DrawRoisBaseStep):
             f'<rect x="{x}" y="{y}" width="{w}" height="{h}" style="{style}" />'
         )
 
-    def select_all_rois(self):
+    def select_all_rois(self) -> None:
         state = self.select_all.value
         for roi in self.rois:
             roi.enabled = state
 
-    def add_roi(self):
+    def add_roi(self) -> None:
         for roi in self.rois:
             roi.enabled = False
         super().add_roi()
 
-    async def show(self, stepper, first_step=False, last_step=False):
+    async def show(self, stepper, first_step=False, last_step=False) -> None:
         with ui.step(self.name):
             with ui.grid(columns="2fr 2fr 2fr 2fr 2fr 2fr").classes("w-full gap-2"):
                 self.select_all = ui.checkbox(

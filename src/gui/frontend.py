@@ -14,20 +14,19 @@ from .page_about import AboutPage
 logger = logging.getLogger(__name__)
 
 
-_config = None
-_callbacks = None
+_callbacks: Callbacks
 
 
 def init(fastapi_app: FastAPI, callbacks: Callbacks) -> None:
-    global _config, _callbacks
+    global _callbacks
     _callbacks = callbacks
 
     @ui.page("/")
-    async def show():
+    async def show() -> None:
         menu = Menu()
-        meter_page = MeterPage(_callbacks)
-        setup_page = SetupPage(_callbacks)
-        config_page = ConfigPage(_callbacks)
+        meter_page = MeterPage(callbacks=_callbacks)
+        setup_page = SetupPage(callbacks=_callbacks)
+        config_page = ConfigPage(callbacks=_callbacks)
         about_page = AboutPage()
 
         with ui.splitter(value=6, limits=(6, 6)).classes("w-full h-full") as splitter:

@@ -61,6 +61,14 @@ def test_config():
     assert config.image_processing.sharpness == 1.0
     assert config.image_processing.color == 1.0
     assert config.image_processing.grayscale is False
+    assert config.image_processing.autocontrast.enabled is False
+    assert config.image_processing.autocontrast.cutoff_low == 2.0
+    assert config.image_processing.autocontrast.cutoff_high == 45
+    assert config.image_processing.autocontrast.ignore == 2
+    assert config.image_processing.autocontrast_cut_images.enabled is False
+    assert config.image_processing.autocontrast_cut_images.cutoff_low == 2.0
+    assert config.image_processing.autocontrast_cut_images.cutoff_high == 45
+    assert config.image_processing.autocontrast_cut_images.ignore == 2
 
     assert config.digital_readout.enabled is True
     assert (

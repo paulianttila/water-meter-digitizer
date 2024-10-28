@@ -10,9 +10,9 @@ class MeterPage:
     def __init__(self, callbacks: Callbacks) -> None:
         self.callbacks = callbacks
 
-    async def show(self):
+    async def show(self) -> None:
 
-        async def do_fetch():
+        async def do_fetch() -> None:
             self.spinner.visible = True
             value_container.clear()
             try:
@@ -69,7 +69,6 @@ class MeterPage:
 
             raw_container.clear()
             with raw_container:
-                result.pictures = None
                 ui.code(
                     json.dumps(dataclasses.asdict(result), indent=4), language="json"
                 )

@@ -13,11 +13,11 @@ class ConfigPage:
         self.new_config_saved = False
 
     def show(self):
-        def check_buttons():
+        def check_buttons() -> None:
             button_save.enabled = editor.value != self.txt
             button_use_config.enabled = self.new_config_saved
 
-        def save_config():
+        def save_config() -> None:
             if syntax_check() is True:
                 self.callbacks.save_config_file(editor.value)
                 self.new_config_saved = True
@@ -25,12 +25,12 @@ class ConfigPage:
             self.txt = editor.value
             check_buttons()
 
-        def load_config():
+        def load_config() -> None:
             self.txt = self.callbacks.load_config_file()
             editor.value = self.txt
             check_buttons()
 
-        def show_config():
+        def show_config() -> None:
             try:
                 config = Config()
                 config.load_from_string(editor.value)
@@ -43,7 +43,7 @@ class ConfigPage:
             except Exception as e:
                 ui.notify(f"Syntax error: {e}", type="negative")
 
-        def use_config():
+        def use_config() -> None:
             self.callbacks.use_config()
             self.new_config_saved = False
             check_buttons()

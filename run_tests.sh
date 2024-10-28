@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 
 # To run tests locally
-# export CONFIG_FILE=$(PWD)/config/config.ini
+# export CONFIG_FILE=$(PWD)/config/config.ini; ./run_tests.sh
+# E.g. export CONFIG_FILE=$(PWD)/test_config/config.ini; ./run_tests.sh
 
 TAVERN_LOG_LEVEL=INFO
 

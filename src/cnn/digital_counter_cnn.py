@@ -1,6 +1,6 @@
 import logging
 
-from PIL import Image
+from PIL.Image import Image
 import numpy as np
 
 from cnn.base import CNNBase
@@ -14,7 +14,7 @@ class DigitalCounterCNN(CNNBase):
         modelfile: str,
         dx: int,
         dy: int,
-    ):
+    ) -> None:
         super().__init__(
             modelfile,
             dx=dx,
@@ -23,5 +23,5 @@ class DigitalCounterCNN(CNNBase):
         super()._loadModel()
 
     def readout(self, image: Image) -> int:
-        output_data = super().readout(image)
-        return np.argmax(output_data)
+        output_data = super()._readout(image)
+        return int(np.argmax(output_data))

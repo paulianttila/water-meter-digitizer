@@ -10,25 +10,30 @@ class InitialRotateStep(BaseStep):
     def __init__(
         self,
         name: str,
+        get_image_func: Callable[[], str],
+        set_image_func: Callable[[str], None],
         spinner=None,
-        get_image_func: Callable[[], None] = None,
-        set_image_func: Callable[[], None] = None,
     ) -> None:
-        super().__init__(name, spinner, get_image_func, set_image_func)
-        self.org_image = None
+        super().__init__(
+            name,
+            get_image_func=get_image_func,
+            set_image_func=set_image_func,
+            spinner=spinner,
+        )
         self.angle = 0
+        self.org_image: str = ""
 
-    def reset_image(self):
+    def reset_image(self) -> None:
         if self.get_image_func is not None:
-            if self.org_image is None:
+            if self.org_image == "":
                 self.org_image = self.get_image_func()
             self.image = self.org_image
         if self.set_image_func is not None:
             self.set_image_func(self.image)
 
-    async def rotate_image(self, angle):
-        imageProcessor = ImageProcessor()
+    async def rotate_image(self, angle) -> None:
         self.reset_image()
+        imageProcessor = ImageProcessor()
         imageProcessor.set_image_from_base64_str(self.image)
         self.image = imageProcessor.rotate_image(angle).get_image_as_base64_str()
         self.angle = angle
@@ -37,20 +42,20 @@ class InitialRotateStep(BaseStep):
 
     @BaseStep.decorator_spinner
     @BaseStep.decorator_catch_err
-    async def initial_rotation_left(self):
+    async def initial_rotation_left(self) -> None:
         await self.rotate_image(-90)
 
     @BaseStep.decorator_spinner
     @BaseStep.decorator_catch_err
-    async def rotate_image_180(self):
+    async def rotate_image_180(self) -> None:
         await self.rotate_image(180)
 
     @BaseStep.decorator_spinner
     @BaseStep.decorator_catch_err
-    async def initial_rotation_right(self):
+    async def initial_rotation_right(self) -> None:
         await self.rotate_image(90)
 
-    async def show(self, stepper, first_step=False, last_step=False):
+    async def show(self, stepper, first_step=False, last_step=False) -> None:
         with ui.step(self.name):
             with ui.row():
                 ui.button(

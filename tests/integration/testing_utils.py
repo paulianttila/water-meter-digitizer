@@ -1,13 +1,13 @@
 import io
 import re
 import base64
-from PIL import Image
+import PIL.Image
 import requests
 
 
 def verify_image(data: bytes, width: int, height: int, format: str = "JPEG") -> bool:
     try:
-        image = Image.open(io.BytesIO(data))
+        image = PIL.Image.open(io.BytesIO(data))
         image.verify()
         return False if image.size != (width, height) else image.format == format
     except Exception:
@@ -30,6 +30,6 @@ def check_roi_image(response: requests.Response):
 
 
 def check_image(response: requests.Response):
-    image = Image.open(io.BytesIO(response.content))
+    image = PIL.Image.open(io.BytesIO(response.content))
     image.verify()
     assert image.format == "JPEG"

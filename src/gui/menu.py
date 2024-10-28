@@ -5,13 +5,13 @@ class Menu:
     def __init__(self) -> None:
         pass
 
-    def set_dark_mode(self):
+    def set_dark_mode(self) -> None:
         app.storage.user["dark_mode"] = True
 
-    def set_light_mode(self):
+    def set_light_mode(self) -> None:
         app.storage.user["dark_mode"] = False
 
-    def show(self):
+    def show(self) -> None:
         ui.dark_mode().bind_value(app.storage.user, "dark_mode")
         with ui.button(icon="menu").classes("w-4/5"):
             with ui.menu():

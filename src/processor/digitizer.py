@@ -43,7 +43,7 @@ class ValueResult:
 class MeterValue:
     name: str
     value: str
-    unit: str = None
+    unit: str = ""
 
 
 @dataclass
@@ -56,11 +56,11 @@ class MeterResult:
 
 @dataclass
 class Meter:
-    name: str = None
-    value: str = None
-    raw_value: str = None
-    previous_value: str = None
-    config: MeterConfig = None
+    config: MeterConfig
+    name: str = ""
+    value: str = ""
+    raw_value: str = ""
+    previous_value: str = ""
 
 
 class ConcistencyError(Exception):
@@ -69,13 +69,13 @@ class ConcistencyError(Exception):
 
 
 class DigitizerProcessor:
-    def __init__(self):
+    def __init__(self) -> None:
         self.condition = None
-        self.analog_counter_reader = None
-        self.digital_counter_reader = None
-        self.analog_model = None
-        self.digital_model = None
-        self.previous_value_file = None
+        self.analog_counter_reader: AnalogNeedleCNN = None  # type: ignore
+        self.digital_counter_reader: DigitalCounterCNN = None  # type: ignore
+        self.analog_model: str = ""
+        self.digital_model: str = ""
+        self.previous_value_file: str = ""
         self.cnn_digital_results: list[ReadoutResult] = []
         self.cnn_analog_results: list[ReadoutResult] = []
 
@@ -165,8 +165,8 @@ class DigitizerProcessor:
         self.available_values = available_values
         return self
 
-    def get_meter_values(self, meters: MeterConfig) -> ValueResult:
-        meters = self._get_meter_values(meters)
+    def get_meter_values(self, meter_configs: list[MeterConfig]) -> MeterResult:
+        meters = self._get_meter_values(meter_configs)
         self._postprocess_meter_values(
             meters=meters,
             values=self.available_values,
@@ -174,8 +174,8 @@ class DigitizerProcessor:
         )
         return self._gen_result(meters)
 
-    def _get_meter_values(self, meter_configs: List[MeterConfig]):
-        meters = []
+    def _get_meter_values(self, meter_configs: List[MeterConfig]) -> List[Meter]:
+        meters: list[Meter] = []
         for meter_config in meter_configs:
             value = meter_config.format.format(**self.available_values)
             meter = Meter(
@@ -204,7 +204,7 @@ class DigitizerProcessor:
             MeterValue(
                 name=meter.name,
                 value=meter.value,
-                unit=meter.config.unit if meter.config.unit is not None else "",
+                unit=meter.config.unit,
             )
             for meter in meters
         ]
@@ -310,7 +310,7 @@ class DigitizerProcessor:
         return strValue
 
     def _evaluate_analog_counter(
-        self, name: str, new_value, prev_value: int = -1, model: str = None
+        self, name: str, new_value, prev_value: int = -1, model: str = ""
     ) -> int:
         decimal_part = math.floor((new_value * 10) % 10)
         integer_part = math.floor(new_value % 10)
@@ -338,8 +338,9 @@ class DigitizerProcessor:
         name: str,
         new_value: Union[float, int],
         prev_value: int = -1,
-        model: str = None,
+        model: str = "",
     ) -> int:
+        digit = 0
         if model.lower() == "digital100":
             digit = (
                 "N" if new_value < 0 or new_value >= 100 else int(round(new_value / 10))
@@ -347,7 +348,7 @@ class DigitizerProcessor:
         elif model.lower() == "digital":
             digit = "N" if new_value < 0 or new_value >= 10 else new_value
         logger.debug(f"{name}: {new_value}  -> {digit}")
-        return digit
+        return int(digit)
 
     def _solve_model(self, model: str, details: ModelDetails) -> str:
         if model.lower() != "auto":
@@ -360,3 +361,4 @@ class DigitizerProcessor:
             if details.xsize == 32 and details.ysize == 32:
                 return "analog100"
             return "digital100"
+        return ""

@@ -1,41 +1,43 @@
-from typing import List
+from typing import Callable, List, Sequence
 import logging
 
-from PIL import Image
+from PIL.Image import Image
 
-from data_classes import CutImage, ImagePosition
-import utils
+from data_classes import CutImage, ImagePosition, RefImage
+import utils.image
+import utils.download
 
 logger = logging.getLogger(__name__)
 
 
-class ImageProcessor:
-    def __init__(self):
-        self.condition = None
-        self.image = None
-        self.cutted_images = [CutImage]
-        self.enable_img_saving = False
-        self.pictures = {}
-
-    def _conditional_func(func):
-        def wrapper(self, *args, **kwargs):
-            if self.condition is not None and self.condition is False:
-                return self
-
-            func(self, *args, **kwargs)
+def _conditional_func(func) -> Callable[..., "ImageProcessor"]:
+    def wrapper(self, *args, **kwargs):
+        if self.condition is not None and self.condition is False:
             return self
 
-        return wrapper
+        func(self, *args, **kwargs)
+        return self
 
-    def if_(self, a):
+    return wrapper
+
+
+class ImageProcessor:
+    def __init__(self) -> None:
+        self.condition = None
+        self.image: Image
+        self.cutted_images: List[CutImage] = []
+        self.enable_img_saving = False
+        self.pictures: dict[str, Image] = {}
+
+    def if_(self, a) -> "ImageProcessor":
         self.condition = a
         return self
 
-    def else_(self):
+    def else_(self) -> "ImageProcessor":
         self.condition = self.condition is False
         return self
 
-    def endif_(self):
+    def endif_(self) -> "ImageProcessor":
         self.condition = None
         return self
 
@@ -46,7 +48,7 @@ class ImageProcessor:
 
     @_conditional_func
     def set_image(self, image: Image) -> "ImageProcessor":
-        self.image = image.convert_to_image(image)
+        self.image = utils.image.convert_to_image(image)
         return self
 
     @_conditional_func
@@ -59,9 +61,10 @@ class ImageProcessor:
         return self.image.copy()
 
     def get_picture(self, name: str) -> Image:
-        if self.pictures.get(name) is not None:
-            return self.pictures.get(name, None)
-        raise ValueError(f"No image with name {name} available")
+        img = self.pictures.get(name, None)
+        if img is None:
+            raise ValueError(f"No image with name {name} available")
+        return img.copy()
 
     def get_pictures(self) -> dict:
         return self.pictures.copy()
@@ -130,27 +133,65 @@ class ImageProcessor:
         return self
 
     @_conditional_func
+    def autocontrast_image(
+        self, cutoff_low: float = 2, cutoff_high: float = 45, ignore: int = 2
+    ) -> "ImageProcessor":
+        logger.debug(
+            f"Auto contrast image cutoff_low:{cutoff_low}, cutoff_high:{cutoff_high}, "
+            f"ignore:{ignore}"
+        )
+        self.image = utils.image.autocontrast_image(
+            self.image,
+            cutoff_low=cutoff_low,
+            cutoff_high=cutoff_high,
+            ignore=ignore,
+        )
+        return self
+
+    @_conditional_func
     def to_gray_scale(self) -> "ImageProcessor":
         logger.debug("Convert image to gray scale")
         self.image = utils.image.convert_to_gray_scale(self.image)
         return self
 
     @_conditional_func
-    def align_image(self, align_images: List[ImagePosition]) -> "ImageProcessor":
+    def align_image(self, align_images: List[RefImage]) -> "ImageProcessor":
         logger.debug(f"Align image to {align_images}")
         self.image = utils.image.align(self.image, align_images)
         return self
 
     @_conditional_func
-    def cut_image(self, position: ImagePosition) -> "ImageProcessor":
+    def cut_image(
+        self,
+        position: ImagePosition,
+        autocontrast: bool = False,
+        cutoff_low: float = 2,
+        cutoff_high: float = 45,
+        ignore: int = 2,
+    ) -> "ImageProcessor":
         image = utils.image.cut_image(self.image, position)
+        if autocontrast:
+            image = utils.image.autocontrast_image(
+                image, cutoff_low, cutoff_high, ignore
+            )
         self.cutted_images.append(CutImage(name=position.name, image=image))
         return self
 
     @_conditional_func
-    def cut_images(self, positions: List[ImagePosition]) -> "ImageProcessor":
+    def cut_images(
+        self,
+        positions: List[ImagePosition],
+        autocontrast: bool = False,
+        cutoff_low: float = 2,
+        cutoff_high: float = 45,
+        ignore: int = 2,
+    ) -> "ImageProcessor":
         for img in positions:
             image = utils.image.cut_image(self.image, img)
+            if autocontrast:
+                image = utils.image.autocontrast_image(
+                    image, cutoff_low, cutoff_high, ignore
+                )
             self.cutted_images.append(CutImage(name=img.name, image=image))
         return self
 
@@ -174,7 +215,7 @@ class ImageProcessor:
 
     @_conditional_func
     def draw_roi(
-        self, images: List[ImagePosition], rgb_colour: tuple = (255, 0, 0)
+        self, images: Sequence[ImagePosition], rgb_colour: tuple = (255, 0, 0)
     ) -> "ImageProcessor":
         thickness = 1
         for img in images:

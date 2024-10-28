@@ -1,7 +1,7 @@
+from hashlib import sha256
 import logging
 
 from nicegui import events, ui
-from PIL import Image
 
 from processor.image import ImageProcessor
 from callbacks import Callbacks
@@ -47,13 +47,24 @@ NAME_FINAL = "Final"
 class SetupPage:
     def __init__(self, callbacks: Callbacks) -> None:
         self.callbacks = callbacks
-        self.interactive_image = None
-        self.image_details = None
-        self.mouse_position = None
-        self.selected_position = None
-        self.spinner = None
-        self.config: Config = None
-        self.image = None
+
+        self.interactive_image: ui.interactive_image
+        self.image_details: ui.label
+        self.mouse_position: ui.label
+        self.selected_position: ui.label
+        self.spinner: ui.spinner
+
+        self.download_image_step: DownloadImageStep
+        self.ini_rota_step: InitialRotateStep
+        self.draw_refs_step: DrawRefsStep
+        self.adjust_step: AdjustStep
+        self.draw_digital_rois_step: DrawDigitalRoisStep
+        self.draw_analog_rois_step: DrawAnalogRoisStep
+        self.meters_step: MeterStep
+        self.final_step: FinalStep
+
+        self.config: Config
+        self.image: str = ""  # base64 str
         self.refs = ""
         self.refs_enabled_in_image = False
         self.digital_rois = ""
@@ -61,9 +72,9 @@ class SetupPage:
         self.analog_rois = ""
         self.analog_rois_enabled_in_image = ""
 
-    async def show(self):
+    async def show(self) -> None:
 
-        def update_svg(draw: str = None):
+        def update_svg(draw: str = "") -> None:
             self.interactive_image.content = f"""
                 {svg_grid}
                 <rect width="100%" height="100%" fill="url(#grid)" />
@@ -73,19 +84,24 @@ class SetupPage:
                 {draw if draw is not None else ""}
                 """
 
-        def set_image(img: Image):
-            self.image = img
-            w, h = ImageUtils.image_size(ImageUtils.convert_base64_str_to_image(img))
+        def set_image(base64_str: str) -> None:
+            print_image_hash("set_image", base64_str)
+            if base64_str is None or base64_str == "":
+                return
+            self.image = base64_str
+            w, h = ImageUtils.image_size(
+                ImageUtils.convert_base64_str_to_image(base64_str)
+            )
             self.image_details.text = f"Size: {w}x{h}"
-            self.interactive_image.set_source(f"data:image/png;base64,{img}")
+            self.interactive_image.set_source(f"data:image/png;base64,{base64_str}")
             self.interactive_image.update()
             update_svg()
 
         # @decorator_undo_operation
-        def update_image(img: Image = None):
-            set_image(img)
+        # def update_image(base64_str: str) -> None:
+        #    set_image(base64_str)
 
-        def mouse_handler(e: events.MouseEventArguments):
+        def mouse_handler(e: events.MouseEventArguments) -> None:
             if e.type == "mousemove":
                 self.mouse_position.text = f"X: {e.image_x:.0f}, Y: {e.image_y:.0f}"
             elif e.type == "mousedown" and e.alt:
@@ -100,7 +116,7 @@ class SetupPage:
             elif stepper.value == NAME_DRAW_ANALOG_ROIS:
                 self.draw_analog_rois_step.mouse_event(e)
 
-        def get_refs_from_config():
+        def get_refs_from_config() -> str:
             style = "stroke-width:3;stroke:red;fill-opacity:0;stroke-opacity:0.9"
             content = ""
             for ref in self.callbacks.get_config().alignment.ref_images:
@@ -110,25 +126,33 @@ class SetupPage:
                 )
             return content
 
-        def get_image() -> Image:
+        def print_image_hash(text: str, image: str) -> None:
+            if image is None or image == "":
+                logger.debug(f"{text}, hash: empty")
+            else:
+                data = self.image.encode("utf-8")
+                logger.debug(f"{text}, hash: {sha256(data).hexdigest()}")
+
+        def get_image() -> str:
+            print_image_hash("get_image", self.image)
             return self.image
 
-        def set_refs_to_svg_func(refs: str):
+        def set_refs_to_svg_func(refs: str) -> None:
             self.refs = refs
             update_svg()
 
-        def set_digital_rois_to_svg_func(rois: str):
+        def set_digital_rois_to_svg_func(rois: str) -> None:
             self.digital_rois = rois
             update_svg()
 
-        def set_analog_rois_to_svg_func(rois: str):
+        def set_analog_rois_to_svg_func(rois: str) -> None:
             self.analog_rois = rois
             update_svg()
 
-        def show_temp_draw_in_svg_func(draw: str):
+        def show_temp_draw_in_svg_func(draw: str) -> None:
             update_svg(draw)
 
-        def gather_config():
+        def gather_config() -> None:
             config = Config()
             config.image_source.url = self.download_image_step.url.value
             config.image_source.timeout = self.download_image_step.timeout.value
@@ -181,7 +205,7 @@ class SetupPage:
                 )
             config.digital_readout = CNNParams(
                 enabled=True,
-                model=self.draw_digital_rois_step.cnn_type.value,
+                model=str(self.draw_digital_rois_step.cnn_type.value),
                 model_file=f"{model_dir}/{model_file}",
                 cut_images=digital_cut_images,
             )
@@ -206,7 +230,7 @@ class SetupPage:
                 )
             config.analog_readout = CNNParams(
                 enabled=True,
-                model=self.draw_analog_rois_step.cnn_type.value,
+                model=str(self.draw_analog_rois_step.cnn_type.value),
                 model_file=f"{model_dir}/{model_file}",
                 cut_images=analog_cut_images,
             )
@@ -228,7 +252,7 @@ class SetupPage:
             config.meter_configs = meters
             self.config = config
 
-        def save_refs():
+        def save_refs() -> None:
             config_dir = self.callbacks.get_config().config_dir
             image = ImageUtils.convert_base64_str_to_image(self.image)
             for roi in self.draw_refs_step.rois:
@@ -239,15 +263,16 @@ class SetupPage:
                     ref_img, f"{config_dir}/{roi.name}_x{roi.x}_y{roi.y}.jpg"
                 )
 
-        def get_digit_names():
-            rois = []
+        def get_digit_names() -> list[str]:
+            rois: list[str] = []
             for roi in self.draw_digital_rois_step.rois:
                 rois.append(roi.name)
             for roi in self.draw_analog_rois_step.rois:
                 rois.append(roi.name)
             return rois
 
-        def handle_stepper_change(step: str):
+        def handle_stepper_change(step: str) -> None:
+            img = ""
             if step == NAME_DOWNLOAD_IMAGE:
                 img = self.download_image_step.get_image()
             elif step == NAME_INITIAL_ROTATE:
@@ -267,9 +292,6 @@ class SetupPage:
                 self.final_step.set_config(self.config)
                 img = self.final_step.get_image()
 
-            if img is not None:
-                self.image = img
-
             self.refs_enabled_in_image = step == NAME_DRAW_REFS
             self.digital_rois_enabled_in_image = step == NAME_DRAW_DIGITAL_ROIS
             self.analog_rois_enabled_in_image = step == NAME_DRAW_ANALOG_ROIS
@@ -281,9 +303,12 @@ class SetupPage:
                 self.digital_rois_enabled_in_image = True
                 self.analog_rois_enabled_in_image = True
 
-            if self.image is not None:
-                set_image(self.image)
-                update_svg()
+            if img is not None or img != "":
+                set_image(img)
+
+            # if self.image is not None and self.image != "":
+            #    set_image(self.image)
+            #    update_svg()
 
         ui.label("Setup").classes("text-h4")
         with ui.row():
@@ -292,65 +317,65 @@ class SetupPage:
         self.spinner.visible = False
         self.download_image_step = DownloadImageStep(
             name=NAME_DOWNLOAD_IMAGE,
-            spinner=self.spinner,
-            get_image_func=None,
+            get_image_func=get_image,
             set_image_func=set_image,
+            spinner=self.spinner,
         )
         self.ini_rota_step = InitialRotateStep(
             name=NAME_INITIAL_ROTATE,
-            spinner=self.spinner,
             get_image_func=get_image,
-            set_image_func=update_image,
+            set_image_func=set_image,
+            spinner=self.spinner,
         )
         self.draw_refs_step = DrawRefsStep(
             name=NAME_DRAW_REFS,
             name_template="Ref",
-            spinner=self.spinner,
             get_image_func=get_image,
-            set_image_func=update_image,
+            set_image_func=set_image,
             set_rois_to_svg_func=set_refs_to_svg_func,
             show_temp_draw_in_svg_func=show_temp_draw_in_svg_func,
+            spinner=self.spinner,
         )
         self.adjust_step = AdjustStep(
             name=NAME_ADJUST,
-            spinner=self.spinner,
             get_image_func=get_image,
-            set_image_func=update_image,
+            set_image_func=set_image,
+            spinner=self.spinner,
         )
         self.draw_digital_rois_step = DrawDigitalRoisStep(
             name=NAME_DRAW_DIGITAL_ROIS,
             name_template="Digital",
-            spinner=self.spinner,
             get_image_func=get_image,
-            set_image_func=update_image,
+            set_image_func=set_image,
             set_rois_to_svg_func=set_digital_rois_to_svg_func,
             show_temp_draw_in_svg_func=show_temp_draw_in_svg_func,
             digital_models_dir=self.callbacks.get_config().digital_models_dir,
+            spinner=self.spinner,
         )
         self.draw_analog_rois_step = DrawAnalogRoisStep(
             name=NAME_DRAW_ANALOG_ROIS,
             name_template="Analog",
-            spinner=self.spinner,
             get_image_func=get_image,
-            set_image_func=update_image,
+            set_image_func=set_image,
             set_rois_to_svg_func=set_analog_rois_to_svg_func,
             show_temp_draw_in_svg_func=show_temp_draw_in_svg_func,
             analog_models_dir=self.callbacks.get_config().analog_models_dir,
+            spinner=self.spinner,
         )
         self.meters_step = MeterStep(
             name=NAME_METERS,
-            spinner=self.spinner,
             get_image_func=get_image,
-            set_image_func=update_image,
+            set_image_func=set_image,
             get_digit_names_func=get_digit_names,
+            spinner=self.spinner,
         )
         self.final_step = FinalStep(
             name=NAME_FINAL,
             callbacks=self.callbacks,
-            spinner=self.spinner,
             get_image_func=get_image,
-            set_image_func=update_image,
+            set_image_func=set_image,
             save_refs_func=save_refs,
+            spinner=self.spinner,
         )
 
         with ui.splitter(value=40).classes("w-full") as splitter:

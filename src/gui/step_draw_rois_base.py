@@ -26,23 +26,28 @@ class DrawRoisBaseStep(BaseStep):
         self,
         name: str,
         name_template: str,
+        get_image_func: Callable[[], str],
+        set_image_func: Callable[[str], None],
+        draw_roi_func: Callable[[int, int, int, int, str, str], str],
+        set_rois_to_svg_func: Callable[[str], None],
+        show_temp_draw_in_svg_func: Callable[[str], None],
         spinner=None,
-        get_image_func: Callable[[], None] = None,
-        set_image_func: Callable[[], None] = None,
-        draw_roi_func: Callable[[int, int, int, int, str, str], str] = None,
-        set_rois_to_svg_func: Callable[[], str] = None,
-        show_temp_draw_in_svg_func: Callable[[], str] = None,
     ) -> None:
-        super().__init__(name, spinner, get_image_func, set_image_func)
+        super().__init__(
+            name,
+            get_image_func=get_image_func,
+            set_image_func=set_image_func,
+            spinner=spinner,
+        )
         self.name_template = name_template
         self.draw_roi_func = draw_roi_func
         self.set_rois_to_svg_func = set_rois_to_svg_func
         self.show_temp_draw_in_svg_func = show_temp_draw_in_svg_func
-        self.container = None
+        self.container: ui.row
         self.test_result_container = None
         self.rois: list[Roi] = []
-        self.mouse_x = None
-        self.mouse_y = None
+        self.mouse_x: int
+        self.mouse_y: int
         self.draw_on = False
         self.colors = [
             "black",
@@ -57,7 +62,7 @@ class DrawRoisBaseStep(BaseStep):
             "pink",
         ]
 
-    def show_rois(self):
+    def show_rois(self) -> None:
         if self.get_image_func is not None:
             self.image = self.get_image_func()
         content = "".join(
@@ -69,7 +74,7 @@ class DrawRoisBaseStep(BaseStep):
             self.set_image_func(self.image)
         self.set_rois_to_svg_func(content)
 
-    def mouse_event(self, e: events.MouseEventArguments):
+    def mouse_event(self, e: events.MouseEventArguments) -> None:
         if e.type == "mousedown":
             self.mouse_x = int(e.image_x)
             self.mouse_y = int(e.image_y)
@@ -87,8 +92,8 @@ class DrawRoisBaseStep(BaseStep):
 
     def get_xywh(self, e: events.MouseEventArguments) -> tuple[int, int, int, int]:
         x, y = self.mouse_x, self.mouse_y
-        w = int(e.image_x) - self.mouse_x
-        h = int(e.image_y) - self.mouse_y
+        w = int(e.image_x) - x
+        h = int(e.image_y) - y
         if w < 0:
             x += w
             w = -w
@@ -97,12 +102,12 @@ class DrawRoisBaseStep(BaseStep):
             h = -h
         return x, y, w, h
 
-    def remove_roi(self):
+    def remove_roi(self) -> None:
         last = len(list(self.container)) - 1
         self.container.remove(last)
         self.rois.pop()
 
-    def align_top(self):
+    def align_top(self) -> None:
         y = None
         for roi in self.rois:
             if roi.enabled:
@@ -111,7 +116,7 @@ class DrawRoisBaseStep(BaseStep):
                 else:
                     roi.y = y
 
-    def align_left(self):
+    def align_left(self) -> None:
         x = None
         for roi in self.rois:
             if roi.enabled:
@@ -120,7 +125,7 @@ class DrawRoisBaseStep(BaseStep):
                 else:
                     roi.x = x
 
-    def align_bottom(self):
+    def align_bottom(self) -> None:
         y = None
         for roi in self.rois:
             if roi.enabled:
@@ -129,7 +134,7 @@ class DrawRoisBaseStep(BaseStep):
                 else:
                     roi.y = y - roi.h
 
-    def align_right(self):
+    def align_right(self) -> None:
         x = None
         for roi in self.rois:
             if roi.enabled:
@@ -138,25 +143,32 @@ class DrawRoisBaseStep(BaseStep):
                 else:
                     roi.x = x - roi.w
 
-    def align_center(self):
+    def align_center(self) -> None:
         y = None
         for roi in self.rois:
             if roi.enabled:
                 if y is None:
-                    y = roi.y + roi.h / 2
+                    y = int(roi.y + roi.h / 2)
                 else:
-                    roi.y = y - roi.h / 2
+                    roi.y = int(y - roi.h / 2)
 
-    def resize_all(self):
-        w = None
+    def resize_all(self) -> None:
+        search_first = True
+        width = 0
+        height = 0
+
         for roi in self.rois:
             if roi.enabled:
-                if w is None:
-                    w = roi.w
-                    h = roi.h
+                if search_first:
+                    # get width and height of the first selected roi
+                    width = roi.w
+                    height = roi.h
+                    search_first = False
                 else:
-                    roi.w = w
-                    roi.h = h
+                    # set width and height of all other selected rois to the first
+                    # selected roi
+                    roi.w = width
+                    roi.h = height
 
     def get_cnn_models(self, dir: str) -> dict:
         return {str(path): path.name for path in Path(dir).rglob("*.tflite")}
@@ -170,7 +182,7 @@ class DrawRoisBaseStep(BaseStep):
                 for img in digital_images
                 if name == img.name
             ),
-            None,
+            "",
         )
 
     def convert_value(self, value):
@@ -204,11 +216,11 @@ class DrawRoisBaseStep(BaseStep):
             h=50,
         )
 
-    def unselect_all_rois(self):
+    def unselect_all_rois(self) -> None:
         for roi in self.rois:
             roi.enabled = False
 
-    def add_roi(self):
+    def add_roi(self) -> None:
         self.unselect_all_rois()
         with self.container:
             with ui.grid(columns="1fr 2fr 2fr 2fr 2fr 2fr").classes("w-full gap-2"):

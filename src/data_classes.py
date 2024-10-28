@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 
-from PIL import Image
+from PIL.Image import Image
 
 
 @dataclass
@@ -27,7 +27,7 @@ class MeterConfig:
     use_previuos_value: bool
     pre_value_from_file_max_age: int
     use_extended_resolution: bool = False
-    unit: str = None
+    unit: str = ""
 
 
 @dataclass

@@ -3,11 +3,14 @@ from datetime import datetime
 import logging
 import os
 import time
+from typing import Union
 
 logger = logging.getLogger(__name__)
 
 
-def load_previous_value_from_file(file: str, section: str, max_age_minutes: int = None):
+def load_previous_value_from_file(
+    file: str, section: str, max_age_minutes: Union[int, None] = None
+) -> str:
     if not os.path.exists(file):
         raise ValueError(f"File '{file}' does not exist.")
 
@@ -35,7 +38,7 @@ def load_previous_value_from_file(file: str, section: str, max_age_minutes: int 
         ) from e
 
 
-def save_previous_value_to_file(file: str, section: str, value: str):
+def save_previous_value_to_file(file: str, section: str, value: str) -> None:
     config = configparser.ConfigParser()
     now = time.strftime("%Y.%m.%d %H:%M:%S", time.localtime())
 

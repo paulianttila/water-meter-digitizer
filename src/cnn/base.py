@@ -4,7 +4,7 @@ import os
 import logging
 from importlib import util
 
-from PIL import Image
+from PIL.Image import Image, NEAREST
 import numpy as np
 
 
@@ -35,12 +35,12 @@ class CNNBase:
         modelfile: str,
         dx: int,
         dy: int,
-    ):
+    ) -> None:
         self.modelfile = modelfile
         self.dx = dx
         self.dy = dy
 
-    def _loadModel(self):
+    def _loadModel(self) -> None:
         filename, file_extension = os.path.splitext(self.modelfile)
         if file_extension != ".tflite":
             logger.error(
@@ -50,7 +50,7 @@ class CNNBase:
             return
 
         try:
-            self.interpreter = tflite.Interpreter(model_path=self.modelfile)
+            self.interpreter = tflite.Interpreter(model_path=self.modelfile)  # type: ignore
             self.interpreter.allocate_tensors()
             self.input_details = self.interpreter.get_input_details()
             self.output_details = self.interpreter.get_output_details()
@@ -77,8 +77,8 @@ class CNNBase:
             numeroutput,
         )
 
-    def readout(self, image: Image):
-        test_image = image.resize((self.dx, self.dy), Image.NEAREST)
+    def _readout(self, image: Image) -> np.ndarray:
+        test_image = image.resize((self.dx, self.dy), NEAREST)
         test_image = np.array(test_image, dtype="float32")
         input_data = np.reshape(test_image, [1, self.dy, self.dx, 3])
         self.interpreter.set_tensor(self.input_details[0]["index"], input_data)

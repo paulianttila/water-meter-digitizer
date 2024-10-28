@@ -16,7 +16,7 @@ class MeterParams:
     max_rate_value: float = 0.2
     prevalue_from_file_max_age: int = 0
     unit: str = "㎥"
-    value: str = None
+    value: str = ""
 
 
 class Meter:
@@ -26,8 +26,9 @@ class Meter:
         self.meter = MeterParams()
         self.meter.name = self.name_candidate
 
-    def update_vals(self):
-        value = "".join("{" + val + "}" for val in self.digits.value)
+    def update_vals(self) -> None:
+        digits = self.digits.value if self.digits.value else []
+        value = "".join("{" + val + "}" for val in digits)
         self.meter.value = value.replace("{.}", ".")
 
     def show_new(self) -> MeterParams:
@@ -70,7 +71,7 @@ class Meter:
                 ui.input("Unit", value="㎥")
         return self.meter
 
-    def remove(self):
+    def remove(self) -> None:
         self.value_container.clear()
         self.value_container.delete()
 
@@ -79,17 +80,22 @@ class MeterStep(BaseStep):
     def __init__(
         self,
         name: str,
+        get_image_func: Callable[[], str],
+        set_image_func: Callable[[str], None],
+        get_digit_names_func: Callable[[], list[str]],
         spinner=None,
-        get_image_func: Callable[[], None] = None,
-        set_image_func: Callable[[], None] = None,
-        get_digit_names_func: list[str] = None,
     ) -> None:
-        super().__init__(name, spinner, get_image_func, set_image_func)
+        super().__init__(
+            name,
+            get_image_func=get_image_func,
+            set_image_func=set_image_func,
+            spinner=spinner,
+        )
         self.get_digit_names_func = get_digit_names_func
         self.meters = []
         self.meter_params: list[MeterParams] = []
 
-    def add_meter(self):
+    def add_meter(self) -> None:
         with self.values_container:
             name = f"Meter{len(self.meters) + 1}"
             meter_container = Meter(self.get_digit_names_func(), name)
@@ -97,7 +103,7 @@ class MeterStep(BaseStep):
             meter = meter_container.show_new()
             self.meter_params.append(meter)
 
-    def remove_meter(self):
+    def remove_meter(self) -> None:
         meter_container: Meter = self.meters.pop()
         meter_container.remove()
 

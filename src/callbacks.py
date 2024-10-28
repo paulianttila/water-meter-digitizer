@@ -6,11 +6,11 @@ from configuration import Config
 
 @runtime_checkable
 class Callbacks(Protocol):
-    def get_meter_data(self, url: str = None, saveimages: bool = False) -> MeterResult:
+    def get_meter_data(self, url: str = "", saveimages: bool = False) -> MeterResult:
         """Get meter data"""
         ...
 
-    def get_image_as_base64_str(self, name: str) -> str:
+    def get_image_as_base64_str(self, image_name: str) -> str:
         """Get image as base64 string"""
         ...
 
