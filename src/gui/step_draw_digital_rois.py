@@ -66,7 +66,9 @@ class DrawDigitalRoisStep(DrawRoisBaseStep):
         with self.test_result_container:
             with ui.grid(columns=len(digital_images)):
                 for item in results:
-                    base64img = self._get_base64_image_by_name(item.name, digital_images)
+                    base64img = self._get_base64_image_by_name(
+                        item.name, digital_images
+                    )
                     with ui.card():
                         ui.label(f"{item.name}").classes(text_size)
                         ui.image(f"data:image/jpeg;base64,{base64img}")
