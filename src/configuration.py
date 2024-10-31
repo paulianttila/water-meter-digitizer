@@ -2,7 +2,7 @@ from dataclasses import dataclass, field
 import datetime
 import io
 import shutil
-from typing import List
+from typing import List, Union
 import configparser
 import os
 import logging
@@ -59,7 +59,7 @@ class AutoContrast:
     enabled: bool = False
     cutoff_low: float = 2
     cutoff_high: float = 45
-    ignore: int = 2
+    ignore: Union[int, None] = None
 
 
 @dataclass
@@ -357,10 +357,13 @@ class Config:
         image_processing_autocontrast_cutoff_high = config.getfloat(
             "ImageProcessing", "AutoContrastCutoffHigh", fallback=45
         )
-        image_processing_autocontrast_ignore = config.getint(
-            "ImageProcessing", "AutoContrastIgnore", fallback=2
-        )
-
+        val = config.get("ImageProcessing", "AutoContrastIgnore", fallback="None")
+        if val == "None":
+            image_processing_autocontrast_ignore = None
+        else:
+            image_processing_autocontrast_ignore = config.getint(
+                "ImageProcessing", "AutoContrastIgnore", fallback=0
+            )
         image_processing_autocontrast_cut_images = config.getboolean(
             "ImageProcessing", "AutoContrastCutImages", fallback=False
         )
@@ -370,9 +373,15 @@ class Config:
         image_processing_autocontrast_cut_images_cutoff_high = config.getfloat(
             "ImageProcessing", "AutoContrastCutImagesCutoffHigh", fallback=45
         )
-        image_processing_autocontrast_cut_images_ignore = config.getint(
-            "ImageProcessing", "AutoContrastCutImagesIgnore", fallback=2
+        val = config.get(
+            "ImageProcessing", "AutoContrastCutImagesIgnore", fallback="None"
         )
+        if val == "None":
+            image_processing_autocontrast_cut_images_ignore = None
+        else:
+            image_processing_autocontrast_cut_images_ignore = config.getint(
+                "ImageProcessing", "AutoContrastCutImagesIgnore", fallback=0
+            )
 
         self.image_processing = ImageProcessing(
             enabled=image_processing_enabled,
