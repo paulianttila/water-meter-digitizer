@@ -71,29 +71,33 @@ class AdjustStep(BaseStep):
             .if_(self.grayscale_enabled.value)
             .to_gray_scale()
             .endif_()
+            .if_(self.autocontrast_enabled.value)
+            .autocontrast_image(
+                cutoff_low=self.autocontrast_cutoff_low.value,
+                cutoff_high=self.autocontrast_cutoff_high.value,
+            )
+            .endif_()
             .get_image_as_base64_str()
         )
 
     async def show(self, stepper, first_step=False, last_step=False) -> None:
         with ui.step(self.name):
-            ui.label("Rotate image")
+
             with ui.row().classes("w-full items-center"):
-                self.rotate_enabled = ui.checkbox("Enable", value=False)
+                self.rotate_enabled = ui.checkbox("Enable Rotate", value=False)
                 self.rotate_angle = ui.number(
                     "Angle", min=-359, max=359, step=1, value=0
                 )
 
-            ui.label("Crop image")
             with ui.row().classes("w-full items-center"):
-                self.crop_enabled = ui.checkbox("Enabled", value=False)
+                self.crop_enabled = ui.checkbox("Enable Crop", value=False)
                 self.crop_x = ui.number("X", min=-0, max=10000, step=1, value=0)
                 self.crop_y = ui.number("Y", min=-0, max=10000, step=1, value=0)
                 self.crop_w = ui.number("Width", min=-640, max=10000, step=1, value=0)
                 self.crop_h = ui.number("Height", min=-480, max=10000, step=1, value=0)
 
-            ui.label("Adjust image")
             with ui.row().classes("w-full items-center"):
-                self.adjust_enabled = ui.checkbox("Enabled", value=False)
+                self.adjust_enabled = ui.checkbox("Enable Adjust", value=False)
                 self.adjust_contrast = ui.number(
                     "Contrast", min=-0, max=10, step=0.1, value=1.0
                 )
@@ -107,17 +111,39 @@ class AdjustStep(BaseStep):
                     "Color", min=-0, max=10, step=0.1, value=1.0
                 )
 
-            ui.label("Resize image")
             with ui.row().classes("w-full items-center"):
-                self.resize_enabled = ui.checkbox("Enabled", value=False)
+                self.resize_enabled = ui.checkbox("Enable Resize", value=False)
                 self.resize_w = ui.number("Width", min=-640, max=10000, step=1, value=0)
                 self.resize_h = ui.number(
                     "Height", min=-480, max=10000, step=1, value=0
                 )
 
-            ui.label("Grayscale image")
             with ui.row().classes("w-full items-center"):
-                self.grayscale_enabled = ui.checkbox("Enabled", value=False)
+                self.grayscale_enabled = ui.checkbox(
+                    "Enable Grayscale image", value=False
+                )
+
+            with ui.row().classes("w-full items-center"):
+                self.autocontrast_enabled = ui.checkbox(
+                    "Enable Autocontrast", value=False
+                )
+                self.autocontrast_cutoff_low = ui.number(
+                    "Cutoff low", min=0, max=100, step=1, value=2
+                )
+                self.autocontrast_cutoff_high = ui.number(
+                    "Cutoff high", min=0, max=100, step=1, value=45
+                )
+
+            with ui.row().classes("w-full items-center"):
+                self.autocontrast_cut_images_enabled = ui.checkbox(
+                    "Enable Autocontrast for cutted images", value=False
+                )
+                self.autocontrast_cut_images_cutoff_low = ui.number(
+                    "Cutoff low", min=0, max=100, step=1, value=2
+                )
+                self.autocontrast_cut_images_cutoff_high = ui.number(
+                    "Cutoff high", min=0, max=100, step=1, value=45
+                )
 
             with ui.row().classes("w-full items-center"):
                 ui.button(icon="sym_s_resize", on_click=self.do_adjust).tooltip(

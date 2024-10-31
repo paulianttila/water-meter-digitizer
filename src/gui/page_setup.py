@@ -178,6 +178,25 @@ class SetupPage:
             config.image_processing.sharpness = self.adjust_step.adjust_brightness.value
             config.image_processing.color = self.adjust_step.adjust_color.value
             config.image_processing.grayscale = self.adjust_step.grayscale_enabled.value
+            config.image_processing.autocontrast.enabled = (
+                self.adjust_step.autocontrast_enabled.value
+            )
+            config.image_processing.autocontrast.cutoff_low = (
+                self.adjust_step.autocontrast_cutoff_low.value
+            )
+            config.image_processing.autocontrast.cutoff_high = (
+                self.adjust_step.autocontrast_cutoff_high.value
+            )
+            config.image_processing.autocontrast_cut_images.enabled = (
+                self.adjust_step.autocontrast_cut_images_enabled.value
+            )
+            config.image_processing.autocontrast_cut_images.cutoff_low = (
+                self.adjust_step.autocontrast_cut_images_cutoff_low.value
+            )
+            config.image_processing.autocontrast_cut_images.cutoff_high = (
+                self.adjust_step.autocontrast_cut_images_cutoff_high.value
+            )
+
             config.alignment.rotate_angle = self.ini_rota_step.angle
             config.alignment.post_rotate_angle = self.adjust_step.rotate_angle.value
             for roi in self.draw_refs_step.rois:
@@ -304,9 +323,19 @@ class SetupPage:
             elif name == NAME_ADJUST:
                 self.adjust_step.update_image(image)
             elif name == NAME_DRAW_DIGITAL_ROIS:
-                self.draw_digital_rois_step.update_image(image)
+                self.draw_digital_rois_step.update_image(
+                    image,
+                    self.adjust_step.autocontrast_cut_images_enabled.value,
+                    self.adjust_step.autocontrast_cut_images_cutoff_low.value,
+                    self.adjust_step.autocontrast_cut_images_cutoff_high.value,
+                )
             elif name == NAME_DRAW_ANALOG_ROIS:
-                self.draw_analog_rois_step.update_image(image)
+                self.draw_analog_rois_step.update_image(
+                    image,
+                    self.adjust_step.autocontrast_cut_images_enabled.value,
+                    self.adjust_step.autocontrast_cut_images_cutoff_low.value,
+                    self.adjust_step.autocontrast_cut_images_cutoff_high.value,
+                )
             elif name == NAME_METERS:
                 self.meters_step.update_image(image)
             elif name == NAME_FINAL:

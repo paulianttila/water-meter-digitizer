@@ -1,4 +1,4 @@
-from typing import Callable, List, Sequence
+from typing import Callable, List, Sequence, Union
 import logging
 
 from PIL.Image import Image
@@ -134,7 +134,10 @@ class ImageProcessor:
 
     @_conditional_func
     def autocontrast_image(
-        self, cutoff_low: float = 2, cutoff_high: float = 45, ignore: int = 2
+        self,
+        cutoff_low: float = 0,
+        cutoff_high: float = 0,
+        ignore: Union[int, None] = None,
     ) -> "ImageProcessor":
         logger.debug(
             f"Auto contrast image cutoff_low:{cutoff_low}, cutoff_high:{cutoff_high}, "

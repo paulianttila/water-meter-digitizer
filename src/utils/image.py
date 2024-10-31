@@ -1,6 +1,6 @@
 import base64
 import io
-from typing import List
+from typing import List, Union
 from PIL.Image import Image
 import PIL.Image
 import PIL.ImageEnhance
@@ -244,7 +244,10 @@ def convert_to_gray_scale(image: Image) -> Image:
 
 
 def autocontrast_image(
-    image: Image, cutoff_low: float = 2, cutoff_high: float = 45, ignore: int = 2
+    image: Image,
+    cutoff_low: float = 0,
+    cutoff_high: float = 0,
+    ignore: Union[int, None] = None,
 ) -> Image:
     if image is None:
         raise ValueError("No image to autocontrast")

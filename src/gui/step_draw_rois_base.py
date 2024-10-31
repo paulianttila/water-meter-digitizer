@@ -59,6 +59,9 @@ class DrawRoisBaseStep(BaseStep):
             "white",
             "pink",
         ]
+        self.autocontrast = False
+        self.cutoff_low = 0
+        self.cutoff_high = 0
 
     def _show_rois(self) -> None:
         content = "".join(
@@ -184,6 +187,18 @@ class DrawRoisBaseStep(BaseStep):
     def _convert_value(self, value):
         return round(value, 2) if isinstance(value, float) else value
 
+    def update_image(
+        self,
+        image: str,
+        autocontrast: bool = False,
+        cutoff_low: float = 2,
+        cutoff_high: float = 45,
+    ) -> None:
+        self.image = image
+        self.autocontrast = autocontrast
+        self.cutoff_low = cutoff_low
+        self.cutoff_high = cutoff_high
+
     def _cut_images(self) -> list[CutImage]:
         postions = [
             ImagePosition(roi.name, int(roi.x), int(roi.y), int(roi.w), int(roi.h))
@@ -193,7 +208,12 @@ class DrawRoisBaseStep(BaseStep):
             ImageProcessor()
             .set_image_from_base64_str(self.image)
             .start_image_cutting()
-            .cut_images(postions)
+            .cut_images(
+                postions,
+                autocontrast=self.autocontrast,
+                cutoff_low=self.cutoff_low,
+                cutoff_high=self.cutoff_high,
+            )
             .stop_image_cutting()
             .save_cutted_images()
             .get_cutted_images()

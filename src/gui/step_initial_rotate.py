@@ -10,13 +10,11 @@ class InitialRotateStep(BaseStep):
     def __init__(
         self,
         name: str,
-        #get_image_callback: Callable[[], str],
         set_image_callback: Callable[[str], None],
         spinner=None,
     ) -> None:
         super().__init__(
             name,
-            #get_image_callback=get_image_callback,
             set_image_callback=set_image_callback,
             spinner=spinner,
         )
