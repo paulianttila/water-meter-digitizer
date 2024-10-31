@@ -80,22 +80,22 @@ class MeterStep(BaseStep):
     def __init__(
         self,
         name: str,
-        get_image_func: Callable[[], str],
-        set_image_func: Callable[[str], None],
+        #get_image_callback: Callable[[], str],
+        set_image_callback: Callable[[str], None],
         get_digit_names_func: Callable[[], list[str]],
         spinner=None,
     ) -> None:
         super().__init__(
             name,
-            get_image_func=get_image_func,
-            set_image_func=set_image_func,
+            #get_image_callback=get_image_callback,
+            set_image_callback=set_image_callback,
             spinner=spinner,
         )
         self.get_digit_names_func = get_digit_names_func
         self.meters = []
         self.meter_params: list[MeterParams] = []
 
-    def add_meter(self) -> None:
+    def _add_meter(self) -> None:
         with self.values_container:
             name = f"Meter{len(self.meters) + 1}"
             meter_container = Meter(self.get_digit_names_func(), name)
@@ -103,7 +103,7 @@ class MeterStep(BaseStep):
             meter = meter_container.show_new()
             self.meter_params.append(meter)
 
-    def remove_meter(self) -> None:
+    def _remove_meter(self) -> None:
         meter_container: Meter = self.meters.pop()
         meter_container.remove()
 
@@ -112,11 +112,11 @@ class MeterStep(BaseStep):
             self.values_container = ui.row().classes("w-full")
             ui.separator()
             with ui.row():
-                ui.button("Meter", icon="add", on_click=self.add_meter).tooltip(
+                ui.button("Meter", icon="add", on_click=self._add_meter).tooltip(
                     "Add meter value"
                 )
                 ui.button(
-                    "Meter", icon="remove", on_click=self.remove_meter
+                    "Meter", icon="remove", on_click=self._remove_meter
                 ).bind_enabled_from(
                     self, "container", lambda x: len(list(x)) > 0
                 ).tooltip(

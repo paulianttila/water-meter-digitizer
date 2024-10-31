@@ -3,7 +3,6 @@ import logging
 
 from nicegui import events, ui
 
-from processor.image import ImageProcessor
 from callbacks import Callbacks
 from configuration import CNNParams, Config
 from data_classes import ImagePosition, MeterConfig, RefImage
@@ -19,8 +18,6 @@ from .step_final import FinalStep
 import utils.image as ImageUtils
 
 logger = logging.getLogger(__name__)
-
-imageProcessor = ImageProcessor()
 
 svg_grid = """
 <defs>
@@ -43,6 +40,17 @@ NAME_DRAW_ANALOG_ROIS = "Draw analog region of interest"
 NAME_METERS = "Meters"
 NAME_FINAL = "Final"
 
+steps_order = [
+    NAME_DOWNLOAD_IMAGE,
+    NAME_INITIAL_ROTATE,
+    NAME_DRAW_REFS,
+    NAME_ADJUST,
+    NAME_DRAW_DIGITAL_ROIS,
+    NAME_DRAW_ANALOG_ROIS,
+    NAME_METERS,
+    NAME_FINAL,
+]
+
 
 class SetupPage:
     def __init__(self, callbacks: Callbacks) -> None:
@@ -62,6 +70,8 @@ class SetupPage:
         self.draw_analog_rois_step: DrawAnalogRoisStep
         self.meters_step: MeterStep
         self.final_step: FinalStep
+
+        self.previous_step: str = ""
 
         self.config: Config
         self.image: str = ""  # base64 str
@@ -97,10 +107,6 @@ class SetupPage:
             self.interactive_image.update()
             update_svg()
 
-        # @decorator_undo_operation
-        # def update_image(base64_str: str) -> None:
-        #    set_image(base64_str)
-
         def mouse_handler(e: events.MouseEventArguments) -> None:
             if e.type == "mousemove":
                 self.mouse_position.text = f"X: {e.image_x:.0f}, Y: {e.image_y:.0f}"
@@ -130,7 +136,7 @@ class SetupPage:
             if image is None or image == "":
                 logger.debug(f"{text}, hash: empty")
             else:
-                data = self.image.encode("utf-8")
+                data = image.encode("utf-8")
                 logger.debug(f"{text}, hash: {sha256(data).hexdigest()}")
 
         def get_image() -> str:
@@ -271,26 +277,60 @@ class SetupPage:
                 rois.append(roi.name)
             return rois
 
+        def get_image_by_step_name(name: str) -> str:
+            if name == NAME_DOWNLOAD_IMAGE:
+                return self.download_image_step.get_image()
+            elif name == NAME_INITIAL_ROTATE:
+                return self.ini_rota_step.get_image()
+            elif name == NAME_DRAW_REFS:
+                return self.draw_refs_step.get_image()
+            elif name == NAME_ADJUST:
+                return self.adjust_step.get_image()
+            elif name == NAME_DRAW_DIGITAL_ROIS:
+                return self.draw_digital_rois_step.get_image()
+            elif name == NAME_DRAW_ANALOG_ROIS:
+                return self.draw_analog_rois_step.get_image()
+            elif name == NAME_METERS:
+                return self.meters_step.get_image()
+            elif name == NAME_FINAL:
+                return self.final_step.get_image()
+            return ""
+
+        def set_image_by_step_name(name: str, image: str) -> None:
+            if name == NAME_INITIAL_ROTATE:
+                self.ini_rota_step.update_image(image)
+            elif name == NAME_DRAW_REFS:
+                self.draw_refs_step.update_image(image)
+            elif name == NAME_ADJUST:
+                self.adjust_step.update_image(image)
+            elif name == NAME_DRAW_DIGITAL_ROIS:
+                self.draw_digital_rois_step.update_image(image)
+            elif name == NAME_DRAW_ANALOG_ROIS:
+                self.draw_analog_rois_step.update_image(image)
+            elif name == NAME_METERS:
+                self.meters_step.update_image(image)
+            elif name == NAME_FINAL:
+                self.final_step.update_image(image)
+
+        def is_step_forward(new_step: str, previous_step: str) -> bool:
+            if previous_step == "":
+                return True
+            return steps_order.index(new_step) > steps_order.index(previous_step)
+
         def handle_stepper_change(step: str) -> None:
-            img = ""
-            if step == NAME_DOWNLOAD_IMAGE:
-                img = self.download_image_step.get_image()
-            elif step == NAME_INITIAL_ROTATE:
-                img = self.ini_rota_step.get_image()
-            elif step == NAME_DRAW_REFS:
-                img = self.draw_refs_step.get_image()
-            elif step == NAME_ADJUST:
-                img = self.adjust_step.get_image()
-            elif step == NAME_DRAW_DIGITAL_ROIS:
-                img = self.draw_digital_rois_step.get_image()
-            elif step == NAME_DRAW_ANALOG_ROIS:
-                img = self.draw_analog_rois_step.get_image()
-            elif step == NAME_METERS:
-                img = self.meters_step.get_image()
-            elif step == NAME_FINAL:
-                gather_config()
-                self.final_step.set_config(self.config)
-                img = self.final_step.get_image()
+            logger.debug(f"Step: {self.previous_step} -> {step}")
+
+            img = get_image_by_step_name(step)
+            print_image_hash(f"step {step}", img)
+            step_forward = is_step_forward(step, self.previous_step)
+            if step_forward:
+                logger.debug("Step forward")
+                previous_img = get_image_by_step_name(self.previous_step)
+                set_image_by_step_name(step, previous_img)
+                img = get_image_by_step_name(step)
+                print_image_hash(f"step {self.previous_step}", previous_img)
+            else:
+                logger.debug("Step backward")
 
             self.refs_enabled_in_image = step == NAME_DRAW_REFS
             self.digital_rois_enabled_in_image = step == NAME_DRAW_DIGITAL_ROIS
@@ -303,12 +343,11 @@ class SetupPage:
                 self.digital_rois_enabled_in_image = True
                 self.analog_rois_enabled_in_image = True
 
-            if img is not None or img != "":
-                set_image(img)
-
-            # if self.image is not None and self.image != "":
-            #    set_image(self.image)
-            #    update_svg()
+            set_image(img)
+            if step == NAME_FINAL:
+                gather_config()
+                self.final_step.set_config(self.config)
+            self.previous_step = step
 
         ui.label("Setup").classes("text-h4")
         with ui.row():
@@ -317,36 +356,31 @@ class SetupPage:
         self.spinner.visible = False
         self.download_image_step = DownloadImageStep(
             name=NAME_DOWNLOAD_IMAGE,
-            get_image_func=get_image,
-            set_image_func=set_image,
+            set_image_callback=set_image,
             spinner=self.spinner,
         )
         self.ini_rota_step = InitialRotateStep(
             name=NAME_INITIAL_ROTATE,
-            get_image_func=get_image,
-            set_image_func=set_image,
+            set_image_callback=set_image,
             spinner=self.spinner,
         )
         self.draw_refs_step = DrawRefsStep(
             name=NAME_DRAW_REFS,
             name_template="Ref",
-            get_image_func=get_image,
-            set_image_func=set_image,
+            set_image_callback=set_image,
             set_rois_to_svg_func=set_refs_to_svg_func,
             show_temp_draw_in_svg_func=show_temp_draw_in_svg_func,
             spinner=self.spinner,
         )
         self.adjust_step = AdjustStep(
             name=NAME_ADJUST,
-            get_image_func=get_image,
-            set_image_func=set_image,
+            set_image_callback=set_image,
             spinner=self.spinner,
         )
         self.draw_digital_rois_step = DrawDigitalRoisStep(
             name=NAME_DRAW_DIGITAL_ROIS,
             name_template="Digital",
-            get_image_func=get_image,
-            set_image_func=set_image,
+            set_image_callback=set_image,
             set_rois_to_svg_func=set_digital_rois_to_svg_func,
             show_temp_draw_in_svg_func=show_temp_draw_in_svg_func,
             digital_models_dir=self.callbacks.get_config().digital_models_dir,
@@ -355,8 +389,7 @@ class SetupPage:
         self.draw_analog_rois_step = DrawAnalogRoisStep(
             name=NAME_DRAW_ANALOG_ROIS,
             name_template="Analog",
-            get_image_func=get_image,
-            set_image_func=set_image,
+            set_image_callback=set_image,
             set_rois_to_svg_func=set_analog_rois_to_svg_func,
             show_temp_draw_in_svg_func=show_temp_draw_in_svg_func,
             analog_models_dir=self.callbacks.get_config().analog_models_dir,
@@ -364,16 +397,14 @@ class SetupPage:
         )
         self.meters_step = MeterStep(
             name=NAME_METERS,
-            get_image_func=get_image,
-            set_image_func=set_image,
+            set_image_callback=set_image,
             get_digit_names_func=get_digit_names,
             spinner=self.spinner,
         )
         self.final_step = FinalStep(
             name=NAME_FINAL,
             callbacks=self.callbacks,
-            get_image_func=get_image,
-            set_image_func=set_image,
+            set_image_callback=set_image,
             save_refs_func=save_refs,
             spinner=self.spinner,
         )

@@ -12,8 +12,7 @@ class DrawDigitalRoisStep(DrawRoisBaseStep):
         self,
         name: str,
         name_template: str,
-        get_image_func: Callable[[], str],
-        set_image_func: Callable[[str], None],
+        set_image_callback: Callable[[str], None],
         set_rois_to_svg_func: Callable[[str], None],
         show_temp_draw_in_svg_func: Callable[[str], None],
         digital_models_dir: str = "",
@@ -22,16 +21,15 @@ class DrawDigitalRoisStep(DrawRoisBaseStep):
         super().__init__(
             name,
             name_template,
-            get_image_func=get_image_func,
-            set_image_func=set_image_func,
-            draw_roi_func=self.draw_roi_func,
+            set_image_callback=set_image_callback,
+            draw_roi_func=self._draw_roi_func,
             set_rois_to_svg_func=set_rois_to_svg_func,
             show_temp_draw_in_svg_func=show_temp_draw_in_svg_func,
             spinner=spinner,
         )
         self.digital_models_dir = digital_models_dir
 
-    def draw_roi_func(
+    def _draw_roi_func(
         self,
         x: int,
         y: int,
@@ -52,9 +50,9 @@ class DrawDigitalRoisStep(DrawRoisBaseStep):
             f' style="{style2}" />'
         )
 
-    def show_digits(self) -> None:
+    def _show_digits(self) -> None:
         start_time = time.time()
-        digital_images = self.cut_images()
+        digital_images = self._cut_images()
         digitizerProcessor = (
             DigitizerProcessor()
             .init_digital_model(self.cnn_file.value, "auto")  # type: ignore
@@ -68,17 +66,17 @@ class DrawDigitalRoisStep(DrawRoisBaseStep):
         with self.test_result_container:
             with ui.grid(columns=len(digital_images)):
                 for item in results:
-                    base64img = self.get_base64_image_by_name(item.name, digital_images)
+                    base64img = self._get_base64_image_by_name(item.name, digital_images)
                     with ui.card():
                         ui.label(f"{item.name}").classes(text_size)
                         ui.image(f"data:image/jpeg;base64,{base64img}")
                         with ui.card_section():
-                            ui.label(f"{self.convert_value(item.value)}").classes(
+                            ui.label(f"{self._convert_value(item.value)}").classes(
                                 text_size
                             )
         self.time.text = f"Time: {round(time.time() - start_time, 2)}s"
 
-    def select_all_rois(self) -> None:
+    def _select_all_rois(self) -> None:
         state = self.select_all.value
         for roi in self.rois:
             roi.enabled = state
@@ -87,26 +85,26 @@ class DrawDigitalRoisStep(DrawRoisBaseStep):
         with ui.step(self.name):
             with ui.row():
                 ui.button(
-                    icon="sym_s_align_horizontal_left", on_click=self.align_left
+                    icon="sym_s_align_horizontal_left", on_click=self._align_left
                 ).tooltip("Align left")
                 ui.button(
-                    icon="sym_s_align_vertical_top", on_click=self.align_top
+                    icon="sym_s_align_vertical_top", on_click=self._align_top
                 ).tooltip("Align top")
                 ui.button(
-                    icon="sym_s_align_vertical_bottom", on_click=self.align_bottom
+                    icon="sym_s_align_vertical_bottom", on_click=self._align_bottom
                 ).tooltip("Align bottom")
                 ui.button(
-                    icon="sym_s_align_horizontal_right", on_click=self.align_right
+                    icon="sym_s_align_horizontal_right", on_click=self._align_right
                 ).tooltip("Align right")
                 ui.button(
-                    icon="sym_s_align_vertical_center", on_click=self.align_center
+                    icon="sym_s_align_vertical_center", on_click=self._align_center
                 ).tooltip("Align center")
-                ui.button(icon="sym_s_resize", on_click=self.resize_all).tooltip(
+                ui.button(icon="sym_s_resize", on_click=self._resize_all).tooltip(
                     "Resize all"
                 )
             with ui.grid(columns="2fr 2fr 2fr 2fr 2fr 2fr").classes("w-full gap-2"):
                 self.select_all = ui.checkbox(
-                    "Show", on_change=self.select_all_rois
+                    "Show", on_change=self._select_all_rois
                 ).tooltip("Show all")
                 ui.label("Name")
                 ui.label("X-position")
@@ -115,15 +113,15 @@ class DrawDigitalRoisStep(DrawRoisBaseStep):
                 ui.label("Height")
             self.container = ui.row().classes("w-full")
             with ui.row():
-                ui.button(icon="add", on_click=self.add_roi).tooltip(
+                ui.button(icon="add", on_click=self._add_roi).tooltip(
                     "Add digital region of interest"
                 )
-                ui.button(icon="remove", on_click=self.remove_roi).bind_enabled_from(
+                ui.button(icon="remove", on_click=self._remove_roi).bind_enabled_from(
                     self, "container", lambda x: len(list(x)) > 0
                 ).tooltip("Remove last digital region of interest")
             with ui.row().classes("w-full"):
                 self.cnn_file = ui.select(
-                    options=self.get_cnn_models(self.digital_models_dir),
+                    options=self._get_cnn_models(self.digital_models_dir),
                     label="CNN model",
                 ).classes("w-3/5")
                 self.cnn_type = ui.select(
@@ -132,7 +130,7 @@ class DrawDigitalRoisStep(DrawRoisBaseStep):
                     label="CNN type",
                 ).classes("w-1/5")
             with ui.row():
-                ui.button("Test", icon="refresh", on_click=self.show_digits).tooltip(
+                ui.button("Test", icon="refresh", on_click=self._show_digits).tooltip(
                     "Digitize test result"
                 ).bind_enabled_from(
                     self.cnn_file, "value", lambda x: x is not None and len(x) > 0

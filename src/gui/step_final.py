@@ -15,33 +15,31 @@ class FinalStep(BaseStep):
         self,
         name: str,
         callbacks: Callbacks,
-        get_image_func: Callable[[], str],
-        set_image_func: Callable[[str], None],
+        set_image_callback: Callable[[str], None],
         save_refs_func: Callable[[], None],
         spinner=None,
     ) -> None:
         super().__init__(
             name,
-            get_image_func=get_image_func,
-            set_image_func=set_image_func,
+            set_image_callback=set_image_callback,
             spinner=spinner,
         )
         self.save_refs_func = save_refs_func
         self.callbacks = callbacks
         self.editor: ui.textarea
 
-    def set_config(self, config: Config):
+    def set_config(self, config: Config) -> None:
         self.editor.value = config.save_to_string()
 
-    def save_config(self) -> None:
-        if self.syntax_check() is True:
+    def _save_config(self) -> None:
+        if self._syntax_check() is True:
             self.save_refs_func()
             self.callbacks.save_config_file(self.editor.value)
             self.new_config_saved = True
             ui.notify("Config saved", type="positive")
         self.txt = self.editor.value
 
-    def show_config(self) -> None:
+    def _show_config(self) -> None:
         try:
             config = Config()
             config.load_from_string(self.editor.value)
@@ -54,12 +52,12 @@ class FinalStep(BaseStep):
         except Exception as e:
             ui.notify(f"Syntax error: {e}", type="negative")
 
-    def use_config(self) -> None:
+    def _use_config(self) -> None:
         self.callbacks.use_config()
         self.new_config_saved = False
         ui.notify("Config taken in use", type="positive")
 
-    def syntax_check(self) -> bool:
+    def _syntax_check(self) -> bool:
         try:
             config = Config()
             config.load_from_string(self.editor.value)
@@ -72,18 +70,18 @@ class FinalStep(BaseStep):
     async def show(self, stepper, first_step=False, last_step=False) -> None:
         with ui.step(self.name):
             with ui.row():
-                ui.button(icon="verified", on_click=self.syntax_check).tooltip(
+                ui.button(icon="verified", on_click=self._syntax_check).tooltip(
                     "Check syntax"
                 )
                 self.button_save = ui.button(
-                    icon="save", on_click=self.save_config
+                    icon="save", on_click=self._save_config
                 ).tooltip("Save config to file")
                 self.button_use_config = ui.button(
                     icon="sym_s_reopen_window",
-                    on_click=self.use_config,
+                    on_click=self._use_config,
                 ).tooltip("Take config in use")
 
-                ui.button(icon="preview", on_click=self.show_config).tooltip(
+                ui.button(icon="preview", on_click=self._show_config).tooltip(
                     "Show parsed config"
                 )
             ui.separator()
