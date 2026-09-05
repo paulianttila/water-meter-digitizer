@@ -146,7 +146,7 @@ The project supports four distinct model architectures:
 | `digital` | 11 | Classification for 0–9 digits plus an 11th class for half-transition/invalid |
 | `digital100` | 100 | Continuous 0–99 classification for rolling odometer drums |
 
-Models are executed via `tflite_runtime` (or `tensorflow.lite`) in `src/cnn/`.
+Models are executed via `ai_edge_litert` (Google LiteRT, with `tflite_runtime` fallback) in `src/cnn/`.
 
 ### 4. Digitizer Postprocessing & Predecessors
 - Physical odometer drums transition gradually. When a lower digit is near 9 (e.g. `9.8`), the next higher digit may be halfway between numbers (e.g. between `3` and `4`).
@@ -171,26 +171,21 @@ Models are executed via `tflite_runtime` (or `tensorflow.lite`) in `src/cnn/`.
 ## Development Environment Setup
 
 ### Prerequisites
-- **Python 3.9** (Recommended for local development, especially on macOS / Apple Silicon).
-  - *Note for macOS*: Latest `tflite-runtime` is not published for macOS on PyPI; prebuilt wheels for Python 3.9 are bundled in `./wheels/`.
-  - *Linux / Docker*: Supports Python 3.9 through 3.11.
+- **Python 3.11** (Supported natively across macOS, Linux, and Windows).
 - **uv** package manager ([astral.sh/uv](https://astral.sh/uv))
 - **libGL / OpenCV dependencies** (standard system libraries)
 
 ### Setup Virtual Environment with `uv`
 
-`uv` can automatically download and configure Python 3.9 for you:
+`uv` automatically manages Python 3.11 and all dependencies:
 
 ```bash
 # Clone repository
 git clone https://github.com/paulianttila/water-meter-system.git
 cd water-meter-system
 
-# (Optional) Install Python 3.9 via uv if not installed on your system
-uv python install 3.9
-
-# Create virtual environment with Python 3.9 and synchronize all dependencies
-uv sync --python 3.9
+# Create virtual environment and synchronize all dependencies
+uv sync
 
 # (Optional) Activate the virtual environment in your shell
 source .venv/bin/activate

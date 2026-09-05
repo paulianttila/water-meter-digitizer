@@ -8,12 +8,16 @@ from PIL.Image import Image, Resampling
 import numpy as np
 
 with contextlib.suppress(ImportError):
-    import tflite_runtime.interpreter as tflite
+    import ai_edge_litert.interpreter as tflite
+
+if "tflite" not in locals():
+    with contextlib.suppress(ImportError):
+        import tflite_runtime.interpreter as tflite
 
 spam_spec = util.find_spec("tensorflow")
 found_tensorflow = spam_spec is not None
 
-spam_spec = util.find_spec("tflite_runtime")
+spam_spec = util.find_spec("ai_edge_litert") or util.find_spec("tflite_runtime")
 found_tflite = spam_spec is not None
 
 logger = logging.getLogger(__name__)
