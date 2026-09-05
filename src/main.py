@@ -11,7 +11,6 @@ from fastapi import FastAPI, HTTPException, Response, Request
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
-from starlette.templating import _TemplateResponse
 import uvicorn
 
 from decorators.decorators import log_execution_time
@@ -20,7 +19,7 @@ from utils.download import DownloadFailure
 import utils.image
 from processor.digitizer import DigitizerProcessor, MeterResult
 from processor.image import ImageProcessor
-import previous_value as previous_value
+import previous_value
 from PIL.Image import Image
 
 VERSION = "8.0.0"
@@ -51,7 +50,7 @@ templates = Jinja2Templates(directory=str(BASE_DIR / "web" / "templates"))
 
 @app.get("/", response_class=HTMLResponse)
 @log_execution_time
-def get_index(request: Request) -> _TemplateResponse:
+def get_index(request: Request) -> Response:
     return templates.TemplateResponse(
         request=request, name="index.html", context={"version": VERSION}
     )
@@ -67,7 +66,7 @@ def healthcheck():
 @app.get("/image_tmp/{image}")
 @log_execution_time
 def get_image(image: str) -> Response:
-    image = image.replace(".jpg", "")
+    image = image.removesuffix(".jpg")
     logger.debug(f"Getting image: {image}")
     img = images.get(image)
     if img is None:
@@ -78,15 +77,15 @@ def get_image(image: str) -> Response:
 
 @app.get("/version")
 @log_execution_time
-def get_version() -> Response:
-    return Response(json.dumps({"version": VERSION}), media_type="application/json")
+def get_version() -> dict[str, str]:
+    return {"version": VERSION}
 
 
 @app.get("/exit", response_class=HTMLResponse)
 @log_execution_time
 def do_exit():
     os.kill(os.getpid(), signal.SIGTERM)
-    return "App will exit in immidiately"
+    return "App will exit immediately"
 
 
 @app.get("/reload", response_class=HTMLResponse)
@@ -149,7 +148,7 @@ def set_previous_value(name: str, value: str) -> Response:
         if value is None or not value.isnumeric():
             raise ValueError(f"Value {value} is not a number")
         previous_value.save_previous_value_to_file(
-            config.prevoius_value_file, name, value
+            config.previous_value_file, name, value
         )
         err = ""
     except Exception as e:
@@ -250,8 +249,8 @@ def get_meter_data(url: str = "", saveimages: bool = False) -> MeterResult:
             ignore=config.image_processing.autocontrast_cut_images.ignore,
         )
         .stop_image_cutting()
-        .save_cutted_images()
-        .get_cutted_images()
+        .save_cut_images()
+        .get_cut_images()
     )
     analog_images = (
         imageProcessor.start_image_cutting()
@@ -263,8 +262,8 @@ def get_meter_data(url: str = "", saveimages: bool = False) -> MeterResult:
             ignore=config.image_processing.autocontrast_cut_images.ignore,
         )
         .stop_image_cutting()
-        .save_cutted_images()
-        .get_cutted_images()
+        .save_cut_images()
+        .get_cut_images()
     )
     global images
     images = imageProcessor.get_pictures()
@@ -277,7 +276,7 @@ def get_meter_data(url: str = "", saveimages: bool = False) -> MeterResult:
         .init_digital_model(
             config.digital_readout.model_file, config.digital_readout.model
         )
-        .use_previous_value_file(config.prevoius_value_file)
+        .use_previous_value_file(config.previous_value_file)
         .process(
             analog_images=analog_images,
             digital_images=digital_images,
@@ -342,7 +341,7 @@ def init_config() -> None:
     logging.getLogger("CNN.DigitalCounterCNN").setLevel(logger.level)
     logging.getLogger("Utils.DownloadUtils").setLevel(logger.level)
     logging.getLogger("Config").setLevel(logger.level)
-    logging.getLogger("Decorators").setLevel(logger.level)
+    logging.getLogger("decorators.decorators").setLevel(logger.level)
     logging.getLogger("Processor").setLevel(logger.level)
     logging.getLogger("PreviousValueFile").setLevel(logger.level)
     logging.getLogger("urllib3").setLevel(logging.WARNING)

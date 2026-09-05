@@ -3,13 +3,12 @@ from datetime import datetime
 import logging
 import os
 import time
-from typing import Union
 
 logger = logging.getLogger(__name__)
 
 
 def load_previous_value_from_file(
-    file: str, section: str, max_age_minutes: Union[int, None] = None
+    file: str, section: str, max_age_minutes: int | None = None
 ) -> str:
     if not os.path.exists(file):
         raise ValueError(f"File '{file}' does not exist.")

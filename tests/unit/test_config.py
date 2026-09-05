@@ -9,7 +9,7 @@ def test_config():
     assert config.config_dir == "/config"
     assert config.digital_models_dir == "/config/neuralnets/digital"
     assert config.analog_models_dir == "/config/neuralnets/analog"
-    assert config.prevoius_value_file == "/config/prevalue.ini"
+    assert config.previous_value_file == "/config/prevalue.ini"
 
     assert config.image_source.url == "file:///config/original.jpg"
     assert config.image_source.timeout == 10

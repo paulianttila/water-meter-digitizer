@@ -1,6 +1,5 @@
 from dataclasses import dataclass
 from decimal import Decimal, InvalidOperation
-from typing import List, Optional, Union
 import math
 import logging
 
@@ -50,7 +49,7 @@ class MeterValue:
 
 @dataclass
 class MeterResult:
-    meters: List[MeterValue]
+    meters: list[MeterValue]
     digital_results: dict
     analog_results: dict
     error: str
@@ -81,10 +80,10 @@ class DigitizerProcessor:
         self.digital_counter_reader: DigitalCounterCNN = None  # type: ignore
         self.analog_model: str = ""
         self.digital_model: str = ""
-        self.previous_value_file: Optional[str] = None
+        self.previous_value_file: str | None = None
         self.cnn_digital_results: list[ReadoutResult] = []
         self.cnn_analog_results: list[ReadoutResult] = []
-        self.available_values: dict[str, Union[int, str]] = {}
+        self.available_values: dict[str, int | str] = {}
 
     @log_execution_time
     def init_analog_model(
@@ -138,7 +137,7 @@ class DigitizerProcessor:
         return self.get_meter_values(meter_configs)
 
     @log_execution_time
-    def execute_analog_cnn(self, images: List[CutImage]) -> "DigitizerProcessor":
+    def execute_analog_cnn(self, images: list[CutImage]) -> "DigitizerProcessor":
         if self.analog_counter_reader is None and self.digital_counter_reader is None:
             raise ValueError("No CNN reader initialized")
         if self.analog_counter_reader is not None:
@@ -162,7 +161,7 @@ class DigitizerProcessor:
         return self
 
     @log_execution_time
-    def execute_digital_cnn(self, images: List[CutImage]) -> "DigitizerProcessor":
+    def execute_digital_cnn(self, images: list[CutImage]) -> "DigitizerProcessor":
         if self.digital_counter_reader is not None:
             result = []
             model = self._solve_model(
@@ -186,7 +185,7 @@ class DigitizerProcessor:
     # ------------------------------------------------------------------
 
     def evaluate_cnn_results(self) -> "DigitizerProcessor":
-        available_values: dict[str, Union[int, str]] = {}
+        available_values: dict[str, int | str] = {}
 
         for result in self.cnn_analog_results + self.cnn_digital_results:
             digit = self._evaluate_counter(
@@ -202,8 +201,8 @@ class DigitizerProcessor:
         return self
 
     def _evaluate_counters(self, values: list[ReadoutResult]) -> dict[str, str]:
-        predecessor_value: Optional[float] = None
-        predecessor_model: Optional[str] = None
+        predecessor_value: float | None = None
+        predecessor_model: str | None = None
         evaluated: dict[str, str] = {}
 
         for result in reversed(values):
@@ -232,10 +231,10 @@ class DigitizerProcessor:
         self,
         name: str,
         number: float,
-        predecessor_digit: Optional[int],
+        predecessor_digit: int | None,
         model: str,
-        predecessor_value: Optional[float] = None,
-    ) -> Union[int, str]:
+        predecessor_value: float | None = None,
+    ) -> int | str:
 
         model = model.lower()
 
@@ -270,8 +269,8 @@ class DigitizerProcessor:
         self,
         name: str,
         number: float,
-        predecessor_digit: Optional[int] = None,
-        predecessor_value: Optional[float] = None,
+        predecessor_digit: int | None = None,
+        predecessor_value: float | None = None,
         model: str = "",
     ) -> int:
         return self._evaluate_wheel_counter(
@@ -282,11 +281,11 @@ class DigitizerProcessor:
     def _evaluate_digital_counter(
         self,
         name: str,
-        number: Union[float, int],
-        predecessor_digit: Optional[int] = None,
-        predecessor_value: Optional[float] = None,
+        number: float | int,
+        predecessor_digit: int | None = None,
+        predecessor_value: float | None = None,
         model: str = "",
-    ) -> Union[int, str]:
+    ) -> int | str:
 
         model = model.lower()
 
@@ -308,7 +307,7 @@ class DigitizerProcessor:
     def _evaluate_wheel_counter(
         self,
         number: float,
-        predecessor_value: Optional[float] = None,
+        predecessor_value: float | None = None,
     ) -> int:
         if predecessor_value is None:
             return int(math.floor(number + 0.5)) % 10
@@ -336,7 +335,7 @@ class DigitizerProcessor:
         )
         return self._gen_result(meters)
 
-    def _get_meter_values(self, meter_configs: List[MeterConfig]) -> List[Meter]:
+    def _get_meter_values(self, meter_configs: list[MeterConfig]) -> list[Meter]:
         meters: list[Meter] = []
         for meter_config in meter_configs:
             value = meter_config.format.format(**self.available_values)
@@ -353,9 +352,9 @@ class DigitizerProcessor:
 
     def _postprocess_meter_values(
         self,
-        meters: List[Meter],
+        meters: list[Meter],
         values: dict,
-        cnn_results: List[ReadoutResult],
+        cnn_results: list[ReadoutResult],
     ) -> None:
 
         # for easier access
@@ -467,7 +466,7 @@ class DigitizerProcessor:
     # Result generation
     # ------------------------------------------------------------------
 
-    def _gen_result(self, meters: List[Meter]) -> MeterResult:
+    def _gen_result(self, meters: list[Meter]) -> MeterResult:
         analog_results = {}
         if self.analog_counter_reader is not None:
             for item in self.cnn_analog_results:

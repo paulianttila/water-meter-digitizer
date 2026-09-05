@@ -1,5 +1,5 @@
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable, Union
 from pathlib import Path
 
 from nicegui import events, ui
@@ -63,7 +63,7 @@ class DrawRoisBaseStep(BaseStep):
         self.cutoff_low = 0
         self.cutoff_high = 0
 
-    def load_rois(self, items: list[Union[ImagePosition, RefImage]]) -> None:
+    def load_rois(self, items: list[ImagePosition | RefImage]) -> None:
         self.rois.clear()
         if hasattr(self, "container") and self.container is not None:
             self.container.clear()
@@ -232,8 +232,8 @@ class DrawRoisBaseStep(BaseStep):
                 cutoff_high=self.cutoff_high,
             )
             .stop_image_cutting()
-            .save_cutted_images()
-            .get_cutted_images()
+            .save_cut_images()
+            .get_cut_images()
         )
 
     def _create_new_roi(self) -> Roi:

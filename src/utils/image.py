@@ -1,6 +1,6 @@
 import base64
 import io
-from typing import List, Union
+from collections.abc import Sequence
 from PIL.Image import Image
 import PIL.Image
 import PIL.ImageEnhance
@@ -105,13 +105,13 @@ def rotate(image: Image, angle: float, keep_org_size: bool = True) -> Image:
     return image.rotate(angle, expand=expand)
 
 
-def align(image: Image, reference_images: List[RefImage]) -> Image:
+def align(image: Image, reference_images: Sequence[RefImage]) -> Image:
     if image is None:
         raise ValueError("No image to align")
     data = convert_image_to_np_array(image)
     w, h = image.size
 
-    ref_image_cordinates = [
+    ref_image_coordinates = [
         _get_ref_coordinate(data, cv2.imread(reference_images[i].file_name))  # TODO
         for i in range(len(reference_images))
     ]
@@ -122,7 +122,7 @@ def align(image: Image, reference_images: List[RefImage]) -> Image:
         )
         for i in range(len(reference_images))
     ]
-    pts1 = np.float32(ref_image_cordinates)  # type: ignore
+    pts1 = np.float32(ref_image_coordinates)  # type: ignore
     pts2 = np.float32(alignment_ref_pos)  # type: ignore
     M = cv2.getAffineTransform(pts1, pts2)  # type: ignore
     img = cv2.warpAffine(data, M, (w, h))
@@ -247,7 +247,7 @@ def autocontrast_image(
     image: Image,
     cutoff_low: int = 0,
     cutoff_high: int = 0,
-    ignore: Union[int, None] = None,
+    ignore: int | None = None,
 ) -> Image:
     if image is None:
         raise ValueError("No image to autocontrast")

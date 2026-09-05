@@ -1,4 +1,4 @@
-from typing import Callable, List, Sequence, Union
+from collections.abc import Callable, Sequence
 import logging
 
 from PIL.Image import Image
@@ -25,9 +25,18 @@ class ImageProcessor:
     def __init__(self) -> None:
         self.condition = None
         self.image: Image
-        self.cutted_images: List[CutImage] = []
+        self.cut_images_list: list[CutImage] = []
         self.enable_img_saving = False
         self.pictures: dict[str, Image] = {}
+
+    @property
+    def cutted_images(self) -> list[CutImage]:
+        """Backwards-compatible alias for cut_images_list."""
+        return self.cut_images_list
+
+    @cutted_images.setter
+    def cutted_images(self, value: list[CutImage]) -> None:
+        self.cut_images_list = value
 
     def if_(self, a) -> "ImageProcessor":
         self.condition = a
@@ -137,7 +146,7 @@ class ImageProcessor:
         self,
         cutoff_low: int = 0,
         cutoff_high: int = 0,
-        ignore: Union[int, None] = None,
+        ignore: int | None = None,
     ) -> "ImageProcessor":
         logger.debug(
             f"Auto contrast image cutoff_low:{cutoff_low}, cutoff_high:{cutoff_high}, "
@@ -158,9 +167,9 @@ class ImageProcessor:
         return self
 
     @_conditional_func
-    def align_image(self, align_images: List[RefImage]) -> "ImageProcessor":
+    def align_image(self, align_images: Sequence[RefImage]) -> "ImageProcessor":
         logger.debug(f"Align image to {align_images}")
-        self.image = utils.image.align(self.image, align_images)
+        self.image = utils.image.align(self.image, list(align_images))
         return self
 
     @_conditional_func
@@ -177,13 +186,13 @@ class ImageProcessor:
             image = utils.image.autocontrast_image(
                 image, cutoff_low, cutoff_high, ignore
             )
-        self.cutted_images.append(CutImage(name=position.name, image=image))
+        self.cut_images_list.append(CutImage(name=position.name, image=image))
         return self
 
     @_conditional_func
     def cut_images(
         self,
-        positions: List[ImagePosition],
+        positions: Sequence[ImagePosition],
         autocontrast: bool = False,
         cutoff_low: int = 2,
         cutoff_high: int = 45,
@@ -195,26 +204,35 @@ class ImageProcessor:
                 image = utils.image.autocontrast_image(
                     image, cutoff_low, cutoff_high, ignore
                 )
-            self.cutted_images.append(CutImage(name=img.name, image=image))
+            self.cut_images_list.append(CutImage(name=img.name, image=image))
         return self
 
     @_conditional_func
     def start_image_cutting(self) -> "ImageProcessor":
-        self.cutted_images = []
+        self.cut_images_list = []
         return self
 
-    def get_cutted_images(self) -> List[CutImage]:
-        return self.cutted_images
+    def get_cut_images(self) -> list[CutImage]:
+        return self.cut_images_list
+
+    def get_cutted_images(self) -> list[CutImage]:
+        """Backwards-compatible alias for get_cut_images."""
+        return self.get_cut_images()
 
     @_conditional_func
     def stop_image_cutting(self) -> "ImageProcessor":
         return self
 
     @_conditional_func
-    def save_cutted_images(self) -> "ImageProcessor":
-        for img in self.cutted_images:
+    def save_cut_images(self) -> "ImageProcessor":
+        for img in self.cut_images_list:
             self.pictures[img.name] = img.image
         return self
+
+    @_conditional_func
+    def save_cutted_images(self) -> "ImageProcessor":
+        """Backwards-compatible alias for save_cut_images."""
+        return self.save_cut_images()
 
     @_conditional_func
     def draw_roi(

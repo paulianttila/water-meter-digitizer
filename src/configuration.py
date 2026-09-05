@@ -2,7 +2,6 @@ from dataclasses import dataclass, field
 import datetime
 import io
 import shutil
-from typing import List, Union
 import configparser
 import os
 import logging
@@ -28,13 +27,13 @@ class CNNParams:
     enabled: bool = False
     model_file: str = ""
     model: str = ""
-    cut_images: List[ImagePosition] = field(default_factory=list)
+    cut_images: list[ImagePosition] = field(default_factory=list)
 
 
 @dataclass
 class Alignment:
     rotate_angle: float = 0.0
-    ref_images: List[RefImage] = field(default_factory=list)
+    ref_images: list[RefImage] = field(default_factory=list)
     post_rotate_angle: float = 0.0
 
 
@@ -59,7 +58,7 @@ class AutoContrast:
     enabled: bool = False
     cutoff_low: float = 2
     cutoff_high: float = 45
-    ignore: Union[int, None] = None
+    ignore: int | None = None
 
 
 @dataclass
@@ -78,16 +77,26 @@ class ImageProcessing:
 class Config:
     log_level: str = "INFO"
     config_dir: str = "/config"
-    prevoius_value_file: str = "/config/prevalue.ini"
+    previous_value_file: str = "/config/prevalue.ini"
     digital_models_dir: str = "/config/neuralnets/digital"
     analog_models_dir: str = "/config/neuralnets/analog"
     image_source: ImageSource = field(default_factory=ImageSource)
     digital_readout: CNNParams = field(default_factory=CNNParams)
     analog_readout: CNNParams = field(default_factory=CNNParams)
     alignment: Alignment = field(default_factory=Alignment)
-    meter_configs: List[MeterConfig] = field(default_factory=list)
+    meter_configs: list[MeterConfig] = field(default_factory=list)
     crop: Crop = field(default_factory=Crop)
     resize: Resize = field(default_factory=Resize)
+
+    @property
+    def prevoius_value_file(self) -> str:
+        """Backwards-compatible alias for previous_value_file."""
+        return self.previous_value_file
+
+    @prevoius_value_file.setter
+    def prevoius_value_file(self, value: str) -> None:
+        self.previous_value_file = value
+
     image_processing: ImageProcessing = field(default_factory=ImageProcessing)
 
     def load_from_string(self, config_string: str) -> "Config":
@@ -139,7 +148,7 @@ class Config:
             "ConfigDir": self.config_dir,
             "DigitalModelsDir": self.digital_models_dir,
             "AnalogModelsDir": self.analog_models_dir,
-            "PreviousValueFile": self.prevoius_value_file,
+            "PreviousValueFile": self.previous_value_file,
         }
 
         config["ImageSource"] = {
@@ -268,7 +277,7 @@ class Config:
         self.analog_models_dir = config.get(
             "DEFAULT", "AnalogModelsDir", fallback="/config/neuralnets/analog"
         )
-        self.prevoius_value_file = config.get(
+        self.previous_value_file = config.get(
             "DEFAULT", "PreviousValueFile", fallback="/config/prevalue.ini"
         )
 

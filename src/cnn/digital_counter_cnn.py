@@ -1,5 +1,4 @@
 import logging
-from typing import Union
 
 from PIL.Image import Image
 import numpy as np
@@ -23,7 +22,7 @@ class DigitalCounterCNN(CNNBase):
         )
         super()._loadModel()
 
-    def readout(self, image: Image) -> Union[float, int]:
+    def readout(self, image: Image) -> float | int:
         output_data = super()._readout(image)
         if super().getModelDetails().numer_output == 100:
             return float(np.argmax(output_data)) / 10
