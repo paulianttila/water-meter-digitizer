@@ -7,6 +7,12 @@ from configuration import ImageSource
 from processor.image import ImageProcessor
 from .step_base import BaseStep
 
+HELP_TEXT = (
+    "- **Camera URL**: Enter snapshot endpoint (e.g. `http://...` or `file://...`).\n"
+    "- **Timeout**: Set network request timeout in seconds (1–60s).\n"
+    "- **Download**: Click the download button to fetch a frame."
+)
+
 
 class DownloadImageStep(BaseStep):
     def __init__(
@@ -50,7 +56,7 @@ class DownloadImageStep(BaseStep):
         except Exception as e:
             try:
                 ui.notify(f"Download failed: {e}", type="negative")
-            except Exception:
+            except Exception:  # nosec B110
                 pass
             if self.on_error_callback is not None:
                 self.on_error_callback(str(e))
@@ -58,13 +64,7 @@ class DownloadImageStep(BaseStep):
 
     async def show(self, stepper, first_step=False, last_step=False) -> None:
         with ui.step(self.name):
-            self.add_help(
-                """
-- **Camera URL**: Enter your snapshot camera endpoint (e.g. `http://192.168.1.100/capture` or `file:///config/original.jpg`).
-- **Timeout**: Set network request timeout in seconds (1–60s).
-- **Download**: Click the download button to fetch a frame from the camera.
-                """
-            )
+            self.add_help(HELP_TEXT)
             with ui.row().classes("w-full items-center"):
                 self.url = ui.input(label="URL", placeholder="URL").classes("w-4/5")
                 ui.button(

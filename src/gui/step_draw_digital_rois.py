@@ -7,6 +7,16 @@ from configuration import CNNParams
 from .step_draw_rois_base import DrawRoisBaseStep
 from processor.digitizer import DigitizerProcessor
 
+HELP_TEXT = (
+    "- **Digital Digits**: Add bounding boxes tightly around each "
+    "drum or LCD digit (`digit1`, `digit2`, ...).\n"
+    "- **Alignment**: Drag boxes on canvas, or use toolbar buttons "
+    "(Align Left, Top, Center, Resize All).\n"
+    "- **CNN Model**: Choose a `.tflite` model and type (`auto`, "
+    "`digital`, `digital100`).\n"
+    "- **Test**: Click Test to run inference on cropped ROIs."
+)
+
 
 class DrawDigitalRoisStep(DrawRoisBaseStep):
     def __init__(
@@ -107,14 +117,7 @@ class DrawDigitalRoisStep(DrawRoisBaseStep):
 
     async def show(self, stepper, first_step=False, last_step=False) -> None:
         with ui.step(self.name):
-            self.add_help(
-                """
-- **Digital Digits**: Add bounding boxes tightly around each mechanical drum or LCD digit (`digit1`, `digit2`, ...).
-- **Drawing & Alignment**: Drag boxes on the canvas, or use the toolbar buttons (Align Left, Top, Bottom, Right, Center, Resize All) to standardize digit sizes.
-- **CNN Model**: Choose a `.tflite` model and type (`auto`, `digital`, `digital100`).
-- **Test**: Click Test to run neural network inference on the cropped ROIs and inspect digit readouts.
-                """
-            )
+            self.add_help(HELP_TEXT)
             with ui.row():
                 ui.button(
                     icon="sym_s_align_horizontal_left", on_click=self._align_left

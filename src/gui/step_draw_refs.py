@@ -5,6 +5,13 @@ from nicegui import ui
 from data_classes import RefImage
 from .step_draw_rois_base import DrawRoisBaseStep
 
+HELP_TEXT = (
+    "- **Reference Points**: Mark **3 distinct visual landmarks** "
+    "(e.g. text labels, screws, dial centers) for affine alignment.\n"
+    "- **Drawing**: Click `+` then drag a box on the canvas.\n"
+    "- **Visibility**: Toggle colored checkboxes to show/hide boxes."
+)
+
 
 class DrawRefsStep(DrawRoisBaseStep):
     def __init__(
@@ -57,13 +64,7 @@ class DrawRefsStep(DrawRoisBaseStep):
 
     async def show(self, stepper, first_step=False, last_step=False) -> None:
         with ui.step(self.name):
-            self.add_help(
-                """
-- **Reference Points**: Mark **3 distinct visual landmarks** (e.g. text labels like `m³`, screws, dial centers) to establish affine alignment against camera vibration.
-- **Drawing**: Click `+` to add a marker, then click and drag a box on the interactive image canvas on the left.
-- **Visibility**: Toggle colored checkboxes to show or hide individual reference boxes on the canvas.
-                """
-            )
+            self.add_help(HELP_TEXT)
             with ui.grid(columns="2fr 2fr 2fr 2fr 2fr 2fr").classes("w-full gap-2"):
                 self.select_all = ui.checkbox(
                     "Show", on_change=self._select_all_rois

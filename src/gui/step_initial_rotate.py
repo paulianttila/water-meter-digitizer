@@ -6,6 +6,12 @@ from configuration import Alignment
 from processor.image import ImageProcessor
 from .step_base import BaseStep
 
+HELP_TEXT = (
+    "- **Coarse Rotation**: Rotate image in 90° steps (`-90°`, `180°`, `+90°`) "
+    "to orient digits right-side up.\n"
+    "- **Restore**: Reset rotation back to the unrotated state."
+)
+
 
 class InitialRotateStep(BaseStep):
     def __init__(
@@ -73,12 +79,7 @@ class InitialRotateStep(BaseStep):
 
     async def show(self, stepper, first_step=False, last_step=False) -> None:
         with ui.step(self.name):
-            self.add_help(
-                """
-- **Coarse Rotation**: Rotate image in 90° steps (`-90°`, `180°`, `+90°`) so the meter digits and dials are oriented right-side up.
-- **Restore**: Reset rotation back to the unrotated state.
-                """
-            )
+            self.add_help(HELP_TEXT)
             with ui.row():
                 ui.button(
                     icon="rotate_left", on_click=self._rotate_left

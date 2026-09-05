@@ -6,6 +6,14 @@ from nicegui import ui
 from processor.image import ImageProcessor
 from .step_base import BaseStep
 
+HELP_TEXT = (
+    "- **Fine Rotation**: Adjust small fractional angles (e.g. `0.5°`).\n"
+    "- **Crop & Resize**: Optionally crop and resize before alignment.\n"
+    "- **Image Filters**: Tune contrast, brightness, sharpness, grayscale, "
+    "and autocontrast.\n"
+    "- Click the adjust button at the bottom to preview."
+)
+
 
 class AdjustStep(BaseStep):
     def __init__(
@@ -117,14 +125,7 @@ class AdjustStep(BaseStep):
 
     async def show(self, stepper, first_step=False, last_step=False) -> None:
         with ui.step(self.name):
-            self.add_help(
-                """
-- **Fine Rotation**: Adjust small fractional angles (e.g. `0.5°`).
-- **Crop & Resize**: Optionally crop and resize raw frame before alignment.
-- **Image Filters**: Fine-tune contrast, brightness, sharpness, grayscale, and autocontrast cutoffs.
-- Click the adjust button at the bottom to preview adjustments on the canvas.
-                """
-            )
+            self.add_help(HELP_TEXT)
 
             with ui.row().classes("w-full items-center"):
                 self.rotate_enabled = ui.checkbox("Enable Rotate", value=False)

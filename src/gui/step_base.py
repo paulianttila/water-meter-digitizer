@@ -55,9 +55,15 @@ class BaseStep:
         self.spinner = spinner
 
     def add_help(self, content: str) -> None:
-        with ui.expansion("Help & Tips", icon="help_outline").classes(
-            "w-full text-caption text-grey-8 bg-blue-50/40 border border-blue-100 rounded mb-2"
-        ).props("dense"):
+        classes = (
+            "w-full text-caption text-grey-8 bg-blue-50/40 "
+            "border border-blue-100 rounded mb-2"
+        )
+        with (
+            ui.expansion("Help & Tips", icon="help_outline")
+            .classes(classes)
+            .props("dense")
+        ):
             ui.markdown(content).classes("text-caption")
 
     def add_navigator(self, stepper, first_step=False, last_step=False) -> None:

@@ -7,6 +7,17 @@ from nicegui import ui
 
 from .step_base import BaseStep
 
+HELP_TEXT = (
+    "- **Meter & Digits**: Name your meter and choose digital/analog digits "
+    "and decimal points.\n"
+    "- **Consistency**: Enable rate limits (`Max rate value`) and negative "
+    "rate rejection.\n"
+    "- **Previous Value**: Substitute unreadable digits (`N`) with last "
+    "known good reading.\n"
+    "- **Extended Resolution**: Append fractional sub-digit decimal.\n"
+    "- **Unit**: Measurement unit displayed in outputs (e.g. `m³`, `kWh`)."
+)
+
 
 @dataclass
 class MeterParams:
@@ -147,15 +158,7 @@ class MeterStep(BaseStep):
 
     async def show(self, stepper, first_step=False, last_step=False):
         with ui.step(self.name):
-            self.add_help(
-                """
-- **Meter Name & Digits**: Name your meter and select which digital/analog digits and decimal points form its value.
-- **Consistency**: Enable rate limits (`Max rate value`) and negative rate rejection.
-- **Previous Value**: Automatically substitute unreadable digits (`N`) with the last known good reading.
-- **Extended Resolution**: Append fractional sub-digit decimal places from the last analog dial.
-- **Unit**: Measurement unit displayed in outputs (e.g. `m³`, `kWh`).
-                """
-            )
+            self.add_help(HELP_TEXT)
             self.values_container = ui.row().classes("w-full")
             ui.separator()
             with ui.row():

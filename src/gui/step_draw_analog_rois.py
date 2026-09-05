@@ -7,6 +7,16 @@ from configuration import CNNParams
 from .step_draw_rois_base import DrawRoisBaseStep
 from processor.digitizer import DigitizerProcessor
 
+HELP_TEXT = (
+    "- **Analog Dials**: Add bounding boxes tightly around each "
+    "analog dial needle (`analog1`, `analog2`, ...).\n"
+    "- **Alignment**: Drag boxes on canvas, or use alignment toolbar "
+    "buttons to standardize dial dimensions.\n"
+    "- **CNN Model**: Choose a `.tflite` model and type (`auto`, "
+    "`analog`, `analog100`).\n"
+    "- **Test**: Click Test to run neural network angle detection."
+)
+
 
 class DrawAnalogRoisStep(DrawRoisBaseStep):
     def __init__(
@@ -105,14 +115,7 @@ class DrawAnalogRoisStep(DrawRoisBaseStep):
 
     async def show(self, stepper, first_step=False, last_step=False) -> None:
         with ui.step(self.name):
-            self.add_help(
-                """
-- **Analog Dials**: Add circular bounding boxes tightly around each analog dial needle (`analog1`, `analog2`, ...).
-- **Drawing & Alignment**: Drag boxes on the canvas, or use the alignment toolbar buttons to standardize dial dimensions.
-- **CNN Model**: Choose a `.tflite` model and type (`auto`, `analog`, `analog100`).
-- **Test**: Click Test to run neural network angle detection on the cropped ROIs.
-                """
-            )
+            self.add_help(HELP_TEXT)
             with ui.row():
                 ui.button(
                     icon="sym_s_align_horizontal_left", on_click=self._align_left

@@ -495,9 +495,11 @@ class SetupPage:
                     "Enter camera URL and click Download to start",
                 )
             with splitter.after:
-                with ui.stepper(
-                    on_value_change=lambda x: handle_stepper_change(x.value)
-                ).props("vertical").classes("w-full") as stepper:
+                with (
+                    ui.stepper(on_value_change=lambda x: handle_stepper_change(x.value))
+                    .props("vertical")
+                    .classes("w-full") as stepper
+                ):
                     await self.download_image_step.show(stepper, first_step=True)
                     await self.initial_rotate_step.show(stepper)
                     await self.draw_refs_step.show(stepper)
