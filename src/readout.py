@@ -1,7 +1,6 @@
 import logging
 import math
 
-
 # logger.debug("STOP TESTING")
 # result = convertReadoutToValue(cnnAnalogResults, "Analogue100", True, -1)
 # logger.debug(f"Analog readout result: {result}")

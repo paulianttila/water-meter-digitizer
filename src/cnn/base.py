@@ -7,7 +7,6 @@ from importlib import util
 from PIL.Image import Image, Resampling
 import numpy as np
 
-
 with contextlib.suppress(ImportError):
     import tflite_runtime.interpreter as tflite
 

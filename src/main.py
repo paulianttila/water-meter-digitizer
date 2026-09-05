@@ -23,7 +23,6 @@ from processor.image import ImageProcessor
 import previous_value as previous_value
 from PIL.Image import Image
 
-
 VERSION = "8.0.0"
 
 COLOR_RED = (255, 0, 0)

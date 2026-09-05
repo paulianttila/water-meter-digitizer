@@ -41,7 +41,7 @@ class DrawRoisBaseStep(BaseStep):
         self.draw_roi_func = draw_roi_func
         self.set_rois_to_svg_func = set_rois_to_svg_func
         self.show_temp_draw_in_svg_func = show_temp_draw_in_svg_func
-        self.container: ui.row
+        self.container = []
         self.test_result_container = None
         self.rois: list[Roi] = []
         self.mouse_x: int

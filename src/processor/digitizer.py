@@ -19,7 +19,6 @@ from cnn.analog_needle_cnn import AnalogNeedleCNN
 from data_classes import MeterConfig, CutImage
 from decorators.decorators import log_execution_time
 
-
 logger = logging.getLogger(__name__)
 
 INVALID_DIGIT = "N"

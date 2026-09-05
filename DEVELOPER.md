@@ -171,19 +171,26 @@ Models are executed via `tflite_runtime` (or `tensorflow.lite`) in `src/cnn/`.
 ## Development Environment Setup
 
 ### Prerequisites
-- **Python 3.9 – 3.11** (`tflite-runtime` wheels support up to Python 3.11)
+- **Python 3.9** (Recommended for local development, especially on macOS / Apple Silicon).
+  - *Note for macOS*: Latest `tflite-runtime` is not published for macOS on PyPI; prebuilt wheels for Python 3.9 are bundled in `./wheels/`.
+  - *Linux / Docker*: Supports Python 3.9 through 3.11.
 - **uv** package manager ([astral.sh/uv](https://astral.sh/uv))
 - **libGL / OpenCV dependencies** (standard system libraries)
 
 ### Setup Virtual Environment with `uv`
+
+`uv` can automatically download and configure Python 3.9 for you:
 
 ```bash
 # Clone repository
 git clone https://github.com/paulianttila/water-meter-system.git
 cd water-meter-system
 
-# Create virtual environment and install all dependencies (including dev tools)
-uv sync
+# (Optional) Install Python 3.9 via uv if not installed on your system
+uv python install 3.9
+
+# Create virtual environment with Python 3.9 and synchronize all dependencies
+uv sync --python 3.9
 
 # (Optional) Activate the virtual environment in your shell
 source .venv/bin/activate
