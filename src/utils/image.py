@@ -1,5 +1,6 @@
 import base64
 import io
+import logging
 from collections.abc import Sequence
 from PIL.Image import Image
 import PIL.Image
@@ -9,6 +10,8 @@ import numpy as np
 import cv2
 
 from data_classes import ImagePosition, RefImage
+
+logger = logging.getLogger(__name__)
 
 
 def save_image(image: Image, file_name: str) -> None:
@@ -105,55 +108,222 @@ def rotate(image: Image, angle: float, keep_org_size: bool = True) -> Image:
     return image.rotate(angle, expand=expand)
 
 
-def align(image: Image, reference_images: Sequence[RefImage]) -> Image:
+def _get_feature_detector(name: str):
+    name = (name or "orb").lower()
+    if name == "akaze":
+        return cv2.AKAZE_create(threshold=0.0005), cv2.NORM_HAMMING
+    elif name == "sift":
+        return cv2.SIFT_create(), cv2.NORM_L2
+    else:  # default "orb"
+        return (
+            cv2.ORB_create(
+                nfeatures=2000,
+                scaleFactor=1.2,
+                nlevels=8,
+                edgeThreshold=5,
+                patchSize=15,
+                fastThreshold=5,
+            ),
+            cv2.NORM_HAMMING,
+        )
+
+
+def _match_features_coordinate(
+    image: np.ndarray,
+    template: np.ndarray,
+    detector_name: str = "orb",
+) -> tuple[tuple[int, int] | None, float]:
+    """Find template coordinates in image using feature keypoints (ORB/AKAZE/SIFT)."""
+    try:
+        gray_img = (
+            cv2.cvtColor(image, cv2.COLOR_BGR2GRAY) if len(image.shape) == 3 else image
+        )
+        gray_tpl = (
+            cv2.cvtColor(template, cv2.COLOR_BGR2GRAY)
+            if len(template.shape) == 3
+            else template
+        )
+
+        detector, norm_type = _get_feature_detector(detector_name)
+        kp_tpl, des_tpl = detector.detectAndCompute(gray_tpl, None)
+        kp_img, des_img = detector.detectAndCompute(gray_img, None)
+
+        if des_tpl is None or des_img is None or len(kp_tpl) < 3 or len(kp_img) < 3:
+            return None, 0.0
+
+        matcher = cv2.BFMatcher(norm_type, crossCheck=True)
+        matches = matcher.match(des_tpl, des_img)
+        matches = sorted(matches, key=lambda x: x.distance)
+
+        if len(matches) < 3:
+            return None, 0.0
+
+        src_pts = np.float32([kp_tpl[m.queryIdx].pt for m in matches]).reshape(-1, 1, 2)
+        dst_pts = np.float32([kp_img[m.trainIdx].pt for m in matches]).reshape(-1, 1, 2)
+
+        # Estimate partial affine (translation, rotation, scale)
+        if len(matches) >= 4:
+            M, inliers = cv2.estimateAffinePartial2D(
+                src_pts, dst_pts, method=cv2.RANSAC, ransacReprojThreshold=5.0
+            )
+            if M is not None and inliers is not None and np.sum(inliers) >= 3:
+                top_left = cv2.transform(np.array([[[0.0, 0.0]]], dtype=np.float32), M)[
+                    0
+                ][0]
+                tx = int(round(top_left[0]))
+                ty = int(round(top_left[1]))
+                confidence = float(min(1.0, np.sum(inliers) / max(len(kp_tpl), 6)))
+                return (tx, ty), confidence
+
+        # Fallback to median shift
+        dx = float(np.median(dst_pts[:, 0, 0] - src_pts[:, 0, 0]))
+        dy = float(np.median(dst_pts[:, 0, 1] - src_pts[:, 0, 1]))
+        conf = float(min(1.0, len(matches) / max(len(kp_tpl), 6)))
+        return (int(round(dx)), int(round(dy))), conf
+    except Exception as e:
+        logger.debug(f"Feature matching error: {e}")
+        return None, 0.0
+
+
+def _get_ref_coordinate(
+    image: np.ndarray,
+    template: np.ndarray,
+    method: str = "hybrid",
+    min_match_score: float = 0.70,
+    feature_detector: str = "orb",
+) -> tuple[int, int]:
+    """Find reference template coordinate in image using template/feature matching."""
+    if template is None or image is None:
+        raise ValueError("Invalid image or template for coordinate detection")
+
+    method_lower = (method or "hybrid").lower()
+    tpl_point: tuple[int, int] | None = None
+    tpl_score: float = 0.0
+
+    # 1. Try template matching if method is 'template' or 'hybrid'
+    if method_lower in ("template", "hybrid"):
+        res = cv2.matchTemplate(image, template, cv2.TM_CCOEFF_NORMED)
+        _, max_val, _, max_loc = cv2.minMaxLoc(res)
+        tpl_point = (int(max_loc[0]), int(max_loc[1]))
+        tpl_score = float(max_val)
+
+        if method_lower == "template" or tpl_score >= min_match_score:
+            logger.debug(
+                f"Template match succeeded with score {tpl_score:.3f} at {tpl_point}"
+            )
+            return tpl_point
+
+        logger.debug(
+            f"Template match score {tpl_score:.3f} < {min_match_score:.3f}. "
+            "Attempting feature matching fallback."
+        )
+
+    # 2. Try feature matching (ORB/AKAZE/SIFT)
+    detector = (
+        method_lower if method_lower in ("orb", "akaze", "sift") else feature_detector
+    )
+    feat_point, feat_score = _match_features_coordinate(
+        image, template, detector_name=detector
+    )
+    if feat_point is not None and feat_score > 0.15:
+        logger.debug(
+            f"Feature match ({detector}) succeeded with confidence "
+            f"{feat_score:.3f} at {feat_point}"
+        )
+        return feat_point
+
+    # 3. Fallback to best template match result if available
+    if tpl_point is not None:
+        logger.debug(
+            f"Feature match failed, falling back to template match {tpl_point} "
+            f"(score: {tpl_score:.3f})"
+        )
+        return tpl_point
+
+    return (0, 0)
+
+
+def align(
+    image: Image,
+    reference_images: Sequence[RefImage],
+    method: str = "hybrid",
+    min_match_score: float = 0.70,
+    feature_detector: str = "orb",
+    transformation: str = "auto",
+) -> Image:
+    """Align image against reference images using geometric transformation."""
     if image is None:
         raise ValueError("No image to align")
+    if not reference_images:
+        return image
+
     data = convert_image_to_np_array(image)
     w, h = image.size
 
-    ref_image_coordinates = [
-        _get_ref_coordinate(data, cv2.imread(reference_images[i].file_name))  # TODO
-        for i in range(len(reference_images))
-    ]
-    alignment_ref_pos = [
-        (
-            reference_images[i].x,
-            reference_images[i].y,
+    ref_image_coordinates = []
+    alignment_ref_pos = []
+
+    for ref in reference_images:
+        template = cv2.imread(ref.file_name)
+        if template is None:
+            logger.warning(f"Could not load reference image: {ref.file_name}")
+            continue
+
+        matched_coord = _get_ref_coordinate(
+            image=data,
+            template=template,
+            method=method,
+            min_match_score=min_match_score,
+            feature_detector=feature_detector,
         )
-        for i in range(len(reference_images))
-    ]
-    pts1 = np.float32(ref_image_coordinates)  # type: ignore
-    pts2 = np.float32(alignment_ref_pos)  # type: ignore
-    M = cv2.getAffineTransform(pts1, pts2)  # type: ignore
-    img = cv2.warpAffine(data, M, (w, h))
-    return convert_np_array_to_image(img)
+        ref_image_coordinates.append(matched_coord)
+        alignment_ref_pos.append((ref.x, ref.y))
 
+    n_points = len(ref_image_coordinates)
+    if n_points == 0:
+        return image
 
-def _get_ref_coordinate(image: np.ndarray, template: np.ndarray) -> tuple[int, int]:
-    """
-    Square difference (CV_TM_SQDIFF): This method calculates the squared difference
-        between the pixel intensities of the source image and template.
-        A lower score indicates a better match.
-    Normalized square difference (CV_TM_SQDIFF_NORMED): This is similar to the Square
-        Difference, but the result is normalized.
-    Cross-correlation (CV_TM_CCORR): It calculates the cross-correlation between
-        the source image and template. A higher score indicates a better match.
-    Normalized cross-correlation (CV_TM_CCORR_NORMED): In this method, the result of
-        cross-correlation is normalized.
-    Coefficient correlation (CV_TM_CCOEFF): This method calculates the correlation
-        coefficient between the source image and template.
-        A higher score indicates a better match.
-    Normalized coefficient correlation (CV_TM_CCOEFF_NORMED): In this method,
-        the correlation coefficient is normalized.
-    """
-    # method = cv2.TM_SQDIFF
-    # method = cv2.TM_SQDIFF_NORMED
-    # method = cv2.TM_CCORR_NORMED
-    method = cv2.TM_CCOEFF_NORMED
-    res = cv2.matchTemplate(image, template, method)
-    min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(res)
-    point = min_loc if method in [cv2.TM_SQDIFF, cv2.TM_SQDIFF_NORMED] else max_loc
-    return (point[0], point[1])
+    pts1 = np.float32(ref_image_coordinates)
+    pts2 = np.float32(alignment_ref_pos)
+    trans_lower = (transformation or "auto").lower()
+
+    if n_points == 1:
+        # Single point translation
+        dx = float(pts2[0][0] - pts1[0][0])
+        dy = float(pts2[0][1] - pts1[0][1])
+        M = np.float32([[1, 0, dx], [0, 1, dy]])
+        img = cv2.warpAffine(data, M, (w, h))
+        return convert_np_array_to_image(img)
+
+    if n_points == 2:
+        # 2-point similarity transform
+        M, _ = cv2.estimateAffinePartial2D(pts1, pts2)
+        if M is None:
+            return image
+        img = cv2.warpAffine(data, M, (w, h))
+        return convert_np_array_to_image(img)
+
+    if n_points == 3:
+        if trans_lower == "perspective":
+            pass  # Fall through to affine since 3 points cannot define homography
+        M = cv2.getAffineTransform(pts1, pts2)
+        img = cv2.warpAffine(data, M, (w, h))
+        return convert_np_array_to_image(img)
+
+    # 4+ points: perspective (homography) or affine with RANSAC
+    if trans_lower in ("perspective", "auto"):
+        H, _ = cv2.findHomography(pts1, pts2, cv2.RANSAC, 5.0)
+        if H is not None:
+            img = cv2.warpPerspective(data, H, (w, h))
+            return convert_np_array_to_image(img)
+
+    # Fallback to robust Affine for 4+ points
+    M, _ = cv2.estimateAffine2D(pts1, pts2, method=cv2.RANSAC)
+    if M is not None:
+        img = cv2.warpAffine(data, M, (w, h))
+        return convert_np_array_to_image(img)
+
+    return image
 
 
 def draw_rectangle(
@@ -184,7 +354,6 @@ def draw_text(
     thickness: int = 1,
     font_size: int = 12,
 ) -> Image:
-
     if image is None:
         raise ValueError("No image to draw")
     font = ImageFont.load_default(size=font_size)
@@ -202,7 +371,6 @@ def cut_image(
     image: Image,
     img_position: ImagePosition,
 ) -> Image:
-
     if image is None:
         raise ValueError("No image to cut")
     x, y, w, h = img_position.x, img_position.y, img_position.w, img_position.h

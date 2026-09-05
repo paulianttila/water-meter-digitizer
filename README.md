@@ -304,6 +304,10 @@ Affine transformation using reference markers to correct rotation and perspectiv
 | `RotationAngle` | float | `0.0` | Coarse rotation in degrees (`0`, `90`, `180`, `270`). |
 | `Refs` | string | `""` | Comma-separated list of reference image section names (e.g. `ref0, ref1, ref2`). |
 | `PostRotationAngle` | float | `0.0` | Fine-tuning post-rotation angle in degrees (e.g. `0.5`). |
+| `Method` | string | `hybrid` | Alignment algorithm: `hybrid` (template with feature fallback), `template`, `orb`, `akaze`, or `sift`. |
+| `MinMatchScore` | float | `0.70` | Minimum template correlation score before triggering feature matching fallback in `hybrid` mode. |
+| `FeatureDetector` | string | `orb` | Feature keypoint detector for fallback/feature mode (`orb`, `akaze`, `sift`). |
+| `Transformation` | string | `auto` | Transformation model: `auto`, `affine`, or `perspective` (homography for $\ge 4$ reference points). |
 
 **`[Alignment.<ref_name>]`** (For each reference in `Refs`):
 | Parameter | Type | Description |

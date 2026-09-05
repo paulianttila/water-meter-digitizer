@@ -33,6 +33,10 @@ class Alignment(BaseModel):
     rotate_angle: float = 0.0
     ref_images: list[RefImage] = Field(default_factory=list)
     post_rotate_angle: float = 0.0
+    method: str = "hybrid"  # "hybrid", "template", "orb", "akaze", "sift"
+    min_match_score: float = 0.70
+    feature_detector: str = "orb"  # "orb", "akaze", "sift"
+    transformation: str = "auto"  # "auto", "affine", "perspective"
 
 
 class Crop(BaseModel):
@@ -201,6 +205,10 @@ class Config(BaseSettings):
             "RotationAngle": str(self.alignment.rotate_angle),
             "Refs": ", ".join([ref.name for ref in self.alignment.ref_images]),
             "PostRotationAngle": str(self.alignment.post_rotate_angle),
+            "Method": self.alignment.method,
+            "MinMatchScore": str(self.alignment.min_match_score),
+            "FeatureDetector": self.alignment.feature_detector,
+            "Transformation": self.alignment.transformation,
         }
 
         for ref in self.alignment.ref_images:
@@ -306,6 +314,10 @@ class Config(BaseSettings):
         post_rotate_angle = config.getfloat(
             "Alignment", "PostRotationAngle", fallback=0.0
         )
+        alignment_method = config.get("Alignment", "Method", fallback="hybrid")
+        min_match_score = config.getfloat("Alignment", "MinMatchScore", fallback=0.70)
+        feature_detector = config.get("Alignment", "FeatureDetector", fallback="orb")
+        transformation = config.get("Alignment", "Transformation", fallback="auto")
 
         refs = config.get("Alignment", "Refs", fallback="")
         ref_images = []
@@ -320,6 +332,10 @@ class Config(BaseSettings):
             rotate_angle=rotate_angle,
             ref_images=ref_images,
             post_rotate_angle=post_rotate_angle,
+            method=alignment_method,
+            min_match_score=min_match_score,
+            feature_detector=feature_detector,
+            transformation=transformation,
         )
 
         ################## Crop Parameters #############################################

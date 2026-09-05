@@ -167,9 +167,27 @@ class ImageProcessor:
         return self
 
     @_conditional_func
-    def align_image(self, align_images: Sequence[RefImage]) -> "ImageProcessor":
-        logger.debug(f"Align image to {align_images}")
-        self.image = utils.image.align(self.image, list(align_images))
+    def align_image(
+        self,
+        align_images: Sequence[RefImage],
+        method: str = "hybrid",
+        min_match_score: float = 0.70,
+        feature_detector: str = "orb",
+        transformation: str = "auto",
+    ) -> "ImageProcessor":
+        logger.debug(
+            f"Align image to {align_images} (method={method}, "
+            f"min_score={min_match_score}, detector={feature_detector}, "
+            f"trans={transformation})"
+        )
+        self.image = utils.image.align(
+            self.image,
+            list(align_images),
+            method=method,
+            min_match_score=min_match_score,
+            feature_detector=feature_detector,
+            transformation=transformation,
+        )
         return self
 
     @_conditional_func
