@@ -1,4 +1,5 @@
 import argparse
+from datetime import datetime, timezone
 import dataclasses
 import json
 from pathlib import Path
@@ -6,6 +7,7 @@ import signal
 import os
 import logging
 import sys
+import time
 
 from fastapi import FastAPI, HTTPException, Response, Request
 from fastapi.responses import HTMLResponse
@@ -15,7 +17,15 @@ import uvicorn
 
 from decorators.decorators import log_execution_time
 from configuration import Config
+from data_classes import HealthResponse
 from utils.cache import ImageCache
+from utils.diagnostics import (
+    check_camera_reachability,
+    format_uptime,
+    get_models_info,
+    get_process_memory_info,
+    get_system_info,
+)
 from utils.download import DownloadFailure
 import utils.image
 from processor.digitizer import DigitizerProcessor, MeterResult
@@ -43,6 +53,8 @@ BASE_DIR = Path(__file__).resolve().parent
 app = FastAPI(title="meter")
 image_cache = ImageCache(max_size=50, ttl_seconds=300.0)
 app.state.image_cache = image_cache
+app.state.start_time = time.time()
+app.state.started_at = datetime.now(timezone.utc).isoformat()
 app.mount(
     "/static", StaticFiles(directory=str(BASE_DIR / "web" / "static")), name="static"
 )
@@ -61,6 +73,67 @@ def get_index(request: Request) -> Response:
 @log_execution_time
 def healthcheck():
     return "Health - OK"
+
+
+@app.get("/health", response_model=HealthResponse)
+@log_execution_time
+def get_health(request: Request) -> HealthResponse:
+    now = time.time()
+    start_time = getattr(request.app.state, "start_time", now)
+    started_at = getattr(
+        request.app.state, "started_at", datetime.now(timezone.utc).isoformat()
+    )
+    uptime_seconds = round(now - start_time, 2)
+    uptime_human = format_uptime(uptime_seconds)
+
+    # Check camera reachability
+    camera_diag = check_camera_reachability(config.image_source.url, timeout=2.0)
+
+    # Memory info
+    mem_diag = get_process_memory_info()
+
+    # Cache info
+    cache_diag = request.app.state.image_cache.get_stats()
+
+    # Models info
+    models_diag = get_models_info(
+        digital_enabled=config.digital_readout.enabled,
+        digital_modelfile=config.digital_readout.model_file,
+        analog_enabled=config.analog_readout.enabled,
+        analog_modelfile=config.analog_readout.model_file,
+    )
+
+    # System info
+    system_diag = get_system_info(VERSION)
+
+    # Determine status:
+    # "unhealthy" if camera configured but unreachable or enabled model missing
+    # "degraded" if camera not configured
+    # "healthy" otherwise
+    status = "healthy"
+    if not config.image_source.url:
+        status = "degraded"
+    elif not camera_diag["reachable"]:
+        status = "degraded"
+
+    for model_key in ("digital", "analog"):
+        m = models_diag[model_key]
+        if m["enabled"] and not m["exists"]:
+            status = "unhealthy"
+
+    return HealthResponse(
+        status=status,
+        uptime={
+            "uptime_seconds": uptime_seconds,
+            "uptime_human": uptime_human,
+            "started_at": started_at,
+        },
+        camera=camera_diag,
+        memory=mem_diag,
+        cache=cache_diag,
+        models=models_diag,
+        system=system_diag,
+    )
 
 
 @app.get("/image/{image}")

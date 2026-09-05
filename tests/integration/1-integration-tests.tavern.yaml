@@ -36,6 +36,18 @@ stages:
       headers:
         content-type: text/html; charset=utf-8
 
+  - name: test rich health diagnostics endpoint
+    request:
+      url: 'http://{url}/health'
+      method: GET
+      timeout: 3
+    response:
+      status_code: 200
+      headers:
+        content-type: application/json
+      verify_response_with:
+        function: testing_utils:check_health_response
+
   - name: test meters in HTML format
     request:
       url: 'http://{url}/meter'

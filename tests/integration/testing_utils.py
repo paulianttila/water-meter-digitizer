@@ -33,3 +33,19 @@ def check_image(response: requests.Response):
     image = PIL.Image.open(io.BytesIO(response.content))
     image.verify()
     assert image.format == "JPEG"
+
+
+def check_health_response(response: requests.Response):
+    data = response.json()
+    assert "status" in data
+    assert "uptime" in data
+    assert "camera" in data
+    assert "memory" in data
+    assert "cache" in data
+    assert "models" in data
+    assert "system" in data
+    assert data["status"] in ("healthy", "degraded", "unhealthy")
+    assert isinstance(data["uptime"]["uptime_seconds"], (int, float))
+    assert isinstance(data["memory"]["rss_mb"], (int, float))
+    assert isinstance(data["cache"]["hits"], int)
+    assert isinstance(data["models"]["digital"]["enabled"], bool)

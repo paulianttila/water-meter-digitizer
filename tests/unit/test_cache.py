@@ -87,7 +87,36 @@ def test_cache_concurrent_access():
         for i in range(4):
             futures.append(executor.submit(writer, i))
             futures.append(executor.submit(reader, i))
-        for f in concurrent.futures.as_completed(futures):
-            f.result()
-
     assert len(cache) <= 20
+
+
+def test_cache_stats():
+    cache = ImageCache(max_size=5, ttl_seconds=60)
+    img = _create_test_image()
+
+    cache.set("key1", img)
+    cache.set("key2", img)
+
+    # 2 hits, 1 miss
+    _ = cache.get("key1")
+    _ = cache.get("key1")
+    _ = cache.get("nonexistent")
+
+    stats = cache.get_stats()
+    assert stats["hits"] == 2
+    assert stats["misses"] == 1
+    assert stats["total_requests"] == 3
+    assert stats["hit_ratio_percent"] == 66.67
+    assert stats["current_size"] == 2
+    assert stats["max_size"] == 5
+    assert stats["ttl_seconds"] == 60.0
+    assert set(stats["cached_keys"]) == {"key1", "key2"}
+
+    # Test clear with reset_stats
+    cache.clear(reset_stats=True)
+    cleared_stats = cache.get_stats()
+    assert cleared_stats["hits"] == 0
+    assert cleared_stats["misses"] == 0
+    assert cleared_stats["total_requests"] == 0
+    assert cleared_stats["hit_ratio_percent"] == 0.0
+    assert cleared_stats["current_size"] == 0

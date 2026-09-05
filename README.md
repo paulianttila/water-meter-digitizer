@@ -102,10 +102,67 @@ All endpoints are served on port `3000`.
 | `GET` | `/setPreviousValue?name=<n>&value=<v>` | Manually set the stored previous value for a meter |
 | `GET` | `/reload` | Reload configuration from disk |
 | `GET` | `/version` | Return app version information as JSON |
+| `GET` | `/health` | Rich JSON diagnostics: camera latency, memory, cache hit ratio, models, uptime |
 | `GET` | `/healthcheck` | Liveness check, returns `Health - OK` |
 | `GET` | `/exit` | Graceful shutdown |
 
-### Example JSON Response (`/meter?format=json`)
+### Example JSON Responses
+
+#### Health & Diagnostics (`/health`)
+
+```json
+{
+  "status": "healthy",
+  "uptime": {
+    "uptime_seconds": 1245.8,
+    "uptime_human": "20m 45s",
+    "started_at": "2026-09-05T15:10:00.000000+00:00"
+  },
+  "camera": {
+    "url": "http://192.168.1.100/capture",
+    "reachable": true,
+    "latency_ms": 14.2,
+    "status_code": 200,
+    "error": null
+  },
+  "memory": {
+    "rss_mb": 68.4,
+    "peak_rss_mb": 74.2,
+    "platform": "darwin"
+  },
+  "cache": {
+    "hits": 45,
+    "misses": 3,
+    "total_requests": 48,
+    "hit_ratio_percent": 93.75,
+    "current_size": 12,
+    "max_size": 50,
+    "ttl_seconds": 300.0,
+    "cached_keys": ["original", "aligned", "digit1", "digit2", "analog1"]
+  },
+  "models": {
+    "digital": {
+      "enabled": true,
+      "path": "/config/neuralnets/digital/dig-class100_0168_s2_q.tflite",
+      "exists": true,
+      "size_bytes": 172832
+    },
+    "analog": {
+      "enabled": true,
+      "path": "/config/neuralnets/analog/ana-cont_1209_s2.tflite",
+      "exists": true,
+      "size_bytes": 145920
+    }
+  },
+  "system": {
+    "version": "8.0.0",
+    "python_version": "3.11.13",
+    "platform": "Darwin-24.0.0"
+  }
+}
+```
+
+#### Meter Readout (`/meter?format=json`)
 
 ```json
 {
