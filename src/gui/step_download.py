@@ -1,4 +1,5 @@
 import asyncio
+import contextlib
 from typing import Callable
 
 from nicegui import ui
@@ -54,10 +55,8 @@ class DownloadImageStep(BaseStep):
                 self.set_image_callback(self.image)
             return True
         except Exception as e:
-            try:
+            with contextlib.suppress(Exception):
                 ui.notify(f"Download failed: {e}", type="negative")
-            except Exception:  # nosec B110
-                pass
             if self.on_error_callback is not None:
                 self.on_error_callback(str(e))
             return False

@@ -116,7 +116,7 @@ def test_config():
             max_rate_value=0,
             use_previous_value=False,
             pre_value_from_file_max_age=0,
-            use_extended_resolution=False,
+            use_extended_resolution=True,
         ),
         MeterConfig(
             name="total",

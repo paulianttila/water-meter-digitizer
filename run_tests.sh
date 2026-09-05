@@ -39,12 +39,17 @@ fi
 TEST_APP_PID=
 
 # --- Process Management & Cleanup ---
-clean_up() {
+stop_test_app() {
   if [ -n "${TEST_APP_PID}" ] && kill -0 "${TEST_APP_PID}" 2>/dev/null; then
     echo -e "${YELLOW}Stopping test app (PID=${TEST_APP_PID})...${NC}"
     kill "${TEST_APP_PID}" 2>/dev/null || kill -9 "${TEST_APP_PID}" 2>/dev/null
     wait "${TEST_APP_PID}" 2>/dev/null || true
+    TEST_APP_PID=
   fi
+}
+
+clean_up() {
+  stop_test_app
 }
 trap clean_up EXIT INT TERM
 
@@ -82,7 +87,10 @@ run_integration_tests() {
   start_test_app
   echo -e "${BLUE}Running Tavern integration tests...${NC}"
   export PYTHONPATH=${PYTHONPATH}:${PWD}/tests/integration/
-  ${PYTHON} -m pytest --log-cli-level="${TAVERN_LOG_LEVEL}" tests/integration/
+  local status=0
+  ${PYTHON} -m pytest --log-cli-level="${TAVERN_LOG_LEVEL}" tests/integration/ || status=$?
+  stop_test_app
+  return ${status}
 }
 
 run_static_analysis() {

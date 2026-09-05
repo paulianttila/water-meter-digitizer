@@ -37,4 +37,4 @@ jobs:
           sudo cp -R config /
           sudo mkdir -p /image_tmp
           sudo chmod -R 777 /config /image_tmp
-          ./run_tests.sh -a
+          ./run_tests.sh
