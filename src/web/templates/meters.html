@@ -1,19 +1,499 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Live water meter readout with neural network classification, dial inspection, and intermediate debug crops.">
+    <title>Meter Readout - Water Meter System</title>
+    <link id="favicon" rel="icon" type="image/x-icon" href="/static/favicon.ico">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700;800&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #0a0f1d;
+            --bg-card: rgba(17, 24, 39, 0.75);
+            --bg-card-hover: rgba(30, 41, 59, 0.85);
+            --border-color: rgba(255, 255, 255, 0.08);
+            --border-hover: rgba(59, 130, 246, 0.5);
+            --text-main: #f3f4f6;
+            --text-muted: #9ca3af;
+            --accent-blue: #3b82f6;
+            --accent-cyan: #06b6d4;
+            --accent-teal: #10b981;
+            --accent-purple: #8b5cf6;
+            --gradient-hero: linear-gradient(135deg, #2563eb 0%, #06b6d4 100%);
+            --gradient-card: linear-gradient(180deg, rgba(255, 255, 255, 0.04) 0%, rgba(255, 255, 255, 0.01) 100%);
+            --shadow-glow: 0 0 25px rgba(37, 99, 235, 0.25);
+            --shadow-card: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
+            --radius-lg: 16px;
+            --radius-md: 12px;
+            --radius-sm: 8px;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background-color: var(--bg-primary);
+            background-image: 
+                radial-gradient(at 0% 0%, rgba(37, 99, 235, 0.15) 0px, transparent 50%),
+                radial-gradient(at 100% 0%, rgba(6, 182, 212, 0.12) 0px, transparent 50%),
+                radial-gradient(at 50% 100%, rgba(139, 92, 246, 0.1) 0px, transparent 50%);
+            background-attachment: fixed;
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 2.5rem 1.5rem;
+            line-height: 1.5;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 960px;
+            display: flex;
+            flex-direction: column;
+            gap: 2rem;
+        }
+
+        /* --- Header --- */
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1rem;
+            padding-bottom: 1.5rem;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .brand {
+            display: flex;
+            align-items: center;
+            gap: 0.875rem;
+        }
+
+        .brand-icon {
+            width: 44px;
+            height: 44px;
+            border-radius: var(--radius-md);
+            background: var(--gradient-hero);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: var(--shadow-glow);
+        }
+
+        .brand-icon svg {
+            width: 24px;
+            height: 24px;
+            fill: none;
+            stroke: #ffffff;
+            stroke-width: 2;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+        }
+
+        .brand-text h1 {
+            font-family: 'Outfit', sans-serif;
+            font-size: 1.5rem;
+            font-weight: 700;
+            letter-spacing: -0.02em;
+            background: linear-gradient(90deg, #ffffff 0%, #cbd5e1 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .brand-text p {
+            font-size: 0.85rem;
+            color: var(--text-muted);
+        }
+
+        .nav-actions {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            flex-wrap: wrap;
+        }
+
+        .btn-nav {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.4rem;
+            padding: 0.5rem 0.9rem;
+            border-radius: var(--radius-sm);
+            font-size: 0.825rem;
+            font-weight: 600;
+            text-decoration: none;
+            color: #cbd5e1;
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid var(--border-color);
+            transition: all 0.2s ease;
+        }
+
+        .btn-nav:hover {
+            background: rgba(255, 255, 255, 0.12);
+            color: #ffffff;
+            border-color: rgba(255, 255, 255, 0.2);
+        }
+
+        .btn-nav-primary {
+            background: var(--gradient-hero);
+            color: #ffffff;
+            border: none;
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.35);
+        }
+
+        .btn-nav-primary:hover {
+            filter: brightness(1.1);
+            color: #ffffff;
+        }
+
+        /* --- Meter Summary Cards --- */
+        .meters-summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 1rem;
+        }
+
+        .meter-stat-card {
+            background: var(--bg-card);
+            background-image: var(--gradient-card);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: 1.25rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.5rem;
+            box-shadow: var(--shadow-card);
+            backdrop-filter: blur(8px);
+            position: relative;
+            overflow: hidden;
+            transition: transform 0.2s ease, border-color 0.2s ease;
+        }
+
+        .meter-stat-card:hover {
+            transform: translateY(-2px);
+            border-color: var(--border-hover);
+        }
+
+        .meter-stat-card.featured {
+            background: linear-gradient(135deg, rgba(37, 99, 235, 0.2) 0%, rgba(6, 182, 212, 0.12) 100%), var(--bg-card);
+            border-color: rgba(59, 130, 246, 0.4);
+            grid-column: 1 / -1;
+        }
+
+        .meter-stat-card.featured::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 2px;
+            background: var(--gradient-hero);
+        }
+
+        .meter-label {
+            font-size: 0.8rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-muted);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+        }
+
+        .meter-value-wrap {
+            display: flex;
+            align-items: baseline;
+            gap: 0.5rem;
+        }
+
+        .meter-value {
+            font-family: 'Outfit', -apple-system, sans-serif;
+            font-size: 1.85rem;
+            font-weight: 800;
+            letter-spacing: -0.02em;
+            color: #ffffff;
+        }
+
+        .meter-stat-card.featured .meter-value {
+            font-size: 2.5rem;
+            background: linear-gradient(90deg, #ffffff 0%, #67e8f9 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .meter-unit {
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--text-muted);
+        }
+
+        /* --- Sections --- */
+        .section-title {
+            font-family: 'Outfit', sans-serif;
+            font-size: 1.15rem;
+            font-weight: 700;
+            color: #cbd5e1;
+            margin-bottom: 0.875rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        /* --- Final Image Card --- */
+        .main-image-card {
+            background: var(--bg-card);
+            background-image: var(--gradient-card);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            padding: 1.25rem;
+            box-shadow: var(--shadow-card);
+            backdrop-filter: blur(8px);
+            display: flex;
+            flex-direction: column;
+            gap: 1rem;
+        }
+
+        .image-frame {
+            background: #030712;
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: var(--radius-md);
+            overflow: hidden;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 240px;
+        }
+
+        .image-frame img {
+            max-width: 100%;
+            height: auto;
+            display: block;
+            border-radius: var(--radius-sm);
+        }
+
+        /* --- Crops Grid --- */
+        .crops-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
+            gap: 0.875rem;
+        }
+
+        .crop-card {
+            background: var(--bg-card);
+            background-image: var(--gradient-card);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-md);
+            padding: 0.875rem;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.625rem;
+            box-shadow: var(--shadow-card);
+            backdrop-filter: blur(8px);
+            transition: transform 0.2s ease, border-color 0.2s ease;
+        }
+
+        .crop-card:hover {
+            transform: translateY(-2px);
+            border-color: var(--border-hover);
+        }
+
+        .crop-card-img-wrap {
+            width: 100%;
+            aspect-ratio: 1;
+            background: #030712;
+            border: 1px solid rgba(255, 255, 255, 0.06);
+            border-radius: var(--radius-sm);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            overflow: hidden;
+        }
+
+        .crop-card-img-wrap img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+            display: block;
+        }
+
+        .crop-card-info {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 0.15rem;
+            width: 100%;
+        }
+
+        .crop-name {
+            font-size: 0.725rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+
+        .crop-val-pill {
+            font-family: 'Outfit', sans-serif;
+            font-weight: 700;
+            font-size: 1.05rem;
+            color: #38bdf8;
+        }
+
+        /* --- Footer --- */
+        footer {
+            margin-top: 1rem;
+            padding-top: 1.5rem;
+            border-top: 1px solid var(--border-color);
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 1rem;
+            font-size: 0.8rem;
+            color: var(--text-muted);
+        }
+
+        footer a {
+            color: #93c5fd;
+            text-decoration: none;
+        }
+
+        footer a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
 <body>
-    <h1>Meters</h1>
-    {% for meter in result.meters %}
-    <p>{{ meter.name }}: {{ meter.value }} {{ meter.unit }}</p>
-    {% endfor %}
-    <h2>Image</h2>
-    <img src=/image_tmp/final.jpg></img></p>
-    <h2>Digital counters</h2>
-    {% for image, value in result.digital_results.items() %}
-    <img src=/image_tmp/{{ image }}.jpg></img>{{ value }}
-    {% endfor %}
-    <h2>Analog counters</h2>
-    {% for image, value in result.analog_results.items() %} 
-    <img src=/image_tmp/{{ image }}.jpg></img>{{ value }}
-    {% endfor %}
+    <div class="container">
+        <!-- Header -->
+        <header>
+            <div class="brand">
+                <div class="brand-icon">
+                    <svg viewBox="0 0 24 24">
+                        <path d="M12 2.69l5.66 5.66a8 8 0 1 1-11.31 0z"></path>
+                    </svg>
+                </div>
+                <div class="brand-text">
+                    <h1>Meter Readout</h1>
+                    <p>Live Neural Network Deductions</p>
+                </div>
+            </div>
+            <div class="nav-actions">
+                <a href="/" class="btn-nav">
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
+                    <span>Home</span>
+                </a>
+                <a href="/roi" class="btn-nav">
+                    <span>ROI Overlay</span>
+                </a>
+                <a href="/meter?format=json" class="btn-nav">
+                    <span>JSON</span>
+                </a>
+                <a href="/gui" class="btn-nav btn-nav-primary">
+                    <span>Open Web UI</span>
+                    <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><line x1="5" y1="12" x2="19" y2="12"></line><polyline points="12 5 19 12 12 19"></polyline></svg>
+                </a>
+            </div>
+        </header>
+
+        <!-- Meter Summary Cards -->
+        <section>
+            <div class="meters-summary-grid">
+                {% for meter in result.meters %}
+                <div class="meter-stat-card {% if meter.name == 'total' %}featured{% endif %}">
+                    <div class="meter-label">
+                        <span>{{ meter.name }}</span>
+                        {% if meter.name == 'total' %}
+                        <span style="color: #34d399; font-size: 0.7rem; font-weight: 700;">PRIMARY</span>
+                        {% endif %}
+                    </div>
+                    <div class="meter-value-wrap">
+                        <span class="meter-value">{{ meter.value }}</span>
+                        {% if meter.unit %}<span class="meter-unit">{{ meter.unit }}</span>{% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </section>
+
+        <!-- Main Final Image -->
+        <section>
+            <div class="section-title">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="3" width="18" height="18" rx="2"></rect><circle cx="8.5" cy="8.5" r="1.5"></circle><polyline points="21 15 16 10 5 21"></polyline></svg>
+                Processed Capture
+            </div>
+            <div class="main-image-card">
+                <div class="image-frame">
+                    <img src="/image_tmp/final.jpg" alt="Final Meter Capture" onerror="this.parentElement.innerHTML='<span style=\'color: var(--text-muted); font-size: 0.85rem; padding: 2rem;\'>Image preview available when saveimages=true or configured</span>'">
+                </div>
+            </div>
+        </section>
+
+        <!-- Digital Counters -->
+        {% if result.digital_results %}
+        <section>
+            <div class="section-title">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="20" height="14" rx="2" ry="2"></rect><path d="M16 21V5a2 2 0 0 0-2-2h-4a2 2 0 0 0-2 2v16"></path></svg>
+                Digital Counters
+            </div>
+            <div class="crops-grid">
+                {% for image, value in result.digital_results.items() %}
+                <div class="crop-card">
+                    <div class="crop-card-img-wrap">
+                        <img src="/image_tmp/{{ image }}.jpg" alt="{{ image }}" onerror="this.style.display='none'">
+                    </div>
+                    <div class="crop-card-info">
+                        <span class="crop-name">{{ image }}</span>
+                        <span class="crop-val-pill">{{ value }}</span>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </section>
+        {% endif %}
+
+        <!-- Analog Counters -->
+        {% if result.analog_results %}
+        <section>
+            <div class="section-title">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"></circle><polyline points="12 6 12 12 16 14"></polyline></svg>
+                Analog Dial Counters
+            </div>
+            <div class="crops-grid">
+                {% for image, value in result.analog_results.items() %}
+                <div class="crop-card">
+                    <div class="crop-card-img-wrap">
+                        <img src="/image_tmp/{{ image }}.jpg" alt="{{ image }}" onerror="this.style.display='none'">
+                    </div>
+                    <div class="crop-card-info">
+                        <span class="crop-name">{{ image }}</span>
+                        <span class="crop-val-pill">{{ value }}</span>
+                    </div>
+                </div>
+                {% endfor %}
+            </div>
+        </section>
+        {% endif %}
+
+        <!-- Footer -->
+        <footer>
+            <span>Water Meter System &bull; Powered by Google LiteRT</span>
+            <div>
+                <a href="/meter?format=json">JSON API</a> &bull;
+                <a href="/meter?saveimages=true">Save Images</a> &bull;
+                <a href="/gui">Setup Wizard</a>
+            </div>
+        </footer>
+    </div>
 </body>
 </html>
