@@ -15,12 +15,12 @@ import uvicorn
 
 from decorators.decorators import log_execution_time
 from configuration import Config
+from utils.cache import ImageCache
 from utils.download import DownloadFailure
 import utils.image
 from processor.digitizer import DigitizerProcessor, MeterResult
 from processor.image import ImageProcessor
 import previous_value
-from PIL.Image import Image
 
 VERSION = "8.0.0"
 
@@ -30,7 +30,6 @@ COLOR_BLUE = (0, 0, 255)
 
 config_file = os.environ.get("CONFIG_FILE", "/config/config.ini")
 config = Config()
-images: dict[str, Image] = {}
 
 logging.basicConfig(
     stream=sys.stdout,
@@ -42,6 +41,8 @@ logger.setLevel(logging.INFO)
 
 BASE_DIR = Path(__file__).resolve().parent
 app = FastAPI(title="meter")
+image_cache = ImageCache(max_size=50, ttl_seconds=300.0)
+app.state.image_cache = image_cache
 app.mount(
     "/static", StaticFiles(directory=str(BASE_DIR / "web" / "static")), name="static"
 )
@@ -65,10 +66,10 @@ def healthcheck():
 @app.get("/image/{image}")
 @app.get("/image_tmp/{image}")
 @log_execution_time
-def get_image(image: str) -> Response:
+def get_image(image: str, request: Request) -> Response:
     image = image.removesuffix(".jpg")
     logger.debug(f"Getting image: {image}")
-    img = images.get(image)
+    img = request.app.state.image_cache.get(image)
     if img is None:
         raise HTTPException(status_code=404, detail="Image not found")
     image_bytes = utils.image.convert_image_to_bytes(img)
@@ -265,8 +266,7 @@ def get_meter_data(url: str = "", saveimages: bool = False) -> MeterResult:
         .save_cut_images()
         .get_cut_images()
     )
-    global images
-    images = imageProcessor.get_pictures()
+    app.state.image_cache.set_many(imageProcessor.get_pictures())
 
     return (
         DigitizerProcessor()
@@ -286,7 +286,7 @@ def get_meter_data(url: str = "", saveimages: bool = False) -> MeterResult:
 
 
 def get_image_as_base64_str(image_name: str) -> str:
-    img = images.get(image_name)
+    img = app.state.image_cache.get(image_name)
     if img is None:
         raise HTTPException(status_code=404, detail="Image not found")
     return utils.image.convert_image_base64str(img)
