@@ -1,6 +1,6 @@
 [project]
 name = "water-meter-system"
-version = "1.0.0"
+version = "8.0.0"
 description = "Automatic utility meter digitizer using neural network inference"
 readme = "README.md"
 requires-python = ">=3.11, <3.12"
