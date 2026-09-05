@@ -5,7 +5,17 @@ set -e
 # --- Configuration & Defaults ---
 TAVERN_LOG_LEVEL=${TAVERN_LOG_LEVEL:-INFO}
 PWD=$(pwd)
-export CONFIG_FILE="${CONFIG_FILE:-${PWD}/test_config/config.ini}"
+if [ -z "${CONFIG_FILE}" ]; then
+  if [ -f "${PWD}/test_config/config.ini" ]; then
+    export CONFIG_FILE="${PWD}/test_config/config.ini"
+  elif [ -f "/config/config.ini" ]; then
+    export CONFIG_FILE="/config/config.ini"
+  elif [ -f "${PWD}/config/config.ini" ]; then
+    export CONFIG_FILE="${PWD}/config/config.ini"
+  else
+    export CONFIG_FILE="${PWD}/test_config/config.ini"
+  fi
+fi
 
 # --- ANSI Colors ---
 RED='\033[0;31m'
