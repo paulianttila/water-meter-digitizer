@@ -77,7 +77,6 @@ class ImageProcessing:
 @dataclass
 class Config:
     log_level: str = "INFO"
-    image_tmp_dir: str = "/image_tmp"
     config_dir: str = "/config"
     prevoius_value_file: str = "/config/prevalue.ini"
     digital_models_dir: str = "/config/neuralnets/digital"
@@ -137,7 +136,6 @@ class Config:
         config = configparser.ConfigParser()
         config["DEFAULT"] = {
             "LogLevel": self.log_level,
-            "ImageTmpDir": self.image_tmp_dir,
             "ConfigDir": self.config_dir,
             "DigitalModelsDir": self.digital_models_dir,
             "AnalogModelsDir": self.analog_models_dir,
@@ -263,7 +261,6 @@ class Config:
 
         ################## General Parameters ##########################################
         self.log_level = config.get("DEFAULT", "LogLevel", fallback="INFO")
-        self.image_tmp_dir = config.get("DEFAULT", "ImageTmpDir", fallback="/image_tmp")
         self.config_dir = config.get("DEFAULT", "ConfigDir", fallback="/config")
         self.digital_models_dir = config.get(
             "DEFAULT", "DigitalModelsDir", fallback="/config/neuralnets/digital"

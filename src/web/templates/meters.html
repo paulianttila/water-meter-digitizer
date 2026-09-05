@@ -670,7 +670,7 @@
             </div>
             <div class="main-image-card">
                 <div class="image-frame">
-                    <img src="/image_tmp/final.jpg" alt="Final Meter Capture" onerror="this.parentElement.innerHTML='<span style=\'color: var(--text-muted); font-size: 0.85rem; padding: 2rem;\'>Image preview available when saveimages=true or configured</span>'">
+                    <img src="/image/final.jpg" alt="Final Meter Capture" onerror="this.parentElement.innerHTML='<span style=\'color: var(--text-muted); font-size: 0.85rem; padding: 2rem;\'>Image preview available when saveimages=true or configured</span>'">
                 </div>
             </div>
         </section>
@@ -686,7 +686,7 @@
                 {% for image, value in result.digital_results.items() %}
                 <div class="crop-card">
                     <div class="crop-card-img-wrap">
-                        <img src="/image_tmp/{{ image }}.jpg" alt="{{ image }}" onerror="this.style.display='none'">
+                        <img src="/image/{{ image }}.jpg" alt="{{ image }}" onerror="this.style.display='none'">
                     </div>
                     <div class="crop-card-info">
                         <span class="crop-name">{{ image }}</span>
@@ -709,7 +709,7 @@
                 {% for image, value in result.analog_results.items() %}
                 <div class="crop-card">
                     <div class="crop-card-img-wrap">
-                        <img src="/image_tmp/{{ image }}.jpg" alt="{{ image }}" onerror="this.style.display='none'">
+                        <img src="/image/{{ image }}.jpg" alt="{{ image }}" onerror="this.style.display='none'">
                     </div>
                     <div class="crop-card-info">
                         <span class="crop-name">{{ image }}</span>

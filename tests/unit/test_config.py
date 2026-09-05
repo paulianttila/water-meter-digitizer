@@ -6,7 +6,6 @@ def test_config():
     config = Config().load_from_file("config/config.ini")
 
     assert config.log_level == "INFO"
-    assert config.image_tmp_dir == "/image_tmp"
     assert config.config_dir == "/config"
     assert config.digital_models_dir == "/config/neuralnets/digital"
     assert config.analog_models_dir == "/config/neuralnets/analog"

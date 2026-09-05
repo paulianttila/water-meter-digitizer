@@ -35,6 +35,5 @@ jobs:
       - name: Run unit and integration tests
         run: |
           sudo cp -R config /
-          sudo mkdir -p /image_tmp
-          sudo chmod -R 777 /config /image_tmp
+          sudo chmod -R 777 /config
           ./run_tests.sh

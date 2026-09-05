@@ -63,6 +63,7 @@ def healthcheck():
     return "Health - OK"
 
 
+@app.get("/image/{image}")
 @app.get("/image_tmp/{image}")
 @log_execution_time
 def get_image(image: str) -> Response:

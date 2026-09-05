@@ -41,7 +41,7 @@ The interface is divided into a collapsible left sidebar and the main workspace:
 
 The **Meter** tab provides an operational overview of the digitizer:
 - **Trigger Readout**: Click the refresh button to capture a frame and perform immediate inference.
-- **Save Intermediate Images**: Checkbox to save rotated, aligned, and cropped ROI images to `/image_tmp` for diagnostics.
+- **Save Intermediate Images**: Checkbox to save rotated, aligned, and cropped ROI images to `/image/{name}` for diagnostics.
 - **Meter Cards**: Displays current readings with units (e.g. `0300.957 m³`), timestamp, and processing duration.
 - **Sub-digit Readouts**: Inspect the individual classification confidence and predictions for each digital drum digit and analog needle dial.
 

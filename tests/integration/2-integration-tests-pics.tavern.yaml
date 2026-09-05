@@ -26,7 +26,7 @@ marks:
 stages:
   - name: test pics
     request:
-      url: 'http://{url}/image_tmp/{PICTURE}'
+      url: 'http://{url}/image/{PICTURE}'
       method: GET
       timeout: 3
     response:

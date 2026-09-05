@@ -24,13 +24,10 @@ Automatically read analog and digital utility meters using a camera, image proce
 ### Docker Compose
 
 ```yaml
-version: "3.5"
-
 services:
   watermeter-system:
-    container_name: ${NAME:-watermeter-system}
-    image: watermeter-system
-    build: .
+    container_name: ${NAME:-water-meter-system}
+    image: ${IMAGE:-paulianttila/water-meter-system:latest}
     restart: unless-stopped
     security_opt:
       - no-new-privileges:true
@@ -38,21 +35,19 @@ services:
       - TZ=Europe/Helsinki
     volumes:
       - ${DIR_DATA:-.}/config:/config
-      - temp:/image_tmp
     ports:
       - 3000:3000
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:3000/healthcheck')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
     logging:
       driver: "json-file"
       options:
         max-size: "2m"
         max-file: "2"
-
-volumes:
-  temp:
-    driver_opts:
-      type: tmpfs
-      device: tmpfs
-      o: "size=5M"
 ```
 
 ```bash
@@ -138,7 +133,6 @@ Global application paths and logging configuration.
 |---|---|---|---|
 | `LogLevel` | string | `INFO` | Logging level (`DEBUG`, `INFO`, `WARNING`, `ERROR`). |
 | `ConfigDir` | string | `/config` | Directory containing configuration files and reference images. |
-| `ImageTmpDir` | string | `/image_tmp` | Temporary directory where debug and intermediate images are saved. |
 | `LogDir` | string | `/log` | Directory for log files. |
 | `DigitalModelsDir` | string | `${ConfigDir}/neuralnets/digital` | Directory containing TFLite models for digital digits. |
 | `AnalogModelsDir` | string | `${ConfigDir}/neuralnets/analog` | Directory containing TFLite models for analog needles. |
@@ -286,7 +280,6 @@ Defines output meters, value formatting, consistency checks, and units.
 ```ini
 [DEFAULT]
 LogLevel=INFO
-ImageTmpDir=/image_tmp
 ConfigDir=/config
 LogDir=/log
 DigitalModelsDir=${ConfigDir}/neuralnets/digital

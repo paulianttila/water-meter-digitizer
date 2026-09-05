@@ -18,7 +18,7 @@ COPY requirements.txt ./
 
 RUN uv pip install --system --no-cache -r requirements.txt
 
-RUN mkdir -p /image_tmp /log /config
+RUN mkdir -p /log /config
 
 WORKDIR /config
 COPY ./config/ ./
