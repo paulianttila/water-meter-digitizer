@@ -1354,7 +1354,7 @@ requires-dist = [
     { name = "coverage", marker = "extra == 'dev'", specifier = ">=7.4.3" },
     { name = "fastapi", specifier = ">=0.109.2" },
     { name = "jinja2", specifier = ">=3.1.4" },
-    { name = "nicegui", specifier = ">=1.4.25" },
+    { name = "nicegui", specifier = ">=3.16.0" },
     { name = "numpy", specifier = ">=1.26.4,<2.0.0" },
     { name = "opencv-python", specifier = ">=4.9.0.80" },
     { name = "pillow", specifier = ">=10.2.0" },
