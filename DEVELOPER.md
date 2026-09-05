@@ -171,7 +171,7 @@ Models are executed via `tflite_runtime` (or `tensorflow.lite`) in `src/cnn/`.
 ## Development Environment Setup
 
 ### Prerequisites
-- **Python 3.9+** (compatible through Python 3.12)
+- **Python 3.9 – 3.11** (`tflite-runtime` wheels support up to Python 3.11)
 - **uv** package manager ([astral.sh/uv](https://astral.sh/uv))
 - **libGL / OpenCV dependencies** (standard system libraries)
 
