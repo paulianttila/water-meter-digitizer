@@ -151,4 +151,20 @@ def test_save():
     finally:
         import os
 
-        os.remove(TEMPFILENAME)
+        if os.path.exists(TEMPFILENAME):
+            os.remove(TEMPFILENAME)
+
+
+def test_config_env_override(monkeypatch):
+    monkeypatch.setenv("METER_LOG_LEVEL", "DEBUG")
+    monkeypatch.setenv("METER_CONFIG_DIR", "/custom/config")
+    config = Config()
+    assert config.log_level == "DEBUG"
+    assert config.config_dir == "/custom/config"
+
+
+def test_config_json_schema():
+    schema = Config.model_json_schema()
+    assert "properties" in schema
+    assert "log_level" in schema["properties"]
+    assert "image_source" in schema["properties"]

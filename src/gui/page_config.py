@@ -1,5 +1,3 @@
-import dataclasses
-import json
 from nicegui import ui
 
 from callbacks import Callbacks
@@ -35,7 +33,7 @@ class ConfigPage:
             try:
                 config = Config()
                 config.load_from_string(editor.value)
-                j = json.dumps(dataclasses.asdict(config), indent=4)
+                j = config.model_dump_json(indent=4)
                 with (
                     ui.dialog() as dialog,
                     ui.card().classes(

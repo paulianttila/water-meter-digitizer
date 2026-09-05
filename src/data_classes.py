@@ -1,32 +1,28 @@
-from dataclasses import dataclass
-
 import re
 from PIL.Image import Image
+from pydantic import BaseModel, ConfigDict
 
 
-@dataclass
-class ImagePosition:
-    name: str
-    x: int
-    y: int
-    w: int
-    h: int
+class ImagePosition(BaseModel):
+    name: str = ""
+    x: int = 0
+    y: int = 0
+    w: int = 0
+    h: int = 0
 
 
-@dataclass
 class RefImage(ImagePosition):
-    file_name: str
+    file_name: str = ""
 
 
-@dataclass
-class MeterConfig:
+class MeterConfig(BaseModel):
     name: str
     format: str
-    consistency_enabled: bool
-    allow_negative_rates: bool
-    max_rate_value: float
-    use_previous_value: bool
-    pre_value_from_file_max_age: int
+    consistency_enabled: bool = False
+    allow_negative_rates: bool = False
+    max_rate_value: float = 0.0
+    use_previous_value: bool = False
+    pre_value_from_file_max_age: int = 0
     use_extended_resolution: bool = False
     unit: str = ""
 
@@ -35,7 +31,8 @@ class MeterConfig:
         return re.findall(r"\{(.*?)\}", self.format)
 
 
-@dataclass
-class CutImage:
+class CutImage(BaseModel):
+    model_config = ConfigDict(arbitrary_types_allowed=True)
+
     name: str
     image: Image

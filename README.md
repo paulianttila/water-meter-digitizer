@@ -1,21 +1,25 @@
 # Water Meter Digitizer
 
-Automatically read analog and digital utility meters using a camera, image processing, and neural network inference. The system captures an image from a configured camera URL, aligns it against reference images, crops the individual digit/needle ROIs, runs them through CNN models, and returns the final meter readings via a REST API.
+Automatically read analog and digital utility meters using a camera, image processing, and neural network inference. The system captures an image from a configured camera URL, aligns it against reference markers, crops the individual digit/needle ROIs, runs them through CNN models via Google LiteRT runtime, and returns the final meter readings via a REST API and a modern web dashboard.
 
-> This is a completely rewritten fork of the original [jomjol](https://github.com/jomjol) version (archived 2021).
+> This is a completely rewritten, modernized fork of the original [jomjol](https://github.com/jomjol) version (archived 2021).
 
 ---
 
 ## Features
 
-- **Mixed meter support** — read combinations of analog needle wheels and digital LCD/drum digits in a single image
-- **Four CNN model types** — `analog`, `analog100`, `digital`, `digital100` (auto-detected from model output shape)
-- **Predecessor-based digit correction** — uses adjacent wheel positions to correct ambiguous readings at digit boundaries
-- **Extended resolution** — optionally appends a sub-digit decimal from the last analog wheel
-- **Consistency checking** — rejects readings that exceed a configured rate limit or go negative
-- **Previous value fill-in** — replaces unreadable digits (`N`) with the last known good value
-- **REST API + Web GUI** — FastAPI backend, served on port `3000`
-- **Docker ready** — single container, x86 and ARM supported
+- **Google LiteRT Runtime** — fast, low-latency neural network inference powered by `ai-edge-litert` on Python 3.11.
+- **Modern Web Dashboard & Wizard (`/gui`)** — interactive 8-step setup wizard, live ROI alignment editor, and configuration manager powered by NiceGUI 3.16.
+- **Interactive API Explorer (`/`)** — landing page with real-time meter status, JSON viewer, and one-click endpoint testing.
+- **In-Memory Image Cache (`/image/{name}`)** — thread-safe bounded LRU + TTL image caching in memory, eliminating disk thrashing and temporary file mounts.
+- **Pydantic v2 Configuration** — strict type validation and hierarchical `METER_*` environment variable overrides powered by `pydantic-settings`.
+- **Mixed Meter Support** — read combinations of analog needle dials and digital LCD/odometer drum digits in a single image.
+- **Four CNN Model Types** — `analog`, `analog100`, `digital`, `digital100` (auto-detected from model output shape).
+- **Predecessor-Based Digit Correction** — uses adjacent wheel positions to correct ambiguous readings at digit roll-over boundaries.
+- **Extended Resolution** — optionally appends a fractional sub-digit decimal from the last analog needle wheel.
+- **Consistency Checking** — rejects spurious readings that exceed configured rate limits or go negative.
+- **Previous Value Fallback** — replaces unreadable digits (`N`) with the last known valid reading.
+- **Docker Ready** — multi-arch (x86_64, ARM64) container with integrated healthchecks.
 
 ---
 
@@ -33,6 +37,7 @@ services:
       - no-new-privileges:true
     environment:
       - TZ=Europe/Helsinki
+      - METER_LOG_LEVEL=INFO
     volumes:
       - ${DIR_DATA:-.}/config:/config
     ports:
@@ -54,18 +59,28 @@ services:
 docker compose up -d
 ```
 
-The web GUI is then available at **http://localhost:3000**.
+The web dashboard is available at **http://localhost:3000/gui**, and the API explorer is at **http://localhost:3000**.
 
 ### Run Locally (development with `uv`)
 
 ```bash
-# Create virtual environment and install dependencies
+# Install dependencies
 uv sync
 
-# Point to a config file and start
+# Point to configuration and run
 export CONFIG_FILE=$(pwd)/config/config.ini
-cd src && uv run python main.py
+uv run python src/main.py
 ```
+
+---
+
+## Web Interfaces
+
+- **`/` — API Explorer & Status Page**: Real-time summary of configured meters, last reading timestamps, interactive API documentation, and live preview.
+- **`/gui` — NiceGUI Web Dashboard**:
+  - **Setup Wizard**: 8-step guided calibration flow (image capture, cropping/resizing, image processing, reference marker alignment, ROI bounding-box tuning, and meter calculation setup).
+  - **Config Editor**: Direct visual and raw configuration editing with schema validation.
+  - **Log Viewer**: Real-time application log stream with level filtering.
 
 ---
 
@@ -75,24 +90,27 @@ All endpoints are served on port `3000`.
 
 | Method | Endpoint | Description |
 |--------|----------|-------------|
-| `GET` | `/` | Web GUI (HTML) |
+| `GET` | `/` | API Explorer & Status landing page (HTML) |
+| `GET` | `/gui` | NiceGUI Web Dashboard & Setup Wizard |
 | `GET` | `/meter?format=json` | Trigger a readout, return JSON result |
-| `GET` | `/meter?format=html` | Trigger a readout, return HTML result |
-| `GET` | `/meter?url=<cam_url>` | Override the camera URL for this request |
-| `GET` | `/meter?saveimages=true` | Save intermediate images for debugging |
-| `GET` | `/roi` | Show current ROI overlays on the live image |
-| `GET` | `/setPreviousValue?name=<n>&value=<v>` | Manually set the stored previous value |
+| `GET` | `/meter?format=html` | Trigger a readout, return formatted HTML result |
+| `GET` | `/meter?url=<cam_url>` | Override the camera URL for a single readout |
+| `GET` | `/meter?saveimages=true` | Save intermediate images to memory cache for debugging |
+| `GET` | `/roi` | Show current ROI overlays on the live aligned image |
+| `GET` | `/image/{image}` | Stream an image from in-memory cache (e.g. `original.jpg`, `aligned.jpg`, `roi.jpg`, `{roi_name}.jpg`) |
+| `GET` | `/image_tmp/{image}` | Backward-compatible alias for `/image/{image}` |
+| `GET` | `/setPreviousValue?name=<n>&value=<v>` | Manually set the stored previous value for a meter |
 | `GET` | `/reload` | Reload configuration from disk |
-| `GET` | `/version` | Return app version as JSON |
+| `GET` | `/version` | Return app version information as JSON |
 | `GET` | `/healthcheck` | Liveness check, returns `Health - OK` |
 | `GET` | `/exit` | Graceful shutdown |
 
-### Example JSON response
+### Example JSON Response (`/meter?format=json`)
 
 ```json
 {
   "meters": [
-    { "name": "main", "value": "00452.91241", "unit": "" }
+    { "name": "main", "value": "00452.91241", "unit": "m³" }
   ],
   "digital_results": {
     "digit1": "0.0",
@@ -115,14 +133,23 @@ All endpoints are served on port `3000`.
 
 ## Configuration
 
-The system configuration is defined in an INI file format, loaded by default from `/config/config.ini` (overridable via the `CONFIG_FILE` environment variable). The configuration supports variable interpolation (e.g. `${ConfigDir}`).
+The system is configured via an INI file format (default `/config/config.ini`), which can also be overridden using environment variables via Pydantic Settings.
 
 ### Environment Variables
 
+Settings can be specified either through the INI file or directly via environment variables:
+
 | Variable | Default | Description |
 |----------|---------|-------------|
-| `CONFIG_FILE` | `/config/config.ini` | Path to the configuration file |
-| `TZ` | — | Timezone (e.g. `Europe/Helsinki`) |
+| `CONFIG_FILE` | `/config/config.ini` | Path to the active configuration INI file |
+| `TZ` | — | Container timezone (e.g. `Europe/Helsinki`) |
+| `METER_LOG_LEVEL` | `INFO` | Override global logging level (`DEBUG`, `INFO`, `WARNING`, `ERROR`) |
+| `METER_CONFIG_DIR` | `/config` | Override base configuration directory |
+| `METER_LOG_DIR` | `/log` | Override log directory |
+| `METER_IMAGE_SOURCE__URL` | `""` | Override camera image source URL |
+| `METER_IMAGE_SOURCE__TIMEOUT` | `30` | Override image download timeout in seconds |
+
+> **Tip**: Any configuration key can be overridden using the `METER_<SECTION>__<KEY>` naming convention (e.g. `METER_IMAGE_PROCESSING__ENABLED=true`).
 
 ---
 
@@ -199,7 +226,7 @@ Affine transformation using reference markers to correct rotation and perspectiv
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
-| `RotationAngle` | float | `0.0` | Initial coarse rotation in degrees (e.g. `0`, `90`, `180`, `270`). |
+| `RotationAngle` | float | `0.0` | Coarse rotation in degrees (`0`, `90`, `180`, `270`). |
 | `Refs` | string | `""` | Comma-separated list of reference image section names (e.g. `ref0, ref1, ref2`). |
 | `PostRotationAngle` | float | `0.0` | Fine-tuning post-rotation angle in degrees (e.g. `0.5`). |
 
@@ -440,6 +467,8 @@ Four model types are supported. The active type is selected via the `Modelfile` 
 | `digital` | 11 | Digital digit, 0–9 + invalid |
 | `digital100` | 100 | Digital digit, continuous 0–99 |
 
+Models are executed using Google LiteRT (`ai-edge-litert`), providing high-performance quantized and floating-point inference across CPU, GPU, and NPU delegates.
+
 ---
 
 ## Architecture
@@ -450,18 +479,18 @@ Camera URL
     ▼
 ImageProcessor          ← download, rotate, align, crop ROIs
     │
-    ├─ analog images ──► AnalogNeedleCNN  ─┐
-    └─ digital images ─► DigitalCounterCNN ┘
-                                            │
-                                            ▼
-                                    DigitizerProcessor
-                                      • predecessor correction
-                                      • extended resolution
-                                      • consistency check
-                                      • previous value fill-in
-                                            │
-                                            ▼
-                                       MeterResult  ──► REST API / GUI
+    ├─ analog images ──► AnalogNeedleCNN   (LiteRT) ─┐
+    └─ digital images ─► DigitalCounterCNN (LiteRT) ┘
+                                                     │
+                                                     ▼
+                                             DigitizerProcessor
+                                               • predecessor correction
+                                               • extended resolution
+                                               • consistency check
+                                               • previous value fill-in
+                                                     │
+                                                     ▼
+                                                MeterResult  ──► REST API / NiceGUI Dashboard
 ```
 
 ---

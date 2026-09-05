@@ -231,9 +231,9 @@ class SetupPage:
                     )
                 )
             config.digital_readout = CNNParams(
-                enabled=True,
-                model=str(self.draw_digital_rois_step.cnn_type.value),
-                model_file=f"{model_dir}/{model_file}",
+                enabled=len(digital_cut_images) > 0,
+                model=str(self.draw_digital_rois_step.cnn_type.value or "auto"),
+                model_file=f"{model_dir}/{model_file}" if model_file else "",
                 cut_images=digital_cut_images,
             )
 
@@ -256,9 +256,9 @@ class SetupPage:
                     )
                 )
             config.analog_readout = CNNParams(
-                enabled=True,
-                model=str(self.draw_analog_rois_step.cnn_type.value),
-                model_file=f"{model_dir}/{model_file}",
+                enabled=len(analog_cut_images) > 0,
+                model=str(self.draw_analog_rois_step.cnn_type.value or "auto"),
+                model_file=f"{model_dir}/{model_file}" if model_file else "",
                 cut_images=analog_cut_images,
             )
             meters = []

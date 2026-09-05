@@ -107,16 +107,22 @@ propcache==0.5.2
 protobuf==7.36.1
     # via ai-edge-litert
 pydantic==2.13.5
-    # via fastapi
+    # via
+    #   -r requirements.in
+    #   fastapi
+    #   pydantic-settings
 pydantic-core==2.46.5
     # via
     #   nicegui
     #   pydantic
+pydantic-settings==2.15.0
+    # via -r requirements.in
 pygments==2.21.0
     # via nicegui
 python-dotenv==1.2.3
     # via
     #   nicegui
+    #   pydantic-settings
     #   uvicorn
 python-engineio==4.14.0
     # via
@@ -158,6 +164,7 @@ typing-inspection==0.4.4
     # via
     #   fastapi
     #   pydantic
+    #   pydantic-settings
 urllib3==2.2.1
     # via requests
 uvicorn==0.29.0

@@ -1,10 +1,11 @@
-from dataclasses import dataclass, field
+import configparser
 import datetime
 import io
-import shutil
-import configparser
-import os
 import logging
+import os
+import shutil
+from pydantic import BaseModel, Field
+from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from data_classes import ImagePosition, MeterConfig, RefImage
 
@@ -15,30 +16,26 @@ class ConfigurationMissing(Exception):
     pass
 
 
-@dataclass
-class ImageSource:
+class ImageSource(BaseModel):
     url: str = ""
     timeout: int = 30
     min_size: int = 10000
 
 
-@dataclass
-class CNNParams:
+class CNNParams(BaseModel):
     enabled: bool = False
     model_file: str = ""
     model: str = ""
-    cut_images: list[ImagePosition] = field(default_factory=list)
+    cut_images: list[ImagePosition] = Field(default_factory=list)
 
 
-@dataclass
-class Alignment:
+class Alignment(BaseModel):
     rotate_angle: float = 0.0
-    ref_images: list[RefImage] = field(default_factory=list)
+    ref_images: list[RefImage] = Field(default_factory=list)
     post_rotate_angle: float = 0.0
 
 
-@dataclass
-class Crop:
+class Crop(BaseModel):
     enabled: bool = False
     x: int = 0
     y: int = 0
@@ -46,47 +43,50 @@ class Crop:
     h: int = 0
 
 
-@dataclass
-class Resize:
+class Resize(BaseModel):
     enabled: bool = False
     w: int = 0
     h: int = 0
 
 
-@dataclass
-class AutoContrast:
+class AutoContrast(BaseModel):
     enabled: bool = False
-    cutoff_low: float = 2
-    cutoff_high: float = 45
+    cutoff_low: float = 2.0
+    cutoff_high: float = 45.0
     ignore: int | None = None
 
 
-@dataclass
-class ImageProcessing:
+class ImageProcessing(BaseModel):
     enabled: bool = False
     contrast: float = 1.0
     brightness: float = 1.0
     color: float = 1.0
     sharpness: float = 1.0
     grayscale: bool = False
-    autocontrast: AutoContrast = field(default_factory=AutoContrast)
-    autocontrast_cut_images: AutoContrast = field(default_factory=AutoContrast)
+    autocontrast: AutoContrast = Field(default_factory=AutoContrast)
+    autocontrast_cut_images: AutoContrast = Field(default_factory=AutoContrast)
 
 
-@dataclass
-class Config:
+class Config(BaseSettings):
+    model_config = SettingsConfigDict(
+        env_prefix="METER_",
+        env_nested_delimiter="__",
+        extra="ignore",
+    )
+
     log_level: str = "INFO"
     config_dir: str = "/config"
     previous_value_file: str = "/config/prevalue.ini"
     digital_models_dir: str = "/config/neuralnets/digital"
     analog_models_dir: str = "/config/neuralnets/analog"
-    image_source: ImageSource = field(default_factory=ImageSource)
-    digital_readout: CNNParams = field(default_factory=CNNParams)
-    analog_readout: CNNParams = field(default_factory=CNNParams)
-    alignment: Alignment = field(default_factory=Alignment)
-    meter_configs: list[MeterConfig] = field(default_factory=list)
-    crop: Crop = field(default_factory=Crop)
-    resize: Resize = field(default_factory=Resize)
+    image_source: ImageSource = Field(default_factory=ImageSource)
+    digital_readout: CNNParams = Field(default_factory=CNNParams)
+    analog_readout: CNNParams = Field(default_factory=CNNParams)
+    alignment: Alignment = Field(default_factory=Alignment)
+    meter_configs: list[MeterConfig] = Field(default_factory=list)
+    crop: Crop = Field(default_factory=Crop)
+    resize: Resize = Field(default_factory=Resize)
+    image_processing: ImageProcessing = Field(default_factory=ImageProcessing)
 
     @property
     def prevoius_value_file(self) -> str:
@@ -96,8 +96,6 @@ class Config:
     @prevoius_value_file.setter
     def prevoius_value_file(self, value: str) -> None:
         self.previous_value_file = value
-
-    image_processing: ImageProcessing = field(default_factory=ImageProcessing)
 
     def load_from_string(self, config_string: str) -> "Config":
         config = configparser.ConfigParser(
@@ -114,7 +112,6 @@ class Config:
         return output.getvalue()
 
     def load_from_file(self, ini_file: str = "config.ini") -> "Config":
-        # sourcery skip: avoid-builtin-shadow
         if not os.path.exists(ini_file):
             raise ConfigurationMissing(f"Configuration file '{ini_file}' not found")
 
@@ -267,7 +264,6 @@ class Config:
         return self
 
     def load_config(self, config: configparser.ConfigParser) -> "Config":
-
         ################## General Parameters ##########################################
         self.log_level = config.get("DEFAULT", "LogLevel", fallback="INFO")
         self.config_dir = config.get("DEFAULT", "ConfigDir", fallback="/config")
@@ -308,7 +304,7 @@ class Config:
 
         refs = config.get("Alignment", "Refs", fallback="")
         ref_images = []
-        for name in [x.strip() for x in refs.split(",")]:
+        for name in [x.strip() for x in refs.split(",") if x.strip()]:
             image = config.get(f"Alignment.{name}", "image", fallback="")
             x = config.getint(f"Alignment.{name}", "x", fallback=0)
             y = config.getint(f"Alignment.{name}", "y", fallback=0)
@@ -411,8 +407,9 @@ class Config:
         )
 
         ################## Meter Parameters ############################################
-        meterVals = config.get("Meters", "Names", fallback="")
-        for name in [x.strip() for x in meterVals.split(",")]:
+        meter_configs = []
+        meter_vals = config.get("Meters", "Names", fallback="")
+        for name in [x.strip() for x in meter_vals.split(",") if x.strip()]:
             format = config.get(f"Meter.{name}", "Value", fallback="")
             consistency_enabled = config.getboolean(
                 f"Meter.{name}", "ConsistencyEnabled", fallback=False
@@ -434,7 +431,7 @@ class Config:
             )
             unit = config.get(f"Meter.{name}", "Unit", fallback=None)
 
-            self.meter_configs.append(
+            meter_configs.append(
                 MeterConfig(
                     name=name,
                     format=format,
@@ -447,6 +444,7 @@ class Config:
                     unit=unit if unit is not None else "",
                 )
             )
+        self.meter_configs = meter_configs
         return self
 
     def _load_cnn_parames(
@@ -464,7 +462,7 @@ class Config:
                     f"Please add a comma separated list of names or disable "
                     f"the {section} readout."
                 )
-            for name in [x.strip() for x in names.split(",")]:
+            for name in [x.strip() for x in names.split(",") if x.strip()]:
                 x = config.getint(f"{section}.{name}", "x", fallback=0)
                 y = config.getint(f"{section}.{name}", "y", fallback=0)
                 w = config.getint(f"{section}.{name}", "w", fallback=0)
