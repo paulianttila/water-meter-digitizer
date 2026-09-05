@@ -216,7 +216,7 @@ class Config:
                 "ConsistencyEnabled": str(meter.consistency_enabled),
                 "AllowNegativeRates": str(meter.allow_negative_rates),
                 "MaxRateValue": str(meter.max_rate_value),
-                "UsePreviuosValueFilling": str(meter.use_previuos_value),
+                "UsePreviuosValue": str(meter.use_previous_value),
                 "PreValueFromFileMaxAge": str(meter.pre_value_from_file_max_age),
                 "UseExtendedResolution": str(meter.use_extended_resolution),
                 "Unit": meter.unit if meter.unit is not None else "",
@@ -417,8 +417,8 @@ class Config:
             max_rate_value = config.getfloat(
                 f"Meter.{name}", "MaxRateValue", fallback=0.0
             )
-            use_previuos_value = config.getboolean(
-                f"Meter.{name}", "UsePreviuosValueFilling", fallback=False
+            use_previous_value = config.getboolean(
+                f"Meter.{name}", "UsePreviuosValue", fallback=False
             )
             pre_value_from_file_max_age = config.getint(
                 f"Meter.{name}", "PreValueFromFileMaxAge", fallback=0
@@ -435,7 +435,7 @@ class Config:
                     consistency_enabled=consistency_enabled,
                     allow_negative_rates=allow_negative_rates,
                     max_rate_value=max_rate_value,
-                    use_previuos_value=use_previuos_value,
+                    use_previous_value=use_previous_value,
                     pre_value_from_file_max_age=pre_value_from_file_max_age,
                     use_extended_resolution=use_extended_resolution,
                     unit=unit if unit is not None else "",

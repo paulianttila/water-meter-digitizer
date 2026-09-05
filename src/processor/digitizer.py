@@ -1,6 +1,6 @@
 from dataclasses import dataclass
-from typing import List, Union
-import re
+from decimal import Decimal, InvalidOperation
+from typing import List, Optional, Union
 import math
 import logging
 
@@ -22,21 +22,24 @@ from decorators.decorators import log_execution_time
 
 logger = logging.getLogger(__name__)
 
+INVALID_DIGIT = "N"
+
+MODEL_AUTO = "auto"
+MODEL_ANALOG = "analog"  # Analogue
+MODEL_DIGITAL = "digital"  # Digit
+MODEL_ANALOG100 = "analog100"  # Analogue100
+MODEL_DIGITAL100 = "digital100"  # Digit100
+# DoubleHyprid10
+
+ANALOG_MODELS = {MODEL_ANALOG, MODEL_ANALOG100}
+DIGITAL_MODELS = {MODEL_DIGITAL, MODEL_DIGITAL100}
+
 
 @dataclass
 class ReadoutResult:
     name: str
     value: float
-
-
-@dataclass
-class ValueResult:
-    value: str
-    raw_value: str
-    previous_value: str
-    digital_results: dict
-    analog_results: dict
-    error: str
+    model: str
 
 
 @dataclass
@@ -58,26 +61,31 @@ class MeterResult:
 class Meter:
     config: MeterConfig
     name: str = ""
-    value: str = ""
-    raw_value: str = ""
+    value: str = ""  # value after postprocessing
+    unprocessed_value: str = ""  # value without postprocessing
     previous_value: str = ""
 
 
-class ConcistencyError(Exception):
-    ...
+class ConsistencyError(Exception):
     pass
 
 
 class DigitizerProcessor:
+
+    # ------------------------------------------------------------------
+    # Initialization
+    # ------------------------------------------------------------------
+
     def __init__(self) -> None:
         self.condition = None
         self.analog_counter_reader: AnalogNeedleCNN = None  # type: ignore
         self.digital_counter_reader: DigitalCounterCNN = None  # type: ignore
         self.analog_model: str = ""
         self.digital_model: str = ""
-        self.previous_value_file: str = ""
+        self.previous_value_file: Optional[str] = None
         self.cnn_digital_results: list[ReadoutResult] = []
         self.cnn_analog_results: list[ReadoutResult] = []
+        self.available_values: dict[str, Union[int, str]] = {}
 
     @log_execution_time
     def init_analog_model(
@@ -115,55 +123,210 @@ class DigitizerProcessor:
         self.previous_value_file = previous_value_file
         return self
 
+    # ------------------------------------------------------------------
+    # Processing
+    # ------------------------------------------------------------------
+
+    def process(
+        self,
+        analog_images: list[CutImage],
+        digital_images: list[CutImage],
+        meter_configs: list[MeterConfig],
+    ) -> MeterResult:
+        self.execute_analog_cnn(analog_images)
+        self.execute_digital_cnn(digital_images)
+        self.evaluate_cnn_results()
+        return self.get_meter_values(meter_configs)
+
     @log_execution_time
-    def execute_analog_ccn(self, images: List[CutImage]) -> "DigitizerProcessor":
+    def execute_analog_cnn(self, images: List[CutImage]) -> "DigitizerProcessor":
         if self.analog_counter_reader is None and self.digital_counter_reader is None:
             raise ValueError("No CNN reader initialized")
         if self.analog_counter_reader is not None:
             result = []
+            model = self._solve_model(
+                self.analog_model, self.analog_counter_reader.getModelDetails()
+            )
             for item in images:
                 value = self.analog_counter_reader.readout(item.image)
-                result.append(ReadoutResult(item.name, value))
+                value = round(value, 1)
+                value = 0 if value == 10 else value
+                result.append(
+                    ReadoutResult(
+                        item.name,
+                        value,
+                        model,
+                    )
+                )
             self.cnn_analog_results = result
             logger.debug(f"Analog CNN results: {self.cnn_analog_results}")
         return self
 
     @log_execution_time
-    def execute_digital_ccn(self, images: List[CutImage]) -> "DigitizerProcessor":
+    def execute_digital_cnn(self, images: List[CutImage]) -> "DigitizerProcessor":
         if self.digital_counter_reader is not None:
             result = []
+            model = self._solve_model(
+                self.digital_model, self.digital_counter_reader.getModelDetails()
+            )
             for item in images:
                 value = self.digital_counter_reader.readout(item.image)
-                result.append(ReadoutResult(item.name, value))
+                result.append(
+                    ReadoutResult(
+                        item.name,
+                        value,
+                        model,
+                    )
+                )
             self.cnn_digital_results = result
             logger.debug(f"Digital CNN results: {self.cnn_digital_results}")
         return self
 
-    def evaluate_ccn_results(self) -> "DigitizerProcessor":
-        available_values = {}
+    # ------------------------------------------------------------------
+    # CNN results evaluation
+    # ------------------------------------------------------------------
 
-        if self.analog_counter_reader is not None:
-            model = self._solve_model(
-                self.analog_model, self.analog_counter_reader.getModelDetails()
-            )
-            for item in self.cnn_analog_results:
-                val = self._evaluate_analog_counter(
-                    name=item.name, new_value=item.value, model=model
-                )
-                available_values[item.name] = val
+    def evaluate_cnn_results(self) -> "DigitizerProcessor":
+        available_values: dict[str, Union[int, str]] = {}
 
-        if self.digital_counter_reader is not None:
-            model = self._solve_model(
-                self.digital_model, self.digital_counter_reader.getModelDetails()
+        for result in self.cnn_analog_results + self.cnn_digital_results:
+            digit = self._evaluate_counter(
+                name=result.name,
+                number=result.value,
+                predecessor_digit=None,
+                model=result.model,
             )
-            for item in self.cnn_digital_results:
-                val = self._evaluate_digital_counter(
-                    name=item.name, new_value=item.value, model=model
-                )
-                available_values[item.name] = val
-        logger.debug(f"Available values: {available_values}")
+            available_values[result.name] = digit
+
         self.available_values = available_values
+        logger.debug(f"Available values: {available_values}")
         return self
+
+    def _evaluate_counters(self, values: list[ReadoutResult]) -> dict[str, str]:
+        predecessor_value: Optional[float] = None
+        predecessor_model: Optional[str] = None
+        evaluated: dict[str, str] = {}
+
+        for result in reversed(values):
+            model = result.model.lower()
+
+            # A change of model means a new independent wheel group.
+            if model != predecessor_model:
+                predecessor_value = None
+
+            digit = self._evaluate_counter(
+                name=result.name,
+                number=result.value,
+                predecessor_digit=None,
+                predecessor_value=predecessor_value,
+                model=model,
+            )
+
+            evaluated[result.name] = str(digit)
+
+            predecessor_value = result.value
+            predecessor_model = model
+
+        return evaluated
+
+    def _evaluate_counter(
+        self,
+        name: str,
+        number: float,
+        predecessor_digit: Optional[int],
+        model: str,
+        predecessor_value: Optional[float] = None,
+    ) -> Union[int, str]:
+
+        model = model.lower()
+
+        if model in ANALOG_MODELS:
+            digit = self._evaluate_analog_counter(
+                name=name,
+                number=number,
+                predecessor_digit=predecessor_digit,
+                predecessor_value=predecessor_value,
+                model=model,
+            )
+        elif model in DIGITAL_MODELS:
+            digit = self._evaluate_digital_counter(
+                name=name,
+                number=number,
+                predecessor_digit=predecessor_digit,
+                predecessor_value=predecessor_value,
+                model=model,
+            )
+        else:
+            raise ValueError(f"Unknown model: {model}")
+
+        logger.debug(
+            f"Evaluate {name}: {number} "
+            f"(predecessor: {predecessor_digit}, "
+            f"predecessor_value: {predecessor_value}) -> {digit}"
+        )
+
+        return digit
+
+    def _evaluate_analog_counter(
+        self,
+        name: str,
+        number: float,
+        predecessor_digit: Optional[int] = None,
+        predecessor_value: Optional[float] = None,
+        model: str = "",
+    ) -> int:
+        return self._evaluate_wheel_counter(
+            number=number,
+            predecessor_value=predecessor_value,
+        )
+
+    def _evaluate_digital_counter(
+        self,
+        name: str,
+        number: Union[float, int],
+        predecessor_digit: Optional[int] = None,
+        predecessor_value: Optional[float] = None,
+        model: str = "",
+    ) -> Union[int, str]:
+
+        model = model.lower()
+
+        if model == MODEL_DIGITAL:
+            if number < 0 or number >= 10:
+                return INVALID_DIGIT
+            return int(number)
+
+        if model == MODEL_DIGITAL100:
+            if math.isnan(number) or number < 0 or number >= 100:
+                return INVALID_DIGIT
+            if predecessor_value is None:
+                return int(math.floor(number)) % 10
+
+            return int(math.floor(number + 0.5)) % 10
+
+        raise ValueError(f"Unknown digital model: {model}")
+
+    def _evaluate_wheel_counter(
+        self,
+        number: float,
+        predecessor_value: Optional[float] = None,
+    ) -> int:
+        if predecessor_value is None:
+            return int(math.floor(number + 0.5)) % 10
+
+        digit = int(math.floor(number + 0.5)) % 10
+
+        if number % 1 >= 0.5 and predecessor_value % 1 < 0.5:
+            return (digit - 1) % 10
+
+        if number % 1 < 0.5 and predecessor_value % 1 >= 0.5:
+            return 9
+
+        return digit
+
+    # ------------------------------------------------------------------
+    # Meter post-processing
+    # ------------------------------------------------------------------
 
     def get_meter_values(self, meter_configs: list[MeterConfig]) -> MeterResult:
         meters = self._get_meter_values(meter_configs)
@@ -181,23 +344,140 @@ class DigitizerProcessor:
             meter = Meter(
                 name=meter_config.name,
                 value=value,
-                raw_value=value,
+                unprocessed_value=value,
                 config=meter_config,
             )
+            logger.debug(f" Meter: {meter}")
             meters.append(meter)
-        logger.debug(f" Meters: {meters}")
+        # logger.debug(f" Meters: {meters}")
         return meters
+
+    def _postprocess_meter_values(
+        self,
+        meters: List[Meter],
+        values: dict,
+        cnn_results: List[ReadoutResult],
+    ) -> None:
+
+        # for easier access
+        cnn_results_dict = {item.name: item for item in cnn_results}
+
+        for meter in meters:
+            self._postprocess_meter_value(
+                meter,
+                values,
+                cnn_results_dict,
+            )
+
+    def _postprocess_meter_value(
+        self,
+        meter: Meter,
+        values: dict,
+        cnn_results: dict[str, ReadoutResult],
+    ) -> None:
+
+        results = self._get_readout_results(meter, cnn_results)
+        logger.info(f" Postprocess meter: {meter}, readout results: {results}")
+
+        values = self._evaluate_counters(results)
+        meter.value = meter.config.format.format(**values)
+
+        if meter.config.use_previous_value:
+            if self.previous_value_file is None:
+                raise ValueError(
+                    "Previous value file must be configured "
+                    "when use_previous_value is enabled"
+                )
+            meter.previous_value = load_previous_value_from_file(
+                self.previous_value_file,
+                meter.name,
+                meter.config.pre_value_from_file_max_age,
+            )
+
+        if meter.config.use_extended_resolution:
+            meter.value = self._append_extended_digit(meter, cnn_results)
+
+        if meter.config.use_previous_value:
+            meter.previous_value = self._adapt_previous_value_to_match_length(
+                meter.value, meter.previous_value
+            )
+            meter.value = fill_with_predecessor_digits(
+                meter.value, meter.previous_value
+            )
+            if meter.config.consistency_enabled:
+                self._check_consistency(meter, meter.value, meter.previous_value)
+
+            save_previous_value_to_file(
+                str(self.previous_value_file), meter.name, meter.value
+            )
+
+    def _get_readout_results(
+        self,
+        meter: Meter,
+        cnn_results: dict[str, ReadoutResult],
+    ) -> list[ReadoutResult]:
+        return [cnn_results[name] for name in meter.config.value_names]
+
+    def _adapt_previous_value_to_match_length(
+        self, number: str, previous_value: str
+    ) -> str:
+        if len(number) > len(previous_value):
+            logger.debug(
+                f"Fill previous value {previous_value} "
+                f"to match new value {number} len"
+            )
+            previous_value = fill_value_with_ending_zeros(len(number), previous_value)
+        elif len(number) < len(previous_value):
+            logger.debug(
+                f"Remove digits from previous value {previous_value} to match "
+                f"new value {number} len"
+            )
+            previous_value = previous_value[: len(number)]
+        return previous_value
+
+    def _append_extended_digit(
+        self,
+        meter: Meter,
+        cnn_results: dict[str, ReadoutResult],
+    ) -> str:
+
+        last_digit = cnn_results[meter.config.value_names[-1]]
+        if math.isnan(last_digit.value):
+            return meter.value  # can't extend with invalid data
+        decimal_digit = math.floor(last_digit.value * 10) % 10
+        return f"{meter.value}{decimal_digit}"
+
+    def _check_consistency(
+        self, meter: Meter, currentValue: str, previousValue: str
+    ) -> None:
+
+        try:
+            current = Decimal(currentValue)
+            previous = Decimal(previousValue)
+        except InvalidOperation:
+            raise ConsistencyError(f"Invalid value: {currentValue} or {previousValue}")
+
+        delta = current - previous
+        # delta = float(currentValue) - float(previous_value)
+        if not (meter.config.allow_negative_rates) and (delta < 0):
+            raise ConsistencyError(f"Negative rate ({delta:.3f})")
+        if abs(delta) > meter.config.max_rate_value:
+            raise ConsistencyError(f"Rate too high ({delta:.3f})")
+
+    # ------------------------------------------------------------------
+    # Result generation
+    # ------------------------------------------------------------------
 
     def _gen_result(self, meters: List[Meter]) -> MeterResult:
         analog_results = {}
         if self.analog_counter_reader is not None:
             for item in self.cnn_analog_results:
-                val = "{:.2f}".format(item.value)
+                val = f"{item.value:.2f}"
                 analog_results[item.name] = val
         digital_results = {}
         if self.digital_counter_reader is not None:
             for item in self.cnn_digital_results:
-                val = "N" if item.value == "NaN" else str(int(item.value))
+                val = INVALID_DIGIT if math.isnan(item.value) else str(item.value)
                 digital_results[item.name] = val
 
         meter_results = [
@@ -215,150 +495,21 @@ class DigitizerProcessor:
             error="",
         )
 
-    def _postprocess_meter_values(
-        self,
-        meters: List[Meter],
-        values: dict,
-        cnn_results: List[ReadoutResult],
-    ) -> None:
-        # for easier access
-        meter_dict = {meter.name: meter for meter in meters}
-        cnn_results_dict = {item.name: item for item in cnn_results}
-
-        for meter in meters:
-            self._postprocess_meter_value(
-                meter_dict[meter.name],
-                values,
-                cnn_results_dict,
-            )
-
-    def _postprocess_meter_value(
-        self,
-        meter: Meter,
-        values: dict,
-        cnn_results: dict,
-    ) -> None:
-        if meter.config.consistency_enabled is False:
-            return
-
-        logger.info(f" Postprocess meter, paramters: {meter}")
-
-        if self.previous_value_file is not None:
-            meter.previous_value = load_previous_value_from_file(
-                self.previous_value_file,
-                meter.name,
-                meter.config.pre_value_from_file_max_age,
-            )
-
-        if meter.config.use_extended_resolution:
-            meter.value = self._get_extended_resolution(meter, cnn_results)
-        if meter.config.use_previuos_value:
-            meter.previous_value = self._adapt_prevalue_to_macth_len(
-                meter.value, meter.previous_value
-            )
-            meter.value = fill_with_predecessor_digits(
-                meter.value, meter.previous_value
-            )
-            self._check_consistency(meter, meter.value, meter.previous_value)
-            save_previous_value_to_file(
-                self.previous_value_file, meter.name, meter.value
-            )
-
-    def _adapt_prevalue_to_macth_len(self, new_value: str, previous_value: str) -> str:
-        if len(new_value) > len(previous_value):
-            logger.debug(
-                f"Fill previous value {previous_value} "
-                f"to match new value {new_value} len"
-            )
-            previous_value = fill_value_with_ending_zeros(
-                len(new_value), previous_value
-            )
-        elif len(new_value) < len(previous_value):
-            logger.debug(
-                f"Remove digits from previous value {previous_value} to match "
-                f"new value {new_value} len"
-            )
-            previous_value = previous_value[: len(new_value)]
-        return previous_value
-
-    def _get_extended_resolution(self, meter: Meter, values: dict) -> str:
-        # get last digit of the value
-        names = re.findall(r"\{(.*?)\}", meter.config.format)
-        last_digit = values[names[-1]]
-        result_after_decimal_point = math.floor(float(last_digit.value) * 10 + 10) % 10
-        return f"{meter.value}{result_after_decimal_point}"
-
-    def _check_consistency(
-        self, meter: Meter, currentValue: str, previous_value: str
-    ) -> str:
-        if previous_value.isnumeric() and currentValue.isnumeric():
-            delta = float(currentValue) - float(previous_value)
-            if not (meter.config.allow_negative_rates) and (delta < 0):
-                raise ConcistencyError("Negative rate ({delta:.4f})")
-            if abs(delta) > meter.config.max_rate_value:
-                raise ConcistencyError("Rate too high ({delta:.4f})")
-        return currentValue
-
-    def _analog_readout_to_value(self, decimal_parts: list[ReadoutResult]) -> str:
-        prev = -1
-        strValue = ""
-        for item in decimal_parts[::-1]:
-            prev = self._evaluate_analog_counter(
-                name=item.name, new_value=item.value, prev_value=prev
-            )
-            strValue = f"{prev}{strValue}"
-        return strValue
-
-    def _evaluate_analog_counter(
-        self, name: str, new_value, prev_value: int = -1, model: str = ""
-    ) -> int:
-        decimal_part = math.floor((new_value * 10) % 10)
-        integer_part = math.floor(new_value % 10)
-
-        if prev_value == -1:
-            result = integer_part
-        else:
-            result_rating = decimal_part - prev_value
-            if decimal_part >= 5:
-                result_rating -= 5
-            else:
-                result_rating += 5
-            result = round(new_value)
-            if result_rating < 0:
-                result -= 1
-            if result == -1:
-                result += 10
-
-        result = result % 10
-        logger.debug(f"{name}: {new_value} (prev value: {prev_value}) -> {result}")
-        return result
-
-    def _evaluate_digital_counter(
-        self,
-        name: str,
-        new_value: Union[float, int],
-        prev_value: int = -1,
-        model: str = "",
-    ) -> int:
-        digit = 0
-        if model.lower() == "digital100":
-            digit = (
-                "N" if new_value < 0 or new_value >= 100 else int(round(new_value / 10))
-            )
-        elif model.lower() == "digital":
-            digit = "N" if new_value < 0 or new_value >= 10 else new_value
-        logger.debug(f"{name}: {new_value}  -> {digit}")
-        return int(digit)
+    # ------------------------------------------------------------------
+    # Helpers
+    # ------------------------------------------------------------------
 
     def _solve_model(self, model: str, details: ModelDetails) -> str:
-        if model.lower() != "auto":
+        if model.lower() != MODEL_AUTO:
             return model
         if details.numer_output == 2:
-            return "analog"
+            return MODEL_ANALOG
         if details.numer_output == 11:
-            return "digital"
+            return MODEL_DIGITAL
         if details.numer_output == 100:
+            # 32x32 model = analog 0.00-9.99
             if details.xsize == 32 and details.ysize == 32:
-                return "analog100"
-            return "digital100"
-        return ""
+                return MODEL_ANALOG100
+            # Other 100-output models are digital 00-99
+            return MODEL_DIGITAL100
+        raise ValueError(f"Unable to determine model from details: {details}")

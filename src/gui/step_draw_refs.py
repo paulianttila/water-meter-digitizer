@@ -2,6 +2,7 @@ from typing import Callable
 
 from nicegui import ui
 
+from data_classes import RefImage
 from .step_draw_rois_base import DrawRoisBaseStep
 
 
@@ -25,6 +26,9 @@ class DrawRefsStep(DrawRoisBaseStep):
             spinner=spinner,
         )
 
+    def load_from_config(self, ref_images: list[RefImage]) -> None:
+        self.load_rois(ref_images)
+
     def draw_roi_func(
         self,
         x: int,
@@ -35,7 +39,7 @@ class DrawRefsStep(DrawRoisBaseStep):
         text: str,
     ) -> str:
         style = f"stroke-width:3;stroke:{color};fill-opacity:0;stroke-opacity:0.9"
-        style2 = f"font-size:10;fill:{color};"
+        style2 = f"font-size:10;fill:{color};font-weight:bold;"
         return (
             f'<text x="{x}" y="{y-7}" text-anchor="left" style="{style2}">{text}</text>'
             f'<rect x="{x}" y="{y}" width="{w}" height="{h}" style="{style}" />'
@@ -53,6 +57,13 @@ class DrawRefsStep(DrawRoisBaseStep):
 
     async def show(self, stepper, first_step=False, last_step=False) -> None:
         with ui.step(self.name):
+            self.add_help(
+                """
+- **Reference Points**: Mark **3 distinct visual landmarks** (e.g. text labels like `m³`, screws, dial centers) to establish affine alignment against camera vibration.
+- **Drawing**: Click `+` to add a marker, then click and drag a box on the interactive image canvas on the left.
+- **Visibility**: Toggle colored checkboxes to show or hide individual reference boxes on the canvas.
+                """
+            )
             with ui.grid(columns="2fr 2fr 2fr 2fr 2fr 2fr").classes("w-full gap-2"):
                 self.select_all = ui.checkbox(
                     "Show", on_change=self._select_all_rois

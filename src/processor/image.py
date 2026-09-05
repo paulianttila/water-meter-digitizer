@@ -135,8 +135,8 @@ class ImageProcessor:
     @_conditional_func
     def autocontrast_image(
         self,
-        cutoff_low: float = 0,
-        cutoff_high: float = 0,
+        cutoff_low: int = 0,
+        cutoff_high: int = 0,
         ignore: Union[int, None] = None,
     ) -> "ImageProcessor":
         logger.debug(
@@ -168,8 +168,8 @@ class ImageProcessor:
         self,
         position: ImagePosition,
         autocontrast: bool = False,
-        cutoff_low: float = 2,
-        cutoff_high: float = 45,
+        cutoff_low: int = 2,
+        cutoff_high: int = 45,
         ignore: int = 2,
     ) -> "ImageProcessor":
         image = utils.image.cut_image(self.image, position)
@@ -185,8 +185,8 @@ class ImageProcessor:
         self,
         positions: List[ImagePosition],
         autocontrast: bool = False,
-        cutoff_low: float = 2,
-        cutoff_high: float = 45,
+        cutoff_low: int = 2,
+        cutoff_high: int = 45,
         ignore: int = 2,
     ) -> "ImageProcessor":
         for img in positions:

@@ -10,6 +10,7 @@ from .page_meter import MeterPage
 from .menu import Menu
 from .page_setup import SetupPage
 from .page_about import AboutPage
+from .page_help import HelpPage
 
 logger = logging.getLogger(__name__)
 
@@ -27,6 +28,7 @@ def init(fastapi_app: FastAPI, callbacks: Callbacks) -> None:
         meter_page = MeterPage(callbacks=_callbacks)
         setup_page = SetupPage(callbacks=_callbacks)
         config_page = ConfigPage(callbacks=_callbacks)
+        help_page = HelpPage()
         about_page = AboutPage()
 
         with ui.splitter(value=6, limits=(6, 6)).classes("w-full h-full") as splitter:
@@ -36,6 +38,7 @@ def init(fastapi_app: FastAPI, callbacks: Callbacks) -> None:
                     main = ui.tab("Meter", icon="sym_s_speed")
                     setup = ui.tab("Setup", icon="settings")
                     config = ui.tab("Config", icon="sym_s_manufacturing")
+                    help_tab = ui.tab("Help", icon="help_outline")
                     about = ui.tab("About", icon="info")
             with splitter.after:
                 with ui.tab_panels(tabs, value=main).classes("w-full h-full"):
@@ -45,6 +48,8 @@ def init(fastapi_app: FastAPI, callbacks: Callbacks) -> None:
                         await setup_page.show()
                     with ui.tab_panel(config):
                         config_page.show()
+                    with ui.tab_panel(help_tab):
+                        help_page.show()
                     with ui.tab_panel(about):
                         about_page.show()
 

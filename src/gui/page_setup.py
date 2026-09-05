@@ -1,3 +1,4 @@
+import base64
 from hashlib import sha256
 import logging
 
@@ -63,7 +64,7 @@ class SetupPage:
         self.spinner: ui.spinner
 
         self.download_image_step: DownloadImageStep
-        self.ini_rota_step: InitialRotateStep
+        self.initial_rotate_step: InitialRotateStep
         self.draw_refs_step: DrawRefsStep
         self.adjust_step: AdjustStep
         self.draw_digital_rois_step: DrawDigitalRoisStep
@@ -175,7 +176,7 @@ class SetupPage:
             config.image_processing.brightness = (
                 self.adjust_step.adjust_brightness.value
             )
-            config.image_processing.sharpness = self.adjust_step.adjust_brightness.value
+            config.image_processing.sharpness = self.adjust_step.adjust_sharpness.value
             config.image_processing.color = self.adjust_step.adjust_color.value
             config.image_processing.grayscale = self.adjust_step.grayscale_enabled.value
             config.image_processing.autocontrast.enabled = (
@@ -197,7 +198,7 @@ class SetupPage:
                 self.adjust_step.autocontrast_cut_images_cutoff_high.value
             )
 
-            config.alignment.rotate_angle = self.ini_rota_step.angle
+            config.alignment.rotate_angle = self.initial_rotate_step.angle
             config.alignment.post_rotate_angle = self.adjust_step.rotate_angle.value
             for roi in self.draw_refs_step.rois:
                 config_dir = "${ConfigDir}"
@@ -213,9 +214,10 @@ class SetupPage:
                 )
             model_file = ""
             if self.draw_digital_rois_step.cnn_file.value is not None:
-                model_file = self.draw_digital_rois_step.cnn_file.options[
-                    self.draw_digital_rois_step.cnn_file.value
-                ]
+                if isinstance(self.draw_digital_rois_step.cnn_file.options, dict):
+                    model_file = self.draw_digital_rois_step.cnn_file.options[
+                        self.draw_digital_rois_step.cnn_file.value
+                    ]
             model_dir = "${DigitalModelsDir}"
             digital_cut_images = []
             for roi in self.draw_digital_rois_step.rois:
@@ -237,10 +239,10 @@ class SetupPage:
 
             model_file = ""
             if self.draw_analog_rois_step.cnn_file.value is not None:
-                model_file = self.draw_analog_rois_step.cnn_file.options[
-                    self.draw_analog_rois_step.cnn_file.value
-                ]
-
+                if isinstance(self.draw_analog_rois_step.cnn_file.options, dict):
+                    model_file = self.draw_analog_rois_step.cnn_file.options[
+                        self.draw_analog_rois_step.cnn_file.value
+                    ]
             model_dir = "${AnalogModelsDir}"
             analog_cut_images = []
             for roi in self.draw_analog_rois_step.rois:
@@ -268,7 +270,7 @@ class SetupPage:
                         consistency_enabled=meter.consistency_enabled,
                         allow_negative_rates=meter.allow_negative_rates,
                         max_rate_value=meter.max_rate_value,
-                        use_previuos_value=meter.use_previous_value_filling,
+                        use_previous_value=meter.use_previous_value,
                         pre_value_from_file_max_age=meter.prevalue_from_file_max_age,
                         use_extended_resolution=meter.use_extended_resolution,
                         unit=meter.unit,
@@ -300,7 +302,7 @@ class SetupPage:
             if name == NAME_DOWNLOAD_IMAGE:
                 return self.download_image_step.get_image()
             elif name == NAME_INITIAL_ROTATE:
-                return self.ini_rota_step.get_image()
+                return self.initial_rotate_step.get_image()
             elif name == NAME_DRAW_REFS:
                 return self.draw_refs_step.get_image()
             elif name == NAME_ADJUST:
@@ -317,7 +319,7 @@ class SetupPage:
 
         def set_image_by_step_name(name: str, image: str) -> None:
             if name == NAME_INITIAL_ROTATE:
-                self.ini_rota_step.update_image(image)
+                self.initial_rotate_step.update_image(image)
             elif name == NAME_DRAW_REFS:
                 self.draw_refs_step.update_image(image)
             elif name == NAME_ADJUST:
@@ -378,6 +380,43 @@ class SetupPage:
                 self.final_step.set_config(self.config)
             self.previous_step = step
 
+        def show_offline_placeholder(
+            message: str = "Camera Offline",
+            subtext: str = "Check camera URL and click Download to retry",
+        ) -> None:
+            svg = (
+                '<svg width="640" height="480" viewBox="0 0 640 480" '
+                'xmlns="http://www.w3.org/2000/svg">'
+                '<rect width="100%" height="100%" fill="#1e293b"/>'
+                '<circle cx="320" cy="190" r="48" fill="#334155"/>'
+                '<path d="M 296 214 L 344 166 M 304 174 L 320 174 L 326 166 '
+                "L 338 166 L 344 174 L 352 174 C 356 174 360 178 360 182 "
+                "L 360 206 C 360 210 356 214 352 214 L 288 214 C 284 214 "
+                '280 210 280 206 L 280 182 C 280 178 284 174 288 174 Z" '
+                'stroke="#ef4444" stroke-width="3" fill="none" '
+                'stroke-linecap="round" stroke-linejoin="round"/>'
+                '<line x1="280" y1="160" x2="360" y2="220" '
+                'stroke="#ef4444" stroke-width="3" stroke-linecap="round"/>'
+                f'<text x="320" y="275" text-anchor="middle" fill="#f8fafc" '
+                'font-family="system-ui, -apple-system, sans-serif" '
+                f'font-size="20" font-weight="600">{message}</text>'
+                f'<text x="320" y="305" text-anchor="middle" fill="#94a3b8" '
+                'font-family="system-ui, -apple-system, sans-serif" '
+                f'font-size="13">{subtext}</text>'
+                "</svg>"
+            )
+            b64_svg = base64.b64encode(svg.encode("utf-8")).decode("utf-8")
+            self.interactive_image.set_source(f"data:image/svg+xml;base64,{b64_svg}")
+            self.interactive_image.content = ""
+            if hasattr(self, "image_details") and self.image_details is not None:
+                self.image_details.text = f"Size: 640x480 ({message})"
+
+        def on_download_error(err_msg: str = "") -> None:
+            show_offline_placeholder(
+                message="Camera Offline / Unreachable",
+                subtext="Check camera URL and click Download to retry",
+            )
+
         ui.label("Setup").classes("text-h4")
         with ui.row():
             self.spinner = ui.spinner("dots", size="lg", color="blue")
@@ -386,9 +425,10 @@ class SetupPage:
         self.download_image_step = DownloadImageStep(
             name=NAME_DOWNLOAD_IMAGE,
             set_image_callback=set_image,
+            on_error_callback=on_download_error,
             spinner=self.spinner,
         )
-        self.ini_rota_step = InitialRotateStep(
+        self.initial_rotate_step = InitialRotateStep(
             name=NAME_INITIAL_ROTATE,
             set_image_callback=set_image,
             spinner=self.spinner,
@@ -450,12 +490,16 @@ class SetupPage:
                     self.image_details = ui.label("")
                     self.mouse_position = ui.label("")
                     self.selected_position = ui.label("")
+                show_offline_placeholder(
+                    "No Image Loaded",
+                    "Enter camera URL and click Download to start",
+                )
             with splitter.after:
                 with ui.stepper(
                     on_value_change=lambda x: handle_stepper_change(x.value)
                 ).props("vertical").classes("w-full") as stepper:
                     await self.download_image_step.show(stepper, first_step=True)
-                    await self.ini_rota_step.show(stepper)
+                    await self.initial_rotate_step.show(stepper)
                     await self.draw_refs_step.show(stepper)
                     await self.adjust_step.show(stepper)
                     await self.draw_digital_rois_step.show(stepper)
@@ -466,3 +510,18 @@ class SetupPage:
         for img in self.callbacks.get_config().alignment.ref_images:
             if img.w == 0 or img.h == 0:
                 img.w, img.h = ImageUtils.image_size_from_file(img.file_name)
+
+        # After stepper UI is created:
+        config = self.callbacks.get_config()
+
+        self.download_image_step.load_from_config(config.image_source)
+        self.initial_rotate_step.load_from_config(config.alignment)
+        self.draw_refs_step.load_from_config(config.alignment.ref_images)
+        self.adjust_step.load_from_config(config)
+        self.draw_digital_rois_step.load_from_config(config.digital_readout)
+        self.draw_analog_rois_step.load_from_config(config.analog_readout)
+        self.meters_step.load_from_config(config.meter_configs)
+
+        # Automatically fetch the initial image if URL is configured
+        if config.image_source.url:
+            await self.download_image_step.download()

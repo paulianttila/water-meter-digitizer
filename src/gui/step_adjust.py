@@ -1,3 +1,4 @@
+from configuration import Config
 from typing import Callable
 
 from nicegui import ui
@@ -38,6 +39,40 @@ class AdjustStep(BaseStep):
         self.image = self._do_adjust(self.image)
         if self.set_image_callback is not None:
             self.set_image_callback(self.image)
+
+    def load_from_config(self, config: Config) -> None:
+        # Crop
+        self.crop_enabled.value = config.crop.enabled
+        self.crop_x.value = config.crop.x
+        self.crop_y.value = config.crop.y
+        self.crop_w.value = config.crop.w
+        self.crop_h.value = config.crop.h
+
+        # Resize
+        self.resize_enabled.value = config.resize.enabled
+        self.resize_w.value = config.resize.w
+        self.resize_h.value = config.resize.h
+
+        # Image adjustments
+        self.adjust_enabled.value = config.image_processing.enabled
+        self.adjust_contrast.value = config.image_processing.contrast
+        self.adjust_brightness.value = config.image_processing.brightness
+        self.adjust_sharpness.value = config.image_processing.sharpness
+        self.adjust_color.value = config.image_processing.color
+        self.grayscale_enabled.value = config.image_processing.grayscale
+
+        # AutoContrast
+        self.autocontrast_enabled.value = config.image_processing.autocontrast.enabled
+        self.autocontrast_cutoff_low.value = (
+            config.image_processing.autocontrast.cutoff_low
+        )
+        self.autocontrast_cutoff_high.value = (
+            config.image_processing.autocontrast.cutoff_high
+        )
+
+        # Rotation
+        self.rotate_angle.value = config.alignment.post_rotate_angle
+        self.rotate_enabled.value = config.alignment.post_rotate_angle != 0
 
     def _do_adjust(self, image: str) -> str:
         return (
@@ -82,6 +117,14 @@ class AdjustStep(BaseStep):
 
     async def show(self, stepper, first_step=False, last_step=False) -> None:
         with ui.step(self.name):
+            self.add_help(
+                """
+- **Fine Rotation**: Adjust small fractional angles (e.g. `0.5°`).
+- **Crop & Resize**: Optionally crop and resize raw frame before alignment.
+- **Image Filters**: Fine-tune contrast, brightness, sharpness, grayscale, and autocontrast cutoffs.
+- Click the adjust button at the bottom to preview adjustments on the canvas.
+                """
+            )
 
             with ui.row().classes("w-full items-center"):
                 self.rotate_enabled = ui.checkbox("Enable Rotate", value=False)
@@ -91,10 +134,10 @@ class AdjustStep(BaseStep):
 
             with ui.row().classes("w-full items-center"):
                 self.crop_enabled = ui.checkbox("Enable Crop", value=False)
-                self.crop_x = ui.number("X", min=-0, max=10000, step=1, value=0)
-                self.crop_y = ui.number("Y", min=-0, max=10000, step=1, value=0)
-                self.crop_w = ui.number("Width", min=-640, max=10000, step=1, value=0)
-                self.crop_h = ui.number("Height", min=-480, max=10000, step=1, value=0)
+                self.crop_x = ui.number("X", min=0, max=10000, step=1, value=0)
+                self.crop_y = ui.number("Y", min=0, max=10000, step=1, value=0)
+                self.crop_w = ui.number("Width", min=640, max=10000, step=1, value=0)
+                self.crop_h = ui.number("Height", min=480, max=10000, step=1, value=0)
 
             with ui.row().classes("w-full items-center"):
                 self.adjust_enabled = ui.checkbox("Enable Adjust", value=False)
@@ -136,7 +179,7 @@ class AdjustStep(BaseStep):
 
             with ui.row().classes("w-full items-center"):
                 self.autocontrast_cut_images_enabled = ui.checkbox(
-                    "Enable Autocontrast for cutted images", value=False
+                    "Enable Autocontrast for cut images", value=False
                 )
                 self.autocontrast_cut_images_cutoff_low = ui.number(
                     "Cutoff low", min=0, max=100, step=1, value=2
@@ -146,10 +189,14 @@ class AdjustStep(BaseStep):
                 )
 
             with ui.row().classes("w-full items-center"):
-                ui.button(icon="sym_s_resize", on_click=self.do_adjust).tooltip(
+                ui.button(
+                    icon="sym_s_resize", on_click=self.do_adjust
+                ).bind_enabled_from(self, "image", lambda image: image != "").tooltip(
                     "Adjust image"
                 )
-                ui.button(icon="sym_s_restore", on_click=self._reset_image).tooltip(
+                ui.button(
+                    icon="sym_s_restore", on_click=self._reset_image
+                ).bind_enabled_from(self, "image", lambda image: image != "").tooltip(
                     "Restore original image"
                 )
 

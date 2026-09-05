@@ -3,6 +3,7 @@ from typing import Callable
 
 from nicegui import ui
 
+from configuration import CNNParams
 from .step_draw_rois_base import DrawRoisBaseStep
 from processor.digitizer import DigitizerProcessor
 
@@ -28,6 +29,27 @@ class DrawAnalogRoisStep(DrawRoisBaseStep):
             spinner=spinner,
         )
         self.analog_models_dir = analog_models_dir
+        self.cnn_file: ui.select
+        self.cnn_type: ui.select
+
+    def load_from_config(self, analog_readout: CNNParams) -> None:
+        if hasattr(self, "cnn_type") and self.cnn_type is not None:
+            if analog_readout.model in ["auto", "analog", "analog100"]:
+                self.cnn_type.value = analog_readout.model
+        if (
+            hasattr(self, "cnn_file")
+            and self.cnn_file is not None
+            and isinstance(self.cnn_file.options, dict)
+        ):
+            for key, val in self.cnn_file.options.items():
+                if (
+                    val in analog_readout.model_file
+                    or key in analog_readout.model_file
+                    or key == analog_readout.model_file
+                ):
+                    self.cnn_file.value = key
+                    break
+        self.load_rois(analog_readout.cut_images)
 
     def _draw_roi_func(
         self,
@@ -40,7 +62,7 @@ class DrawAnalogRoisStep(DrawRoisBaseStep):
     ) -> str:
         style = f"stroke-width:3;stroke:{color};fill-opacity:0;stroke-opacity:0.9"
         style2 = f"stroke-width:1;stroke:{color};fill-opacity:0;stroke-opacity:0.9"
-        style3 = f"font-size:10;fill:{color};"
+        style3 = f"font-size:10;fill:{color};font-weight:bold;"
         return (
             f'<text x="{x}" y="{y-7}" text-anchor="left" style="{style3}">{text}</text>'
             f'<rect x="{x}" y="{y}" width="{w}" height="{h}" style="{style}" />'
@@ -56,8 +78,8 @@ class DrawAnalogRoisStep(DrawRoisBaseStep):
         digitizerProcessor = (
             DigitizerProcessor()
             .init_analog_model(self.cnn_file.value, "auto")  # type: ignore
-            .execute_analog_ccn(analog_images)
-            .evaluate_ccn_results()
+            .execute_analog_cnn(analog_images)
+            .evaluate_cnn_results()
         )
         results = digitizerProcessor.cnn_analog_results
 
@@ -83,23 +105,55 @@ class DrawAnalogRoisStep(DrawRoisBaseStep):
 
     async def show(self, stepper, first_step=False, last_step=False) -> None:
         with ui.step(self.name):
+            self.add_help(
+                """
+- **Analog Dials**: Add circular bounding boxes tightly around each analog dial needle (`analog1`, `analog2`, ...).
+- **Drawing & Alignment**: Drag boxes on the canvas, or use the alignment toolbar buttons to standardize dial dimensions.
+- **CNN Model**: Choose a `.tflite` model and type (`auto`, `analog`, `analog100`).
+- **Test**: Click Test to run neural network angle detection on the cropped ROIs.
+                """
+            )
             with ui.row():
                 ui.button(
                     icon="sym_s_align_horizontal_left", on_click=self._align_left
-                ).tooltip("Align left")
+                ).bind_enabled_from(
+                    self, "container", lambda x: len(list(x)) > 0
+                ).tooltip(
+                    "Align left"
+                )
                 ui.button(
                     icon="sym_s_align_vertical_top", on_click=self._align_top
-                ).tooltip("Align top")
+                ).bind_enabled_from(
+                    self, "container", lambda x: len(list(x)) > 0
+                ).tooltip(
+                    "Align top"
+                )
                 ui.button(
                     icon="sym_s_align_vertical_bottom", on_click=self._align_bottom
-                ).tooltip("Align bottom")
+                ).bind_enabled_from(
+                    self, "container", lambda x: len(list(x)) > 0
+                ).tooltip(
+                    "Align bottom"
+                )
                 ui.button(
                     icon="sym_s_align_horizontal_right", on_click=self._align_right
-                ).tooltip("Align right")
+                ).bind_enabled_from(
+                    self, "container", lambda x: len(list(x)) > 0
+                ).tooltip(
+                    "Align right"
+                )
                 ui.button(
                     icon="sym_s_align_vertical_center", on_click=self._align_center
-                ).tooltip("Align center")
-                ui.button(icon="sym_s_resize", on_click=self._resize_all).tooltip(
+                ).bind_enabled_from(
+                    self, "container", lambda x: len(list(x)) > 0
+                ).tooltip(
+                    "Align center"
+                )
+                ui.button(
+                    icon="sym_s_resize", on_click=self._resize_all
+                ).bind_enabled_from(
+                    self, "container", lambda x: len(list(x)) > 0
+                ).tooltip(
                     "Resize all"
                 )
             with ui.grid(columns="2fr 2fr 2fr 2fr 2fr 2fr").classes("w-full gap-2"):

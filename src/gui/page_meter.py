@@ -1,3 +1,4 @@
+import asyncio
 import dataclasses
 import json
 
@@ -16,7 +17,7 @@ class MeterPage:
             self.spinner.visible = True
             value_container.clear()
             try:
-                await fecth_data()
+                await fetch_data()
             except Exception as e:
                 ui.notify(
                     f"Error occured: {e}",
@@ -29,8 +30,11 @@ class MeterPage:
                 )
             self.spinner.visible = False
 
-        async def fecth_data() -> None:
-            result = self.callbacks.get_meter_data(saveimages=True)
+        async def fetch_data() -> None:
+            result = await asyncio.to_thread(
+                self.callbacks.get_meter_data, saveimages=True
+            )
+
             text_size = "text-xs"
             with value_container:
                 with ui.grid(columns=2):

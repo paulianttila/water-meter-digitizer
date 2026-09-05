@@ -71,23 +71,23 @@ stages:
       json:
         meters:
           - name: digital
-            value: "00453"
+            value: "00452"
             unit: ""
           - name: analog
-            value: "9024"
+            value: "91241"
             unit: ""
           - name: total
-            value: "00453.90240"
+            value: "00452.91241"
             unit: ""
         digital_results:
-          digit1: "0"
-          digit2: "0"
-          digit3: "40"
-          digit4: "49"
-          digit5: "26"
+          digit1: "0.0"
+          digit2: "0.0"
+          digit3: "4.0"
+          digit4: "4.9"
+          digit5: "2.6"
         analog_results:
-          analog1: "9.97"
-          analog2: "0.94"
-          analog3: "2.51"
-          analog4: "4.06"
+          analog1: "0.00"
+          analog2: "0.90"
+          analog3: "2.50"
+          analog4: "4.10"
         error: ""

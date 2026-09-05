@@ -245,15 +245,15 @@ def convert_to_gray_scale(image: Image) -> Image:
 
 def autocontrast_image(
     image: Image,
-    cutoff_low: float = 0,
-    cutoff_high: float = 0,
+    cutoff_low: int = 0,
+    cutoff_high: int = 0,
     ignore: Union[int, None] = None,
 ) -> Image:
     if image is None:
         raise ValueError("No image to autocontrast")
     if isinstance(image, Image):
         return ImageOps.autocontrast(
-            image, cutoff=(cutoff_low, cutoff_high), ignore=ignore
+            image, cutoff=(cutoff_low, cutoff_high), ignore=ignore  # type: ignore
         )
     if isinstance(image, np.ndarray):
         return image

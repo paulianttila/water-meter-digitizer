@@ -1,3 +1,6 @@
+INVALID_DIGIT = "N"
+
+
 def fill_value_with_leading_zeros(length: int, value: str) -> str:
     """
     Fills the given value with leading zeros to match the specified length.
@@ -54,7 +57,7 @@ def fill_with_predecessor_digits(value: str, predecessor: str) -> str:
         return value
     newVal = ""
     for i in range(len(value) - 1, -1, -1):
-        v = predecessor[i] if value[i] == "N" else value[i]
+        v = predecessor[i] if value[i] == INVALID_DIGIT else value[i]
         newVal = f"{v}{newVal}"
     return newVal
 

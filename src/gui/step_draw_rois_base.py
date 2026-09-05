@@ -1,10 +1,10 @@
 from dataclasses import dataclass
-from typing import Callable
+from typing import Callable, Union
 from pathlib import Path
 
 from nicegui import events, ui
 
-from data_classes import CutImage, ImagePosition
+from data_classes import CutImage, ImagePosition, RefImage
 from .step_base import BaseStep
 import utils.image
 from processor.image import ImageProcessor
@@ -48,20 +48,37 @@ class DrawRoisBaseStep(BaseStep):
         self.mouse_y: int
         self.draw_on = False
         self.colors = [
-            "black",
             "red",
-            "green",
             "blue",
-            "yellow",
-            "purple",
+            "green",
             "orange",
-            "back",
-            "white",
+            "purple",
+            "cyan",
+            "teal",
             "pink",
+            "indigo",
+            "lime",
         ]
         self.autocontrast = False
         self.cutoff_low = 0
         self.cutoff_high = 0
+
+    def load_rois(self, items: list[Union[ImagePosition, RefImage]]) -> None:
+        self.rois.clear()
+        if hasattr(self, "container") and self.container is not None:
+            self.container.clear()
+            for item in items:
+                roi = Roi(
+                    name=item.name,
+                    x=int(item.x),
+                    y=int(item.y),
+                    w=int(item.w),
+                    h=int(item.h),
+                    color=self.colors[len(self.rois) % len(self.colors)],
+                    enabled=True,
+                )
+                self._add_roi_ui(roi)
+            self._show_rois()
 
     def _show_rois(self) -> None:
         content = "".join(
@@ -169,7 +186,7 @@ class DrawRoisBaseStep(BaseStep):
                     roi.w = width
                     roi.h = height
 
-    def _get_cnn_models(self, dir: str) -> dict:
+    def _get_cnn_models(self, dir: str) -> dict[str, str]:
         return {str(path): path.name for path in Path(dir).rglob("*.tflite")}
 
     def _get_base64_image_by_name(
@@ -200,7 +217,7 @@ class DrawRoisBaseStep(BaseStep):
         self.cutoff_high = cutoff_high
 
     def _cut_images(self) -> list[CutImage]:
-        postions = [
+        positions = [
             ImagePosition(roi.name, int(roi.x), int(roi.y), int(roi.w), int(roi.h))
             for roi in self.rois
         ]
@@ -209,7 +226,7 @@ class DrawRoisBaseStep(BaseStep):
             .set_image_from_base64_str(self.image)
             .start_image_cutting()
             .cut_images(
-                postions,
+                positions,
                 autocontrast=self.autocontrast,
                 cutoff_low=self.cutoff_low,
                 cutoff_high=self.cutoff_high,
@@ -222,7 +239,7 @@ class DrawRoisBaseStep(BaseStep):
     def _create_new_roi(self) -> Roi:
         i = len(list(self.container))
         return Roi(
-            color=self.colors[i % 10],
+            color=self.colors[i % len(self.colors)],
             name=f"{self.name_template}{i}",
             enabled=True,
             x=10 * i,
@@ -237,11 +254,14 @@ class DrawRoisBaseStep(BaseStep):
 
     def _add_roi(self) -> None:
         self._unselect_all_rois()
+        roi = self._create_new_roi()
+        self._add_roi_ui(roi)
+
+    def _add_roi_ui(self, roi: Roi) -> None:
         with self.container:
             with ui.grid(columns="1fr 2fr 2fr 2fr 2fr 2fr").classes("w-full gap-2"):
-                roi = self._create_new_roi()
                 ui.checkbox(on_change=self._show_rois).bind_value(roi, "enabled").props(
-                    f"color={roi.color}"
+                    f"color={roi.color} keep-color"
                 )
                 ui.input().bind_value(roi, "name")
                 ui.number(on_change=self._show_rois).bind_value(

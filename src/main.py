@@ -1,6 +1,7 @@
 import argparse
 import dataclasses
 import json
+from pathlib import Path
 import signal
 import os
 import logging
@@ -41,9 +42,12 @@ logging.basicConfig(
 logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
+BASE_DIR = Path(__file__).resolve().parent
 app = FastAPI(title="meter")
-app.mount("/static", StaticFiles(directory="web/static"), name="static")
-templates = Jinja2Templates(directory="web/templates")
+app.mount(
+    "/static", StaticFiles(directory=str(BASE_DIR / "web" / "static")), name="static"
+)
+templates = Jinja2Templates(directory=str(BASE_DIR / "web" / "templates"))
 
 
 @app.get("/", response_class=HTMLResponse)
@@ -275,10 +279,11 @@ def get_meter_data(url: str = "", saveimages: bool = False) -> MeterResult:
             config.digital_readout.model_file, config.digital_readout.model
         )
         .use_previous_value_file(config.prevoius_value_file)
-        .execute_analog_ccn(analog_images)
-        .execute_digital_ccn(digital_images)
-        .evaluate_ccn_results()
-        .get_meter_values(config.meter_configs)
+        .process(
+            analog_images=analog_images,
+            digital_images=digital_images,
+            meter_configs=config.meter_configs,
+        )
     )
 
 

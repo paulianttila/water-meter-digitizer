@@ -1,3 +1,4 @@
+from configuration import ImageSource
 from typing import Callable
 
 from nicegui import ui
@@ -18,11 +19,13 @@ class BaseStep:
     @staticmethod
     def decorator_spinner(func):
         async def wrapper(self, *args, **kwargs):
-            self.spinner.set_visibility(True)
+            if self.spinner is not None:
+                self.spinner.set_visibility(True)
             try:
-                await func(self, *args, **kwargs)
+                return await func(self, *args, **kwargs)
             finally:
-                self.spinner.set_visibility(False)
+                if self.spinner is not None:
+                    self.spinner.set_visibility(False)
 
         return wrapper
 
@@ -36,6 +39,12 @@ class BaseStep:
 
         return wrapper
 
+    def load_from_config(self, image_source: ImageSource) -> None:
+        if self.url:
+            self.url.value = image_source.url
+        if self.timeout:
+            self.timeout.value = image_source.timeout
+
     def get_image(self) -> str:
         return self.image
 
@@ -44,6 +53,12 @@ class BaseStep:
 
     def set_spinner(self, spinner) -> None:
         self.spinner = spinner
+
+    def add_help(self, content: str) -> None:
+        with ui.expansion("Help & Tips", icon="help_outline").classes(
+            "w-full text-caption text-grey-8 bg-blue-50/40 border border-blue-100 rounded mb-2"
+        ).props("dense"):
+            ui.markdown(content).classes("text-caption")
 
     def add_navigator(self, stepper, first_step=False, last_step=False) -> None:
 

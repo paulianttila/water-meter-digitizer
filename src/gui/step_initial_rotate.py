@@ -2,6 +2,7 @@ from typing import Callable
 
 from nicegui import ui
 
+from configuration import Alignment
 from processor.image import ImageProcessor
 from .step_base import BaseStep
 
@@ -20,6 +21,12 @@ class InitialRotateStep(BaseStep):
         )
         self.angle = 0
         self.org_image: str = ""
+        self.angle_label: ui.label
+
+    def load_from_config(self, alignment: Alignment) -> None:
+        self.angle = int(alignment.rotate_angle)
+        if hasattr(self, "angle_label") and self.angle_label is not None:
+            self.angle_label.set_text(f"Rotate: {self.angle}°")
 
     def update_image(self, image: str) -> None:
         self.org_image = image
@@ -66,18 +73,32 @@ class InitialRotateStep(BaseStep):
 
     async def show(self, stepper, first_step=False, last_step=False) -> None:
         with ui.step(self.name):
+            self.add_help(
+                """
+- **Coarse Rotation**: Rotate image in 90° steps (`-90°`, `180°`, `+90°`) so the meter digits and dials are oriented right-side up.
+- **Restore**: Reset rotation back to the unrotated state.
+                """
+            )
             with ui.row():
-                ui.button(icon="rotate_left", on_click=self._rotate_left).tooltip(
+                ui.button(
+                    icon="rotate_left", on_click=self._rotate_left
+                ).bind_enabled_from(self, "image", lambda image: image != "").tooltip(
                     "Rotate image 90° left"
                 )
                 ui.button(
                     icon="flip_camera_android", on_click=self._rotate_180
-                ).tooltip("Rotate image 180°")
-                ui.button(icon="rotate_right", on_click=self._rotate_right).tooltip(
+                ).bind_enabled_from(self, "image", lambda image: image != "").tooltip(
+                    "Rotate image 180°"
+                )
+                ui.button(
+                    icon="rotate_right", on_click=self._rotate_right
+                ).bind_enabled_from(self, "image", lambda image: image != "").tooltip(
                     "Rotate image 90° right"
                 )
             self.angle_label = ui.label("")
-            ui.button(icon="sym_s_restore", on_click=self._reset_image).tooltip(
+            ui.button(
+                icon="sym_s_restore", on_click=self._reset_image
+            ).bind_enabled_from(self, "image", lambda image: image != "").tooltip(
                 "Restore original image"
             )
 

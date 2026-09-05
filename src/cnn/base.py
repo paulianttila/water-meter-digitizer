@@ -4,7 +4,7 @@ import os
 import logging
 from importlib import util
 
-from PIL.Image import Image, NEAREST
+from PIL.Image import Image, Resampling
 import numpy as np
 
 
@@ -78,7 +78,7 @@ class CNNBase:
         )
 
     def _readout(self, image: Image) -> np.ndarray:
-        test_image = image.resize((self.dx, self.dy), NEAREST)
+        test_image = image.resize((self.dx, self.dy), Resampling.NEAREST)
         test_image = np.array(test_image, dtype="float32")
         input_data = np.reshape(test_image, [1, self.dy, self.dx, 3])
         self.interpreter.set_tensor(self.input_details[0]["index"], input_data)
