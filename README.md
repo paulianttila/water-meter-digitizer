@@ -61,19 +61,15 @@ docker compose up -d
 
 The web GUI is then available at **http://localhost:3000**.
 
-### Run Locally (development)
+### Run Locally (development with `uv`)
 
 ```bash
-# Create and activate a virtual environment
-python3 -m venv .venv
-source .venv/bin/activate
-
-# Install dependencies
-pip install -r requirements.txt
+# Create virtual environment and install dependencies
+uv sync
 
 # Point to a config file and start
 export CONFIG_FILE=$(pwd)/config/config.ini
-cd src && python main.py
+cd src && uv run python main.py
 ```
 
 ---

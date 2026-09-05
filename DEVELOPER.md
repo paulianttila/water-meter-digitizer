@@ -172,21 +172,21 @@ Models are executed via `tflite_runtime` (or `tensorflow.lite`) in `src/cnn/`.
 
 ### Prerequisites
 - **Python 3.9+** (compatible through Python 3.12)
+- **uv** package manager ([astral.sh/uv](https://astral.sh/uv))
 - **libGL / OpenCV dependencies** (standard system libraries)
 
-### Setup Virtual Environment
+### Setup Virtual Environment with `uv`
 
 ```bash
 # Clone repository
 git clone https://github.com/paulianttila/water-meter-system.git
 cd water-meter-system
 
-# Create and activate virtual environment
-python3 -m venv .venv
-source .venv/bin/activate
+# Create virtual environment and install all dependencies (including dev tools)
+uv sync
 
-# Install runtime and development dependencies
-pip install -r requirements-dev.txt
+# (Optional) Activate the virtual environment in your shell
+source .venv/bin/activate
 ```
 
 ---
@@ -199,9 +199,9 @@ pip install -r requirements-dev.txt
 # Set configuration path
 export CONFIG_FILE=$(pwd)/test_config/config.ini
 
-# Start the application
+# Start the application using uv
 cd src
-python main.py
+uv run python main.py
 ```
 
 The web interface will be accessible at `http://localhost:3000`.
@@ -238,11 +238,11 @@ A VS Code launch configuration can be set up in `.vscode/launch.json`:
 Unit tests are written with `pytest` and verify mathematical helpers, configuration parsing, predecessor logic, CNN postprocessing, and GUI step handlers.
 
 ```bash
-# Run all unit tests
-.venv/bin/python -m pytest tests/unit -v
+# Run all unit tests with uv
+uv run pytest tests/unit -v
 
 # Run a specific test module
-.venv/bin/python -m pytest tests/unit/test_predecessor.py -v
+uv run pytest tests/unit/test_predecessor.py -v
 ```
 
 ### Running Integration Tests (Tavern)
@@ -257,7 +257,7 @@ export CONFIG_FILE=$(pwd)/test_config/config.ini
 ### Running All QA Checks
 
 The `./run_tests.sh` helper supports several flags:
-- `./run_tests.sh -u`: Run unit tests only.
+- `./run_tests.sh -u`: Run unit tests only (`uv run pytest tests/unit`).
 - `./run_tests.sh -s`: Run static analysis only (`ruff`, `black`, `bandit`).
 - `./run_tests.sh -a`: Run full test app, Tavern integration tests, unit tests, and static analysis.
 
@@ -272,13 +272,13 @@ The `./run_tests.sh` helper supports several flags:
 
 ```bash
 # Auto-format code
-black .
+uv run black .
 
 # Check lint rules
-ruff check .
+uv run ruff check .
 
 # Run security checks
-bandit -c pyproject.toml -r .
+uv run bandit -c pyproject.toml -r .
 ```
 
 ### Compatibility Guidelines
