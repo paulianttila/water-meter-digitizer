@@ -167,7 +167,13 @@ All endpoints are served on port `3000`.
 ```json
 {
   "meters": [
-    { "name": "main", "value": "00452.91241", "unit": "m³" }
+    {
+      "name": "main",
+      "value": "00452.91241",
+      "unit": "m³",
+      "quality": "good",
+      "confidence": 96.2
+    }
   ],
   "digital_results": {
     "digit1": "0.0",
@@ -181,6 +187,17 @@ All endpoints are served on port `3000`.
     "analog2": "0.90",
     "analog3": "2.50",
     "analog4": "4.10"
+  },
+  "confidence_scores": {
+    "digit1": 85.2,
+    "digit2": 91.3,
+    "digit3": 99.9,
+    "digit4": 90.9,
+    "digit5": 100.0,
+    "analog1": 99.2,
+    "analog2": 98.9,
+    "analog3": 100.0,
+    "analog4": 100.0
   },
   "error": ""
 }
@@ -221,6 +238,7 @@ Global application paths and logging configuration.
 | `DigitalModelsDir` | string | `${ConfigDir}/neuralnets/digital` | Directory containing TFLite models for digital digits. |
 | `AnalogModelsDir` | string | `${ConfigDir}/neuralnets/analog` | Directory containing TFLite models for analog needles. |
 | `PreviousValueFile` | string | `${ConfigDir}/prevalue.ini` | File used to persist previous meter values across readouts. |
+| `MinConfidenceThreshold` | float | `50.0` | Minimum confidence percentage (0.0–100.0) required to accept digit/needle reading before invalidating (`N`). |
 
 ---
 

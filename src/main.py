@@ -343,6 +343,7 @@ def get_meter_data(url: str = "", saveimages: bool = False) -> MeterResult:
 
     return (
         DigitizerProcessor()
+        .set_min_confidence_threshold(config.min_confidence_threshold)
         .init_analog_model(
             config.analog_readout.model_file, config.analog_readout.model
         )

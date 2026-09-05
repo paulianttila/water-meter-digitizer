@@ -1,4 +1,4 @@
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from decimal import Decimal, InvalidOperation
 import math
 import logging
@@ -21,6 +21,8 @@ from decorators.decorators import log_execution_time
 logger = logging.getLogger(__name__)
 
 INVALID_DIGIT = "N"
+DEFAULT_MIN_CONFIDENCE_THRESHOLD = 60.0
+MIN_CONFIDENCE_THRESHOLD = DEFAULT_MIN_CONFIDENCE_THRESHOLD
 
 MODEL_AUTO = "auto"
 MODEL_ANALOG = "analog"  # Analogue
@@ -38,6 +40,7 @@ class ReadoutResult:
     name: str
     value: float
     model: str
+    confidence: float = 100.0
 
 
 @dataclass
@@ -45,6 +48,8 @@ class MeterValue:
     name: str
     value: str
     unit: str = ""
+    quality: str = "good"  # "good", "warning", or "uncertain"
+    confidence: float = 100.0
 
 
 @dataclass
@@ -52,7 +57,8 @@ class MeterResult:
     meters: list[MeterValue]
     digital_results: dict
     analog_results: dict
-    error: str
+    confidence_scores: dict[str, float] = field(default_factory=dict)
+    error: str = ""
 
 
 @dataclass
@@ -81,9 +87,14 @@ class DigitizerProcessor:
         self.analog_model: str = ""
         self.digital_model: str = ""
         self.previous_value_file: str | None = None
+        self.min_confidence_threshold: float = DEFAULT_MIN_CONFIDENCE_THRESHOLD
         self.cnn_digital_results: list[ReadoutResult] = []
         self.cnn_analog_results: list[ReadoutResult] = []
         self.available_values: dict[str, int | str] = {}
+
+    def set_min_confidence_threshold(self, threshold: float) -> "DigitizerProcessor":
+        self.min_confidence_threshold = threshold
+        return self
 
     @log_execution_time
     def init_analog_model(
@@ -130,7 +141,10 @@ class DigitizerProcessor:
         analog_images: list[CutImage],
         digital_images: list[CutImage],
         meter_configs: list[MeterConfig],
+        min_confidence_threshold: float | None = None,
     ) -> MeterResult:
+        if min_confidence_threshold is not None:
+            self.min_confidence_threshold = min_confidence_threshold
         self.execute_analog_cnn(analog_images)
         self.execute_digital_cnn(digital_images)
         self.evaluate_cnn_results()
@@ -146,7 +160,13 @@ class DigitizerProcessor:
                 self.analog_model, self.analog_counter_reader.getModelDetails()
             )
             for item in images:
-                value = self.analog_counter_reader.readout(item.image)
+                if hasattr(self.analog_counter_reader, "readout_with_confidence"):
+                    value, conf = self.analog_counter_reader.readout_with_confidence(
+                        item.image
+                    )
+                else:
+                    value = self.analog_counter_reader.readout(item.image)
+                    conf = 100.0
                 value = round(value, 1)
                 value = 0 if value == 10 else value
                 result.append(
@@ -154,6 +174,7 @@ class DigitizerProcessor:
                         item.name,
                         value,
                         model,
+                        confidence=conf,
                     )
                 )
             self.cnn_analog_results = result
@@ -168,12 +189,19 @@ class DigitizerProcessor:
                 self.digital_model, self.digital_counter_reader.getModelDetails()
             )
             for item in images:
-                value = self.digital_counter_reader.readout(item.image)
+                if hasattr(self.digital_counter_reader, "readout_with_confidence"):
+                    value, conf = self.digital_counter_reader.readout_with_confidence(
+                        item.image
+                    )
+                else:
+                    value = self.digital_counter_reader.readout(item.image)
+                    conf = 100.0
                 result.append(
                     ReadoutResult(
                         item.name,
                         value,
                         model,
+                        confidence=conf,
                     )
                 )
             self.cnn_digital_results = result
@@ -188,12 +216,17 @@ class DigitizerProcessor:
         available_values: dict[str, int | str] = {}
 
         for result in self.cnn_analog_results + self.cnn_digital_results:
-            digit = self._evaluate_counter(
-                name=result.name,
-                number=result.value,
-                predecessor_digit=None,
-                model=result.model,
-            )
+            if result.confidence < self.min_confidence_threshold or math.isnan(
+                result.value
+            ):
+                digit: int | str = INVALID_DIGIT
+            else:
+                digit = self._evaluate_counter(
+                    name=result.name,
+                    number=result.value,
+                    predecessor_digit=None,
+                    model=result.model,
+                )
             available_values[result.name] = digit
 
         self.available_values = available_values
@@ -212,13 +245,18 @@ class DigitizerProcessor:
             if model != predecessor_model:
                 predecessor_value = None
 
-            digit = self._evaluate_counter(
-                name=result.name,
-                number=result.value,
-                predecessor_digit=None,
-                predecessor_value=predecessor_value,
-                model=model,
-            )
+            if result.confidence < self.min_confidence_threshold or math.isnan(
+                result.value
+            ):
+                digit: int | str = INVALID_DIGIT
+            else:
+                digit = self._evaluate_counter(
+                    name=result.name,
+                    number=result.value,
+                    predecessor_digit=None,
+                    predecessor_value=predecessor_value,
+                    model=model,
+                )
 
             evaluated[result.name] = str(digit)
 
@@ -468,28 +506,60 @@ class DigitizerProcessor:
 
     def _gen_result(self, meters: list[Meter]) -> MeterResult:
         analog_results = {}
+        confidence_scores = {}
         if self.analog_counter_reader is not None:
             for item in self.cnn_analog_results:
                 val = f"{item.value:.2f}"
                 analog_results[item.name] = val
+                confidence_scores[item.name] = item.confidence
         digital_results = {}
         if self.digital_counter_reader is not None:
             for item in self.cnn_digital_results:
                 val = INVALID_DIGIT if math.isnan(item.value) else str(item.value)
                 digital_results[item.name] = val
+                confidence_scores[item.name] = item.confidence
 
-        meter_results = [
-            MeterValue(
-                name=meter.name,
-                value=meter.value,
-                unit=meter.config.unit,
+        all_results_dict = {
+            item.name: item
+            for item in (self.cnn_digital_results + self.cnn_analog_results)
+        }
+
+        meter_results = []
+        for meter in meters:
+            component_confs = [
+                all_results_dict[name].confidence
+                for name in meter.config.value_names
+                if name in all_results_dict
+            ]
+            if component_confs:
+                avg_conf = round(sum(component_confs) / len(component_confs), 1)
+                min_conf = min(component_confs)
+            else:
+                avg_conf = 100.0
+                min_conf = 100.0
+
+            if min_conf >= 80.0 and avg_conf >= 85.0:
+                quality = "good"
+            elif min_conf >= 60.0 and avg_conf >= 65.0:
+                quality = "warning"
+            else:
+                quality = "uncertain"
+
+            meter_results.append(
+                MeterValue(
+                    name=meter.name,
+                    value=meter.value,
+                    unit=meter.config.unit,
+                    quality=quality,
+                    confidence=avg_conf,
+                )
             )
-            for meter in meters
-        ]
+
         return MeterResult(
             meters=meter_results,
             digital_results=digital_results,
             analog_results=analog_results,
+            confidence_scores=confidence_scores,
             error="",
         )
 

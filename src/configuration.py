@@ -79,6 +79,7 @@ class Config(BaseSettings):
     previous_value_file: str = "/config/prevalue.ini"
     digital_models_dir: str = "/config/neuralnets/digital"
     analog_models_dir: str = "/config/neuralnets/analog"
+    min_confidence_threshold: float = 60.0
     image_source: ImageSource = Field(default_factory=ImageSource)
     digital_readout: CNNParams = Field(default_factory=CNNParams)
     analog_readout: CNNParams = Field(default_factory=CNNParams)
@@ -146,6 +147,7 @@ class Config(BaseSettings):
             "DigitalModelsDir": self.digital_models_dir,
             "AnalogModelsDir": self.analog_models_dir,
             "PreviousValueFile": self.previous_value_file,
+            "MinConfidenceThreshold": str(self.min_confidence_threshold),
         }
 
         config["ImageSource"] = {
@@ -275,6 +277,9 @@ class Config(BaseSettings):
         )
         self.previous_value_file = config.get(
             "DEFAULT", "PreviousValueFile", fallback="/config/prevalue.ini"
+        )
+        self.min_confidence_threshold = config.getfloat(
+            "DEFAULT", "MinConfidenceThreshold", fallback=60.0
         )
 
         ##################  Image Source Parameters ####################################

@@ -649,9 +649,18 @@
                 <div class="meter-stat-card {% if meter.name == 'total' %}featured{% endif %}">
                     <div class="meter-label">
                         <span>{{ meter.name }}</span>
-                        {% if meter.name == 'total' %}
-                        <span style="color: #34d399; font-size: 0.7rem; font-weight: 700;">PRIMARY</span>
-                        {% endif %}
+                        <div style="display: flex; align-items: center; gap: 0.4rem;">
+                            {% if meter.name == 'total' %}
+                            <span style="color: #34d399; font-size: 0.7rem; font-weight: 700;">PRIMARY</span>
+                            {% endif %}
+                            {% if meter.quality == 'good' %}
+                            <span class="badge" style="background: rgba(16,185,129,0.15); border-color: rgba(16,185,129,0.3); color: #34d399; font-size: 0.7rem; padding: 0.15rem 0.45rem;">{{ meter.confidence }}% &bull; Good</span>
+                            {% elif meter.quality == 'warning' %}
+                            <span class="badge" style="background: rgba(245,158,11,0.15); border-color: rgba(245,158,11,0.3); color: #fbbf24; font-size: 0.7rem; padding: 0.15rem 0.45rem;">{{ meter.confidence }}% &bull; Warning</span>
+                            {% else %}
+                            <span class="badge" style="background: rgba(239,68,68,0.15); border-color: rgba(239,68,68,0.3); color: #f87171; font-size: 0.7rem; padding: 0.15rem 0.45rem;">{{ meter.confidence }}% &bull; Uncertain</span>
+                            {% endif %}
+                        </div>
                     </div>
                     <div class="meter-value-wrap">
                         <span class="meter-value">{{ meter.value }}</span>
@@ -691,6 +700,9 @@
                     <div class="crop-card-info">
                         <span class="crop-name">{{ image }}</span>
                         <span class="crop-val-pill">{{ value }}</span>
+                        {% if result.confidence_scores and image in result.confidence_scores %}
+                        <span style="font-size: 0.7rem; color: #94a3b8; font-family: ui-monospace, monospace;">{{ result.confidence_scores[image] }}% conf</span>
+                        {% endif %}
                     </div>
                 </div>
                 {% endfor %}
@@ -714,22 +726,15 @@
                     <div class="crop-card-info">
                         <span class="crop-name">{{ image }}</span>
                         <span class="crop-val-pill">{{ value }}</span>
+                        {% if result.confidence_scores and image in result.confidence_scores %}
+                        <span style="font-size: 0.7rem; color: #94a3b8; font-family: ui-monospace, monospace;">{{ result.confidence_scores[image] }}% conf</span>
+                        {% endif %}
                     </div>
                 </div>
                 {% endfor %}
             </div>
         </section>
         {% endif %}
-
-        <!-- Footer -->
-        <footer>
-            <span>Water Meter System &bull; Powered by Google LiteRT</span>
-            <div>
-                <a href="javascript:void(0)" onclick="openApiConsole();">JSON API</a> &bull;
-                <a href="/meter?saveimages=true">Save Images</a> &bull;
-                <a href="/gui">Setup Wizard</a>
-            </div>
-        </footer>
     </div>
 
     <!-- Interactive JSON API Modal -->

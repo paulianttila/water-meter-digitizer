@@ -85,12 +85,18 @@ stages:
           - name: digital
             value: "00452"
             unit: ""
+            quality: "good"
+            confidence: 93.5
           - name: analog
             value: "91241"
             unit: ""
+            quality: "good"
+            confidence: 99.5
           - name: total
             value: "00452.91241"
             unit: ""
+            quality: "good"
+            confidence: 96.2
         digital_results:
           digit1: "0.0"
           digit2: "0.0"
@@ -102,4 +108,14 @@ stages:
           analog2: "0.90"
           analog3: "2.50"
           analog4: "4.10"
+        confidence_scores:
+          analog1: 99.2
+          analog2: 98.9
+          analog3: 100.0
+          analog4: 100.0
+          digit1: 85.2
+          digit2: 91.3
+          digit3: 99.9
+          digit4: 90.9
+          digit5: 100.0
         error: ""
