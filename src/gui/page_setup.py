@@ -417,11 +417,16 @@ class SetupPage:
                 subtext="Check camera URL and click Download to retry",
             )
 
-        ui.label("Setup").classes("text-h4")
-        with ui.row():
-            self.spinner = ui.spinner("dots", size="lg", color="blue")
+        with ui.row().classes("w-full justify-between items-center mb-3"):
+            with ui.row().classes("items-center gap-3"):
+                ui.label("Setup Wizard").classes("text-h4")
+                self.spinner = ui.spinner("dots", size="md", color="cyan")
+                self.spinner.visible = False
+            ui.label("8-Step Visual Calibration").classes(
+                "text-xs font-semibold text-gray-400 bg-white/5 "
+                "border border-white/10 px-3 py-1 rounded-full"
+            )
 
-        self.spinner.visible = False
         self.download_image_step = DownloadImageStep(
             name=NAME_DOWNLOAD_IMAGE,
             set_image_callback=set_image,
@@ -478,27 +483,39 @@ class SetupPage:
             spinner=self.spinner,
         )
 
-        with ui.splitter(value=40).classes("w-full") as splitter:
+        with ui.splitter(value=42).classes("w-full gap-4") as splitter:
             with splitter.before:
-                self.interactive_image = ui.interactive_image(
-                    size=(640, 480),
-                    on_mouse=mouse_handler,
-                    events=["mousedown", "mouseup", "mousemove", "shiftKey"],
-                    cross=True,
-                ).classes("w-full bg-blue-50")
-                with ui.row().classes("w-full"):
-                    self.image_details = ui.label("")
-                    self.mouse_position = ui.label("")
-                    self.selected_position = ui.label("")
-                show_offline_placeholder(
-                    "No Image Loaded",
-                    "Enter camera URL and click Download to start",
-                )
+                with ui.element("div").classes(
+                    "w-full rounded-xl bg-slate-950 p-2.5 border border-white/10 "
+                    "shadow-lg shadow-black/40 flex flex-col gap-2"
+                ):
+                    self.interactive_image = ui.interactive_image(
+                        size=(640, 480),
+                        on_mouse=mouse_handler,
+                        events=["mousedown", "mouseup", "mousemove", "shiftKey"],
+                        cross=True,
+                    ).classes("w-full rounded-lg bg-slate-900")
+                    with ui.row().classes(
+                        "w-full justify-between items-center px-2 py-1.5 "
+                        "rounded-lg bg-slate-900/80 border border-white/5 "
+                        "text-xs text-gray-400"
+                    ):
+                        self.image_details = ui.label("").classes(
+                            "font-mono text-cyan-400"
+                        )
+                        self.mouse_position = ui.label("").classes("font-mono")
+                        self.selected_position = ui.label("").classes(
+                            "font-mono text-emerald-400 font-semibold"
+                        )
+                    show_offline_placeholder(
+                        "No Image Loaded",
+                        "Enter camera URL and click Download to start",
+                    )
             with splitter.after:
                 with (
                     ui.stepper(on_value_change=lambda x: handle_stepper_change(x.value))
                     .props("vertical")
-                    .classes("w-full") as stepper
+                    .classes("w-full rounded-xl shadow-md") as stepper
                 ):
                     await self.download_image_step.show(stepper, first_step=True)
                     await self.initial_rotate_step.show(stepper)
