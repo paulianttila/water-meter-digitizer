@@ -39,6 +39,10 @@ dev = [
     "tavern>=2.10.1",
 ]
 
+[tool.black]
+line-length = 88
+target-version = ["py39", "py311"]
+
 [tool.ruff]
 # Same as Black.
 line-length = 88
