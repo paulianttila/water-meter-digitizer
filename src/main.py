@@ -53,7 +53,7 @@ templates = Jinja2Templates(directory=str(BASE_DIR / "web" / "templates"))
 @log_execution_time
 def get_index(request: Request) -> _TemplateResponse:
     return templates.TemplateResponse(
-        "index.html", context={"request": request, "version": VERSION}
+        request=request, name="index.html", context={"version": VERSION}
     )
 
 
@@ -133,8 +133,9 @@ def get_roi(
         )
 
         return templates.TemplateResponse(
-            "roi.html",
-            context={"request": request, "data": base64image},
+            request=request,
+            name="roi.html",
+            context={"data": base64image},
         )
     except DownloadFailure as e:
         return f"Error: {e}"
@@ -182,11 +183,9 @@ def get_meters(
             media_type="application/json",
         )
     return templates.TemplateResponse(
-        "meters.html",
-        context={
-            "request": request,
-            "result": result,
-        },
+        request=request,
+        name="meters.html",
+        context={"result": result},
         media_type="text/html",
     )
 
