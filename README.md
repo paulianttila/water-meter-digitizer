@@ -8,11 +8,9 @@ Automatically read analog and digital utility meters using a camera, image proce
 
 ## Features
 
-- **Google LiteRT Runtime** — fast, low-latency neural network inference powered by `ai-edge-litert` on Python 3.11.
-- **Modern Web Dashboard & Wizard (`/gui`)** — interactive 8-step setup wizard, live ROI alignment editor, and configuration manager powered by NiceGUI 3.16.
+- **Google LiteRT Runtime** — fast, low-latency neural network inference powered by `ai-edge-litert`.
+- **Modern Web Dashboard & Wizard (`/gui`)** — interactive 8-step setup wizard, live ROI alignment editor, and configuration manager.
 - **Interactive API Explorer (`/`)** — landing page with real-time meter status, JSON viewer, and one-click endpoint testing.
-- **In-Memory Image Cache (`/image/{name}`)** — thread-safe bounded LRU + TTL image caching in memory, eliminating disk thrashing and temporary file mounts.
-- **Pydantic v2 Configuration** — strict type validation and hierarchical `METER_*` environment variable overrides powered by `pydantic-settings`.
 - **Mixed Meter Support** — read combinations of analog needle dials and digital LCD/odometer drum digits in a single image.
 - **Four CNN Model Types** — `analog`, `analog100`, `digital`, `digital100` (auto-detected from model output shape).
 - **Predecessor-Based Digit Correction** — uses adjacent wheel positions to correct ambiguous readings at digit roll-over boundaries.
@@ -59,7 +57,7 @@ services:
 docker compose up -d
 ```
 
-The web dashboard is available at **http://localhost:3000/gui**, and the API explorer is at **http://localhost:3000**.
+The web dashboard is available at **http://localhost:3000**.
 
 ### Run Locally (development with `uv`)
 
@@ -80,7 +78,6 @@ uv run python src/main.py
 - **`/gui` — NiceGUI Web Dashboard**:
   - **Setup Wizard**: 8-step guided calibration flow (image capture, cropping/resizing, image processing, reference marker alignment, ROI bounding-box tuning, and meter calculation setup).
   - **Config Editor**: Direct visual and raw configuration editing with schema validation.
-  - **Log Viewer**: Real-time application log stream with level filtering.
 
 ---
 
