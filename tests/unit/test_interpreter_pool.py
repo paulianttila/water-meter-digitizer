@@ -1,4 +1,5 @@
 from concurrent.futures import ThreadPoolExecutor
+import os
 from PIL import Image
 import pytest
 
@@ -10,8 +11,21 @@ from cnn.pool import (
 from cnn.digital_counter_cnn import DigitalCounterCNN
 from cnn.analog_needle_cnn import AnalogNeedleCNN
 
-DIGITAL_MODEL = "test_config/neuralnets/digital/dig-class100_0168_s2_q.tflite"
-ANALOG_MODEL = "test_config/neuralnets/analog/ana-class100_0171_s2.tflite"
+
+def _find_model(rel_path: str) -> str:
+    candidates = [
+        os.path.join("config", rel_path),
+        os.path.join("/config", rel_path),
+        os.path.join("test_config", rel_path),
+    ]
+    for c in candidates:
+        if os.path.isfile(c):
+            return c
+    return os.path.join("config", rel_path)
+
+
+DIGITAL_MODEL = _find_model("neuralnets/digital/dig-class100_0168_s2_q.tflite")
+ANALOG_MODEL = _find_model("neuralnets/analog/ana-cont_1209_s2.tflite")
 
 
 def test_interpreter_pool_lifecycle():
