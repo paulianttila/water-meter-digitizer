@@ -10,6 +10,7 @@ Automatically read analog and digital utility meters using a camera, image proce
 
 - **Google LiteRT Runtime** — fast, low-latency neural network inference powered by `ai-edge-litert`.
 - **Modern Web Dashboard & Wizard (`/gui`)** — interactive 8-step setup wizard, live ROI alignment editor, and configuration manager.
+- **Historical Consumption Charts** — interactive daily, weekly, and hourly consumption bar/line charts directly in the web dashboard powered by Apache ECharts.
 - **Interactive API Explorer (`/`)** — landing page with real-time meter status, JSON viewer, and one-click endpoint testing.
 - **Mixed Meter Support** — read combinations of analog needle dials and digital LCD/odometer drum digits in a single image.
 - **Four CNN Model Types** — `analog`, `analog100`, `digital`, `digital100` (auto-detected from model output shape).
@@ -101,6 +102,11 @@ All endpoints are served on port `3000`.
 | `GET` | `/version` | Return app version information as JSON |
 | `GET` | `/health` | Rich JSON diagnostics: camera latency, memory, cache hit ratio, models, uptime |
 | `GET` | `/healthcheck` | Liveness check, returns `Health - OK` |
+| `GET` | `/history/consumption?meter=<m>&interval=<i>&days=<d>&cumulative=<b>` | Aggregated consumption buckets (`hourly`, `daily`, `weekly`), with optional cumulative running total |
+| `GET` | `/history/readings?meter=<m>&limit=<n>` | Recent raw meter readings history |
+| `GET` | `/history/stats` | Storage backend health, memory usage, and tracked meter statistics |
+| `POST` | `/history/seed?days=<d>&meter=<m>&base_val=<b>` | Seed synthetic readings history for testing |
+| `POST` | `/history/clear` | Clear all stored history readings |
 | `GET` | `/exit` | Graceful shutdown |
 
 ### Example JSON Responses
@@ -375,6 +381,19 @@ Defines output meters, value formatting, consistency checks, and units.
 | `PreValueFromFileMaxAge` | integer | `0` | Maximum age of persisted previous value in minutes (`0` = no limit). |
 | `UseExtendedResolution` | boolean | `False` | Append fractional sub-digit decimal from the last analog needle. |
 | `Unit` | string | `""` | Measurement unit displayed in API and GUI (e.g. `m³`, `kWh`). |
+
+---
+
+### `[History]`
+Settings for in-memory historical reading retention and consumption aggregation.
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `Enabled` | boolean | `True` | Enable recording historical meter readings. |
+| `Backend` | string | `memory` | Storage backend (`memory`). |
+| `MaxMemoryMB` | float | `20.0` | Maximum memory allocated to historical readings in MB before FIFO pruning. |
+| `MaxRecords` | integer | `50000` | Maximum number of reading records retained in memory. |
+| `RetentionDays` | integer | `30` | Default retention timeframe in days. |
 
 ---
 

@@ -71,6 +71,14 @@ class ImageProcessing(BaseModel):
     autocontrast_cut_images: AutoContrast = Field(default_factory=AutoContrast)
 
 
+class History(BaseModel):
+    enabled: bool = True
+    backend: str = "memory"
+    max_memory_mb: float = 20.0
+    max_records: int = 50000
+    retention_days: int = 30
+
+
 class Config(BaseSettings):
     model_config = SettingsConfigDict(
         env_prefix="METER_",
@@ -92,6 +100,7 @@ class Config(BaseSettings):
     crop: Crop = Field(default_factory=Crop)
     resize: Resize = Field(default_factory=Resize)
     image_processing: ImageProcessing = Field(default_factory=ImageProcessing)
+    history: History = Field(default_factory=History)
 
     @property
     def prevoius_value_file(self) -> str:
@@ -269,6 +278,14 @@ class Config(BaseSettings):
                 "w": str(digital.w),
                 "h": str(digital.h),
             }
+
+        config["History"] = {
+            "Enabled": str(self.history.enabled),
+            "Backend": self.history.backend,
+            "MaxMemoryMB": str(self.history.max_memory_mb),
+            "MaxRecords": str(self.history.max_records),
+            "RetentionDays": str(self.history.retention_days),
+        }
 
         config.write(fp, space_around_delimiters=False)
         return self
@@ -466,6 +483,21 @@ class Config(BaseSettings):
                 )
             )
         self.meter_configs = meter_configs
+
+        ################## History / Storage Parameters ################################
+        history_enabled = config.getboolean("History", "Enabled", fallback=True)
+        history_backend = config.get("History", "Backend", fallback="memory")
+        max_memory_mb = config.getfloat("History", "MaxMemoryMB", fallback=20.0)
+        max_records = config.getint("History", "MaxRecords", fallback=50000)
+        retention_days = config.getint("History", "RetentionDays", fallback=30)
+        self.history = History(
+            enabled=history_enabled,
+            backend=history_backend,
+            max_memory_mb=max_memory_mb,
+            max_records=max_records,
+            retention_days=retention_days,
+        )
+
         return self
 
     def _load_cnn_parames(

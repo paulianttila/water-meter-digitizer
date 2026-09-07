@@ -1,4 +1,4 @@
-from typing import Protocol, runtime_checkable
+from typing import Any, Protocol, runtime_checkable
 
 from processor.digitizer import MeterResult
 from configuration import Config
@@ -28,4 +28,8 @@ class Callbacks(Protocol):
 
     def use_config(self) -> None:
         """Take configuration file in use"""
+        ...
+
+    def get_storage(self) -> Any:
+        """Get history storage backend"""
         ...
