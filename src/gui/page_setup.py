@@ -8,6 +8,7 @@ from callbacks import Callbacks
 from configuration import CNNParams, Config
 from data_classes import ImagePosition, MeterConfig, RefImage
 from .step_meters import MeterStep
+from .step_services import ServicesStep
 from .step_download import DownloadImageStep
 from .step_initial_rotate import InitialRotateStep
 from .step_draw_refs import DrawRefsStep
@@ -39,6 +40,7 @@ NAME_ADJUST = "Adjust image"
 NAME_DRAW_DIGITAL_ROIS = "Draw digital region of interest"
 NAME_DRAW_ANALOG_ROIS = "Draw analog region of interest"
 NAME_METERS = "Meters"
+NAME_SERVICES = "Services & Integrations"
 NAME_FINAL = "Final"
 
 steps_order = [
@@ -49,6 +51,7 @@ steps_order = [
     NAME_DRAW_DIGITAL_ROIS,
     NAME_DRAW_ANALOG_ROIS,
     NAME_METERS,
+    NAME_SERVICES,
     NAME_FINAL,
 ]
 
@@ -70,6 +73,7 @@ class SetupPage:
         self.draw_digital_rois_step: DrawDigitalRoisStep
         self.draw_analog_rois_step: DrawAnalogRoisStep
         self.meters_step: MeterStep
+        self.services_step: ServicesStep
         self.final_step: FinalStep
 
         self.previous_step: str = ""
@@ -161,45 +165,78 @@ class SetupPage:
 
         def gather_config() -> None:
             config = Config()
+            orig_config = self.callbacks.get_config()
+            config.log_level = orig_config.log_level
+            config.config_dir = orig_config.config_dir
+            config.digital_models_dir = orig_config.digital_models_dir
+            config.analog_models_dir = orig_config.analog_models_dir
+            config.previous_value_file = orig_config.previous_value_file
+
             config.image_source.url = self.download_image_step.url.value
-            config.image_source.timeout = self.download_image_step.timeout.value
-            config.crop.enabled = self.adjust_step.crop_enabled.value
-            config.crop.x = self.adjust_step.crop_x.value
-            config.crop.y = self.adjust_step.crop_y.value
-            config.crop.w = self.adjust_step.crop_w.value
-            config.crop.h = self.adjust_step.crop_h.value
-            config.resize.enabled = self.adjust_step.resize_enabled.value
-            config.resize.w = self.adjust_step.resize_w.value
-            config.resize.h = self.adjust_step.resize_h.value
-            config.image_processing.enabled = self.adjust_step.adjust_enabled.value
-            config.image_processing.contrast = self.adjust_step.adjust_contrast.value
-            config.image_processing.brightness = (
-                self.adjust_step.adjust_brightness.value
+            config.image_source.timeout = int(
+                self.download_image_step.timeout.value or 30
             )
-            config.image_processing.sharpness = self.adjust_step.adjust_sharpness.value
-            config.image_processing.color = self.adjust_step.adjust_color.value
+            config.image_source.min_size = int(
+                self.download_image_step.minsize.value or 10000
+            )
+            config.crop.enabled = self.adjust_step.crop_enabled.value
+            config.crop.x = int(self.adjust_step.crop_x.value or 0)
+            config.crop.y = int(self.adjust_step.crop_y.value or 0)
+            config.crop.w = int(self.adjust_step.crop_w.value or 0)
+            config.crop.h = int(self.adjust_step.crop_h.value or 0)
+            config.resize.enabled = self.adjust_step.resize_enabled.value
+            config.resize.w = int(self.adjust_step.resize_w.value or 0)
+            config.resize.h = int(self.adjust_step.resize_h.value or 0)
+            config.image_processing.enabled = self.adjust_step.adjust_enabled.value
+            config.image_processing.contrast = float(
+                self.adjust_step.adjust_contrast.value or 1.0
+            )
+            config.image_processing.brightness = float(
+                self.adjust_step.adjust_brightness.value or 1.0
+            )
+            config.image_processing.sharpness = float(
+                self.adjust_step.adjust_sharpness.value or 1.0
+            )
+            config.image_processing.color = float(
+                self.adjust_step.adjust_color.value or 1.0
+            )
             config.image_processing.grayscale = self.adjust_step.grayscale_enabled.value
             config.image_processing.autocontrast.enabled = (
                 self.adjust_step.autocontrast_enabled.value
             )
-            config.image_processing.autocontrast.cutoff_low = (
-                self.adjust_step.autocontrast_cutoff_low.value
+            config.image_processing.autocontrast.cutoff_low = float(
+                self.adjust_step.autocontrast_cutoff_low.value or 2.0
             )
-            config.image_processing.autocontrast.cutoff_high = (
-                self.adjust_step.autocontrast_cutoff_high.value
+            config.image_processing.autocontrast.cutoff_high = float(
+                self.adjust_step.autocontrast_cutoff_high.value or 45.0
             )
             config.image_processing.autocontrast_cut_images.enabled = (
                 self.adjust_step.autocontrast_cut_images_enabled.value
             )
-            config.image_processing.autocontrast_cut_images.cutoff_low = (
-                self.adjust_step.autocontrast_cut_images_cutoff_low.value
+            config.image_processing.autocontrast_cut_images.cutoff_low = float(
+                self.adjust_step.autocontrast_cut_images_cutoff_low.value or 2.0
             )
-            config.image_processing.autocontrast_cut_images.cutoff_high = (
-                self.adjust_step.autocontrast_cut_images_cutoff_high.value
+            config.image_processing.autocontrast_cut_images.cutoff_high = float(
+                self.adjust_step.autocontrast_cut_images_cutoff_high.value or 45.0
             )
 
-            config.alignment.rotate_angle = self.initial_rotate_step.angle
-            config.alignment.post_rotate_angle = self.adjust_step.rotate_angle.value
+            config.alignment.rotate_angle = float(self.initial_rotate_step.angle or 0.0)
+            config.alignment.post_rotate_angle = float(
+                self.adjust_step.rotate_angle.value or 0.0
+            )
+            config.alignment.method = str(
+                self.adjust_step.alignment_method.value or "hybrid"
+            )
+            config.alignment.min_match_score = float(
+                self.adjust_step.alignment_min_match_score.value or 0.70
+            )
+            config.alignment.feature_detector = str(
+                self.adjust_step.alignment_feature_detector.value or "orb"
+            )
+            config.alignment.transformation = str(
+                self.adjust_step.alignment_transformation.value or "auto"
+            )
+
             for roi in self.draw_refs_step.rois:
                 config_dir = "${ConfigDir}"
                 config.alignment.ref_images.append(
@@ -277,6 +314,10 @@ class SetupPage:
                     )
                 )
             config.meter_configs = meters
+
+            # Apply services (Poller, MQTT, History, DataDir, MinConfidence)
+            self.services_step.apply_to_config(config)
+
             self.config = config
 
         def save_refs() -> None:
@@ -313,6 +354,8 @@ class SetupPage:
                 return self.draw_analog_rois_step.get_image()
             elif name == NAME_METERS:
                 return self.meters_step.get_image()
+            elif name == NAME_SERVICES:
+                return self.services_step.get_image()
             elif name == NAME_FINAL:
                 return self.final_step.get_image()
             return ""
@@ -340,6 +383,8 @@ class SetupPage:
                 )
             elif name == NAME_METERS:
                 self.meters_step.update_image(image)
+            elif name == NAME_SERVICES:
+                self.services_step.update_image(image)
             elif name == NAME_FINAL:
                 self.final_step.update_image(image)
 
@@ -366,13 +411,11 @@ class SetupPage:
             self.refs_enabled_in_image = step == NAME_DRAW_REFS
             self.digital_rois_enabled_in_image = step == NAME_DRAW_DIGITAL_ROIS
             self.analog_rois_enabled_in_image = step == NAME_DRAW_ANALOG_ROIS
-            if step == NAME_METERS:
+            if step in (NAME_METERS, NAME_SERVICES, NAME_FINAL):
                 self.digital_rois_enabled_in_image = True
                 self.analog_rois_enabled_in_image = True
             if step == NAME_FINAL:
                 self.refs_enabled_in_image = True
-                self.digital_rois_enabled_in_image = True
-                self.analog_rois_enabled_in_image = True
 
             set_image(img)
             if step == NAME_FINAL:
@@ -422,7 +465,7 @@ class SetupPage:
                 ui.label("Setup Wizard").classes("text-h4")
                 self.spinner = ui.spinner("dots", size="md", color="cyan")
                 self.spinner.visible = False
-            ui.label("8-Step Visual Calibration").classes(
+            ui.label("9-Step Visual Calibration").classes(
                 "text-xs font-semibold text-gray-400 bg-white/5 "
                 "border border-white/10 px-3 py-1 rounded-full"
             )
@@ -475,6 +518,11 @@ class SetupPage:
             get_digit_names_func=get_digit_names,
             spinner=self.spinner,
         )
+        self.services_step = ServicesStep(
+            name=NAME_SERVICES,
+            set_image_callback=set_image,
+            spinner=self.spinner,
+        )
         self.final_step = FinalStep(
             name=NAME_FINAL,
             callbacks=self.callbacks,
@@ -524,6 +572,7 @@ class SetupPage:
                     await self.draw_digital_rois_step.show(stepper)
                     await self.draw_analog_rois_step.show(stepper)
                     await self.meters_step.show(stepper)
+                    await self.services_step.show(stepper)
                     await self.final_step.show(stepper, last_step=True)
 
         for img in self.callbacks.get_config().alignment.ref_images:
@@ -540,6 +589,7 @@ class SetupPage:
         self.draw_digital_rois_step.load_from_config(config.digital_readout)
         self.draw_analog_rois_step.load_from_config(config.analog_readout)
         self.meters_step.load_from_config(config.meter_configs)
+        self.services_step.load_from_config(config)
 
         # Automatically fetch the initial image if URL is configured
         if config.image_source.url:

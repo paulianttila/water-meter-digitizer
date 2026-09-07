@@ -179,15 +179,30 @@ class DrawDigitalRoisStep(DrawRoisBaseStep):
                     self, "container", lambda x: len(list(x)) > 0
                 ).tooltip("Remove last digital region of interest")
             with ui.row().classes("w-full"):
-                self.cnn_file = ui.select(
-                    options=self._get_cnn_models(self.digital_models_dir),
-                    label="CNN model",
-                ).classes("w-3/5")
-                self.cnn_type = ui.select(
-                    options=["auto", "digital", "digital100"],
-                    value="auto",
-                    label="CNN type",
-                ).classes("w-1/5")
+                self.cnn_file = (
+                    ui.select(
+                        options=self._get_cnn_models(self.digital_models_dir),
+                        label="CNN model",
+                    )
+                    .classes("w-3/5")
+                    .tooltip(
+                        "Select TensorFlow Lite neural network model file for "
+                        "digital digits"
+                    )
+                )
+                self.cnn_type = (
+                    ui.select(
+                        options=["auto", "digital", "digital100"],
+                        value="auto",
+                        label="CNN type",
+                    )
+                    .classes("w-1/5")
+                    .tooltip(
+                        "CNN architecture: auto (detect from output shape), "
+                        "digital (discrete classes 0-9), or digital100 "
+                        "(continuous 0.0-9.9)"
+                    )
+                )
             with ui.row():
                 ui.button("Test", icon="refresh", on_click=self._show_digits).tooltip(
                     "Digitize test result"

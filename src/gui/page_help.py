@@ -20,8 +20,9 @@ class HelpPage:
                 ui.markdown(
                     "- **Meter**: View live meter readings, trigger manual "
                     "readouts, and inspect individual CNN predictions.\n"
-                    "- **Setup**: Interactive 8-step wizard for camera capture, "
-                    "affine alignment, ROI bounding boxes, and meter formatting.\n"
+                    "- **Setup**: Interactive 9-step wizard for camera capture, "
+                    "affine alignment, ROI bounding boxes, meter formatting, and "
+                    "services.\n"
                     "- **Config**: Raw `config.ini` editor with real-time "
                     "syntax checking, JSON visualization, and hot reloading.\n"
                     "- **About**: Version information, runtime details, and "
@@ -29,25 +30,30 @@ class HelpPage:
                 ).classes("p-2 text-sm text-gray-300 leading-relaxed")
 
             with ui.expansion(
-                "Setup Wizard Workflow (8 Steps)", icon="checklist", value=True
+                "Setup Wizard Workflow (9 Steps)", icon="checklist", value=True
             ).classes("w-full bg-slate-900/60 border border-white/10 rounded-xl"):
                 ui.markdown(
-                    "1. **Download Image**: Enter camera snapshot URL and "
-                    "timeout. If offline, a placeholder graphic will display.\n"
+                    "1. **Download Image**: Enter camera snapshot URL, "
+                    "timeout, and min payload size. If offline, a placeholder "
+                    "graphic will display.\n"
                     "2. **Initial Rotate**: Rotate coarse 90° increments "
                     "(0°, 90°, 180°, 270°) to orient meter text upright.\n"
                     "3. **Reference Points**: Mark 3 distinct visual landmarks "
                     "(screws, labels, dial centers) for affine alignment.\n"
                     "4. **Image Adjustments**: Fine-tune rotation angle "
                     "(e.g. 0.5°), test alignment, and configure "
-                    "contrast/sharpness filters.\n"
+                    "contrast/sharpness/autocontrast filters and alignment "
+                    "parameters.\n"
                     "5. **Digital ROIs**: Add bounding boxes for mechanical "
                     "drum digits, select CNN models, and test inference.\n"
                     "6. **Analog ROIs**: Add bounding boxes for circular dial "
                     "needles, select CNN models, and test angle detection.\n"
                     "7. **Meters Definition**: Define logical meter outputs, "
                     "rate limits, previous value fallbacks, and units.\n"
-                    "8. **Final Review & Save**: Review compiled configuration, "
+                    "8. **Services & Integrations**: Configure scheduled "
+                    "background poller, MQTT broker, Home Assistant discovery, "
+                    "and history retention.\n"
+                    "9. **Final Review & Save**: Review compiled configuration, "
                     "save reference files, and apply settings to runtime."
                 ).classes("p-2 text-sm text-gray-300 leading-relaxed")
 

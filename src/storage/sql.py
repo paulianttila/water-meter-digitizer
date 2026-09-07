@@ -265,8 +265,8 @@ class SQLAlchemyStorageBackend(StorageBackend):
             try:
                 session.execute(text("PRAGMA incremental_vacuum"))
                 session.commit()
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug("Incremental vacuum ignored error: %s", e)
 
     def prune(self) -> None:
         """Manually trigger pruning and vacuuming."""
@@ -437,8 +437,8 @@ class SQLAlchemyStorageBackend(StorageBackend):
         for s in sample_rows:
             try:
                 meters_tracked.update(json.loads(s).keys())
-            except Exception:
-                pass
+            except Exception as e:
+                logger.debug("Failed parsing meters_json sample: %s", e)
 
         mem_bytes = 0
         if self.is_sqlite and self.sqlite_file_path:
@@ -451,7 +451,8 @@ class SQLAlchemyStorageBackend(StorageBackend):
                         page_count = session.scalar(text("PRAGMA page_count")) or 0
                         page_size = session.scalar(text("PRAGMA page_size")) or 4096
                         mem_bytes = page_count * page_size
-                    except Exception:
+                    except Exception as e:
+                        logger.debug("Failed reading SQLite page metrics: %s", e)
                         mem_bytes = total_records * 300
         else:
             mem_bytes = total_records * 300
@@ -489,5 +490,5 @@ class SQLAlchemyStorageBackend(StorageBackend):
                     try:
                         session.execute(text("VACUUM"))
                         session.commit()
-                    except Exception:
-                        pass
+                    except Exception as e:
+                        logger.debug("Vacuum on clear ignored error: %s", e)

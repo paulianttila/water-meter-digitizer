@@ -9,7 +9,7 @@ class AboutPage:
 
     def show(self) -> None:
         with ui.column().classes("w-full max-w-3xl gap-4"):
-            ui.label("About Water Meter System").classes("text-h4")
+            ui.label("About Water Meter Digitizer").classes("text-h4")
 
             with ui.element("div").classes(
                 "w-full p-6 rounded-2xl "
@@ -26,7 +26,7 @@ class AboutPage:
                     ui.icon("water_drop", color="white").classes("text-3xl")
 
                 with ui.column().classes("gap-1"):
-                    ui.label("Water Meter System").classes("text-h5 font-['Outfit']")
+                    ui.label("Water Meter Digitizer").classes("text-h5 font-['Outfit']")
                     ui.label(
                         "Automatic utility meter digitizer using neural network "
                         "inference, affine computer vision alignment, and rolling "

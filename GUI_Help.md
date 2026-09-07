@@ -1,6 +1,6 @@
 # Web GUI User Guide & Setup Manual
 
-The **Water Meter System** features a built-in web interface served on port `3000` (accessible by default at `http://localhost:3000`).
+The **Water Meter Digitizer** features a built-in web interface served on port `3000` (accessible by default at `http://localhost:3000`).
 
 ---
 
@@ -16,7 +16,8 @@ The **Water Meter System** features a built-in web interface served on port `300
    - [Step 5: Digital Region of Interest (ROIs)](#step-5-digital-region-of-interest-rois)
    - [Step 6: Analog Region of Interest (ROIs)](#step-6-analog-region-of-interest-rois)
    - [Step 7: Meters Definition](#step-7-meters-definition)
-   - [Step 8: Final Review & Save](#step-8-final-review--save)
+   - [Step 8: Services & Integrations](#step-8-services--integrations)
+   - [Step 9: Final Review & Save](#step-9-final-review--save)
 4. [Interactive Canvas Controls](#interactive-canvas-controls)
 5. [Config Editor Page](#config-editor-page)
 6. [Troubleshooting & FAQs](#troubleshooting--faqs)
@@ -30,7 +31,7 @@ The interface is divided into a collapsible left sidebar and the main workspace:
 | Tab | Icon | Purpose |
 |---|---|---|
 | **Meter** | `speed` | View live readings, trigger manual readouts, and inspect intermediate CNN outputs. |
-| **Setup** | `settings` | Interactive 8-step wizard for camera capture, alignment, ROI bounding boxes, and meter configuration. |
+| **Setup** | `settings` | Interactive 9-step wizard for camera capture, alignment, ROI bounding boxes, meters, and services. |
 | **Config** | `manufacturing` | Raw `config.ini` text editor with syntax verification, JSON schema inspection, and reload/save tools. |
 | **Help** | `help_outline` | Built-in guide and keyboard/mouse shortcut reference. |
 | **About** | `info` | Version information and system summary. |
@@ -109,7 +110,13 @@ The **Setup** tab provides an 8-step guided configuration wizard. On the left is
 - **Extended Resolution**: Append fractional sub-digit decimal places from the lowest analog needle.
 - **Unit**: Custom unit string (e.g. `m³`, `L`, `kWh`).
 
-### Step 8: Final Review & Save
+### Step 8: Services & Integrations
+- **Scheduled Background Poller**: Enable the internal async scheduler to trigger periodic readouts automatically (`IntervalSeconds`, `RunOnStartup`, `SaveImages`, `RetryIntervalSeconds`).
+- **MQTT & Home Assistant Discovery**: Configure MQTT broker connection (`Broker`, `Port`, `Username`, `Password`, `ClientID`, `TopicPrefix`, `TLS`, `Retain`) and automatic Home Assistant entity discovery (`HomeAssistantDiscovery`, `DiscoveryPrefix`, `DeviceName`, `DeviceID`).
+- **History Storage & Retention**: Select SQLite database or in-memory backend, data directory, retention days, and max records pruning.
+- **Global Settings**: Configure data directory and minimum confidence score threshold.
+
+### Step 9: Final Review & Save
 - Review the compiled configuration and live processed image.
 - **Save Config**: Writes the configuration to `/config/config.ini`.
 - **Save Reference Images**: Saves cropped reference marker landmark files to `/config`.

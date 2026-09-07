@@ -1,0 +1,88 @@
+---
+
+test_name: Make sure MQTT and Poller endpoints and live broker data work
+
+includes:
+  - !include variables.yaml
+
+paho-mqtt:
+  connect:
+    host: localhost
+    port: 1883
+    timeout: 5
+
+stages:
+  - name: test mqtt status endpoint
+    request:
+      url: 'http://{url}/mqtt/status'
+      method: GET
+      timeout: 3
+    response:
+      status_code: 200
+      headers:
+        content-type: application/json
+      verify_response_with:
+        function: testing_utils:check_mqtt_status_response
+
+  - name: test poller status endpoint
+    request:
+      url: 'http://{url}/poller/status'
+      method: GET
+      timeout: 3
+    response:
+      status_code: 200
+      headers:
+        content-type: application/json
+      verify_response_with:
+        function: testing_utils:check_poller_status_response
+
+  - name: trigger meter readout via HTTP and verify live MQTT broker data
+    request:
+      url: 'http://{url}/meter?format=json'
+      method: GET
+      timeout: 5
+    response:
+      status_code: 200
+      headers:
+        content-type: application/json
+    mqtt_response:
+      - topic: watermeter/total/value
+        payload: "00452.91241"
+        timeout: 5
+      - topic: watermeter/digital/value
+        payload: "00452"
+        timeout: 5
+      - topic: watermeter/analog/value
+        payload: "91241"
+        timeout: 5
+      - topic: watermeter/total/confidence
+        payload: "96.2"
+        timeout: 5
+
+  - name: trigger poller and verify MQTT total value
+    request:
+      url: 'http://{url}/poller/trigger'
+      method: POST
+      timeout: 5
+    response:
+      status_code: 200
+      headers:
+        content-type: application/json
+      json:
+        message: "Poller triggered successfully"
+    mqtt_response:
+      topic: watermeter/total/value
+      payload: "00452.91241"
+      timeout: 5
+
+  - name: verify MQTT status endpoint has recorded published data
+    request:
+      url: 'http://{url}/mqtt/status'
+      method: GET
+      timeout: 3
+    response:
+      status_code: 200
+      headers:
+        content-type: application/json
+      verify_response_with:
+        function: testing_utils:check_mqtt_meter_data

@@ -37,6 +37,8 @@ class DownloadImageStep(BaseStep):
             self.url.value = image_source.url
         if hasattr(self, "timeout") and self.timeout is not None:
             self.timeout.value = image_source.timeout
+        if hasattr(self, "minsize") and self.minsize is not None:
+            self.minsize.value = image_source.min_size
 
     @BaseStep.decorator_spinner
     async def download(self) -> bool:
@@ -64,15 +66,26 @@ class DownloadImageStep(BaseStep):
     async def show(self, stepper, first_step=False, last_step=False) -> None:
         with ui.step(self.name):
             self.add_help(HELP_TEXT)
-            with ui.row().classes("w-full items-center"):
-                self.url = ui.input(label="URL", placeholder="URL").classes("w-4/5")
+            with ui.row().classes("w-full items-center gap-2"):
+                self.url = (
+                    ui.input(label="URL", placeholder="URL")
+                    .classes("flex-grow")
+                    .tooltip("Camera snapshot URL (e.g. http://... or file://...)")
+                )
                 ui.button(
                     icon="sym_s_download", on_click=self.download
                 ).bind_enabled_from(self.url, "value").tooltip(
                     "Download image from URL"
                 )
-                self.timeout = ui.number(
-                    "Timeout", value=10, min=1, max=60, step=1
-                ).classes("w-1/5")
+                self.timeout = (
+                    ui.number("Timeout (s)", value=10, min=1, max=60, step=1)
+                    .classes("w-28")
+                    .tooltip("Network request timeout in seconds (1–60s)")
+                )
+                self.minsize = (
+                    ui.number("Min Size (bytes)", value=10000, min=1000, step=1000)
+                    .classes("w-36")
+                    .tooltip("Minimum valid image payload size in bytes")
+                )
 
             super().add_navigator(stepper, first_step, last_step)

@@ -1,4 +1,5 @@
 import argparse
+from contextlib import asynccontextmanager
 from datetime import datetime, timezone, timedelta
 import dataclasses
 import json
@@ -19,6 +20,8 @@ import uvicorn
 from decorators.decorators import log_execution_time
 from configuration import Config
 from data_classes import HealthResponse
+from mqtt.client import MQTTService
+from poller.scheduler import BackgroundPoller
 from storage import get_storage_backend
 from storage.seed import seed_demo_history
 from utils.cache import ImageCache
@@ -53,12 +56,65 @@ logger = logging.getLogger(__name__)
 logger.setLevel(logging.INFO)
 
 BASE_DIR = Path(__file__).resolve().parent
-app = FastAPI(title="meter")
+
+
+def start_services() -> None:
+    """Start MQTT service and background poller based on config."""
+    stop_services()
+
+    mqtt_svc = MQTTService(
+        config=config.mqtt,
+        meter_configs=config.meter_configs,
+        version=VERSION,
+    )
+    if config.mqtt.enabled:
+        mqtt_svc.start()
+    app.state.mqtt_service = mqtt_svc
+
+    poller = BackgroundPoller(
+        config=config.poller,
+        readout_func=get_meter_data,
+        mqtt_service=mqtt_svc if config.mqtt.enabled else None,
+    )
+    if config.poller.enabled:
+        poller.start()
+    app.state.poller = poller
+
+
+def stop_services() -> None:
+    """Stop poller and MQTT services."""
+    poller = getattr(app.state, "poller", None)
+    if poller is not None:
+        poller.stop()
+
+    mqtt_svc = getattr(app.state, "mqtt_service", None)
+    if mqtt_svc is not None:
+        mqtt_svc.stop()
+
+
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    start_services()
+    yield
+    stop_services()
+
+
+app = FastAPI(title="meter", lifespan=lifespan)
 image_cache = ImageCache(max_size=50, ttl_seconds=300.0)
 app.state.image_cache = image_cache
 app.state.storage = get_storage_backend(config)
 app.state.start_time = time.time()
 app.state.started_at = datetime.now(timezone.utc).isoformat()
+app.state.mqtt_service = MQTTService(
+    config=config.mqtt,
+    meter_configs=config.meter_configs,
+    version=VERSION,
+)
+app.state.poller = BackgroundPoller(
+    config=config.poller,
+    readout_func=lambda *args, **kwargs: None,  # type: ignore
+    mqtt_service=app.state.mqtt_service,
+)
 app.mount(
     "/static", StaticFiles(directory=str(BASE_DIR / "web" / "static")), name="static"
 )
@@ -516,7 +572,45 @@ def get_meter_data(url: str = "", saveimages: bool = False) -> MeterResult:
         except Exception as e:
             logger.warning(f"Error recording meter result to history: {e}")
 
+    mqtt_service = getattr(app.state, "mqtt_service", None)
+    if mqtt_service is not None and getattr(config.mqtt, "enabled", False):
+        try:
+            mqtt_service.publish_meter_result(meter_result)
+        except Exception as e:
+            logger.warning(f"Error publishing meter result to MQTT: {e}")
+
     return meter_result
+
+
+@app.get("/poller/status")
+@log_execution_time
+def get_poller_status(request: Request) -> Response:
+    poller = getattr(request.app.state, "poller", None)
+    status = poller.get_status() if poller else {"enabled": False, "running": False}
+    return Response(json.dumps(status), media_type="application/json")
+
+
+@app.post("/poller/trigger")
+@log_execution_time
+def trigger_poller(request: Request) -> Response:
+    poller = getattr(request.app.state, "poller", None)
+    if poller is None:
+        raise HTTPException(status_code=400, detail="Poller service not initialized")
+    poller.trigger_now()
+    return Response(
+        json.dumps({"message": "Poller triggered successfully"}),
+        media_type="application/json",
+    )
+
+
+@app.get("/mqtt/status")
+@log_execution_time
+def get_mqtt_status(request: Request) -> Response:
+    mqtt_svc = getattr(request.app.state, "mqtt_service", None)
+    status = (
+        mqtt_svc.get_status() if mqtt_svc else {"enabled": False, "connected": False}
+    )
+    return Response(json.dumps(status), media_type="application/json")
 
 
 def get_image_as_base64_str(image_name: str) -> str:
@@ -573,6 +667,7 @@ def init_config() -> None:
     config = Config().load_from_file(ini_file=config_file)
     logger.setLevel(config.log_level)
     app.state.storage = get_storage_backend(config)
+    start_services()
 
     logging.getLogger("CNN.CNNBase").setLevel(logger.level)
     logging.getLogger("CNN.AnalogNeedleCNN").setLevel(logger.level)

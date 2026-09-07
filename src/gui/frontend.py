@@ -208,7 +208,7 @@ def init(fastapi_app: FastAPI, callbacks: Callbacks) -> None:
                 ):
                     ui.icon("water_drop", color="white").classes("text-xl")
                 with ui.column().classes("gap-0"):
-                    ui.label("Water Meter System").classes(
+                    ui.label("Water Meter Digitizer").classes(
                         "font-['Outfit'] font-bold text-lg text-white leading-tight"
                     )
                     ui.label("Interactive Web UI & Setup Wizard").classes(

@@ -78,6 +78,12 @@ class AdjustStep(BaseStep):
             config.image_processing.autocontrast.cutoff_high
         )
 
+        # Alignment Algorithm Parameters
+        self.alignment_method.value = config.alignment.method
+        self.alignment_min_match_score.value = config.alignment.min_match_score
+        self.alignment_feature_detector.value = config.alignment.feature_detector
+        self.alignment_transformation.value = config.alignment.transformation
+
         # Rotation
         self.rotate_angle.value = config.alignment.post_rotate_angle
         self.rotate_enabled.value = config.alignment.post_rotate_angle != 0
@@ -128,66 +134,123 @@ class AdjustStep(BaseStep):
             self.add_help(HELP_TEXT)
 
             with ui.row().classes("w-full items-center"):
-                self.rotate_enabled = ui.checkbox("Enable Rotate", value=False)
+                self.rotate_enabled = ui.checkbox("Enable Rotate", value=False).tooltip(
+                    "Enable fine rotation angle correction"
+                )
                 self.rotate_angle = ui.number(
                     "Angle", min=-359, max=359, step=1, value=0
+                ).tooltip("Fine rotation angle in degrees (-359° to 359°)")
+
+            with ui.row().classes("w-full items-center"):
+                self.crop_enabled = ui.checkbox("Enable Crop", value=False).tooltip(
+                    "Enable rectangular cropping before alignment"
                 )
+                self.crop_x = ui.number("X", min=0, max=10000, step=1, value=0).tooltip(
+                    "Crop starting X position in pixels"
+                )
+                self.crop_y = ui.number("Y", min=0, max=10000, step=1, value=0).tooltip(
+                    "Crop starting Y position in pixels"
+                )
+                self.crop_w = ui.number(
+                    "Width", min=640, max=10000, step=1, value=0
+                ).tooltip("Crop area width in pixels")
+                self.crop_h = ui.number(
+                    "Height", min=480, max=10000, step=1, value=0
+                ).tooltip("Crop area height in pixels")
 
             with ui.row().classes("w-full items-center"):
-                self.crop_enabled = ui.checkbox("Enable Crop", value=False)
-                self.crop_x = ui.number("X", min=0, max=10000, step=1, value=0)
-                self.crop_y = ui.number("Y", min=0, max=10000, step=1, value=0)
-                self.crop_w = ui.number("Width", min=640, max=10000, step=1, value=0)
-                self.crop_h = ui.number("Height", min=480, max=10000, step=1, value=0)
-
-            with ui.row().classes("w-full items-center"):
-                self.adjust_enabled = ui.checkbox("Enable Adjust", value=False)
+                self.adjust_enabled = ui.checkbox("Enable Adjust", value=False).tooltip(
+                    "Enable color, brightness, contrast, and sharpness adjustments"
+                )
                 self.adjust_contrast = ui.number(
                     "Contrast", min=-0, max=10, step=0.1, value=1.0
-                )
+                ).tooltip("Contrast adjustment factor (1.0 = normal)")
                 self.adjust_brightness = ui.number(
                     "Brightness", min=-0, max=10, step=0.1, value=1.0
-                )
+                ).tooltip("Brightness adjustment factor (1.0 = normal)")
                 self.adjust_sharpness = ui.number(
                     "Sharpness", min=-0, max=10, step=0.1, value=1.0
-                )
+                ).tooltip("Sharpness adjustment factor (1.0 = normal)")
                 self.adjust_color = ui.number(
                     "Color", min=-0, max=10, step=0.1, value=1.0
-                )
+                ).tooltip("Color saturation factor (1.0 = normal, 0.0 = grayscale)")
 
             with ui.row().classes("w-full items-center"):
-                self.resize_enabled = ui.checkbox("Enable Resize", value=False)
-                self.resize_w = ui.number("Width", min=-640, max=10000, step=1, value=0)
+                self.resize_enabled = ui.checkbox("Enable Resize", value=False).tooltip(
+                    "Enable image resizing"
+                )
+                self.resize_w = ui.number(
+                    "Width", min=-640, max=10000, step=1, value=0
+                ).tooltip("Resized image width in pixels")
                 self.resize_h = ui.number(
                     "Height", min=-480, max=10000, step=1, value=0
-                )
+                ).tooltip("Resized image height in pixels")
 
             with ui.row().classes("w-full items-center"):
                 self.grayscale_enabled = ui.checkbox(
                     "Enable Grayscale image", value=False
-                )
+                ).tooltip("Convert the full image to grayscale")
 
             with ui.row().classes("w-full items-center"):
                 self.autocontrast_enabled = ui.checkbox(
                     "Enable Autocontrast", value=False
-                )
+                ).tooltip("Automatically optimize contrast histogram for full frame")
                 self.autocontrast_cutoff_low = ui.number(
                     "Cutoff low", min=0, max=100, step=1, value=2
+                ).tooltip(
+                    "Percentage of darkest pixels removed before mapping (0–100%)"
                 )
                 self.autocontrast_cutoff_high = ui.number(
                     "Cutoff high", min=0, max=100, step=1, value=45
+                ).tooltip(
+                    "Percentage of brightest pixels removed before mapping (0–100%)"
                 )
 
             with ui.row().classes("w-full items-center"):
                 self.autocontrast_cut_images_enabled = ui.checkbox(
                     "Enable Autocontrast for cut images", value=False
+                ).tooltip(
+                    "Apply automatic contrast stretching individually on cropped "
+                    "digit/pointer ROI images"
                 )
                 self.autocontrast_cut_images_cutoff_low = ui.number(
                     "Cutoff low", min=0, max=100, step=1, value=2
-                )
+                ).tooltip("Low cutoff percentage for cropped ROI contrast stretching")
                 self.autocontrast_cut_images_cutoff_high = ui.number(
                     "Cutoff high", min=0, max=100, step=1, value=45
-                )
+                ).tooltip("High cutoff percentage for cropped ROI contrast stretching")
+
+            with ui.expansion("Alignment Algorithm Parameters", icon="tune").classes(
+                "w-full bg-slate-900/60 border border-white/10 rounded-xl my-2"
+            ):
+                with ui.grid(columns="1fr 1fr 1fr 1fr").classes("w-full gap-3 p-2"):
+                    self.alignment_method = ui.select(
+                        ["hybrid", "template", "orb", "akaze", "sift"],
+                        label="Method",
+                        value="hybrid",
+                    ).tooltip(
+                        "Alignment algorithm: hybrid (fallback chain), template, "
+                        "orb, akaze, or sift"
+                    )
+                    self.alignment_min_match_score = ui.number(
+                        "Min Match Score", value=0.70, min=0.1, max=1.0, step=0.05
+                    ).tooltip("Minimum alignment template match score (0.10–1.00)")
+                    self.alignment_feature_detector = ui.select(
+                        ["orb", "akaze", "sift"],
+                        label="Feature Detector",
+                        value="orb",
+                    ).tooltip(
+                        "Feature detector backend for keypoint matching: "
+                        "ORB, AKAZE, or SIFT"
+                    )
+                    self.alignment_transformation = ui.select(
+                        ["auto", "affine", "perspective"],
+                        label="Transformation",
+                        value="auto",
+                    ).tooltip(
+                        "Transformation model: auto (smart selection), affine "
+                        "(3-point), or perspective (4-point homography)"
+                    )
 
             with ui.row().classes("w-full items-center"):
                 ui.button(

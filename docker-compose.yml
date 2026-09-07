@@ -1,7 +1,7 @@
 services:
-  watermeter-system:
-    container_name: ${NAME:-water-meter-system}
-    image: ${IMAGE:-paulianttila/water-meter-system:latest}
+  watermeter-digitizer:
+    container_name: ${NAME:-water-meter-digitizer}
+    image: ${IMAGE:-paulianttila/water-meter-digitizer:latest}
     restart: unless-stopped
     security_opt:
       - no-new-privileges:true

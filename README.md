@@ -9,7 +9,9 @@ Automatically read analog and digital utility meters using a camera, image proce
 ## Features
 
 - **Google LiteRT Runtime** — fast, low-latency neural network inference powered by `ai-edge-litert`.
-- **Modern Web Dashboard & Wizard (`/gui`)** — interactive 8-step setup wizard, live ROI alignment editor, and configuration manager.
+- **Scheduled Background Poller** — internal async scheduler to trigger periodic readouts automatically without external cron jobs.
+- **Native Home Assistant MQTT Auto-Discovery** — zero-config Home Assistant sensors (`device_class: water`, `state_class: total_increasing`) and openHAB MQTT integration.
+- **Modern Web Dashboard & Wizard (`/gui`)** — interactive 9-step setup wizard, live ROI alignment editor, and configuration manager.
 - **Historical Consumption Charts** — interactive daily, weekly, and hourly consumption bar/line charts directly in the web dashboard powered by Apache ECharts.
 - **Interactive API Explorer (`/`)** — landing page with real-time meter status, JSON viewer, and one-click endpoint testing.
 - **Mixed Meter Support** — read combinations of analog needle dials and digital LCD/odometer drum digits in a single image.
@@ -28,9 +30,9 @@ Automatically read analog and digital utility meters using a camera, image proce
 
 ```yaml
 services:
-  watermeter-system:
-    container_name: ${NAME:-water-meter-system}
-    image: ${IMAGE:-paulianttila/water-meter-system:latest}
+  watermeter-digitizer:
+    container_name: ${NAME:-water-meter-digitizer}
+    image: ${IMAGE:-paulianttila/water-meter-digitizer:latest}
     restart: unless-stopped
     security_opt:
       - no-new-privileges:true
@@ -78,7 +80,7 @@ uv run python src/main.py
 
 - **`/` — API Explorer & Status Page**: Real-time summary of configured meters, last reading timestamps, interactive API documentation, and live preview.
 - **`/gui` — NiceGUI Web Dashboard**:
-  - **Setup Wizard**: 8-step guided calibration flow (image capture, cropping/resizing, image processing, reference marker alignment, ROI bounding-box tuning, and meter calculation setup).
+  - **Setup Wizard**: 9-step guided calibration flow (image capture, cropping/resizing, image processing, reference marker alignment, ROI bounding-box tuning, meter calculation setup, and background poller / MQTT / storage configuration).
   - **Config Editor**: Direct visual and raw configuration editing with schema validation.
 
 ---
@@ -103,6 +105,9 @@ All endpoints are served on port `3000`.
 | `GET` | `/version` | Return app version information as JSON |
 | `GET` | `/health` | Rich JSON diagnostics: camera latency, memory, cache hit ratio, models, uptime |
 | `GET` | `/healthcheck` | Liveness check, returns `Health - OK` |
+| `GET` | `/poller/status` | Current background poller status, last run, and next run schedule |
+| `POST` | `/poller/trigger` | Trigger an immediate background readout cycle |
+| `GET` | `/mqtt/status` | MQTT connection status, broker details, and topic prefix |
 | `GET` | `/history/consumption?meter=<m>&interval=<i>&days=<d>&cumulative=<b>` | Aggregated consumption buckets (`hourly`, `daily`, `weekly`), with optional cumulative running total |
 | `GET` | `/history/readings?meter=<m>&limit=<n>` | Recent raw meter readings history |
 | `GET` | `/history/stats` | Storage backend health, memory usage, and tracked meter statistics |
@@ -240,7 +245,6 @@ Global application paths and logging configuration.
 | `LogLevel` | string | `INFO` | Logging level (`DEBUG`, `INFO`, `WARNING`, `ERROR`). |
 | `ConfigDir` | string | `/config` | Directory containing configuration files and reference images. |
 | `DataDir` | string | `/data` | Dedicated directory containing persistent runtime database files (`history.db`). |
-| `LogDir` | string | `/log` | Directory for log files. |
 | `DigitalModelsDir` | string | `${ConfigDir}/neuralnets/digital` | Directory containing TFLite models for digital digits. |
 | `AnalogModelsDir` | string | `${ConfigDir}/neuralnets/analog` | Directory containing TFLite models for analog needles. |
 | `PreviousValueFile` | string | `${ConfigDir}/prevalue.ini` | File used to persist previous meter values across readouts. |
@@ -403,16 +407,52 @@ Settings for SQLAlchemy-backed historical reading retention, SQLite database sto
 
 ---
 
+### `[Poller]`
+Internal background scheduler for periodic meter readouts.
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `Enabled` | boolean | `False` | Enable internal background poller task. |
+| `IntervalSeconds` | integer | `300` | Time interval between automatic readouts in seconds (e.g. `300` = 5 minutes). |
+| `RunOnStartup` | boolean | `True` | Execute an immediate readout cycle when the application starts. |
+| `SaveImages` | boolean | `False` | Save intermediate debug images to in-memory cache during background poll. |
+| `RetryIntervalSeconds` | integer | `30` | Delay before retrying after a camera capture or processing failure. |
+
+---
+
+### `[MQTT]`
+MQTT publisher with native Home Assistant Auto-Discovery and openHAB support.
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `Enabled` | boolean | `False` | Enable MQTT publishing. |
+| `Broker` | string | `localhost` | MQTT broker hostname or IP address. |
+| `Port` | integer | `1883` | MQTT broker port (`1883` standard, `8883` TLS). |
+| `Username` | string | `""` | Optional username for MQTT broker authentication. |
+| `Password` | string | `""` | Optional password for MQTT broker authentication. |
+| `ClientID` | string | `water-meter-digitizer` | MQTT client identifier. |
+| `TopicPrefix` | string | `watermeter` | Base MQTT topic prefix (e.g. `watermeter/main/value`, `watermeter/status`). |
+| `KeepAlive` | integer | `60` | MQTT keepalive interval in seconds. |
+| `TLS` | boolean | `False` | Enable TLS encryption. |
+| `Retain` | boolean | `True` | Publish meter readings with MQTT retain flag. |
+| `HomeAssistantDiscovery` | boolean | `True` | Automatically publish Home Assistant MQTT Auto-Discovery payloads. |
+| `DiscoveryPrefix` | string | `homeassistant` | Home Assistant MQTT discovery topic prefix. |
+| `DeviceName` | string | `Water Meter Digitizer` | Device name displayed in Home Assistant device registry. |
+| `DeviceID` | string | `water_meter_digitizer` | Unique device identifier for Home Assistant entity mapping. |
+
+---
+
 ### Complete Example `config.ini`
 
 ```ini
 [DEFAULT]
 LogLevel=INFO
 ConfigDir=/config
-LogDir=/log
+DataDir=/data
 DigitalModelsDir=${ConfigDir}/neuralnets/digital
 AnalogModelsDir=${ConfigDir}/neuralnets/analog
 PreviousValueFile=${ConfigDir}/prevalue.ini
+MinConfidenceThreshold=50.0
 
 [ImageSource]
 URL=http://192.168.1.100/capture_with_flashlight
@@ -553,6 +593,37 @@ ConsistencyEnabled=True
 AllowNegativeRates=False
 MaxRateValue=0.2
 Unit=m³
+
+[History]
+Enabled=True
+Backend=sqlite
+RetentionDays=30
+MaxRecords=50000
+AutoVacuum=True
+PruneInterval=50
+
+[Poller]
+Enabled=True
+IntervalSeconds=300
+RunOnStartup=True
+SaveImages=False
+RetryIntervalSeconds=30
+
+[MQTT]
+Enabled=True
+Broker=localhost
+Port=1883
+Username=
+Password=
+ClientID=water-meter-digitizer
+TopicPrefix=watermeter
+KeepAlive=60
+TLS=False
+Retain=True
+HomeAssistantDiscovery=True
+DiscoveryPrefix=homeassistant
+DeviceName=Water Meter Digitizer
+DeviceID=water_meter_digitizer
 ```
 
 ---

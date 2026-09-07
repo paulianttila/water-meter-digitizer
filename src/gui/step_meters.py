@@ -50,7 +50,9 @@ class Meter:
             ui.separator()
 
             with ui.grid(columns="110px auto").classes("w-full gap-2"):
-                ui.input("Name").bind_value(self.meter, "name")
+                ui.input("Name").bind_value(self.meter, "name").tooltip(
+                    "Unique logical name for this meter (e.g. main, total, digital)"
+                )
                 self.digits = (
                     ui.select(
                         self.digit_names + ["."],
@@ -60,28 +62,49 @@ class Meter:
                     )
                     .classes("w-full")
                     .props("use-chips")
+                    .tooltip(
+                        "Select ordered sequence of digit/analog ROIs and "
+                        "decimal points comprising this meter"
+                    )
                 )
             with ui.grid(columns="auto auto auto auto").classes("w-full gap-2"):
                 ui.checkbox("Consistency enabled").bind_value(
                     self.meter, "consistency_enabled"
+                ).tooltip(
+                    "Validate rate of change against max rate to reject outlier "
+                    "misreadings"
                 )
                 ui.checkbox("Allow negative rates").bind_value(
                     self.meter, "allow_negative_rates"
-                )
+                ).tooltip("Allow consumption to decrease between readouts")
                 ui.checkbox("Use previous value").bind_value(
                     self.meter, "use_previous_value"
+                ).tooltip(
+                    "Substitute unreadable digits ('N') with digits from the "
+                    "previous valid reading"
                 )
                 ui.checkbox("Use extended resolution").bind_value(
                     self.meter, "use_extended_resolution"
+                ).tooltip(
+                    "Append fractional decimal from lowest significant digit or "
+                    "analog dial"
                 )
             with ui.grid(columns="auto auto auto").classes("w-full gap-2"):
                 ui.number("Max rate value", value=0.2, min=0, step=0.01).bind_value(
                     self.meter, "max_rate_value"
+                ).tooltip(
+                    "Maximum allowed consumption increase per reading/minute before "
+                    "flagging as inconsistent"
                 )
                 ui.number(
                     "Prevalue from file max age", value=0, min=0, step=1
-                ).bind_value(self.meter, "prevalue_from_file_max_age")
-                ui.input("Unit", value="㎥").bind_value(self.meter, "unit")
+                ).bind_value(self.meter, "prevalue_from_file_max_age").tooltip(
+                    "Maximum age in minutes for reading prevalue from persistent file "
+                    "(0 = unlimited)"
+                )
+                ui.input("Unit", value="㎥").bind_value(self.meter, "unit").tooltip(
+                    "Engineering unit of measurement (e.g. m³, L, kWh)"
+                )
         self.update_vals()
         return self.meter
 

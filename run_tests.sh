@@ -37,6 +37,7 @@ else
 fi
 
 TEST_APP_PID=
+MQTT_BROKER_PID=
 
 # --- Process Management & Cleanup ---
 stop_test_app() {
@@ -48,10 +49,58 @@ stop_test_app() {
   fi
 }
 
+stop_mqtt_broker() {
+  if [ -n "${MQTT_BROKER_PID}" ] && kill -0 "${MQTT_BROKER_PID}" 2>/dev/null; then
+    echo -e "${YELLOW}Stopping MQTT broker (PID=${MQTT_BROKER_PID})...${NC}"
+    kill "${MQTT_BROKER_PID}" 2>/dev/null || kill -9 "${MQTT_BROKER_PID}" 2>/dev/null
+    wait "${MQTT_BROKER_PID}" 2>/dev/null || true
+    MQTT_BROKER_PID=
+  fi
+}
+
 clean_up() {
   stop_test_app
+  stop_mqtt_broker
 }
 trap clean_up EXIT INT TERM
+
+start_mqtt_broker() {
+  echo -e "${BLUE}Starting MQTT test broker...${NC}"
+  local mosquitto_bin=""
+  if command -v mosquitto >/dev/null 2>&1; then
+    mosquitto_bin="mosquitto"
+  elif [ -x "/opt/homebrew/sbin/mosquitto" ]; then
+    mosquitto_bin="/opt/homebrew/sbin/mosquitto"
+  elif [ -x "/usr/local/sbin/mosquitto" ]; then
+    mosquitto_bin="/usr/local/sbin/mosquitto"
+  fi
+
+  if [ -n "${mosquitto_bin}" ]; then
+    echo -e "${BLUE}Using Mosquitto broker: ${mosquitto_bin}${NC}"
+    "${mosquitto_bin}" -c "${PWD}/test_config/mosquitto.conf" &
+    MQTT_BROKER_PID=$!
+  else
+    echo -e "${BLUE}Mosquitto not found, using Python amqtt broker...${NC}"
+    ${PYTHON} tests/integration/mqtt_broker.py &
+    MQTT_BROKER_PID=$!
+  fi
+  echo -e "${BLUE}MQTT broker PID: ${MQTT_BROKER_PID}${NC}"
+
+  echo -e "${BLUE}Waiting for MQTT broker to become ready on port 1883...${NC}"
+  for i in {1..20}; do
+    if ! kill -0 "${MQTT_BROKER_PID}" 2>/dev/null; then
+      echo -e "${RED}Error: MQTT broker exited prematurely!${NC}"
+      exit 1
+    fi
+    if ${PYTHON} -c "import socket; s = socket.socket(); s.settimeout(0.5); s.connect(('127.0.0.1', 1883)); s.close()" 2>/dev/null; then
+      echo -e "${GREEN}✓ MQTT broker is ready!${NC}"
+      return 0
+    fi
+    sleep 0.25
+  done
+  echo -e "${RED}Error: MQTT broker did not start on port 1883 within 5s${NC}"
+  exit 1
+}
 
 start_test_app() {
   echo -e "${BLUE}Starting test app with CONFIG_FILE=${CONFIG_FILE}...${NC}"
@@ -84,12 +133,14 @@ run_unit_tests() {
 }
 
 run_integration_tests() {
+  start_mqtt_broker
   start_test_app
   echo -e "${BLUE}Running Tavern integration tests...${NC}"
   export PYTHONPATH=${PYTHONPATH}:${PWD}/tests/integration/
   local status=0
   ${PYTHON} -m pytest --log-cli-level="${TAVERN_LOG_LEVEL}" tests/integration/ || status=$?
   stop_test_app
+  stop_mqtt_broker
   return ${status}
 }
 

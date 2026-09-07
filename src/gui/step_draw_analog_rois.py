@@ -177,15 +177,30 @@ class DrawAnalogRoisStep(DrawRoisBaseStep):
                     self, "container", lambda x: len(list(x)) > 0
                 ).tooltip("Remove last analog region of interest")
             with ui.row().classes("w-full"):
-                self.cnn_file = ui.select(
-                    options=self._get_cnn_models(self.analog_models_dir),
-                    label="CNN model",
-                ).classes("w-3/5")
-                self.cnn_type = ui.select(
-                    options=["auto", "analog", "analog100"],
-                    value="auto",
-                    label="CNN type",
-                ).classes("w-1/5")
+                self.cnn_file = (
+                    ui.select(
+                        options=self._get_cnn_models(self.analog_models_dir),
+                        label="CNN model",
+                    )
+                    .classes("w-3/5")
+                    .tooltip(
+                        "Select TensorFlow Lite neural network model file for "
+                        "analog pointers"
+                    )
+                )
+                self.cnn_type = (
+                    ui.select(
+                        options=["auto", "analog", "analog100"],
+                        value="auto",
+                        label="CNN type",
+                    )
+                    .classes("w-1/5")
+                    .tooltip(
+                        "CNN architecture: auto (detect from output shape), "
+                        "analog (sin/cos pointer angles), or analog100 "
+                        "(continuous 0.0-9.9)"
+                    )
+                )
             with ui.row():
                 ui.button("Test", icon="refresh", on_click=self._show_analogs).tooltip(
                     "Digitize test result"

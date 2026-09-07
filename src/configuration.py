@@ -82,6 +82,31 @@ class History(BaseModel):
     prune_interval: int = 50
 
 
+class Poller(BaseModel):
+    enabled: bool = False
+    interval_seconds: int = 300
+    run_on_startup: bool = True
+    save_images: bool = False
+    retry_interval_seconds: int = 30
+
+
+class MQTT(BaseModel):
+    enabled: bool = False
+    broker: str = "localhost"
+    port: int = 1883
+    username: str = ""
+    password: str = ""
+    client_id: str = "water-meter-digitizer"
+    topic_prefix: str = "watermeter"
+    keepalive: int = 60
+    tls: bool = False
+    retain: bool = True
+    homeassistant_discovery: bool = True
+    discovery_prefix: str = "homeassistant"
+    device_name: str = "Water Meter Digitizer"
+    device_id: str = "water_meter_digitizer"
+
+
 class Config(BaseSettings):
     model_config = SettingsConfigDict(
         env_prefix="METER_",
@@ -105,6 +130,8 @@ class Config(BaseSettings):
     resize: Resize = Field(default_factory=Resize)
     image_processing: ImageProcessing = Field(default_factory=ImageProcessing)
     history: History = Field(default_factory=History)
+    poller: Poller = Field(default_factory=Poller)
+    mqtt: MQTT = Field(default_factory=MQTT)
 
     @property
     def prevoius_value_file(self) -> str:
@@ -293,6 +320,31 @@ class Config(BaseSettings):
             "RetentionDays": str(self.history.retention_days),
             "AutoVacuum": str(self.history.auto_vacuum),
             "PruneInterval": str(self.history.prune_interval),
+        }
+
+        config["Poller"] = {
+            "Enabled": str(self.poller.enabled),
+            "IntervalSeconds": str(self.poller.interval_seconds),
+            "RunOnStartup": str(self.poller.run_on_startup),
+            "SaveImages": str(self.poller.save_images),
+            "RetryIntervalSeconds": str(self.poller.retry_interval_seconds),
+        }
+
+        config["MQTT"] = {
+            "Enabled": str(self.mqtt.enabled),
+            "Broker": self.mqtt.broker,
+            "Port": str(self.mqtt.port),
+            "Username": self.mqtt.username,
+            "Password": self.mqtt.password,
+            "ClientID": self.mqtt.client_id,
+            "TopicPrefix": self.mqtt.topic_prefix,
+            "KeepAlive": str(self.mqtt.keepalive),
+            "TLS": str(self.mqtt.tls),
+            "Retain": str(self.mqtt.retain),
+            "HomeAssistantDiscovery": str(self.mqtt.homeassistant_discovery),
+            "DiscoveryPrefix": self.mqtt.discovery_prefix,
+            "DeviceName": self.mqtt.device_name,
+            "DeviceID": self.mqtt.device_id,
         }
 
         config.write(fp, space_around_delimiters=False)
@@ -518,6 +570,41 @@ class Config(BaseSettings):
             retention_days=retention_days,
             auto_vacuum=auto_vacuum,
             prune_interval=prune_interval,
+        )
+
+        ################## Poller Parameters ##########################################
+        self.poller = Poller(
+            enabled=config.getboolean("Poller", "Enabled", fallback=False),
+            interval_seconds=config.getint("Poller", "IntervalSeconds", fallback=300),
+            run_on_startup=config.getboolean("Poller", "RunOnStartup", fallback=True),
+            save_images=config.getboolean("Poller", "SaveImages", fallback=False),
+            retry_interval_seconds=config.getint(
+                "Poller", "RetryIntervalSeconds", fallback=30
+            ),
+        )
+
+        ################## MQTT Parameters ############################################
+        self.mqtt = MQTT(
+            enabled=config.getboolean("MQTT", "Enabled", fallback=False),
+            broker=config.get("MQTT", "Broker", fallback="localhost"),
+            port=config.getint("MQTT", "Port", fallback=1883),
+            username=config.get("MQTT", "Username", fallback=""),
+            password=config.get("MQTT", "Password", fallback=""),
+            client_id=config.get("MQTT", "ClientID", fallback="water-meter-digitizer"),
+            topic_prefix=config.get("MQTT", "TopicPrefix", fallback="watermeter"),
+            keepalive=config.getint("MQTT", "KeepAlive", fallback=60),
+            tls=config.getboolean("MQTT", "TLS", fallback=False),
+            retain=config.getboolean("MQTT", "Retain", fallback=True),
+            homeassistant_discovery=config.getboolean(
+                "MQTT", "HomeAssistantDiscovery", fallback=True
+            ),
+            discovery_prefix=config.get(
+                "MQTT", "DiscoveryPrefix", fallback="homeassistant"
+            ),
+            device_name=config.get(
+                "MQTT", "DeviceName", fallback="Water Meter Digitizer"
+            ),
+            device_id=config.get("MQTT", "DeviceID", fallback="water_meter_digitizer"),
         )
 
         return self

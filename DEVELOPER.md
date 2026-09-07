@@ -1,6 +1,6 @@
 # Developer Guide & Architecture
 
-Welcome to the **Water Meter System** codebase. This document is a comprehensive guide for developers working on or extending the project.
+Welcome to the **Water Meter Digitizer** codebase. This document is a comprehensive guide for developers working on or extending the project.
 
 ---
 
@@ -72,7 +72,7 @@ The system processes camera captures into structured meter values via a multi-st
 ## Codebase Organization
 
 ```
-water-meter-system/
+water-meter-digitizer/
 ├── config/                      # Sample runtime config and reference images
 ├── src/                         # Main application source code
 │   ├── main.py                  # Entrypoint: loads config, starts FastAPI & NiceGUI
@@ -181,8 +181,8 @@ Models are executed via `ai_edge_litert` (Google LiteRT, with `tflite_runtime` f
 
 ```bash
 # Clone repository
-git clone https://github.com/paulianttila/water-meter-system.git
-cd water-meter-system
+git clone https://github.com/paulianttila/water-meter-digitizer.git
+cd water-meter-digitizer
 
 # Create virtual environment and synchronize all dependencies
 uv sync
@@ -217,7 +217,7 @@ A VS Code launch configuration can be set up in `.vscode/launch.json`:
   "version": "0.2.0",
   "configurations": [
     {
-      "name": "Python: Water Meter System",
+      "name": "Python: Water Meter Digitizer",
       "type": "debugpy",
       "request": "launch",
       "program": "${workspaceFolder}/src/main.py",

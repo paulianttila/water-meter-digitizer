@@ -262,18 +262,20 @@ class DrawRoisBaseStep(BaseStep):
             with ui.grid(columns="1fr 2fr 2fr 2fr 2fr 2fr").classes("w-full gap-2"):
                 ui.checkbox(on_change=self._show_rois).bind_value(roi, "enabled").props(
                     f"color={roi.color} keep-color"
+                ).tooltip("Toggle ROI visibility on canvas")
+                ui.input().bind_value(roi, "name").tooltip(
+                    "Region of interest label / identifier"
                 )
-                ui.input().bind_value(roi, "name")
                 ui.number(on_change=self._show_rois).bind_value(
                     roi, "x", forward=lambda x: int(x)
-                )
+                ).tooltip("X position in pixels")
                 ui.number(on_change=self._show_rois).bind_value(
                     roi, "y", forward=lambda x: int(x)
-                )
+                ).tooltip("Y position in pixels")
                 ui.number(on_change=self._show_rois).bind_value(
                     roi, "w", forward=lambda x: int(x)
-                )
+                ).tooltip("Width in pixels")
                 ui.number(on_change=self._show_rois).bind_value(
                     roi, "h", forward=lambda x: int(x)
-                )
+                ).tooltip("Height in pixels")
                 self.rois.append(roi)

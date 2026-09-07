@@ -1,5 +1,5 @@
 [project]
-name = "water-meter-system"
+name = "water-meter-digitizer"
 version = "8.0.0"
 description = "Automatic utility meter digitizer using neural network inference"
 readme = "README.md"
@@ -16,6 +16,7 @@ dependencies = [
     "pydantic-settings>=2.2.0",
     "requests>=2.31.0",
     "sqlalchemy>=2.0.0",
+    "paho-mqtt>=1.6.1",
     "uvicorn>=0.29.0",
 ]
 
@@ -31,6 +32,7 @@ dev = [
 
 [dependency-groups]
 dev = [
+    "amqtt>=0.12.0",
     "bandit[toml]>=1.7.7",
     "black>=24.2.0",
     "coverage>=7.4.3",
