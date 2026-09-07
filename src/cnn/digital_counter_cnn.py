@@ -14,13 +14,14 @@ class DigitalCounterCNN(CNNBase):
         modelfile: str,
         dx: int,
         dy: int,
+        pool_size: int | None = None,
     ) -> None:
         super().__init__(
             modelfile,
             dx=dx,
             dy=dy,
+            pool_size=pool_size,
         )
-        super()._loadModel()
 
     def readout_with_confidence(self, image: Image) -> tuple[float | int, float]:
         """Run inference and return (predicted_value, confidence_percentage)."""
@@ -55,3 +56,17 @@ class DigitalCounterCNN(CNNBase):
     def readout(self, image: Image) -> float | int:
         value, _ = self.readout_with_confidence(image)
         return value
+
+    async def readout_with_confidence_async(
+        self, image: Image
+    ) -> tuple[float | int, float]:
+        """Asynchronously run inference and return (predicted_value, confidence)."""
+        import asyncio
+
+        return await asyncio.to_thread(self.readout_with_confidence, image)
+
+    async def readout_async(self, image: Image) -> float | int:
+        """Asynchronously run inference and return predicted value."""
+        import asyncio
+
+        return await asyncio.to_thread(self.readout, image)

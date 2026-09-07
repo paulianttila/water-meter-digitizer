@@ -1,18 +1,16 @@
-import contextlib
-from dataclasses import dataclass
-import os
+import asyncio
 import logging
+import os
 from importlib import util
 
-from PIL.Image import Image, Resampling
 import numpy as np
+from PIL.Image import Image, Resampling
 
-with contextlib.suppress(ImportError):
-    import ai_edge_litert.interpreter as tflite
-
-if "tflite" not in locals():
-    with contextlib.suppress(ImportError):
-        import tflite_runtime.interpreter as tflite
+from cnn.pool import (
+    InterpreterPool,
+    ModelDetails,
+    get_interpreter_pool,
+)
 
 spam_spec = util.find_spec("tensorflow")
 found_tensorflow = spam_spec is not None
@@ -23,67 +21,84 @@ found_tflite = spam_spec is not None
 logger = logging.getLogger(__name__)
 
 
-@dataclass
-class ModelDetails:
-    name: str
-    xsize: int
-    ysize: int
-    channels: int
-    numer_output: int
-
-
 class CNNBase:
     def __init__(
         self,
         modelfile: str,
         dx: int,
         dy: int,
+        pool_size: int | None = None,
     ) -> None:
         self.modelfile = modelfile
         self.dx = dx
         self.dy = dy
+        self.pool_size = pool_size
+        self.pool: InterpreterPool | None = None
+        self._loadModel()
 
     def _loadModel(self) -> None:
         filename, file_extension = os.path.splitext(self.modelfile)
         if file_extension != ".tflite":
             logger.error(
-                "Only TFLite-Model (*.tflite) are support since version "
-                "7.0.0 and higher"
+                "Only TFLite-Model (*.tflite) are supported since "
+                "version 7.0.0 and higher"
             )
             return
 
         try:
-            self.interpreter = tflite.Interpreter(model_path=self.modelfile)  # type: ignore
-            self.interpreter.allocate_tensors()
-            self.input_details = self.interpreter.get_input_details()
-            self.output_details = self.interpreter.get_output_details()
+            self.pool = get_interpreter_pool(self.modelfile, max_size=self.pool_size)
             self.getModelDetails()
         except Exception as e:
-            logger.error(f"Error occured during model '{self.modelfile}' loading: {e}")
+            logger.error(f"Error occurred during model '{self.modelfile}' loading: {e}")
+
+    @property
+    def interpreter(self):
+        """Backward-compatible access to an interpreter instance."""
+        if self.pool is not None:
+            with self.pool.acquire() as inst:
+                return inst.interpreter
+        return None
+
+    @property
+    def input_details(self):
+        """Backward-compatible access to input details."""
+        if self.pool is not None:
+            with self.pool.acquire() as inst:
+                return inst.input_details
+        return []
+
+    @property
+    def output_details(self):
+        """Backward-compatible access to output details."""
+        if self.pool is not None:
+            with self.pool.acquire() as inst:
+                return inst.output_details
+        return []
 
     def getModelDetails(self) -> ModelDetails:
-        xsize = self.input_details[0]["shape"][1]
-        ysize = self.input_details[0]["shape"][2]
-        channels = self.input_details[0]["shape"][3]
-        numeroutput = self.output_details[0]["shape"][1]
-        logger.debug(
-            f"Model '{self.modelfile}' loaded. "
-            f"ModelSize: {xsize}x{ysize}x{channels}. "
-            f"Output: {numeroutput}"
-        )
-
-        return ModelDetails(
-            self.modelfile,
-            xsize,
-            ysize,
-            channels,
-            numeroutput,
-        )
+        if self.pool is not None:
+            details = self.pool.get_model_details()
+            logger.debug(
+                f"Model '{self.modelfile}' details: "
+                f"{details.xsize}x{details.ysize}x{details.channels}, "
+                f"Output: {details.numer_output}"
+            )
+            return details
+        return ModelDetails(self.modelfile, self.dx, self.dy, 3, 0)
 
     def _readout(self, image: Image) -> np.ndarray:
+        if self.pool is None:
+            raise RuntimeError(f"Model '{self.modelfile}' is not loaded")
+
         test_image = image.resize((self.dx, self.dy), Resampling.NEAREST)
         test_image = np.array(test_image, dtype="float32")
         input_data = np.reshape(test_image, [1, self.dy, self.dx, 3])
-        self.interpreter.set_tensor(self.input_details[0]["index"], input_data)
-        self.interpreter.invoke()
-        return self.interpreter.get_tensor(self.output_details[0]["index"])
+
+        with self.pool.acquire() as inst:
+            inst.interpreter.set_tensor(inst.input_index, input_data)
+            inst.interpreter.invoke()
+            return inst.interpreter.get_tensor(inst.output_index)
+
+    async def _readout_async(self, image: Image) -> np.ndarray:
+        """Asynchronously execute inference in a worker thread."""
+        return await asyncio.to_thread(self._readout, image)

@@ -150,6 +150,24 @@ class DigitizerProcessor:
         self.evaluate_cnn_results()
         return self.get_meter_values(meter_configs)
 
+    async def process_async(
+        self,
+        analog_images: list[CutImage],
+        digital_images: list[CutImage],
+        meter_configs: list[MeterConfig],
+        min_confidence_threshold: float | None = None,
+    ) -> MeterResult:
+        """Asynchronously process meter images off the main event loop."""
+        import asyncio
+
+        return await asyncio.to_thread(
+            self.process,
+            analog_images,
+            digital_images,
+            meter_configs,
+            min_confidence_threshold,
+        )
+
     @log_execution_time
     def execute_analog_cnn(self, images: list[CutImage]) -> "DigitizerProcessor":
         if self.analog_counter_reader is None and self.digital_counter_reader is None:
