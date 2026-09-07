@@ -162,9 +162,20 @@ Models are executed via `ai_edge_litert` (Google LiteRT, with `tflite_runtime` f
   - Sudden spikes exceeding `MaxRateValue` are flagged as invalid.
 - Persisted previous values are managed by `previous_value.py` in an INI file with timestamp-based max age expiration (`PreValueFromFileMaxAge`).
 
-### 6. Web UI & Setup Wizard (NiceGUI)
-- Implemented with **NiceGUI** (Vue/Quasar backend with FastAPI).
+### 6. Storage & Telemetry Architecture
+- **Dual-Mode Persistence Factory**: `src/storage/__init__.py` dynamically provides `SQLAlchemyStorageBackend` (SQLite by default) or `MemoryStorageBackend` (in-memory circular buffer fallback if `/data` is on a read-only filesystem or SQLite initialization fails).
+- **Auto-Pruning & Retention**: Automatically purges records older than `retention_days` and enforces memory caps (`max_memory_mb`) with background SQLite vacuuming.
+- **Diagnostics Subsystem**: `src/utils/diagnostics.py` aggregates process RSS memory, uptime, camera reachability latency, and model inference statistics into `/health`.
+
+### 7. Background Polling & MQTT Auto-Discovery
+- **Scheduler**: Async background poller (`src/poller/scheduler.py`) periodically runs meter readouts at configured intervals without requiring external cron daemons.
+- **Home Assistant MQTT Discovery**: `src/mqtt/client.py` publishes Home Assistant JSON configuration payloads under `homeassistant/sensor/<node_id>/<meter_id>/config` with `device_class: water` and `state_class: total_increasing`.
+- **Granular Publication**: Sends meter values, sub-digit raw arrays, quality status (`good`, `warning`, `uncertain`), and model confidence percentages to configured MQTT topics.
+
+### 8. Web UI & Setup Wizard (NiceGUI & FastAPI)
+- Implemented with a hybrid architecture combining **FastAPI** (REST API, diagnostics, dashboard templates) and **NiceGUI** (Vue/Quasar interactive frontend).
 - The setup page (`page_setup.py`) features an interactive canvas with real-time mouse coordinate tracking, SVG ROI drawing overlays, offline placeholder fallback on camera timeout, and live inference preview on cropped ROIs.
+- The main landing dashboard (`src/web/templates/index.html`) is a glassmorphic single-page application with live diagnostics telemetry, interactive API console, and historical consumption visualizers.
 
 ---
 

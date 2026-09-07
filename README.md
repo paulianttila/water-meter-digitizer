@@ -8,19 +8,30 @@ Automatically read analog and digital utility meters using a camera, image proce
 
 ## Features
 
-- **Google LiteRT Runtime** — fast, low-latency neural network inference powered by `ai-edge-litert`.
-- **Scheduled Background Poller** — internal async scheduler to trigger periodic readouts automatically without external cron jobs.
-- **Native Home Assistant MQTT Auto-Discovery** — zero-config Home Assistant sensors (`device_class: water`, `state_class: total_increasing`) and openHAB MQTT integration.
-- **Modern Web Dashboard & Wizard (`/gui`)** — interactive 9-step setup wizard, live ROI alignment editor, and configuration manager.
-- **Historical Consumption Charts** — interactive daily, weekly, and hourly consumption bar/line charts directly in the web dashboard powered by Apache ECharts.
-- **Interactive API Explorer (`/`)** — landing page with real-time meter status, JSON viewer, and one-click endpoint testing.
-- **Mixed Meter Support** — read combinations of analog needle dials and digital LCD/odometer drum digits in a single image.
-- **Four CNN Model Types** — `analog`, `analog100`, `digital`, `digital100` (auto-detected from model output shape).
-- **Predecessor-Based Digit Correction** — uses adjacent wheel positions to correct ambiguous readings at digit roll-over boundaries.
-- **Extended Resolution** — optionally appends a fractional sub-digit decimal from the last analog needle wheel.
-- **Consistency Checking** — rejects spurious readings that exceed configured rate limits or go negative.
-- **Previous Value Fallback** — replaces unreadable digits (`N`) with the last known valid reading.
-- **Docker Ready** — multi-arch (x86_64, ARM64) container with integrated healthchecks.
+### 💧 Universal Meter Reading
+- **Mixed Meter Support** — Simultaneously reads mechanical odometer rolling digits, digital LCD counters, and circular analog needle dials in a single frame.
+- **Intelligent Digit Correction** — Automatically fixes ambiguous, half-turned numbers at roll-over boundaries using adjacent dial positions.
+- **High-Precision Resolution** — Optional fractional sub-digit decimal calculation for fine-grained flow and leak detection.
+- **Automatic Image Alignment** — Corrects camera tilt, vibration, and rotation shifts against visual reference markers.
+- **Data Integrity & Fallbacks** — Rejects impossible rate spikes, guards against negative flow, and safely falls back to cached baseline readings when digits are obscured.
+
+### 🏡 Smart Home & Cloud Connectivity
+- **Native Home Assistant Integration** — Instant zero-configuration sensor discovery over MQTT with native energy/water dashboard compatibility.
+- **Automated Background Poller** — Built-in scheduler periodically captures and publishes readings without external cron scripts.
+- **Open Standards & REST API** — Clean structured JSON endpoints for easy integration with openHAB, Node-RED, Prometheus, Grafana, or custom automations.
+
+### 📊 Modern Web Dashboard & Setup
+- **Interactive Visual Setup Wizard (`/gui`)** — Intuitive step-by-step alignment tool to easily define reference markers and digit bounding boxes.
+- **Glassmorphic Web Dashboard (`/`)** — Live meter status, real-time telemetry, model confidence indicators, and one-click API explorer.
+- **Interactive Consumption Charts** — Visual breakdown of hourly, daily, and weekly water usage with customizable time ranges.
+- **Diagnostics & Telemetry** — Real-time camera latency, system uptime, and memory utilization monitors.
+
+### 🚀 Edge & Container Ready
+- **Lightweight & Fast** — High-performance on-device neural network inference optimized for low-power edge devices (e.g., Raspberry Pi).
+- **Docker Ready** — Official multi-architecture (x86_64, ARM64) container images with integrated health check probes.
+- **Resilient Storage** — Dual-mode persistence with automatic in-memory failover for read-only or immutable container environments.
+
+> 💡 *For architectural diagrams, neural network specifications, and developer documentation, see [DEVELOPER.md](DEVELOPER.md).*
 
 ---
 
