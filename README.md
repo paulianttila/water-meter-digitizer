@@ -493,6 +493,22 @@ MQTT publisher with native Home Assistant Auto-Discovery and openHAB support.
 
 ---
 
+### `[ZeroFlowMonitor]`
+Continuous flow monitoring & automated leak detection with auto-resolution.
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `Enabled` | boolean | `False` | Enable continuous flow leak monitoring. |
+| `MeterName` | string | `total` | Name of the logical meter to track for continuous flow. |
+| `ContinuousFlowHours` | float | `2.0` | Hours of uninterrupted non-zero flow required before flagging a leak. |
+| `MinLeakVolume` | float | `0.010` | Minimum volume consumed during continuous flow window (filters optical jitter). |
+| `FlowThreshold` | float | `0.001` | Minimum change between readings (in meter units) to count as active flow. |
+| `ResolveDebounceCount` | integer | `2` | Number of consecutive zero readings required to auto-resolve active alert. |
+| `MaxHistoryEvents` | integer | `50` | Maximum completed leak event logs retained in memory. |
+
+
+---
+
 ### Complete Example `config.ini`
 
 ```ini

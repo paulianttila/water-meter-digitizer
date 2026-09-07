@@ -35,6 +35,7 @@ from utils.diagnostics import (
 )
 from utils.download import DownloadFailure
 import utils.image
+from leak.tracker import ZeroFlowTracker
 from processor.digitizer import DigitizerProcessor, MeterResult
 from processor.image import ImageProcessor
 import previous_value
@@ -63,6 +64,8 @@ BASE_DIR = Path(__file__).resolve().parent
 def start_services() -> None:
     """Start MQTT service and background poller based on config."""
     stop_services()
+
+    app.state.zero_flow_tracker = ZeroFlowTracker(config.zero_flow_monitor)
 
     mqtt_svc = MQTTService(
         config=config.mqtt,
@@ -105,6 +108,7 @@ app = FastAPI(title="meter", lifespan=lifespan)
 image_cache = ImageCache(max_size=50, ttl_seconds=300.0)
 app.state.image_cache = image_cache
 app.state.storage = get_storage_backend(config)
+app.state.zero_flow_tracker = ZeroFlowTracker(config.zero_flow_monitor)
 app.state.start_time = time.time()
 app.state.started_at = datetime.now(timezone.utc).isoformat()
 app.state.mqtt_service = MQTTService(
@@ -726,7 +730,59 @@ def get_meter_data(url: str = "", saveimages: bool = False) -> MeterResult:
         except Exception as e:
             logger.warning(f"Error publishing meter result to MQTT: {e}")
 
+    zero_flow_tracker = getattr(app.state, "zero_flow_tracker", None)
+    if zero_flow_tracker is not None and getattr(
+        config.zero_flow_monitor, "enabled", False
+    ):
+        try:
+            target_name = config.zero_flow_monitor.meter_name
+            target_val = None
+            target_conf = 100.0
+            target_qual = "good"
+            for m in meter_result.meters:
+                if m.name == target_name:
+                    try:
+                        target_val = float(m.value)
+                    except (ValueError, TypeError):
+                        target_val = None
+                    target_conf = getattr(m, "confidence", 100.0)
+                    target_qual = getattr(m, "quality", "good")
+                    break
+
+            if target_val is not None:
+                zero_status = zero_flow_tracker.evaluate_reading(
+                    timestamp=datetime.now(timezone.utc),
+                    meter_value=target_val,
+                    confidence=target_conf,
+                    quality=target_qual,
+                    min_confidence_threshold=config.min_confidence_threshold,
+                )
+                if mqtt_service is not None and getattr(config.mqtt, "enabled", False):
+                    mqtt_service.publish_zero_flow_status(zero_status)
+        except Exception as e:
+            logger.warning(f"Error evaluating zero-flow leak status: {e}")
+
     return meter_result
+
+
+@app.get("/leak/status")
+@log_execution_time
+def get_leak_status(request: Request) -> Response:
+    tracker = getattr(request.app.state, "zero_flow_tracker", None)
+    status = (
+        tracker.get_status().to_dict() if tracker else {"enabled": False, "state": "OK"}
+    )
+    return Response(json.dumps(status), media_type="application/json")
+
+
+@app.post("/leak/reset")
+@log_execution_time
+def reset_leak_status(request: Request) -> Response:
+    tracker = getattr(request.app.state, "zero_flow_tracker", None)
+    if tracker is None:
+        raise HTTPException(status_code=400, detail="Leak tracker not initialized")
+    status = tracker.reset().to_dict()
+    return Response(json.dumps(status), media_type="application/json")
 
 
 @app.get("/poller/status")

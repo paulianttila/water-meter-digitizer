@@ -121,4 +121,52 @@ def build_homeassistant_discovery_payloads(
     }
     payloads.append((proc_topic, proc_payload))
 
+    # 5. Leak Alert Binary Sensor
+    leak_alert_topic = f"{disc_prefix}/binary_sensor/{device_id}/leak_alert/config"
+    leak_alert_payload: dict[str, Any] = {
+        "name": f"{device_name} Leak Alert",
+        "unique_id": f"{device_id}_leak_alert",
+        "state_topic": f"{prefix}/leak/alert",
+        "availability_topic": f"{prefix}/status",
+        "payload_available": "online",
+        "payload_not_available": "offline",
+        "payload_on": "ON",
+        "payload_off": "OFF",
+        "device_class": "problem",
+        "icon": "mdi:water-alert",
+        "device": device_block,
+    }
+    payloads.append((leak_alert_topic, leak_alert_payload))
+
+    # 6. Leak Status Sensor
+    leak_status_topic = f"{disc_prefix}/sensor/{device_id}/leak_status/config"
+    leak_status_payload: dict[str, Any] = {
+        "name": f"{device_name} Leak Status",
+        "unique_id": f"{device_id}_leak_status",
+        "state_topic": f"{prefix}/leak/state",
+        "json_attributes_topic": f"{prefix}/leak/status",
+        "availability_topic": f"{prefix}/status",
+        "payload_available": "online",
+        "payload_not_available": "offline",
+        "icon": "mdi:water-check",
+        "device": device_block,
+    }
+    payloads.append((leak_status_topic, leak_status_payload))
+
+    # 7. Continuous Flow Duration Sensor
+    flow_dur_topic = f"{disc_prefix}/sensor/{device_id}/flow_duration/config"
+    flow_dur_payload: dict[str, Any] = {
+        "name": f"{device_name} Continuous Flow Duration",
+        "unique_id": f"{device_id}_flow_duration",
+        "state_topic": f"{prefix}/leak/duration",
+        "availability_topic": f"{prefix}/status",
+        "payload_available": "online",
+        "payload_not_available": "offline",
+        "unit_of_measurement": "min",
+        "state_class": "measurement",
+        "icon": "mdi:timer-sand",
+        "device": device_block,
+    }
+    payloads.append((flow_dur_topic, flow_dur_payload))
+
     return payloads

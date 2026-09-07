@@ -155,6 +155,14 @@ def test_config():
     assert config.mqtt.device_name == "Water Meter Digitizer"
     assert config.mqtt.device_id == "water_meter_digitizer"
 
+    assert config.zero_flow_monitor.enabled is False
+    assert config.zero_flow_monitor.meter_name == "total"
+    assert config.zero_flow_monitor.continuous_flow_hours == 2.0
+    assert config.zero_flow_monitor.min_leak_volume == 0.010
+    assert config.zero_flow_monitor.flow_threshold == 0.001
+    assert config.zero_flow_monitor.resolve_debounce_count == 2
+    assert config.zero_flow_monitor.max_history_events == 50
+
 
 def test_config_file_missing():
     config = Config()

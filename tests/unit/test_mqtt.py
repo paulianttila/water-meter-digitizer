@@ -21,9 +21,8 @@ def test_homeassistant_discovery_payload_generation():
     ]
 
     payloads = build_homeassistant_discovery_payloads(mqtt_cfg, meters, version="8.0.0")
-    assert (
-        len(payloads) == 6
-    )  # 2 sensors per meter (value, conf) + 2 system sensors (error, proc_time)
+    # 2 sensors per meter (value, conf) + 2 system sensors + 3 leak sensors = 9
+    assert len(payloads) == 9
 
     topics = [p[0] for p in payloads]
     assert "homeassistant/sensor/water_meter_digitizer/main_value/config" in topics
@@ -31,6 +30,11 @@ def test_homeassistant_discovery_payload_generation():
     assert "homeassistant/sensor/water_meter_digitizer/garden_value/config" in topics
     assert "homeassistant/sensor/water_meter_digitizer/last_error/config" in topics
     assert "homeassistant/sensor/water_meter_digitizer/processing_time/config" in topics
+    assert (
+        "homeassistant/binary_sensor/water_meter_digitizer/leak_alert/config" in topics
+    )
+    assert "homeassistant/sensor/water_meter_digitizer/leak_status/config" in topics
+    assert "homeassistant/sensor/water_meter_digitizer/flow_duration/config" in topics
 
     # Inspect main value sensor config
     main_val_payload = next(

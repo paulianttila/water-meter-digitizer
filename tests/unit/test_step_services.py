@@ -38,6 +38,14 @@ def test_services_step_load_and_apply():
     step.data_dir = MagicMock(value="/data")
     step.min_confidence_threshold = MagicMock(value=50.0)
 
+    step.zero_flow_enabled = MagicMock(value=False)
+    step.zero_flow_meter_name = MagicMock(value="total")
+    step.zero_flow_hours = MagicMock(value=2.0)
+    step.zero_flow_min_volume = MagicMock(value=0.010)
+    step.zero_flow_threshold = MagicMock(value=0.001)
+    step.zero_flow_debounce_count = MagicMock(value=2)
+    step.zero_flow_max_history = MagicMock(value=50)
+
     # Test load from config
     config = Config()
     config.poller.enabled = True
@@ -46,6 +54,8 @@ def test_services_step_load_and_apply():
     config.mqtt.broker = "192.168.1.50"
     config.history.retention_days = 60
     config.min_confidence_threshold = 75.0
+    config.zero_flow_monitor.enabled = True
+    config.zero_flow_monitor.continuous_flow_hours = 3.5
 
     step.load_from_config(config)
 
@@ -55,6 +65,8 @@ def test_services_step_load_and_apply():
     assert step.mqtt_broker.value == "192.168.1.50"
     assert step.history_retention_days.value == 60
     assert step.min_confidence_threshold.value == 75.0
+    assert step.zero_flow_enabled.value is True
+    assert step.zero_flow_hours.value == 3.5
 
     # Test apply to config
     new_config = Config()
@@ -66,6 +78,9 @@ def test_services_step_load_and_apply():
     step.history_retention_days.value = 14
     step.data_dir.value = "/custom_data"
     step.min_confidence_threshold.value = 80.0
+    step.zero_flow_enabled.value = True
+    step.zero_flow_hours.value = 4.0
+    step.zero_flow_min_volume.value = 0.020
 
     step.apply_to_config(new_config)
 
@@ -76,3 +91,6 @@ def test_services_step_load_and_apply():
     assert new_config.history.retention_days == 14
     assert new_config.data_dir == "/custom_data"
     assert new_config.min_confidence_threshold == 80.0
+    assert new_config.zero_flow_monitor.enabled is True
+    assert new_config.zero_flow_monitor.continuous_flow_hours == 4.0
+    assert new_config.zero_flow_monitor.min_leak_volume == 0.020

@@ -62,6 +62,17 @@ class ServicesStep(BaseStep):
         self.history_auto_vacuum.value = config.history.auto_vacuum
         self.history_prune_interval.value = config.history.prune_interval
 
+        # Zero-Flow & Leak Monitor
+        self.zero_flow_enabled.value = config.zero_flow_monitor.enabled
+        self.zero_flow_meter_name.value = config.zero_flow_monitor.meter_name
+        self.zero_flow_hours.value = config.zero_flow_monitor.continuous_flow_hours
+        self.zero_flow_min_volume.value = config.zero_flow_monitor.min_leak_volume
+        self.zero_flow_threshold.value = config.zero_flow_monitor.flow_threshold
+        self.zero_flow_debounce_count.value = (
+            config.zero_flow_monitor.resolve_debounce_count
+        )
+        self.zero_flow_max_history.value = config.zero_flow_monitor.max_history_events
+
         # Global
         self.data_dir.value = config.data_dir
         self.min_confidence_threshold.value = config.min_confidence_threshold
@@ -107,6 +118,27 @@ class ServicesStep(BaseStep):
         config.history.max_records = int(self.history_max_records.value or 50000)
         config.history.auto_vacuum = bool(self.history_auto_vacuum.value)
         config.history.prune_interval = int(self.history_prune_interval.value or 50)
+
+        # Zero-Flow & Leak Monitor
+        config.zero_flow_monitor.enabled = bool(self.zero_flow_enabled.value)
+        config.zero_flow_monitor.meter_name = str(
+            self.zero_flow_meter_name.value or "total"
+        )
+        config.zero_flow_monitor.continuous_flow_hours = float(
+            self.zero_flow_hours.value or 2.0
+        )
+        config.zero_flow_monitor.min_leak_volume = float(
+            self.zero_flow_min_volume.value or 0.010
+        )
+        config.zero_flow_monitor.flow_threshold = float(
+            self.zero_flow_threshold.value or 0.001
+        )
+        config.zero_flow_monitor.resolve_debounce_count = int(
+            self.zero_flow_debounce_count.value or 2
+        )
+        config.zero_flow_monitor.max_history_events = int(
+            self.zero_flow_max_history.value or 50
+        )
 
         # Global
         config.data_dir = str(self.data_dir.value or "/data")
@@ -251,6 +283,48 @@ class ServicesStep(BaseStep):
                     self.history_prune_interval = ui.number(
                         "Prune Interval", value=50, min=1, step=5
                     ).tooltip("Readouts between automated pruning cycles")
+
+            # Zero-Flow & Leak Monitor Section
+            with ui.expansion(
+                "Zero-Flow Tracking & Leak Monitor", icon="water_damage"
+            ).classes("w-full bg-slate-900/60 border border-white/10 rounded-xl mb-2"):
+                with ui.row().classes("w-full items-center"):
+                    self.zero_flow_enabled = ui.checkbox(
+                        "Enable Zero-Flow Monitoring", value=False
+                    ).tooltip(
+                        "Detect continuous non-zero flow sustained over time "
+                        "without quiet periods"
+                    )
+
+                with ui.grid(columns="1fr 1fr 1fr").classes("w-full gap-3 mt-2"):
+                    self.zero_flow_meter_name = ui.input(
+                        "Target Meter Name", value="total"
+                    ).tooltip("Meter name to monitor for continuous flow")
+                    self.zero_flow_hours = ui.number(
+                        "Continuous Flow Alert (Hours)",
+                        value=2.0,
+                        min=0.1,
+                        step=0.5,
+                    ).tooltip("Hours of continuous flow before triggering a leak alert")
+                    self.zero_flow_min_volume = ui.number(
+                        "Min Leak Volume", value=0.010, min=0.0001, step=0.005
+                    ).tooltip(
+                        "Minimum cumulative volume required to trigger alert "
+                        "(filters optical jitter)"
+                    )
+
+                with ui.grid(columns="1fr 1fr 1fr").classes("w-full gap-3 mt-2"):
+                    self.zero_flow_threshold = ui.number(
+                        "Flow Threshold", value=0.001, min=0.0001, step=0.0005
+                    ).tooltip("Minimum delta between readings to count as active flow")
+                    self.zero_flow_debounce_count = ui.number(
+                        "Resolve Debounce Count", value=2, min=1, step=1
+                    ).tooltip(
+                        "Consecutive zero readings required to auto-resolve alert"
+                    )
+                    self.zero_flow_max_history = ui.number(
+                        "Max History Events", value=50, min=5, step=10
+                    ).tooltip("Maximum historical leak events to retain")
 
             # Global Defaults Section
             with ui.expansion("Global Settings", icon="settings").classes(

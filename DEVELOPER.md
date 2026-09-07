@@ -101,6 +101,11 @@ water-meter-digitizer/
 │   ├── poller/                  # Background scheduling subsystem
 │   │   └── scheduler.py         # Async scheduler for periodic automated readouts
 │   │
+│   ├── leak/                    # Zero-flow tracking & continuous leak detection
+│   │   ├── __init__.py          # Package exports (ZeroFlowTracker, LeakState, LeakEvent)
+│   │   ├── models.py            # LeakState, LeakEvent, and ZeroFlowStatus models
+│   │   └── tracker.py           # Noise-resilient tracking, debounced resolution, history
+│   │
 │   ├── mqtt/                    # IoT & Home Assistant integration
 │   │   └── client.py            # MQTT publisher with Home Assistant Auto-Discovery
 │   │
@@ -202,10 +207,17 @@ The project supports four distinct model architectures:
 - **Home Assistant MQTT Discovery**: `src/mqtt/client.py` publishes Home Assistant JSON configuration payloads under `homeassistant/sensor/<node_id>/<meter_id>/config` with `device_class: water` and `state_class: total_increasing`.
 - **Granular Publication**: Sends meter values, sub-digit raw arrays, quality status (`good`, `warning`, `uncertain`), and model confidence percentages to configured MQTT topics.
 
-### 8. Web UI & Setup Wizard (NiceGUI & FastAPI)
+### 8. Zero-Flow Tracking & Continuous Leak Detection
+- **Subsystem (`src/leak/`)**: Implements dual-condition zero-flow tracking to detect non-zero continuous water flow over sustained intervals (e.g. running toilets or open fixtures).
+- **Dual-Condition Leak Triggering**: Flow must remain continuous for at least `ContinuousFlowHours` (default: 2.0h) **AND** accumulate volume $\ge$ `MinLeakVolume` (default: 0.010 m³ / 10 L), eliminating false alarms from drum/pointer optical jitter ($\pm 0.0001\text{ m}^3$).
+- **Debounced Auto-Resolution**: When flow stops, requires $K$ consecutive zero-flow readings (`DebounceCount`, default: 2) before resetting state to `NORMAL` and archiving a `LeakEvent` with start/end timestamps, duration, and total lost volume.
+- **Optical CNN Noise Mitigation**: Rejects negative deltas, skips low-confidence/uncertain reads, clamps spurious reading spikes exceeding `MaxRateValue`, and watchdog-resets continuous timers during long camera/network outages (> 2h).
+- **Home Assistant & REST Integration**: Auto-discovers binary leak sensors, continuous flow duration sensors, and state sensors via MQTT, plus exposes `/leak/status` and `/leak/reset` REST endpoints.
+
+### 9. Web UI & Setup Wizard (NiceGUI & FastAPI)
 - Implemented with a hybrid architecture combining **FastAPI** (REST API, diagnostics, dashboard templates) and **NiceGUI** (Vue/Quasar interactive frontend).
 - The setup page (`page_setup.py`) features an interactive canvas with real-time mouse coordinate tracking, SVG ROI drawing overlays, offline placeholder fallback on camera timeout, and live inference preview on cropped ROIs.
-- The main landing dashboard (`src/web/templates/index.html`) is a glassmorphic single-page application with live diagnostics telemetry, interactive API console, and historical consumption visualizers.
+- The main landing dashboard (`src/web/templates/index.html`) is a glassmorphic single-page application with live diagnostics telemetry, interactive API console, historical consumption visualizers, and leak detection telemetry.
 
 ---
 

@@ -121,7 +121,13 @@ The **Setup** tab provides an 8-step guided configuration wizard. On the left is
 - **Scheduled Background Poller**: Enable the internal async scheduler to trigger periodic readouts automatically (`IntervalSeconds`, `RunOnStartup`, `SaveImages`, `RetryIntervalSeconds`).
 - **MQTT & Home Assistant Discovery**: Configure MQTT broker connection (`Broker`, `Port`, `Username`, `Password`, `ClientID`, `TopicPrefix`, `TLS`, `Retain`) and automatic Home Assistant entity discovery (`HomeAssistantDiscovery`, `DiscoveryPrefix`, `DeviceName`, `DeviceID`).
 - **History Storage & Retention**: Select SQLite database or in-memory backend, data directory, retention days, and max records pruning.
+- **Zero-Flow Tracking & Leak Monitor**: Automatically detect continuous non-zero water usage sustained over time without quiet periods:
+  - `ContinuousFlowHours`: Continuous flow duration threshold before triggering alert (e.g. `2.0` hours).
+  - `MinLeakVolume`: Minimum cumulative volume required to flag leak (filters optical digit jitter).
+  - `ResolveDebounceCount`: Number of consecutive zero readings required to auto-resolve active alerts.
+  - `MaxHistoryEvents`: Maximum completed leak event logs retained in memory.
 - **Global Settings**: Configure data directory and minimum confidence score threshold.
+
 
 ### Step 9: Final Review & Save
 - Review the compiled configuration and live processed image.

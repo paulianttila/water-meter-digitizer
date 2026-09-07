@@ -295,6 +295,50 @@ class MQTTService:
         except Exception as e:
             logger.warning("Failed to publish error to MQTT: %s", e)
 
+    def publish_zero_flow_status(self, status: Any) -> None:
+        """Publish zero-flow tracking and leak status metrics to MQTT."""
+        if not self.config.enabled or not self.is_connected or self._client is None:
+            return
+
+        try:
+            prefix = self.config.topic_prefix or "watermeter"
+            retain = self.config.retain
+            status_dict = status.to_dict() if hasattr(status, "to_dict") else status
+
+            is_leak = status_dict.get("state") == "LEAK_DETECTED"
+            alert_payload = "ON" if is_leak else "OFF"
+            state_str = str(status_dict.get("state", "OK"))
+            duration_min = str(status_dict.get("current_flow_duration_minutes", 0.0))
+            json_payload = json.dumps(status_dict)
+
+            self._client.publish(
+                topic=f"{prefix}/leak/alert",
+                payload=alert_payload,
+                qos=1,
+                retain=retain,
+            )
+            self._client.publish(
+                topic=f"{prefix}/leak/state",
+                payload=state_str,
+                qos=1,
+                retain=retain,
+            )
+            self._client.publish(
+                topic=f"{prefix}/leak/duration",
+                payload=duration_min,
+                qos=1,
+                retain=retain,
+            )
+            self._client.publish(
+                topic=f"{prefix}/leak/status",
+                payload=json_payload,
+                qos=1,
+                retain=retain,
+            )
+            logger.debug("Published zero-flow status to MQTT: state=%s", state_str)
+        except Exception as e:
+            logger.warning("Failed to publish zero-flow status to MQTT: %s", e)
+
     def get_status(self) -> dict[str, Any]:
         """Return MQTT service status and metrics."""
         return {

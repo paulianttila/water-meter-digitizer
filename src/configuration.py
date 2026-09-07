@@ -118,6 +118,16 @@ class MQTT(BaseModel):
     device_id: str = "water_meter_digitizer"
 
 
+class ZeroFlowMonitor(BaseModel):
+    enabled: bool = False
+    meter_name: str = "total"
+    continuous_flow_hours: float = 2.0
+    min_leak_volume: float = 0.010
+    flow_threshold: float = 0.001
+    resolve_debounce_count: int = 2
+    max_history_events: int = 50
+
+
 class Config(BaseSettings):
     model_config = SettingsConfigDict(
         env_prefix="METER_",
@@ -143,6 +153,7 @@ class Config(BaseSettings):
     history: History = Field(default_factory=History)
     poller: Poller = Field(default_factory=Poller)
     mqtt: MQTT = Field(default_factory=MQTT)
+    zero_flow_monitor: ZeroFlowMonitor = Field(default_factory=ZeroFlowMonitor)
 
     @property
     def prevoius_value_file(self) -> str:
@@ -375,6 +386,16 @@ class Config(BaseSettings):
             "DiscoveryPrefix": self.mqtt.discovery_prefix,
             "DeviceName": self.mqtt.device_name,
             "DeviceID": self.mqtt.device_id,
+        }
+
+        config["ZeroFlowMonitor"] = {
+            "Enabled": str(self.zero_flow_monitor.enabled),
+            "MeterName": self.zero_flow_monitor.meter_name,
+            "ContinuousFlowHours": str(self.zero_flow_monitor.continuous_flow_hours),
+            "MinLeakVolume": str(self.zero_flow_monitor.min_leak_volume),
+            "FlowThreshold": str(self.zero_flow_monitor.flow_threshold),
+            "ResolveDebounceCount": str(self.zero_flow_monitor.resolve_debounce_count),
+            "MaxHistoryEvents": str(self.zero_flow_monitor.max_history_events),
         }
 
         config.write(fp, space_around_delimiters=False)
@@ -666,6 +687,27 @@ class Config(BaseSettings):
                 "MQTT", "DeviceName", fallback="Water Meter Digitizer"
             ),
             device_id=config.get("MQTT", "DeviceID", fallback="water_meter_digitizer"),
+        )
+
+        ################## Zero-Flow & Leak Monitor Parameters #########################
+        self.zero_flow_monitor = ZeroFlowMonitor(
+            enabled=config.getboolean("ZeroFlowMonitor", "Enabled", fallback=False),
+            meter_name=config.get("ZeroFlowMonitor", "MeterName", fallback="total"),
+            continuous_flow_hours=config.getfloat(
+                "ZeroFlowMonitor", "ContinuousFlowHours", fallback=2.0
+            ),
+            min_leak_volume=config.getfloat(
+                "ZeroFlowMonitor", "MinLeakVolume", fallback=0.010
+            ),
+            flow_threshold=config.getfloat(
+                "ZeroFlowMonitor", "FlowThreshold", fallback=0.001
+            ),
+            resolve_debounce_count=config.getint(
+                "ZeroFlowMonitor", "ResolveDebounceCount", fallback=2
+            ),
+            max_history_events=config.getint(
+                "ZeroFlowMonitor", "MaxHistoryEvents", fallback=50
+            ),
         )
 
         return self
