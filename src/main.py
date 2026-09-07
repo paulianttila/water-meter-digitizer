@@ -8,6 +8,7 @@ import signal
 import os
 import logging
 import sys
+import threading
 import time
 from typing import Any
 
@@ -46,6 +47,7 @@ COLOR_BLUE = (0, 0, 255)
 
 config_file = os.environ.get("CONFIG_FILE", "/config/config.ini")
 config = Config()
+_config_lock = threading.Lock()
 
 logging.basicConfig(
     stream=sys.stdout,
@@ -736,13 +738,15 @@ def get_image_as_base64_str(image_name: str) -> str:
 
 
 def load_config_file() -> str:
-    with open(config_file, "r") as f:
-        return f.read()
+    with _config_lock:
+        with open(config_file, "r") as f:
+            return f.read()
 
 
 def save_config_file(data: str) -> None:
-    config = Config().load_from_string(data)
-    config.save_to_file(config_file, make_backup=True)
+    with _config_lock:
+        new_config = Config().load_from_string(data)
+        new_config.save_to_file(config_file, make_backup=True)
 
 
 def init_gui(app) -> None:
@@ -778,13 +782,16 @@ def init_gui(app) -> None:
 
 @log_execution_time
 def init_config() -> None:
-    global config
-    config = Config().load_from_file(ini_file=config_file)
-    logger.setLevel(config.log_level)
-    app.state.storage = get_storage_backend(config)
-    start_services()
+    with _config_lock:
+        global config
+        new_config = Config().load_from_file(ini_file=config_file)
+        config = new_config
+        app.state.config = new_config
+        logger.setLevel(config.log_level)
+        app.state.storage = get_storage_backend(config)
+        start_services()
 
-    logging.getLogger("CNN.CNNBase").setLevel(logger.level)
+        logging.getLogger("CNN.CNNBase").setLevel(logger.level)
     logging.getLogger("CNN.AnalogNeedleCNN").setLevel(logger.level)
     logging.getLogger("CNN.DigitalCounterCNN").setLevel(logger.level)
     logging.getLogger("Utils.DownloadUtils").setLevel(logger.level)
