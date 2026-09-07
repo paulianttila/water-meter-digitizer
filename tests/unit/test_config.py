@@ -130,6 +130,24 @@ def test_config():
         ),
     ]
 
+    assert config.poller.enabled is False
+    assert config.poller.interval_seconds == 300
+    assert config.poller.run_on_startup is True
+    assert config.poller.save_images is False
+    assert config.poller.retry_interval_seconds == 30
+
+    assert config.mqtt.enabled is True
+    assert config.mqtt.broker == "localhost"
+    assert config.mqtt.port == 1883
+    assert config.mqtt.topic_prefix == "watermeter"
+    assert config.mqtt.keepalive == 60
+    assert config.mqtt.tls is False
+    assert config.mqtt.retain is True
+    assert config.mqtt.homeassistant_discovery is True
+    assert config.mqtt.discovery_prefix == "homeassistant"
+    assert config.mqtt.device_name == "Water Meter Digitizer"
+    assert config.mqtt.device_id == "water_meter_digitizer"
+
 
 def test_config_file_missing():
     config = Config()
