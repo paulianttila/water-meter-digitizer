@@ -77,13 +77,14 @@ water-meter-digitizer/
 ├── src/                         # Main application source code
 │   ├── main.py                  # Entrypoint: loads config, starts FastAPI & NiceGUI
 │   ├── configuration.py         # INI configuration parser and dataclasses
-│   ├── data_classes.py          # Domain data models (MeterConfig, CutImage, etc.)
+│   ├── data_classes.py          # Domain data models (MeterConfig, HealthResponse, etc.)
 │   ├── readout.py               # Readout orchestration and result aggregator
 │   ├── callbacks.py             # Event/action hooks across GUI and backend
-│   ├── previous_value.py        # INI-backed persistence for last valid reading
+│   ├── previous_value.py        # Thread-safe persistence for last valid reading
 │   │
-│   ├── cnn/                     # TensorFlow Lite neural network runners
-│   │   ├── base.py              # Base TFLite interpreter wrapper
+│   ├── cnn/                     # Google LiteRT / TFLite neural network runners
+│   │   ├── base.py              # Base CNN wrapper with async offloading
+│   │   ├── pool.py              # Thread-safe InterpreterPool and metrics telemetry
 │   │   ├── digital_counter_cnn.py # Digital odometer drum & LCD digit models
 │   │   └── analog_needle_cnn.py   # Circular analog dial needle models
 │   │
@@ -91,10 +92,22 @@ water-meter-digitizer/
 │   │   ├── image.py             # Pillow/OpenCV alignment, transformation, cropping
 │   │   └── digitizer.py         # Post-processing, predecessor chains, evaluation
 │   │
+│   ├── storage/                 # Historical readings retention & database
+│   │   ├── __init__.py          # Dual-mode persistence factory
+│   │   ├── base.py              # BaseStorageBackend abstract interface
+│   │   ├── sqlite.py            # SQLite/SQLAlchemy persistent storage
+│   │   └── memory.py            # In-memory circular buffer fallback storage
+│   │
+│   ├── poller/                  # Background scheduling subsystem
+│   │   └── scheduler.py         # Async scheduler for periodic automated readouts
+│   │
+│   ├── mqtt/                    # IoT & Home Assistant integration
+│   │   └── client.py            # MQTT publisher with Home Assistant Auto-Discovery
+│   │
 │   ├── gui/                     # Web interface built with NiceGUI
 │   │   ├── frontend.py          # Top-level page router and theme
 │   │   ├── page_meter.py        # Live meter readout display page
-│   │   ├── page_setup.py        # Interactive 8-step setup wizard
+│   │   ├── page_setup.py        # Interactive 9-step setup wizard
 │   │   ├── step_base.py         # Base class for wizard steps (spinners, callbacks)
 │   │   ├── step_download.py     # Wizard: Camera URL capture & offline placeholder
 │   │   ├── step_initial_rotate.py # Wizard: Coarse 90° rotation
@@ -103,23 +116,31 @@ water-meter-digitizer/
 │   │   ├── step_draw_digital_rois.py # Wizard: Digital ROI bounding box placement
 │   │   ├── step_draw_analog_rois.py  # Wizard: Analog ROI bounding box placement
 │   │   ├── step_meters.py       # Wizard: Multi-meter definitions and formatting
+│   │   ├── step_services.py     # Wizard: Poller, MQTT, and storage settings
 │   │   └── step_final.py        # Wizard: Config saving & verification
+│   │
+│   ├── web/templates/           # Dashboard HTML/CSS templates
+│   │   ├── index.html           # Main dashboard, API explorer, diagnostics modal
+│   │   ├── reload.html          # Configuration reload status feedback page
+│   │   └── roi.html             # Aligned ROI verification view
 │   │
 │   └── utils/                   # General utilities
 │       ├── download.py          # Async HTTP client for camera frame fetching
-│       ├── image.py             # Base64 conversions, drawing, dimensions
+│       ├── image.py             # Base64 conversions, drawing, dimensions, alignment
+│       ├── security.py          # Path validation and LFI protection
+│       ├── diagnostics.py       # Telemetry aggregator for /health endpoint
 │       ├── math.py              # Zero-crossing & predecessor mathematical helpers
-│       └── profiling.py         # Timing and logging decorators
+│       └── decorators.py        # Timing and logging decorators
 │
 ├── tests/                       # Automated test suite
-│   ├── unit/                    # Unit tests for algorithms, parser, processors
-│   └── integration/             # Tavern integration tests with live HTTP requests
+│   ├── unit/                    # Unit tests for algorithms, parser, processors, pool
+│   └── integration/             # Tavern integration tests with live HTTP/MQTT requests
 │
 ├── pyproject.toml               # Build metadata, ruff & bandit configuration
-├── requirements.txt             # Runtime dependencies
-├── requirements-dev.txt         # Development & testing dependencies
+├── requirements.in              # Direct production dependencies
+├── requirements.txt             # Pinned runtime dependencies
 ├── run_tests.sh                 # Unified test & QA execution script
-└── Dockerfile                   # Production container definition
+└── Dockerfile                   # Production multi-arch container definition
 ```
 
 ---
@@ -136,7 +157,7 @@ water-meter-digitizer/
 - In `processor/image.py`, OpenCV template matching locates these 3 markers in the captured frame.
 - An affine transformation matrix is computed (`cv2.getAffineTransform`) to warp and rotate the frame back to canonical coordinate space, compensating for camera vibrations or physical movement.
 
-### 3. Neural Network Inference (TFLite)
+### 3. Neural Network Inference & Interpreter Pooling
 The project supports four distinct model architectures:
 
 | Model Type | Outputs | Architecture / Target |
@@ -146,7 +167,12 @@ The project supports four distinct model architectures:
 | `digital` | 11 | Classification for 0–9 digits plus an 11th class for half-transition/invalid |
 | `digital100` | 100 | Continuous 0–99 classification for rolling odometer drums |
 
-Models are executed via `ai_edge_litert` (Google LiteRT, with `tflite_runtime` fallback) in `src/cnn/`.
+- **LiteRT Runtime**: Models are executed via `ai_edge_litert` (Google LiteRT, with `tflite_runtime` and `tensorflow.lite` fallbacks) in `src/cnn/`.
+- **`InterpreterPool` (`src/cnn/pool.py`)**:
+  - Model interpreters are pooled per model file using `queue.Queue` guarded by `threading.RLock`.
+  - Dynamically scales instances up to `max_size` (defaulting to CPU core count) to eliminate tensor clobbering across concurrent worker threads.
+  - Automatically records high-resolution inference timing, min/max/average latency, and pool utilization metrics exposed via `/health`.
+  - Provides async interfaces (`readout_async`, `readout_with_confidence_async`, `process_async`) offloading CPU-bound inference to worker threads via `asyncio.to_thread`.
 
 ### 4. Digitizer Postprocessing & Predecessors
 - Physical odometer drums transition gradually. When a lower digit is near 9 (e.g. `9.8`), the next higher digit may be halfway between numbers (e.g. between `3` and `4`).
@@ -295,6 +321,6 @@ uv run bandit -c pyproject.toml -r .
 ```
 
 ### Compatibility Guidelines
-- **Python 3.9 Compatibility**: Avoid PEP 604 pipe union syntax (`TypeA | TypeB`) in runtime-evaluated type annotations; use `typing.Union[TypeA, TypeB]`.
+- **Python 3.11+ Standard**: Leverage modern Python 3.11 features, including native pipe union type syntax (`int | None`, `str | None`).
 - **NiceGUI Scope**: Wrap dynamically created elements in explicit container context managers (`with self.container:`) to prevent widgets from leaking into the root page slot.
-- **Error Handling**: Gracefully recover from hardware/network timeouts without crashing background event loops.
+- **Error Handling & Thread Safety**: Protect shared state (configuration, storage, previous value files, interpreter pools) with appropriate locks (`threading.Lock` / `threading.RLock`) and gracefully recover from hardware/network timeouts without crashing background event loops.

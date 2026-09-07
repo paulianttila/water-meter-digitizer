@@ -105,7 +105,7 @@ The **Setup** tab provides an 8-step guided configuration wizard. On the left is
   - **Max Rate Value**: Maximum allowed increment per reading interval.
   - **Allow Negative Rates**: Reject decreasing meter values.
 - **Previous Value Handling**:
-  - **Use Previous Value**: Automatically replace unreadable digits (`N`) with the last known valid reading.
+  - **Use Previous Value**: Automatically replace unreadable digits (`N`) with the last known valid reading. Supports both decimal numbers (e.g. `00452.9024`) and integer values.
   - **Max Age (Minutes)**: Expire cached previous values older than the threshold (`0` = no expiration).
 - **Extended Resolution**: Append fractional sub-digit decimal places from the lowest analog needle.
 - **Unit**: Custom unit string (e.g. `m³`, `L`, `kWh`).

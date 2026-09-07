@@ -165,14 +165,46 @@ All endpoints are served on port `3000`.
       "enabled": true,
       "path": "/config/neuralnets/digital/dig-class100_0168_s2_q.tflite",
       "exists": true,
-      "size_bytes": 172832
+      "size_bytes": 172832,
+      "metrics": {
+        "inferences": 24,
+        "avg_inference_ms": 14.5,
+        "min_inference_ms": 11.2,
+        "max_inference_ms": 22.8,
+        "last_inference_ms": 13.9,
+        "last_inference_at": "2026-09-07T18:30:15.123456+00:00",
+        "pool_size": 4,
+        "created_instances": 2,
+        "available_instances": 2,
+        "active_inferences": 0,
+        "input_shape": [1, 32, 20, 3],
+        "output_shape": [1, 100],
+        "quantized": true
+      }
     },
     "analog": {
       "enabled": true,
       "path": "/config/neuralnets/analog/ana-cont_1209_s2.tflite",
       "exists": true,
-      "size_bytes": 145920
-    }
+      "size_bytes": 145920,
+      "metrics": {
+        "inferences": 24,
+        "avg_inference_ms": 15.8,
+        "min_inference_ms": 12.1,
+        "max_inference_ms": 25.4,
+        "last_inference_ms": 15.1,
+        "last_inference_at": "2026-09-07T18:30:15.234567+00:00",
+        "pool_size": 4,
+        "created_instances": 2,
+        "available_instances": 2,
+        "active_inferences": 0,
+        "input_shape": [1, 32, 32, 3],
+        "output_shape": [1, 2],
+        "quantized": false
+      }
+    },
+    "total_inferences": 48,
+    "avg_inference_ms": 15.15
   },
   "system": {
     "version": "8.0.0",
@@ -268,7 +300,7 @@ Settings for capturing or loading the source image.
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
-| `URL` | string | `""` | Camera URL (e.g. `http://192.168.1.100/capture` or `file://${ConfigDir}/original.jpg`). |
+| `URL` | string | `""` | Camera URL (e.g. `http://192.168.1.100/capture` or `file://${ConfigDir}/original.jpg`). Local `file://` paths are restricted to configured asset directories (`ConfigDir`, `DataDir`, and workspace root) for security. |
 | `Timeout` | integer | `30` | Network request timeout in seconds. |
 | `MinSize` | integer | `10000` | Minimum image size in bytes to discard corrupted/partial frames. |
 
@@ -395,7 +427,7 @@ Defines output meters, value formatting, consistency checks, and units.
 | `ConsistencyEnabled` | boolean | `False` | Enable rate validation against the previous stored reading. |
 | `AllowNegativeRates` | boolean | `False` | If `False`, decreasing counter readings are rejected. |
 | `MaxRateValue` | float | `0.0` | Maximum allowed change since the last valid reading. |
-| `UsePreviuosValue` | boolean | `False` | Replace unreadable digits (`N`) with the last known good value. |
+| `UsePreviousValue` | boolean | `False` | Replace unreadable digits (`N`) with the last known good value (`UsePreviuosValue` is also supported for backward compatibility). |
 | `PreValueFromFileMaxAge` | integer | `0` | Maximum age of persisted previous value in minutes (`0` = no limit). |
 | `UseExtendedResolution` | boolean | `False` | Append fractional sub-digit decimal from the last analog needle. |
 | `Unit` | string | `""` | Measurement unit displayed in API and GUI (e.g. `m³`, `kWh`). |
@@ -598,7 +630,7 @@ ConsistencyEnabled=False
 
 [Meter.total]
 Value=${Meter.digital:Value}.${Meter.analog:Value}
-UsePreviuosValue=True
+UsePreviousValue=True
 UseExtendedResolution=True
 ConsistencyEnabled=True
 AllowNegativeRates=False
@@ -662,18 +694,18 @@ Camera URL
     ▼
 ImageProcessor          ← download, rotate, align, crop ROIs
     │
-    ├─ analog images ──► AnalogNeedleCNN   (LiteRT) ─┐
-    └─ digital images ─► DigitalCounterCNN (LiteRT) ┘
-                                                     │
-                                                     ▼
-                                             DigitizerProcessor
-                                               • predecessor correction
-                                               • extended resolution
-                                               • consistency check
-                                               • previous value fill-in
-                                                     │
-                                                     ▼
-                                                MeterResult  ──► REST API / NiceGUI Dashboard
+    ├─ analog images ──► InterpreterPool ──► AnalogNeedleCNN   (LiteRT) ─┐
+    └─ digital images ─► InterpreterPool ──► DigitalCounterCNN (LiteRT) ┘
+                                                                         │
+                                                                         ▼
+                                                                 DigitizerProcessor
+                                                                   • predecessor correction
+                                                                   • extended resolution
+                                                                   • consistency check
+                                                                   • previous value fill-in
+                                                                         │
+                                                                         ▼
+                                                                    MeterResult  ──► REST API / NiceGUI Dashboard
 ```
 
 ---
