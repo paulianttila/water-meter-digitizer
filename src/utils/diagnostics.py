@@ -6,6 +6,8 @@ import time
 from typing import Any
 import requests
 
+from utils.security import is_safe_path, extract_file_path_from_uri
+
 try:
     import resource
 except ImportError:  # pragma: no cover
@@ -70,7 +72,11 @@ def get_process_memory_info() -> dict[str, Any]:
     }
 
 
-def check_camera_reachability(url: str, timeout: float = 2.0) -> dict[str, Any]:
+def check_camera_reachability(
+    url: str,
+    timeout: float = 2.0,
+    allowed_directories: list[str] | tuple[str, ...] | None = None,
+) -> dict[str, Any]:
     """
     Perform a lightweight reachability probe for the camera URL.
 
@@ -88,7 +94,18 @@ def check_camera_reachability(url: str, timeout: float = 2.0) -> dict[str, Any]:
     start_time = time.perf_counter()
 
     if url.startswith("file://"):
-        file_path = url[7:]
+        file_path = extract_file_path_from_uri(url)
+        if allowed_directories and not is_safe_path(file_path, allowed_directories):
+            return {
+                "url": url,
+                "reachable": False,
+                "latency_ms": None,
+                "status_code": 403,
+                "error": (
+                    f"Access to local file '{file_path}' is denied. "
+                    "Path is outside configured asset directories."
+                ),
+            }
         if os.path.exists(file_path):
             latency_ms = round((time.perf_counter() - start_time) * 1000, 2)
             return {

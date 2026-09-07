@@ -90,13 +90,18 @@ class ImageProcessor:
 
     @_conditional_func
     def download_image(
-        self, url: str, timeout: int, min_image_size: int = 0
+        self,
+        url: str,
+        timeout: int,
+        min_image_size: int = 0,
+        allowed_directories: list[str] | tuple[str, ...] | None = None,
     ) -> "ImageProcessor":
         logger.debug(f"Download image from {url}")
         data = utils.download.load_file_from_url(
             url=url,
             timeout=timeout,
             min_file_size=min_image_size,
+            allowed_directories=allowed_directories,
         )
         self.image = utils.image.bytes_to_image(data)
         self.pictures.clear()

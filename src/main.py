@@ -135,6 +135,20 @@ def healthcheck():
     return "Health - OK"
 
 
+def get_allowed_asset_directories() -> list[str]:
+    """Return list of allowed base directory paths for local file:// URIs."""
+    allowed: list[str] = []
+    if "config" in globals() and config:
+        if getattr(config, "config_dir", None):
+            allowed.append(config.config_dir)
+        if getattr(config, "data_dir", None):
+            allowed.append(config.data_dir)
+        if getattr(config, "image_tmp_dir", None):
+            allowed.append(config.image_tmp_dir)
+    allowed.append(os.getcwd())
+    return allowed
+
+
 @app.get("/health", response_model=HealthResponse)
 @log_execution_time
 def get_health(request: Request) -> HealthResponse:
@@ -147,7 +161,11 @@ def get_health(request: Request) -> HealthResponse:
     uptime_human = format_uptime(uptime_seconds)
 
     # Check camera reachability
-    camera_diag = check_camera_reachability(config.image_source.url, timeout=2.0)
+    camera_diag = check_camera_reachability(
+        config.image_source.url,
+        timeout=2.0,
+        allowed_directories=get_allowed_asset_directories(),
+    )
 
     # Memory info
     mem_diag = get_process_memory_info()
@@ -306,7 +324,12 @@ def get_roi(
 
         base64image = (
             ImageProcessor()
-            .download_image(url, timeout, config.image_source.min_size)
+            .download_image(
+                url,
+                timeout,
+                config.image_source.min_size,
+                allowed_directories=get_allowed_asset_directories(),
+            )
             .rotate_image(config.alignment.rotate_angle)
             .align_image(
                 config.alignment.ref_images,
@@ -560,7 +583,12 @@ def get_meter_data(url: str = "", saveimages: bool = False) -> MeterResult:
     imageProcessor = ImageProcessor()
     (
         imageProcessor.enable_image_saving(saveimages)
-        .download_image(url, timeout, config.image_source.min_size)
+        .download_image(
+            url,
+            timeout,
+            config.image_source.min_size,
+            allowed_directories=get_allowed_asset_directories(),
+        )
         .save_image("original")
         .rotate_image(config.alignment.rotate_angle)
         .save_image("rotated")
