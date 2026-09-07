@@ -73,10 +73,13 @@ class ImageProcessing(BaseModel):
 
 class History(BaseModel):
     enabled: bool = True
-    backend: str = "memory"
+    backend: str = "sqlite"
+    db_url: str = ""
     max_memory_mb: float = 20.0
     max_records: int = 50000
     retention_days: int = 30
+    auto_vacuum: bool = True
+    prune_interval: int = 50
 
 
 class Config(BaseSettings):
@@ -88,6 +91,7 @@ class Config(BaseSettings):
 
     log_level: str = "INFO"
     config_dir: str = "/config"
+    data_dir: str = "/data"
     previous_value_file: str = "/config/prevalue.ini"
     digital_models_dir: str = "/config/neuralnets/digital"
     analog_models_dir: str = "/config/neuralnets/analog"
@@ -157,6 +161,7 @@ class Config(BaseSettings):
         config["DEFAULT"] = {
             "LogLevel": self.log_level,
             "ConfigDir": self.config_dir,
+            "DataDir": self.data_dir,
             "DigitalModelsDir": self.digital_models_dir,
             "AnalogModelsDir": self.analog_models_dir,
             "PreviousValueFile": self.previous_value_file,
@@ -282,9 +287,12 @@ class Config(BaseSettings):
         config["History"] = {
             "Enabled": str(self.history.enabled),
             "Backend": self.history.backend,
+            "DBUrl": self.history.db_url,
             "MaxMemoryMB": str(self.history.max_memory_mb),
             "MaxRecords": str(self.history.max_records),
             "RetentionDays": str(self.history.retention_days),
+            "AutoVacuum": str(self.history.auto_vacuum),
+            "PruneInterval": str(self.history.prune_interval),
         }
 
         config.write(fp, space_around_delimiters=False)
@@ -294,6 +302,7 @@ class Config(BaseSettings):
         ################## General Parameters ##########################################
         self.log_level = config.get("DEFAULT", "LogLevel", fallback="INFO")
         self.config_dir = config.get("DEFAULT", "ConfigDir", fallback="/config")
+        self.data_dir = config.get("DEFAULT", "DataDir", fallback="/data")
         self.digital_models_dir = config.get(
             "DEFAULT", "DigitalModelsDir", fallback="/config/neuralnets/digital"
         )
@@ -486,16 +495,29 @@ class Config(BaseSettings):
 
         ################## History / Storage Parameters ################################
         history_enabled = config.getboolean("History", "Enabled", fallback=True)
-        history_backend = config.get("History", "Backend", fallback="memory")
+        history_backend = config.get("History", "Backend", fallback="sqlite")
+        db_url = config.get("History", "DBUrl", fallback="")
         max_memory_mb = config.getfloat("History", "MaxMemoryMB", fallback=20.0)
         max_records = config.getint("History", "MaxRecords", fallback=50000)
         retention_days = config.getint("History", "RetentionDays", fallback=30)
+        auto_vacuum = config.getboolean("History", "AutoVacuum", fallback=True)
+        prune_interval = config.getint("History", "PruneInterval", fallback=50)
+
+        if not db_url:
+            if history_backend.lower() == "memory":
+                db_url = "sqlite:///:memory:"
+            else:
+                db_url = f"sqlite:///{self.data_dir}/history.db"
+
         self.history = History(
             enabled=history_enabled,
             backend=history_backend,
+            db_url=db_url,
             max_memory_mb=max_memory_mb,
             max_records=max_records,
             retention_days=retention_days,
+            auto_vacuum=auto_vacuum,
+            prune_interval=prune_interval,
         )
 
         return self

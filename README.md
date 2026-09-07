@@ -39,6 +39,7 @@ services:
       - METER_LOG_LEVEL=INFO
     volumes:
       - ${DIR_DATA:-.}/config:/config
+      - ${DIR_DATA:-.}/data:/data
     ports:
       - 3000:3000
     healthcheck:
@@ -222,6 +223,7 @@ Settings can be specified either through the INI file or directly via environmen
 | `TZ` | — | Container timezone (e.g. `Europe/Helsinki`) |
 | `METER_LOG_LEVEL` | `INFO` | Override global logging level (`DEBUG`, `INFO`, `WARNING`, `ERROR`) |
 | `METER_CONFIG_DIR` | `/config` | Override base configuration directory |
+| `METER_DATA_DIR` | `/data` | Override data directory (for SQLite database storage) |
 | `METER_LOG_DIR` | `/log` | Override log directory |
 | `METER_IMAGE_SOURCE__URL` | `""` | Override camera image source URL |
 | `METER_IMAGE_SOURCE__TIMEOUT` | `30` | Override image download timeout in seconds |
@@ -237,6 +239,7 @@ Global application paths and logging configuration.
 |---|---|---|---|
 | `LogLevel` | string | `INFO` | Logging level (`DEBUG`, `INFO`, `WARNING`, `ERROR`). |
 | `ConfigDir` | string | `/config` | Directory containing configuration files and reference images. |
+| `DataDir` | string | `/data` | Dedicated directory containing persistent runtime database files (`history.db`). |
 | `LogDir` | string | `/log` | Directory for log files. |
 | `DigitalModelsDir` | string | `${ConfigDir}/neuralnets/digital` | Directory containing TFLite models for digital digits. |
 | `AnalogModelsDir` | string | `${ConfigDir}/neuralnets/analog` | Directory containing TFLite models for analog needles. |
@@ -385,15 +388,18 @@ Defines output meters, value formatting, consistency checks, and units.
 ---
 
 ### `[History]`
-Settings for in-memory historical reading retention and consumption aggregation.
+Settings for SQLAlchemy-backed historical reading retention, SQLite database storage, and consumption aggregation.
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
 | `Enabled` | boolean | `True` | Enable recording historical meter readings. |
-| `Backend` | string | `memory` | Storage backend (`memory`). |
-| `MaxMemoryMB` | float | `20.0` | Maximum memory allocated to historical readings in MB before FIFO pruning. |
-| `MaxRecords` | integer | `50000` | Maximum number of reading records retained in memory. |
-| `RetentionDays` | integer | `30` | Default retention timeframe in days. |
+| `Backend` | string | `sqlite` | Storage backend (`sqlite`, `memory`, or custom SQLAlchemy backend). |
+| `DBUrl` | string | `""` | Optional SQLAlchemy database connection string (e.g. `sqlite:////data/history.db`, `postgresql://user:pass@host/db`). When blank, uses SQLite in `DataDir`. |
+| `RetentionDays` | integer | `30` | Number of days to retain historical readings before automated time-based pruning (`0` to disable). |
+| `MaxRecords` | integer | `50000` | Maximum number of readings retained before oldest-first FIFO row pruning (`0` to disable). |
+| `AutoVacuum` | boolean | `True` | Automatically execute SQLite incremental vacuuming after deletions to recover disk space. |
+| `PruneInterval` | integer | `50` | Number of recorded readings between automated background pruning cycles. |
+| `MaxMemoryMB` | float | `20.0` | In-memory cache memory limit threshold (for in-memory mode). |
 
 ---
 
