@@ -1,0 +1,536 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="Configuration reload status for Water Meter Digitizer.">
+    <title>{% if error %}Reload Failed{% else %}Configuration Reloaded{% endif %} - Water Meter Digitizer</title>
+    <link id="favicon" rel="icon" type="image/x-icon" href="/static/favicon.ico">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --bg-primary: #0a0f1d;
+            --bg-card: rgba(17, 24, 39, 0.75);
+            --bg-card-hover: rgba(30, 41, 59, 0.85);
+            --border-color: rgba(255, 255, 255, 0.08);
+            --border-hover: rgba(59, 130, 246, 0.5);
+            --text-main: #f3f4f6;
+            --text-muted: #9ca3af;
+            --accent-blue: #3b82f6;
+            --accent-cyan: #06b6d4;
+            --accent-teal: #10b981;
+            --accent-red: #ef4444;
+            --accent-amber: #f59e0b;
+            --accent-purple: #8b5cf6;
+            --gradient-hero: {% if error %}linear-gradient(135deg, #ef4444 0%, #f97316 100%){% else %}linear-gradient(135deg, #10b981 0%, #06b6d4 50%, #3b82f6 100%){% endif %};
+            --gradient-card: linear-gradient(180deg, rgba(255, 255, 255, 0.04) 0%, rgba(255, 255, 255, 0.01) 100%);
+            --shadow-glow: {% if error %}0 0 35px rgba(239, 68, 68, 0.25){% else %}0 0 35px rgba(16, 185, 129, 0.25){% endif %};
+            --shadow-card: 0 10px 30px -10px rgba(0, 0, 0, 0.5);
+            --radius-lg: 20px;
+            --radius-md: 14px;
+            --radius-sm: 8px;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            background-color: var(--bg-primary);
+            background-image: 
+                {% if error %}
+                radial-gradient(at 0% 0%, rgba(239, 68, 68, 0.15) 0px, transparent 50%),
+                radial-gradient(at 100% 0%, rgba(249, 115, 22, 0.12) 0px, transparent 50%),
+                radial-gradient(at 50% 100%, rgba(139, 92, 246, 0.1) 0px, transparent 50%);
+                {% else %}
+                radial-gradient(at 0% 0%, rgba(16, 185, 129, 0.15) 0px, transparent 50%),
+                radial-gradient(at 100% 0%, rgba(6, 182, 212, 0.15) 0px, transparent 50%),
+                radial-gradient(at 50% 100%, rgba(59, 130, 246, 0.12) 0px, transparent 50%);
+                {% endif %}
+            background-attachment: fixed;
+            color: var(--text-main);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 2rem 1.5rem;
+            line-height: 1.5;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 680px;
+            display: flex;
+            flex-direction: column;
+            gap: 1.75rem;
+            animation: fadeIn 0.4s ease-out forwards;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(12px) scale(0.98); }
+            to { opacity: 1; transform: translateY(0) scale(1); }
+        }
+
+        .main-card {
+            background: var(--bg-card);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid var(--border-color);
+            border-radius: var(--radius-lg);
+            padding: 2.5rem 2rem;
+            box-shadow: var(--shadow-card), var(--shadow-glow);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            text-align: center;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .main-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: var(--gradient-hero);
+        }
+
+        /* Pulse Icon */
+        .icon-wrapper {
+            position: relative;
+            margin-bottom: 1.5rem;
+        }
+
+        .icon-circle {
+            width: 72px;
+            height: 72px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            {% if error %}
+            background: linear-gradient(135deg, rgba(239, 68, 68, 0.2), rgba(249, 115, 22, 0.2));
+            border: 2px solid rgba(239, 68, 68, 0.6);
+            box-shadow: 0 0 25px rgba(239, 68, 68, 0.35);
+            animation: pulseGlowRed 2.5s infinite;
+            {% else %}
+            background: linear-gradient(135deg, rgba(16, 185, 129, 0.2), rgba(6, 182, 212, 0.2));
+            border: 2px solid rgba(16, 185, 129, 0.6);
+            box-shadow: 0 0 25px rgba(16, 185, 129, 0.35);
+            animation: pulseGlowGreen 2.5s infinite;
+            {% endif %}
+        }
+
+        @keyframes pulseGlowGreen {
+            0%, 100% { box-shadow: 0 0 25px rgba(16, 185, 129, 0.35); transform: scale(1); }
+            50% { box-shadow: 0 0 40px rgba(16, 185, 129, 0.55); transform: scale(1.04); }
+        }
+
+        @keyframes pulseGlowRed {
+            0%, 100% { box-shadow: 0 0 25px rgba(239, 68, 68, 0.35); transform: scale(1); }
+            50% { box-shadow: 0 0 40px rgba(239, 68, 68, 0.55); transform: scale(1.04); }
+        }
+
+        .icon-circle svg {
+            width: 36px;
+            height: 36px;
+            stroke: {% if error %}#f87171{% else %}#34d399{% endif %};
+            stroke-width: 2.5;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            fill: none;
+        }
+
+        h1 {
+            font-family: 'Outfit', sans-serif;
+            font-size: 1.85rem;
+            font-weight: 700;
+            color: #ffffff;
+            margin-bottom: 0.5rem;
+            letter-spacing: -0.02em;
+        }
+
+        .subtitle {
+            color: var(--text-muted);
+            font-size: 0.95rem;
+            margin-bottom: 1.75rem;
+            max-width: 480px;
+        }
+
+        /* Error Box */
+        .error-alert {
+            width: 100%;
+            background: rgba(239, 68, 68, 0.12);
+            border: 1px solid rgba(239, 68, 68, 0.3);
+            border-radius: var(--radius-md);
+            padding: 1rem 1.25rem;
+            margin-bottom: 1.75rem;
+            text-align: left;
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.85rem;
+            color: #fca5a5;
+            word-break: break-all;
+        }
+
+        /* Details Grid */
+        .details-grid {
+            width: 100%;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 0.85rem;
+            margin-bottom: 1.75rem;
+            text-align: left;
+        }
+
+        @media (max-width: 540px) {
+            .details-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .detail-item {
+            background: rgba(0, 0, 0, 0.35);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: var(--radius-md);
+            padding: 0.9rem 1.1rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.3rem;
+            transition: border-color 0.2s ease;
+        }
+
+        .detail-item:hover {
+            border-color: rgba(255, 255, 255, 0.12);
+        }
+
+        .detail-label {
+            font-size: 0.72rem;
+            text-transform: uppercase;
+            letter-spacing: 0.06em;
+            color: #94a3b8;
+            font-weight: 600;
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+        }
+
+        .detail-value {
+            font-family: 'JetBrains Mono', monospace;
+            font-size: 0.88rem;
+            color: #e2e8f0;
+            word-break: break-all;
+            display: flex;
+            align-items: center;
+            gap: 0.4rem;
+        }
+
+        .badge-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.35rem;
+            padding: 0.2rem 0.6rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .badge-green {
+            background: rgba(16, 185, 129, 0.15);
+            color: #34d399;
+            border: 1px solid rgba(16, 185, 129, 0.3);
+        }
+
+        .badge-blue {
+            background: rgba(59, 130, 246, 0.15);
+            color: #60a5fa;
+            border: 1px solid rgba(59, 130, 246, 0.3);
+        }
+
+        .badge-gray {
+            background: rgba(148, 163, 184, 0.12);
+            color: #94a3b8;
+            border: 1px solid rgba(148, 163, 184, 0.2);
+        }
+
+        .dot {
+            width: 6px;
+            height: 6px;
+            border-radius: 50%;
+            background: currentColor;
+        }
+
+        /* Redirect Progress Bar */
+        .redirect-box {
+            width: 100%;
+            background: rgba(0, 0, 0, 0.25);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            border-radius: var(--radius-sm);
+            padding: 0.65rem 1rem;
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            font-size: 0.82rem;
+            color: var(--text-muted);
+        }
+
+        .redirect-btn-pause {
+            background: transparent;
+            border: 1px solid rgba(255, 255, 255, 0.15);
+            color: var(--text-main);
+            padding: 0.25rem 0.65rem;
+            border-radius: 6px;
+            font-size: 0.75rem;
+            cursor: pointer;
+            transition: all 0.2s ease;
+        }
+
+        .redirect-btn-pause:hover {
+            background: rgba(255, 255, 255, 0.1);
+            border-color: rgba(255, 255, 255, 0.3);
+        }
+
+        /* Action Buttons */
+        .actions-group {
+            width: 100%;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+            justify-content: center;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 0.5rem;
+            padding: 0.75rem 1.4rem;
+            border-radius: var(--radius-md);
+            font-size: 0.9rem;
+            font-weight: 600;
+            text-decoration: none;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            border: 1px solid transparent;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #2563eb 0%, #06b6d4 100%);
+            color: #ffffff;
+            box-shadow: 0 4px 15px rgba(37, 99, 235, 0.35);
+        }
+
+        .btn-primary:hover {
+            box-shadow: 0 6px 20px rgba(37, 99, 235, 0.5);
+            transform: translateY(-1px);
+        }
+
+        .btn-secondary {
+            background: rgba(30, 41, 59, 0.8);
+            border-color: rgba(255, 255, 255, 0.12);
+            color: #e2e8f0;
+        }
+
+        .btn-secondary:hover {
+            background: rgba(51, 65, 85, 0.9);
+            border-color: rgba(255, 255, 255, 0.25);
+            transform: translateY(-1px);
+        }
+
+        .btn svg {
+            width: 16px;
+            height: 16px;
+            stroke-width: 2;
+        }
+
+        /* Footer */
+        footer {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            color: #64748b;
+            font-size: 0.8rem;
+            padding: 0 0.5rem;
+        }
+
+        footer a {
+            color: #94a3b8;
+            text-decoration: none;
+            transition: color 0.2s;
+        }
+
+        footer a:hover {
+            color: var(--accent-cyan);
+        }
+    </style>
+</head>
+<body>
+
+    <div class="container">
+        <div class="main-card">
+            <!-- Animated Icon -->
+            <div class="icon-wrapper">
+                <div class="icon-circle">
+                    {% if error %}
+                    <svg viewBox="0 0 24 24">
+                        <line x1="18" y1="6" x2="6" y2="18"></line>
+                        <line x1="6" y1="6" x2="18" y2="18"></line>
+                    </svg>
+                    {% else %}
+                    <svg viewBox="0 0 24 24">
+                        <polyline points="20 6 9 17 4 12"></polyline>
+                    </svg>
+                    {% endif %}
+                </div>
+            </div>
+
+            <!-- Title & Subtitle -->
+            {% if error %}
+            <h1>Configuration Reload Failed</h1>
+            <p class="subtitle">
+                An error occurred while loading or parsing the configuration file. Existing runtime configuration remains active.
+            </p>
+            <div class="error-alert">
+                <strong>Error:</strong> {{ error }}
+            </div>
+            {% else %}
+            <h1>Configuration Reloaded</h1>
+            <p class="subtitle">
+                The application configuration, neural network models, and background services have been successfully synchronized from disk.
+            </p>
+            {% endif %}
+
+            <!-- Metadata Grid -->
+            <div class="details-grid">
+                <div class="detail-item">
+                    <span class="detail-label">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/></svg>
+                        Config File
+                    </span>
+                    <span class="detail-value" title="{{ config_file }}">{{ config_file_display }}</span>
+                </div>
+
+                <div class="detail-item">
+                    <span class="detail-label">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                        Attempted At
+                    </span>
+                    <span class="detail-value">{{ reloaded_at }}</span>
+                </div>
+
+                <div class="detail-item">
+                    <span class="detail-label">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="3" width="20" height="14" rx="2" ry="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/></svg>
+                        Meters Configured
+                    </span>
+                    <span class="detail-value">
+                        <span class="badge-pill badge-blue">
+                            <span class="dot"></span>
+                            {{ meters_count }} Active Meter{{ 's' if meters_count != 1 else '' }}
+                        </span>
+                    </span>
+                </div>
+
+                <div class="detail-item">
+                    <span class="detail-label">
+                        <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
+                        Active Services
+                    </span>
+                    <span class="detail-value" style="display: flex; gap: 0.35rem; flex-wrap: wrap;">
+                        {% if poller_enabled %}
+                            <span class="badge-pill badge-green"><span class="dot"></span>Poller</span>
+                        {% endif %}
+                        {% if mqtt_enabled %}
+                            <span class="badge-pill badge-green"><span class="dot"></span>MQTT</span>
+                        {% endif %}
+                        {% if history_enabled %}
+                            <span class="badge-pill badge-green"><span class="dot"></span>History</span>
+                        {% endif %}
+                        {% if not poller_enabled and not mqtt_enabled and not history_enabled %}
+                            <span class="badge-pill badge-gray">None</span>
+                        {% endif %}
+                    </span>
+                </div>
+            </div>
+
+            {% if not error %}
+            <!-- Auto-redirect notice with pause option -->
+            <div class="redirect-box" id="redirect-box">
+                <span id="redirect-text">Redirecting to Dashboard in <strong id="countdown" style="color: #38bdf8;">6</strong>s...</span>
+                <button class="redirect-btn-pause" id="btn-pause-redirect" onclick="toggleRedirect()">Pause</button>
+            </div>
+            {% endif %}
+
+            <!-- Action Buttons -->
+            <div class="actions-group">
+                <a href="/" class="btn btn-primary" id="btn-home">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+                    Return to Dashboard
+                </a>
+                <a href="/meters" class="btn btn-secondary" id="btn-meters">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M12 2v20M17 5H9.5a3.5 3.5 0 0 0 0 7h5a3.5 3.5 0 0 1 0 7H6"/></svg>
+                    Live Readouts
+                </a>
+                <a href="/gui" class="btn btn-secondary" id="btn-wizard">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><path d="M14.7 6.3a1 1 0 0 0 0 1.4l1.6 1.6a1 1 0 0 0 1.4 0l3.77-3.77a6 6 0 0 1-7.94 7.94l-6.91 6.91a2.12 2.12 0 0 1-3-3l6.91-6.91a6 6 0 0 1 7.94-7.94l-3.76 3.76z"/></svg>
+                    Setup Wizard
+                </a>
+                <a href="/reload" class="btn btn-secondary" id="btn-reload-again" style="color: #fbbf24; border-color: rgba(251, 191, 36, 0.25);">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+                    Reload Again
+                </a>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <footer>
+            <span>Water Meter Digitizer &bull; v{{ version }}</span>
+            <div style="display: flex; gap: 1rem;">
+                <a href="/health">Health API</a>
+                <a href="/version">Version</a>
+                <a href="/gui">Interactive UI</a>
+            </div>
+        </footer>
+    </div>
+
+    {% if not error %}
+    <script>
+        let countdown = 6;
+        let isPaused = false;
+        const countdownEl = document.getElementById('countdown');
+        const redirectBox = document.getElementById('redirect-box');
+        const pauseBtn = document.getElementById('btn-pause-redirect');
+
+        const timer = setInterval(() => {
+            if (!isPaused) {
+                countdown--;
+                if (countdownEl) countdownEl.textContent = countdown;
+                if (countdown <= 0) {
+                    clearInterval(timer);
+                    window.location.href = '/';
+                }
+            }
+        }, 1000);
+
+        function toggleRedirect() {
+            isPaused = !isPaused;
+            if (isPaused) {
+                pauseBtn.textContent = 'Resume';
+                document.getElementById('redirect-text').textContent = 'Auto-redirect paused.';
+            } else {
+                pauseBtn.textContent = 'Pause';
+                document.getElementById('redirect-text').innerHTML = `Redirecting to Dashboard in <strong id="countdown" style="color: #38bdf8;">${countdown}</strong>s...`;
+            }
+        }
+    </script>
+    {% endif %}
+</body>
+</html>

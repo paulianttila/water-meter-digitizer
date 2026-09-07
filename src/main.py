@@ -12,7 +12,7 @@ import time
 from typing import Any
 
 from fastapi import FastAPI, HTTPException, Response, Request
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.templating import Jinja2Templates
 import uvicorn
@@ -224,9 +224,64 @@ def do_exit():
 
 @app.get("/reload", response_class=HTMLResponse)
 @log_execution_time
-def reload_config():
-    init_config()
-    return "Configuration reloaded"
+def reload_config(request: Request, format: str = "html"):
+    error_msg = None
+    try:
+        init_config()
+    except Exception as e:
+        logger.error(f"Failed to reload configuration: {e}")
+        error_msg = str(e)
+
+    if format == "json" or "application/json" in request.headers.get("accept", ""):
+        if error_msg:
+            return JSONResponse(
+                {
+                    "status": "error",
+                    "message": f"Failed to reload configuration: {error_msg}",
+                    "version": VERSION,
+                    "config_file": config_file,
+                },
+                status_code=500,
+            )
+        return JSONResponse(
+            {
+                "status": "success",
+                "message": "Configuration reloaded successfully",
+                "version": VERSION,
+                "config_file": config_file,
+                "meters_count": (
+                    len(config.meter_configs) if "config" in globals() and config else 0
+                ),
+            }
+        )
+
+    status_code = 500 if error_msg else 200
+    return templates.TemplateResponse(
+        request=request,
+        name="reload.html",
+        context={
+            "version": VERSION,
+            "error": error_msg,
+            "config_file": config_file,
+            "config_file_display": (
+                Path(config_file).name if len(config_file) > 40 else config_file
+            ),
+            "reloaded_at": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "meters_count": (
+                len(config.meter_configs) if "config" in globals() and config else 0
+            ),
+            "poller_enabled": (
+                config.poller.enabled if "config" in globals() and config else False
+            ),
+            "mqtt_enabled": (
+                config.mqtt.enabled if "config" in globals() and config else False
+            ),
+            "history_enabled": (
+                config.history.enabled if "config" in globals() and config else False
+            ),
+        },
+        status_code=status_code,
+    )
 
 
 @app.get("/roi", response_class=HTMLResponse)
