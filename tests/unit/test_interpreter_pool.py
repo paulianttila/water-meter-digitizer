@@ -27,6 +27,42 @@ def test_interpreter_pool_lifecycle():
         with pool.acquire() as inst2:
             assert inst2.input_index is not None
 
+    stats = pool.get_stats()
+    assert stats["pool_size"] == 3
+    assert stats["created_instances"] >= 1
+    assert stats["input_shape"] == [1, 32, 20, 3]
+    assert stats["output_shape"] == [1, 100]
+
+    pool.clear()
+
+
+def test_interpreter_pool_metrics():
+    pool = InterpreterPool(DIGITAL_MODEL, max_size=2)
+    pool.reset_stats()
+
+    stats_initial = pool.get_stats()
+    assert stats_initial["inferences"] == 0
+    assert stats_initial["avg_inference_ms"] is None
+    assert stats_initial["min_inference_ms"] is None
+    assert stats_initial["max_inference_ms"] is None
+
+    pool.record_inference(10.0)
+    pool.record_inference(20.0)
+    pool.record_inference(30.0)
+
+    stats = pool.get_stats()
+    assert stats["inferences"] == 3
+    assert stats["avg_inference_ms"] == 20.0
+    assert stats["min_inference_ms"] == 10.0
+    assert stats["max_inference_ms"] == 30.0
+    assert stats["last_inference_ms"] == 30.0
+    assert stats["last_inference_at"] is not None
+
+    pool.reset_stats()
+    stats_after_reset = pool.get_stats()
+    assert stats_after_reset["inferences"] == 0
+    assert stats_after_reset["avg_inference_ms"] is None
+
     pool.clear()
 
 
@@ -41,6 +77,7 @@ def test_get_interpreter_pool_registry():
 
 def test_concurrent_digital_model_readout():
     model = DigitalCounterCNN(DIGITAL_MODEL, dx=20, dy=32, pool_size=4)
+    model.pool.reset_stats()
     test_img = Image.new("RGB", (20, 32), color=(128, 128, 128))
 
     def worker(idx: int):
@@ -56,9 +93,17 @@ def test_concurrent_digital_model_readout():
         assert isinstance(val, (int, float))
         assert 0.0 <= conf <= 100.0
 
+    stats = model.pool.get_stats()
+    assert stats["inferences"] == 24
+    assert stats["avg_inference_ms"] is not None
+    assert stats["avg_inference_ms"] > 0
+    assert stats["min_inference_ms"] is not None
+    assert stats["max_inference_ms"] >= stats["min_inference_ms"]
+
 
 def test_concurrent_analog_model_readout():
     model = AnalogNeedleCNN(ANALOG_MODEL, dx=32, dy=32, pool_size=4)
+    model.pool.reset_stats()
     test_img = Image.new("RGB", (32, 32), color=(100, 150, 200))
 
     def worker(idx: int):
@@ -73,6 +118,10 @@ def test_concurrent_analog_model_readout():
     for val, conf in results:
         assert isinstance(val, (int, float))
         assert 0.0 <= conf <= 100.0
+
+    stats = model.pool.get_stats()
+    assert stats["inferences"] == 24
+    assert stats["avg_inference_ms"] is not None
 
 
 @pytest.mark.anyio

@@ -112,6 +112,10 @@ def test_get_models_info(tmp_path):
     assert res["analog"]["exists"] is False
     assert res["analog"]["size_bytes"] is None
 
+    assert "total_inferences" in res
+    assert "avg_inference_ms" in res
+    assert res["total_inferences"] == 0
+
 
 def test_get_health_endpoint():
     client = TestClient(app)
@@ -145,6 +149,8 @@ def test_get_health_endpoint():
     assert "models" in data
     assert "digital" in data["models"]
     assert "analog" in data["models"]
+    assert "total_inferences" in data["models"]
+    assert "avg_inference_ms" in data["models"]
 
     assert "system" in data
     assert data["system"]["version"] == VERSION

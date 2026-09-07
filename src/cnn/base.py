@@ -1,6 +1,7 @@
 import asyncio
 import logging
 import os
+import time
 from importlib import util
 
 import numpy as np
@@ -57,6 +58,7 @@ class CNNBase:
         if self.pool is not None:
             with self.pool.acquire() as inst:
                 return inst.interpreter
+            return None
         return None
 
     @property
@@ -94,10 +96,15 @@ class CNNBase:
         test_image = np.array(test_image, dtype="float32")
         input_data = np.reshape(test_image, [1, self.dy, self.dx, 3])
 
+        start_time = time.perf_counter()
         with self.pool.acquire() as inst:
             inst.interpreter.set_tensor(inst.input_index, input_data)
             inst.interpreter.invoke()
-            return inst.interpreter.get_tensor(inst.output_index)
+            output_data = inst.interpreter.get_tensor(inst.output_index)
+        duration_ms = (time.perf_counter() - start_time) * 1000
+        self.pool.record_inference(duration_ms)
+
+        return output_data
 
     async def _readout_async(self, image: Image) -> np.ndarray:
         """Asynchronously execute inference in a worker thread."""

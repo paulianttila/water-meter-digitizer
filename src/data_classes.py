@@ -63,16 +63,35 @@ class CacheHealth(BaseModel):
     cached_keys: list[str] = []
 
 
+class ModelMetrics(BaseModel):
+    inferences: int = 0
+    avg_inference_ms: float | None = None
+    min_inference_ms: float | None = None
+    max_inference_ms: float | None = None
+    last_inference_ms: float | None = None
+    last_inference_at: str | None = None
+    pool_size: int = 0
+    created_instances: int = 0
+    available_instances: int = 0
+    active_inferences: int = 0
+    input_shape: list[int] | None = None
+    output_shape: list[int] | None = None
+    quantized: bool = False
+
+
 class ModelHealth(BaseModel):
     enabled: bool = False
     path: str = ""
     exists: bool = False
     size_bytes: int | None = None
+    metrics: ModelMetrics | None = None
 
 
 class ModelsHealth(BaseModel):
     digital: ModelHealth
     analog: ModelHealth
+    total_inferences: int = 0
+    avg_inference_ms: float | None = None
 
 
 class UptimeHealth(BaseModel):

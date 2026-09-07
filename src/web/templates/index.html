@@ -1018,17 +1018,17 @@
             background: rgba(0, 0, 0, 0.3);
             border: 1px solid rgba(255, 255, 255, 0.06);
             border-radius: var(--radius-sm);
-            padding: 0.75rem;
+            padding: 0.85rem;
             display: flex;
             flex-direction: column;
-            gap: 0.35rem;
+            gap: 0.5rem;
         }
 
         .diag-model-title {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            font-size: 0.8rem;
+            font-size: 0.825rem;
             font-weight: 600;
             color: #f8fafc;
         }
@@ -1043,6 +1043,69 @@
         .diag-model-meta {
             font-size: 0.75rem;
             color: #38bdf8;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            flex-wrap: wrap;
+            gap: 0.25rem;
+        }
+
+        .diag-kpi-pill {
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: #38bdf8;
+            background: rgba(56, 189, 248, 0.1);
+            border: 1px solid rgba(56, 189, 248, 0.25);
+            padding: 0.2rem 0.55rem;
+            border-radius: 9999px;
+            letter-spacing: 0.02em;
+        }
+
+        .diag-mini-stat-grid {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 0.45rem;
+            margin-top: 0.25rem;
+        }
+
+        .diag-mini-stat {
+            background: rgba(15, 23, 42, 0.6);
+            border: 1px solid rgba(255, 255, 255, 0.04);
+            border-radius: 6px;
+            padding: 0.4rem 0.6rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.15rem;
+        }
+
+        .diag-mini-stat .mini-label {
+            font-size: 0.675rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.04em;
+        }
+
+        .diag-mini-stat .mini-value {
+            font-family: 'Outfit', sans-serif;
+            font-size: 0.875rem;
+            font-weight: 600;
+            color: #f1f5f9;
+        }
+
+        .diag-pool-track {
+            background: rgba(255, 255, 255, 0.06);
+            border-radius: 9999px;
+            height: 4px;
+            width: 100%;
+            overflow: hidden;
+            margin-top: 0.15rem;
+        }
+
+        .diag-pool-fill {
+            height: 100%;
+            background: linear-gradient(90deg, #10b981, #06b6d4);
+            border-radius: 9999px;
+            transition: width 0.3s ease;
         }
 
         @media (max-width: 640px) {
@@ -1426,6 +1489,7 @@
                                 <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M12 2a4 4 0 0 0-4 4v4H6a2 2 0 0 0-2 2v8a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-8a2 2 0 0 0-2-2h-2V6a4 4 0 0 0-4-4z"/></svg>
                                 Neural Network Models (LiteRT)
                             </div>
+                            <span class="diag-kpi-pill" id="models-aggregate-badge">Inferences: 0 • Avg: —</span>
                         </div>
                         <div class="diag-models-row">
                             <div class="diag-model-box" id="model-digital-box">
@@ -1434,7 +1498,37 @@
                                     <span class="badge" id="model-digital-badge">Enabled</span>
                                 </div>
                                 <div class="diag-model-path" id="model-digital-path">—</div>
-                                <div class="diag-model-meta" id="model-digital-meta">Size: —</div>
+                                <div class="diag-model-meta">
+                                    <span id="model-digital-size">Size: —</span>
+                                    <span id="model-digital-tensor" class="diag-chip" style="display: none;">—</span>
+                                </div>
+                                <div id="model-digital-pool-wrap" style="display: flex; flex-direction: column; gap: 0.15rem;">
+                                    <div class="diag-pool-track">
+                                        <div class="diag-pool-fill" id="model-digital-pool-bar" style="width: 0%;"></div>
+                                    </div>
+                                    <div style="display: flex; justify-content: space-between; font-size: 0.7rem; color: var(--text-muted);">
+                                        <span id="model-digital-pool-label">Pool: —</span>
+                                        <span id="model-digital-active-label">0 active</span>
+                                    </div>
+                                </div>
+                                <div class="diag-mini-stat-grid" id="model-digital-stats-grid">
+                                    <div class="diag-mini-stat">
+                                        <span class="mini-label">Avg Latency</span>
+                                        <span class="mini-value" id="model-digital-avg-ms">—</span>
+                                    </div>
+                                    <div class="diag-mini-stat">
+                                        <span class="mini-label">Last Latency</span>
+                                        <span class="mini-value" id="model-digital-last-ms">—</span>
+                                    </div>
+                                    <div class="diag-mini-stat">
+                                        <span class="mini-label">Min / Max</span>
+                                        <span class="mini-value" id="model-digital-range-ms" style="font-size: 0.775rem;">—</span>
+                                    </div>
+                                    <div class="diag-mini-stat">
+                                        <span class="mini-label">Inferences</span>
+                                        <span class="mini-value" id="model-digital-infs">0</span>
+                                    </div>
+                                </div>
                             </div>
                             <div class="diag-model-box" id="model-analog-box">
                                 <div class="diag-model-title">
@@ -1442,7 +1536,37 @@
                                     <span class="badge" id="model-analog-badge">Enabled</span>
                                 </div>
                                 <div class="diag-model-path" id="model-analog-path">—</div>
-                                <div class="diag-model-meta" id="model-analog-meta">Size: —</div>
+                                <div class="diag-model-meta">
+                                    <span id="model-analog-size">Size: —</span>
+                                    <span id="model-analog-tensor" class="diag-chip" style="display: none;">—</span>
+                                </div>
+                                <div id="model-analog-pool-wrap" style="display: flex; flex-direction: column; gap: 0.15rem;">
+                                    <div class="diag-pool-track">
+                                        <div class="diag-pool-fill" id="model-analog-pool-bar" style="width: 0%;"></div>
+                                    </div>
+                                    <div style="display: flex; justify-content: space-between; font-size: 0.7rem; color: var(--text-muted);">
+                                        <span id="model-analog-pool-label">Pool: —</span>
+                                        <span id="model-analog-active-label">0 active</span>
+                                    </div>
+                                </div>
+                                <div class="diag-mini-stat-grid" id="model-analog-stats-grid">
+                                    <div class="diag-mini-stat">
+                                        <span class="mini-label">Avg Latency</span>
+                                        <span class="mini-value" id="model-analog-avg-ms">—</span>
+                                    </div>
+                                    <div class="diag-mini-stat">
+                                        <span class="mini-label">Last Latency</span>
+                                        <span class="mini-value" id="model-analog-last-ms">—</span>
+                                    </div>
+                                    <div class="diag-mini-stat">
+                                        <span class="mini-label">Min / Max</span>
+                                        <span class="mini-value" id="model-analog-range-ms" style="font-size: 0.775rem;">—</span>
+                                    </div>
+                                    <div class="diag-mini-stat">
+                                        <span class="mini-label">Inferences</span>
+                                        <span class="mini-value" id="model-analog-infs">0</span>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -1677,38 +1801,82 @@
             if (memRssDetail) memRssDetail.textContent = `${data.memory?.rss_mb || 0} MB`;
             if (memPeakRss) memPeakRss.textContent = `${data.memory?.peak_rss_mb || 0} MB`;
 
-            // Models Card
-            const digBadge = document.getElementById('model-digital-badge');
-            const digPath = document.getElementById('model-digital-path');
-            const digMeta = document.getElementById('model-digital-meta');
-
-            if (digBadge) {
-                const exists = data.models?.digital?.exists;
-                const enabled = data.models?.digital?.enabled;
-                digBadge.textContent = !enabled ? 'Disabled' : (exists ? 'Ready' : 'Missing File');
-                digBadge.className = `badge ${!enabled ? '' : (exists ? 'badge-status' : 'badge-status badge-offline')}`;
-            }
-            if (digPath) digPath.textContent = data.models?.digital?.path || '(Not set)';
-            if (digMeta) {
-                const sz = data.models?.digital?.size_bytes;
-                digMeta.textContent = sz != null ? `Size: ${(sz / 1024).toFixed(1)} KB` : 'File not loaded';
+            // Aggregate Models Badge
+            const aggBadge = document.getElementById('models-aggregate-badge');
+            if (aggBadge) {
+                const totalInfs = data.models?.total_inferences || 0;
+                const avgMs = data.models?.avg_inference_ms;
+                aggBadge.textContent = totalInfs > 0 
+                    ? `${totalInfs} Inferences • Avg: ${avgMs != null ? avgMs + ' ms' : '—'}`
+                    : 'Inferences: 0 • Avg: —';
             }
 
-            const anaBadge = document.getElementById('model-analog-badge');
-            const anaPath = document.getElementById('model-analog-path');
-            const anaMeta = document.getElementById('model-analog-meta');
+            // Digital & Analog Models Telemetry
+            function updateModelUI(prefix, modelData) {
+                const badge = document.getElementById(`model-${prefix}-badge`);
+                const path = document.getElementById(`model-${prefix}-path`);
+                const size = document.getElementById(`model-${prefix}-size`);
+                const tensor = document.getElementById(`model-${prefix}-tensor`);
+                const poolBar = document.getElementById(`model-${prefix}-pool-bar`);
+                const poolLabel = document.getElementById(`model-${prefix}-pool-label`);
+                const activeLabel = document.getElementById(`model-${prefix}-active-label`);
+                const avgMs = document.getElementById(`model-${prefix}-avg-ms`);
+                const lastMs = document.getElementById(`model-${prefix}-last-ms`);
+                const rangeMs = document.getElementById(`model-${prefix}-range-ms`);
+                const infs = document.getElementById(`model-${prefix}-infs`);
 
-            if (anaBadge) {
-                const exists = data.models?.analog?.exists;
-                const enabled = data.models?.analog?.enabled;
-                anaBadge.textContent = !enabled ? 'Disabled' : (exists ? 'Ready' : 'Missing File');
-                anaBadge.className = `badge ${!enabled ? '' : (exists ? 'badge-status' : 'badge-status badge-offline')}`;
+                const exists = modelData?.exists;
+                const enabled = modelData?.enabled;
+                if (badge) {
+                    badge.textContent = !enabled ? 'Disabled' : (exists ? 'Ready' : 'Missing File');
+                    badge.className = `badge ${!enabled ? '' : (exists ? 'badge-status' : 'badge-status badge-offline')}`;
+                }
+                if (path) path.textContent = modelData?.path || '(Not set)';
+                if (size) {
+                    const sz = modelData?.size_bytes;
+                    size.textContent = sz != null ? `Size: ${(sz / 1024).toFixed(1)} KB` : 'File not loaded';
+                }
+
+                const m = modelData?.metrics;
+                if (m) {
+                    if (tensor) {
+                        const inDim = m.input_shape ? m.input_shape.slice(1).join('×') : '—';
+                        const outDim = m.output_shape ? (m.output_shape[1] || m.output_shape[0]) : '—';
+                        tensor.textContent = `${inDim} → ${outDim}${m.quantized ? ' (int8)' : ''}`;
+                        tensor.style.display = 'inline-block';
+                    }
+                    if (poolBar) {
+                        const pct = m.pool_size > 0 ? Math.round((m.created_instances / m.pool_size) * 100) : 0;
+                        poolBar.style.width = `${pct}%`;
+                    }
+                    if (poolLabel) poolLabel.textContent = `Pool: ${m.created_instances} / ${m.pool_size} allocated`;
+                    if (activeLabel) activeLabel.textContent = `${m.active_inferences || 0} active`;
+
+                    if (avgMs) {
+                        avgMs.textContent = m.avg_inference_ms != null ? `${m.avg_inference_ms} ms` : '—';
+                        avgMs.style.color = m.avg_inference_ms == null ? '#f1f5f9' : (m.avg_inference_ms < 50 ? '#34d399' : (m.avg_inference_ms < 150 ? '#fbbf24' : '#f87171'));
+                    }
+                    if (lastMs) lastMs.textContent = m.last_inference_ms != null ? `${m.last_inference_ms} ms` : '—';
+                    if (rangeMs) {
+                        rangeMs.textContent = (m.min_inference_ms != null && m.max_inference_ms != null)
+                            ? `${m.min_inference_ms} - ${m.max_inference_ms} ms`
+                            : '—';
+                    }
+                    if (infs) infs.textContent = m.inferences || 0;
+                } else {
+                    if (tensor) tensor.style.display = 'none';
+                    if (poolBar) poolBar.style.width = '0%';
+                    if (poolLabel) poolLabel.textContent = 'Pool: —';
+                    if (activeLabel) activeLabel.textContent = '0 active';
+                    if (avgMs) avgMs.textContent = '—';
+                    if (lastMs) lastMs.textContent = '—';
+                    if (rangeMs) rangeMs.textContent = '—';
+                    if (infs) infs.textContent = '0';
+                }
             }
-            if (anaPath) anaPath.textContent = data.models?.analog?.path || '(Not set)';
-            if (anaMeta) {
-                const sz = data.models?.analog?.size_bytes;
-                anaMeta.textContent = sz != null ? `Size: ${(sz / 1024).toFixed(1)} KB` : 'File not loaded';
-            }
+
+            updateModelUI('digital', data.models?.digital);
+            updateModelUI('analog', data.models?.analog);
         }
 
         async function copyHealthResponse() {

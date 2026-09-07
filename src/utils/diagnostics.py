@@ -6,6 +6,7 @@ import time
 from typing import Any
 import requests
 
+from cnn.pool import get_interpreter_pool
 from utils.security import is_safe_path, extract_file_path_from_uri
 
 try:
@@ -158,21 +159,52 @@ def get_models_info(
     analog_enabled: bool,
     analog_modelfile: str,
 ) -> dict[str, Any]:
-    """Inspect configured CNN model files and return existence and size telemetry."""
+    """
+    Inspect configured CNN model files and return existence, size,
+    and performance telemetry.
+    """
 
     def _inspect_model(enabled: bool, path: str) -> dict[str, Any]:
         exists = os.path.isfile(path) if path else False
         size_bytes = os.path.getsize(path) if exists else None
+        metrics: dict[str, Any] | None = None
+
+        if exists and path.endswith(".tflite"):
+            with contextlib.suppress(Exception):
+                pool = get_interpreter_pool(path)
+                metrics = pool.get_stats()
+
         return {
             "enabled": enabled,
             "path": path,
             "exists": exists,
             "size_bytes": size_bytes,
+            "metrics": metrics,
         }
 
+    dig_info = _inspect_model(digital_enabled, digital_modelfile)
+    ana_info = _inspect_model(analog_enabled, analog_modelfile)
+
+    total_inferences = 0
+    total_time_ms = 0.0
+
+    for model_info in (dig_info, ana_info):
+        m = model_info.get("metrics")
+        if m and m.get("inferences", 0) > 0:
+            infs = m["inferences"]
+            total_inferences += infs
+            if m.get("avg_inference_ms") is not None:
+                total_time_ms += m["avg_inference_ms"] * infs
+
+    avg_inference_ms = (
+        round(total_time_ms / total_inferences, 2) if total_inferences > 0 else None
+    )
+
     return {
-        "digital": _inspect_model(digital_enabled, digital_modelfile),
-        "analog": _inspect_model(analog_enabled, analog_modelfile),
+        "digital": dig_info,
+        "analog": ana_info,
+        "total_inferences": total_inferences,
+        "avg_inference_ms": avg_inference_ms,
     }
 
 
