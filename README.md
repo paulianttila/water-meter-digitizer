@@ -346,6 +346,14 @@ Color, contrast, brightness, and autocontrast enhancements.
 | `AutoContrastCutImagesCutoffLow` | float | `2` | Lower percentile cutoff for cropped ROI autocontrast. |
 | `AutoContrastCutImagesCutoffHigh` | float | `45` | Upper percentile cutoff for cropped ROI autocontrast. |
 | `AutoContrastCutImagesIgnore` | int/None | `None` | Pixel intensity to ignore for cropped ROI autocontrast. |
+| `GlareSuppressionEnabled` | boolean | `False` | Enable specular glare and reflection suppression on glossy meter glass. |
+| `GlareSuppressionMode` | string | `clahe` | Glare filtering mode: `clahe` (local contrast), `inpaint` (specular mask fill), `illumination_normalize` (division filter), or `combined`. |
+| `GlareInpaintThreshold` | int | `230` | Luminance threshold (0–255) for detecting specular flash hotspots. |
+| `GlareInpaintRadius` | int | `3` | Neighborhood radius in pixels for Fast Marching (Telea) inpainting. |
+| `GlareClaheClipLimit` | float | `2.0` | Contrast limiting threshold factor for CLAHE. |
+| `GlareClaheGridSize` | int | `8` | Tile grid size for CLAHE (e.g. `8` for 8x8 grid). |
+| `GlareApplyToCutImages` | boolean | `False` | Apply glare suppression individually to cropped digit/pointer ROI images. |
+
 
 ---
 

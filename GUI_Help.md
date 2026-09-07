@@ -72,6 +72,13 @@ The **Setup** tab provides an 8-step guided configuration wizard. On the left is
 - **Image Filters**: Adjust `Contrast`, `Brightness`, `Color`, and `Sharpness` multipliers.
 - **Grayscale**: Toggle grayscale conversion.
 - **AutoContrast**: Enable histogram equalisation with customizable lower and upper percentile cutoffs.
+- **Glare & Specular Reflection Suppression**: Filter out glossy meter glass reflections and flash glare hotspots:
+  - `clahe`: Contrast Limited Adaptive Histogram Equalization in LAB space.
+  - `inpaint`: Fast Marching (Telea) specular mask inpainting to reconstruct obscured digits.
+  - `illumination_normalize`: Division filter to smooth wide lighting gradients.
+  - `combined`: Inpainting for extreme hotspots followed by CLAHE contrast enhancement.
+  - **Apply to Cut Images (ROIs)**: Optionally apply localized suppression directly on individual digit and dial pointer crops.
+
 
 ### Step 5: Digital Region of Interest (ROIs)
 - Define bounding boxes for mechanical drum digits or LCD numbers.

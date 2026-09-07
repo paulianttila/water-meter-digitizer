@@ -220,6 +220,29 @@ class SetupPage:
                 self.adjust_step.autocontrast_cut_images_cutoff_high.value or 45.0
             )
 
+            # Glare suppression
+            config.image_processing.glare_suppression.enabled = (
+                self.adjust_step.glare_enabled.value
+            )
+            config.image_processing.glare_suppression.mode = str(
+                self.adjust_step.glare_mode.value or "clahe"
+            )
+            config.image_processing.glare_suppression.inpaint_threshold = int(
+                self.adjust_step.glare_inpaint_threshold.value or 230
+            )
+            config.image_processing.glare_suppression.inpaint_radius = int(
+                self.adjust_step.glare_inpaint_radius.value or 3
+            )
+            config.image_processing.glare_suppression.clahe_clip_limit = float(
+                self.adjust_step.glare_clahe_clip_limit.value or 2.0
+            )
+            config.image_processing.glare_suppression.clahe_grid_size = int(
+                self.adjust_step.glare_clahe_grid_size.value or 8
+            )
+            config.image_processing.glare_suppression.apply_to_cut_images = (
+                self.adjust_step.glare_apply_to_cut_images.value
+            )
+
             config.alignment.rotate_angle = float(self.initial_rotate_step.angle or 0.0)
             config.alignment.post_rotate_angle = float(
                 self.adjust_step.rotate_angle.value or 0.0

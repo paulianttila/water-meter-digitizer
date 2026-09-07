@@ -65,7 +65,6 @@ class ImageProcessor:
         self.image = utils.image.convert_base64_str_to_image(data)
         return self
 
-    @_conditional_func
     def get_image(self) -> Image:
         return self.image.copy()
 
@@ -166,6 +165,30 @@ class ImageProcessor:
         return self
 
     @_conditional_func
+    def suppress_glare(
+        self,
+        mode: str = "clahe",
+        inpaint_threshold: int = 230,
+        inpaint_radius: int = 3,
+        clahe_clip_limit: float = 2.0,
+        clahe_grid_size: int = 8,
+    ) -> "ImageProcessor":
+        logger.debug(
+            f"Suppress glare mode:{mode}, inpaint_threshold:{inpaint_threshold}, "
+            f"inpaint_radius:{inpaint_radius}, clahe_clip_limit:{clahe_clip_limit}, "
+            f"clahe_grid_size:{clahe_grid_size}"
+        )
+        self.image = utils.image.suppress_glare(
+            self.image,
+            mode=mode,
+            inpaint_threshold=inpaint_threshold,
+            inpaint_radius=inpaint_radius,
+            clahe_clip_limit=clahe_clip_limit,
+            clahe_grid_size=clahe_grid_size,
+        )
+        return self
+
+    @_conditional_func
     def to_gray_scale(self) -> "ImageProcessor":
         logger.debug("Convert image to gray scale")
         self.image = utils.image.convert_to_gray_scale(self.image)
@@ -203,11 +226,26 @@ class ImageProcessor:
         cutoff_low: int = 2,
         cutoff_high: int = 45,
         ignore: int = 2,
+        glare_suppression: bool = False,
+        glare_mode: str = "clahe",
+        glare_inpaint_threshold: int = 230,
+        glare_inpaint_radius: int = 3,
+        glare_clahe_clip_limit: float = 2.0,
+        glare_clahe_grid_size: int = 8,
     ) -> "ImageProcessor":
         image = utils.image.cut_image(self.image, position)
         if autocontrast:
             image = utils.image.autocontrast_image(
                 image, cutoff_low, cutoff_high, ignore
+            )
+        if glare_suppression:
+            image = utils.image.suppress_glare(
+                image,
+                mode=glare_mode,
+                inpaint_threshold=glare_inpaint_threshold,
+                inpaint_radius=glare_inpaint_radius,
+                clahe_clip_limit=glare_clahe_clip_limit,
+                clahe_grid_size=glare_clahe_grid_size,
             )
         self.cut_images_list.append(CutImage(name=position.name, image=image))
         return self
@@ -220,12 +258,27 @@ class ImageProcessor:
         cutoff_low: int = 2,
         cutoff_high: int = 45,
         ignore: int = 2,
+        glare_suppression: bool = False,
+        glare_mode: str = "clahe",
+        glare_inpaint_threshold: int = 230,
+        glare_inpaint_radius: int = 3,
+        glare_clahe_clip_limit: float = 2.0,
+        glare_clahe_grid_size: int = 8,
     ) -> "ImageProcessor":
         for img in positions:
             image = utils.image.cut_image(self.image, img)
             if autocontrast:
                 image = utils.image.autocontrast_image(
                     image, cutoff_low, cutoff_high, ignore
+                )
+            if glare_suppression:
+                image = utils.image.suppress_glare(
+                    image,
+                    mode=glare_mode,
+                    inpaint_threshold=glare_inpaint_threshold,
+                    inpaint_radius=glare_inpaint_radius,
+                    clahe_clip_limit=glare_clahe_clip_limit,
+                    clahe_grid_size=glare_clahe_grid_size,
                 )
             self.cut_images_list.append(CutImage(name=img.name, image=image))
         return self

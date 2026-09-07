@@ -60,6 +60,16 @@ class AutoContrast(BaseModel):
     ignore: int | None = None
 
 
+class GlareSuppression(BaseModel):
+    enabled: bool = False
+    mode: str = "clahe"  # "clahe", "inpaint", "illumination_normalize", "combined"
+    inpaint_threshold: int = 230
+    inpaint_radius: int = 3
+    clahe_clip_limit: float = 2.0
+    clahe_grid_size: int = 8
+    apply_to_cut_images: bool = False
+
+
 class ImageProcessing(BaseModel):
     enabled: bool = False
     contrast: float = 1.0
@@ -69,6 +79,7 @@ class ImageProcessing(BaseModel):
     grayscale: bool = False
     autocontrast: AutoContrast = Field(default_factory=AutoContrast)
     autocontrast_cut_images: AutoContrast = Field(default_factory=AutoContrast)
+    glare_suppression: GlareSuppression = Field(default_factory=GlareSuppression)
 
 
 class History(BaseModel):
@@ -239,6 +250,25 @@ class Config(BaseSettings):
             ),
             "AutoContrastCutImagesIgnore": str(
                 self.image_processing.autocontrast_cut_images.ignore
+            ),
+            "GlareSuppressionEnabled": str(
+                self.image_processing.glare_suppression.enabled
+            ),
+            "GlareSuppressionMode": self.image_processing.glare_suppression.mode,
+            "GlareInpaintThreshold": str(
+                self.image_processing.glare_suppression.inpaint_threshold
+            ),
+            "GlareInpaintRadius": str(
+                self.image_processing.glare_suppression.inpaint_radius
+            ),
+            "GlareClaheClipLimit": str(
+                self.image_processing.glare_suppression.clahe_clip_limit
+            ),
+            "GlareClaheGridSize": str(
+                self.image_processing.glare_suppression.clahe_grid_size
+            ),
+            "GlareApplyToCutImages": str(
+                self.image_processing.glare_suppression.apply_to_cut_images
             ),
         }
 
@@ -484,6 +514,28 @@ class Config(BaseSettings):
                 "ImageProcessing", "AutoContrastCutImagesIgnore", fallback=0
             )
 
+        glare_enabled = config.getboolean(
+            "ImageProcessing", "GlareSuppressionEnabled", fallback=False
+        )
+        glare_mode = config.get(
+            "ImageProcessing", "GlareSuppressionMode", fallback="clahe"
+        )
+        glare_inpaint_threshold = config.getint(
+            "ImageProcessing", "GlareInpaintThreshold", fallback=230
+        )
+        glare_inpaint_radius = config.getint(
+            "ImageProcessing", "GlareInpaintRadius", fallback=3
+        )
+        glare_clahe_clip_limit = config.getfloat(
+            "ImageProcessing", "GlareClaheClipLimit", fallback=2.0
+        )
+        glare_clahe_grid_size = config.getint(
+            "ImageProcessing", "GlareClaheGridSize", fallback=8
+        )
+        glare_apply_to_cut_images = config.getboolean(
+            "ImageProcessing", "GlareApplyToCutImages", fallback=False
+        )
+
         self.image_processing = ImageProcessing(
             enabled=image_processing_enabled,
             contrast=image_processing_contrast,
@@ -502,6 +554,15 @@ class Config(BaseSettings):
                 cutoff_low=image_processing_autocontrast_cut_images_cutoff_low,
                 cutoff_high=image_processing_autocontrast_cut_images_cutoff_high,
                 ignore=image_processing_autocontrast_cut_images_ignore,
+            ),
+            glare_suppression=GlareSuppression(
+                enabled=glare_enabled,
+                mode=glare_mode,
+                inpaint_threshold=glare_inpaint_threshold,
+                inpaint_radius=glare_inpaint_radius,
+                clahe_clip_limit=glare_clahe_clip_limit,
+                clahe_grid_size=glare_clahe_grid_size,
+                apply_to_cut_images=glare_apply_to_cut_images,
             ),
         )
 

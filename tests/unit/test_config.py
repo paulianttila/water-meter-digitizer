@@ -68,6 +68,13 @@ def test_config():
     assert config.image_processing.autocontrast_cut_images.cutoff_low == 2.0
     assert config.image_processing.autocontrast_cut_images.cutoff_high == 45
     assert config.image_processing.autocontrast_cut_images.ignore is None
+    assert config.image_processing.glare_suppression.enabled is False
+    assert config.image_processing.glare_suppression.mode == "clahe"
+    assert config.image_processing.glare_suppression.inpaint_threshold == 230
+    assert config.image_processing.glare_suppression.inpaint_radius == 3
+    assert config.image_processing.glare_suppression.clahe_clip_limit == 2.0
+    assert config.image_processing.glare_suppression.clahe_grid_size == 8
+    assert config.image_processing.glare_suppression.apply_to_cut_images is False
 
     assert config.digital_readout.enabled is True
     assert (

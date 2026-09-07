@@ -631,11 +631,29 @@ def get_meter_data(url: str = "", saveimages: bool = False) -> MeterResult:
         )
         .save_image("processed")
         .endif_()
+        .if_(
+            config.image_processing.enabled
+            and config.image_processing.glare_suppression.enabled
+        )
+        .suppress_glare(
+            mode=config.image_processing.glare_suppression.mode,
+            inpaint_threshold=config.image_processing.glare_suppression.inpaint_threshold,
+            inpaint_radius=config.image_processing.glare_suppression.inpaint_radius,
+            clahe_clip_limit=config.image_processing.glare_suppression.clahe_clip_limit,
+            clahe_grid_size=config.image_processing.glare_suppression.clahe_grid_size,
+        )
+        .save_image("glare_suppressed")
+        .endif_()
         .save_image("final", True)
     )
     autocontrast = (
         config.image_processing.enabled
         and config.image_processing.autocontrast_cut_images.enabled
+    )
+    glare_cut = (
+        config.image_processing.enabled
+        and config.image_processing.glare_suppression.enabled
+        and config.image_processing.glare_suppression.apply_to_cut_images
     )
     digital_images = (
         imageProcessor.start_image_cutting()
@@ -645,6 +663,12 @@ def get_meter_data(url: str = "", saveimages: bool = False) -> MeterResult:
             cutoff_low=config.image_processing.autocontrast_cut_images.cutoff_low,
             cutoff_high=config.image_processing.autocontrast_cut_images.cutoff_high,
             ignore=config.image_processing.autocontrast_cut_images.ignore,
+            glare_suppression=glare_cut,
+            glare_mode=config.image_processing.glare_suppression.mode,
+            glare_inpaint_threshold=config.image_processing.glare_suppression.inpaint_threshold,
+            glare_inpaint_radius=config.image_processing.glare_suppression.inpaint_radius,
+            glare_clahe_clip_limit=config.image_processing.glare_suppression.clahe_clip_limit,
+            glare_clahe_grid_size=config.image_processing.glare_suppression.clahe_grid_size,
         )
         .stop_image_cutting()
         .save_cut_images()
@@ -658,6 +682,12 @@ def get_meter_data(url: str = "", saveimages: bool = False) -> MeterResult:
             cutoff_low=config.image_processing.autocontrast_cut_images.cutoff_low,
             cutoff_high=config.image_processing.autocontrast_cut_images.cutoff_high,
             ignore=config.image_processing.autocontrast_cut_images.ignore,
+            glare_suppression=glare_cut,
+            glare_mode=config.image_processing.glare_suppression.mode,
+            glare_inpaint_threshold=config.image_processing.glare_suppression.inpaint_threshold,
+            glare_inpaint_radius=config.image_processing.glare_suppression.inpaint_radius,
+            glare_clahe_clip_limit=config.image_processing.glare_suppression.clahe_clip_limit,
+            glare_clahe_grid_size=config.image_processing.glare_suppression.clahe_grid_size,
         )
         .stop_image_cutting()
         .save_cut_images()

@@ -151,6 +151,10 @@ water-meter-digitizer/
 - Handled by `utils/download.py` and `processor/image.py`.
 - Supports direct HTTP camera streams, local files (`file://`), and byte size thresholds (`MinSize`) to reject corrupted frames.
 - Optional pre-alignment crop and resize (`[Crop]`, `[Resize]`) reduce memory and processing overhead.
+- **Image Adjustments & Glare Suppression**:
+  - Color, brightness, contrast, sharpness, and autocontrast histogram stretching.
+  - **Specular Reflection & Glare Suppression**: Four computer vision filters (`clahe`, `inpaint`, `illumination_normalize`, `combined`) to suppress saturated flash hotspots and glass reflections across the full frame or on individual digit/dial pointer crops.
+
 
 ### 2. Affine Alignment & Reference Matching
 - The system uses 3 reference marker sub-images (`RefImage`) placed on fixed visual landmarks of the meter dial.

@@ -78,6 +78,25 @@ class AdjustStep(BaseStep):
             config.image_processing.autocontrast.cutoff_high
         )
 
+        # Glare Suppression
+        self.glare_enabled.value = config.image_processing.glare_suppression.enabled
+        self.glare_mode.value = config.image_processing.glare_suppression.mode
+        self.glare_inpaint_threshold.value = (
+            config.image_processing.glare_suppression.inpaint_threshold
+        )
+        self.glare_inpaint_radius.value = (
+            config.image_processing.glare_suppression.inpaint_radius
+        )
+        self.glare_clahe_clip_limit.value = (
+            config.image_processing.glare_suppression.clahe_clip_limit
+        )
+        self.glare_clahe_grid_size.value = (
+            config.image_processing.glare_suppression.clahe_grid_size
+        )
+        self.glare_apply_to_cut_images.value = (
+            config.image_processing.glare_suppression.apply_to_cut_images
+        )
+
         # Alignment Algorithm Parameters
         self.alignment_method.value = config.alignment.method
         self.alignment_min_match_score.value = config.alignment.min_match_score
@@ -124,6 +143,15 @@ class AdjustStep(BaseStep):
             .autocontrast_image(
                 cutoff_low=self.autocontrast_cutoff_low.value,
                 cutoff_high=self.autocontrast_cutoff_high.value,
+            )
+            .endif_()
+            .if_(self.glare_enabled.value)
+            .suppress_glare(
+                mode=self.glare_mode.value,
+                inpaint_threshold=int(self.glare_inpaint_threshold.value or 230),
+                inpaint_radius=int(self.glare_inpaint_radius.value or 3),
+                clahe_clip_limit=float(self.glare_clahe_clip_limit.value or 2.0),
+                clahe_grid_size=int(self.glare_clahe_grid_size.value or 8),
             )
             .endif_()
             .get_image_as_base64_str()
@@ -219,6 +247,45 @@ class AdjustStep(BaseStep):
                 self.autocontrast_cut_images_cutoff_high = ui.number(
                     "Cutoff high", min=0, max=100, step=1, value=45
                 ).tooltip("High cutoff percentage for cropped ROI contrast stretching")
+
+            with ui.expansion(
+                "Glare & Specular Reflection Suppression", icon="flare"
+            ).classes("w-full bg-slate-900/60 border border-white/10 rounded-xl my-2"):
+                with ui.column().classes("w-full gap-2 p-2"):
+                    with ui.row().classes("w-full items-center"):
+                        self.glare_enabled = ui.checkbox(
+                            "Enable Glare Suppression", value=False
+                        ).tooltip("Suppress specular highlights on glossy meter glass")
+                        self.glare_apply_to_cut_images = ui.checkbox(
+                            "Apply to Cut Images (ROIs)", value=False
+                        ).tooltip(
+                            "Apply glare suppression to cropped digit/pointer images"
+                        )
+                    with ui.grid(columns="1fr 1fr 1fr 1fr 1fr").classes("w-full gap-3"):
+                        self.glare_mode = ui.select(
+                            ["clahe", "inpaint", "illumination_normalize", "combined"],
+                            label="Mode",
+                            value="clahe",
+                        ).tooltip(
+                            "Filter mode: clahe, inpaint, illumination_normalize, "
+                            "or combined"
+                        )
+                        self.glare_inpaint_threshold = ui.number(
+                            "Inpaint Threshold", min=100, max=255, step=1, value=230
+                        ).tooltip(
+                            "Luminance threshold (0–255) to detect specular hotspots"
+                        )
+                        self.glare_inpaint_radius = ui.number(
+                            "Inpaint Radius", min=1, max=20, step=1, value=3
+                        ).tooltip(
+                            "Radius in pixels for Telea inpainting around glare mask"
+                        )
+                        self.glare_clahe_clip_limit = ui.number(
+                            "CLAHE Clip Limit", min=0.1, max=10.0, step=0.5, value=2.0
+                        ).tooltip("Threshold for contrast limiting in CLAHE")
+                        self.glare_clahe_grid_size = ui.number(
+                            "CLAHE Grid Size", min=2, max=32, step=1, value=8
+                        ).tooltip("Tile grid size for CLAHE (e.g. 8 for 8x8)")
 
             with ui.expansion("Alignment Algorithm Parameters", icon="tune").classes(
                 "w-full bg-slate-900/60 border border-white/10 rounded-xl my-2"
