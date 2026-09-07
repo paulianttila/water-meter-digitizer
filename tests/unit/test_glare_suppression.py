@@ -139,6 +139,63 @@ def test_image_processor_glare_suppression():
     assert np.array_equal(np.array(img), np.array(res_bypassed))
 
 
+def test_image_processing_pipeline_autocontrast_and_glare_flags():
+    """Verify ImageProcessing config correctly skips autocontrast when disabled."""
+    img = create_synthetic_image_with_glare()
+
+    config = Config()
+    config.image_processing.enabled = True
+    config.image_processing.autocontrast.enabled = False
+    config.image_processing.glare_suppression.enabled = True
+    config.image_processing.glare_suppression.mode = "clahe"
+
+    proc = (
+        ImageProcessor()
+        .set_image(img)
+        .enable_image_saving(True)
+        .if_(config.image_processing.enabled)
+        .adjust_image(
+            brightness=config.image_processing.brightness,
+            contrast=config.image_processing.contrast,
+            sharpness=config.image_processing.sharpness,
+            color=config.image_processing.color,
+        )
+        .endif_()
+        .if_(
+            config.image_processing.enabled
+            and config.image_processing.autocontrast.enabled
+        )
+        .autocontrast_image(
+            cutoff_low=config.image_processing.autocontrast.cutoff_low,
+            cutoff_high=config.image_processing.autocontrast.cutoff_high,
+            ignore=config.image_processing.autocontrast.ignore,
+        )
+        .save_image("processed")
+        .endif_()
+        .if_(
+            config.image_processing.enabled
+            and config.image_processing.glare_suppression.enabled
+        )
+        .suppress_glare(
+            mode=config.image_processing.glare_suppression.mode,
+            inpaint_threshold=config.image_processing.glare_suppression.inpaint_threshold,
+            inpaint_radius=config.image_processing.glare_suppression.inpaint_radius,
+            clahe_clip_limit=config.image_processing.glare_suppression.clahe_clip_limit,
+            clahe_grid_size=config.image_processing.glare_suppression.clahe_grid_size,
+        )
+        .save_image("glare_suppressed")
+        .endif_()
+    )
+
+    pics = proc.get_pictures()
+    # "processed" (autocontrast) should NOT be saved because
+    # autocontrast.enabled is False
+    assert "processed" not in pics
+    # "glare_suppressed" MUST be saved because
+    # glare_suppression.enabled is True
+    assert "glare_suppressed" in pics
+
+
 def test_cut_images_with_glare_suppression():
     img = create_synthetic_image_with_glare()
     pos = ImagePosition(name="digit1", x=30, y=30, w=40, h=40)
@@ -192,3 +249,86 @@ def test_config_glare_serialization():
     finally:
         if os.path.exists(temp_file):
             os.remove(temp_file)
+
+
+def test_step_adjust_load_autocontrast_cut_images():
+    from unittest.mock import MagicMock
+    from gui.step_adjust import AdjustStep
+
+    step = AdjustStep(name="Adjust", set_image_callback=MagicMock())
+    step.crop_enabled = MagicMock()
+    step.crop_x = MagicMock()
+    step.crop_y = MagicMock()
+    step.crop_w = MagicMock()
+    step.crop_h = MagicMock()
+    step.resize_enabled = MagicMock()
+    step.resize_w = MagicMock()
+    step.resize_h = MagicMock()
+    step.adjust_enabled = MagicMock()
+    step.adjust_contrast = MagicMock()
+    step.adjust_brightness = MagicMock()
+    step.adjust_sharpness = MagicMock()
+    step.adjust_color = MagicMock()
+    step.grayscale_enabled = MagicMock()
+    step.autocontrast_enabled = MagicMock()
+    step.autocontrast_cutoff_low = MagicMock()
+    step.autocontrast_cutoff_high = MagicMock()
+    step.autocontrast_cut_images_enabled = MagicMock()
+    step.autocontrast_cut_images_cutoff_low = MagicMock()
+    step.autocontrast_cut_images_cutoff_high = MagicMock()
+    step.glare_enabled = MagicMock()
+    step.glare_mode = MagicMock()
+    step.glare_inpaint_threshold = MagicMock()
+    step.glare_inpaint_radius = MagicMock()
+    step.glare_clahe_clip_limit = MagicMock()
+    step.glare_clahe_grid_size = MagicMock()
+    step.glare_apply_to_cut_images = MagicMock()
+    step.alignment_method = MagicMock()
+    step.alignment_min_match_score = MagicMock()
+    step.alignment_feature_detector = MagicMock()
+    step.alignment_transformation = MagicMock()
+    step.rotate_angle = MagicMock()
+    step.rotate_enabled = MagicMock()
+
+    config = Config()
+    config.image_processing.autocontrast_cut_images.enabled = True
+    config.image_processing.autocontrast_cut_images.cutoff_low = 3.5
+    config.image_processing.autocontrast_cut_images.cutoff_high = 40.0
+    config.image_processing.glare_suppression.enabled = True
+    config.image_processing.glare_suppression.mode = "inpaint"
+
+    step.load_from_config(config)
+
+    assert step.autocontrast_cut_images_enabled.value is True
+    assert step.autocontrast_cut_images_cutoff_low.value == 3.5
+    assert step.autocontrast_cut_images_cutoff_high.value == 40.0
+    assert step.glare_enabled.value is True
+    assert step.glare_mode.value == "inpaint"
+
+
+def test_step_draw_rois_cut_images_with_glare():
+    from unittest.mock import MagicMock
+    from gui.step_draw_rois_base import DrawRoisBaseStep, Roi
+
+    step = DrawRoisBaseStep(
+        name="Digital ROIs",
+        name_template="digit",
+        set_image_callback=MagicMock(),
+        draw_roi_func=MagicMock(return_value=""),
+        set_rois_to_svg_func=MagicMock(),
+        show_temp_draw_in_svg_func=MagicMock(),
+    )
+    img = create_synthetic_image_with_glare()
+    b64 = utils.image.convert_image_base64str(img)
+
+    step.rois = [Roi(name="digit1", x=10, y=10, w=30, h=30, color="red", enabled=True)]
+    step.update_image(
+        b64,
+        autocontrast=False,
+        glare_suppression=True,
+        glare_mode="clahe",
+    )
+    cuts = step._cut_images()
+    assert len(cuts) == 1
+    assert cuts[0].name == "digit1"
+    assert cuts[0].image.size == (30, 30)

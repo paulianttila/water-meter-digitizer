@@ -396,6 +396,23 @@ class SetupPage:
                     self.adjust_step.autocontrast_cut_images_enabled.value,
                     self.adjust_step.autocontrast_cut_images_cutoff_low.value,
                     self.adjust_step.autocontrast_cut_images_cutoff_high.value,
+                    glare_suppression=(
+                        self.adjust_step.glare_enabled.value
+                        and self.adjust_step.glare_apply_to_cut_images.value
+                    ),
+                    glare_mode=self.adjust_step.glare_mode.value or "clahe",
+                    glare_inpaint_threshold=int(
+                        self.adjust_step.glare_inpaint_threshold.value or 230
+                    ),
+                    glare_inpaint_radius=int(
+                        self.adjust_step.glare_inpaint_radius.value or 3
+                    ),
+                    glare_clahe_clip_limit=float(
+                        self.adjust_step.glare_clahe_clip_limit.value or 2.0
+                    ),
+                    glare_clahe_grid_size=int(
+                        self.adjust_step.glare_clahe_grid_size.value or 8
+                    ),
                 )
             elif name == NAME_DRAW_ANALOG_ROIS:
                 self.draw_analog_rois_step.update_image(
@@ -403,6 +420,23 @@ class SetupPage:
                     self.adjust_step.autocontrast_cut_images_enabled.value,
                     self.adjust_step.autocontrast_cut_images_cutoff_low.value,
                     self.adjust_step.autocontrast_cut_images_cutoff_high.value,
+                    glare_suppression=(
+                        self.adjust_step.glare_enabled.value
+                        and self.adjust_step.glare_apply_to_cut_images.value
+                    ),
+                    glare_mode=self.adjust_step.glare_mode.value or "clahe",
+                    glare_inpaint_threshold=int(
+                        self.adjust_step.glare_inpaint_threshold.value or 230
+                    ),
+                    glare_inpaint_radius=int(
+                        self.adjust_step.glare_inpaint_radius.value or 3
+                    ),
+                    glare_clahe_clip_limit=float(
+                        self.adjust_step.glare_clahe_clip_limit.value or 2.0
+                    ),
+                    glare_clahe_grid_size=int(
+                        self.adjust_step.glare_clahe_grid_size.value or 8
+                    ),
                 )
             elif name == NAME_METERS:
                 self.meters_step.update_image(image)

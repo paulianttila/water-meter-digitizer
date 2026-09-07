@@ -77,6 +77,15 @@ class AdjustStep(BaseStep):
         self.autocontrast_cutoff_high.value = (
             config.image_processing.autocontrast.cutoff_high
         )
+        self.autocontrast_cut_images_enabled.value = (
+            config.image_processing.autocontrast_cut_images.enabled
+        )
+        self.autocontrast_cut_images_cutoff_low.value = (
+            config.image_processing.autocontrast_cut_images.cutoff_low
+        )
+        self.autocontrast_cut_images_cutoff_high.value = (
+            config.image_processing.autocontrast_cut_images.cutoff_high
+        )
 
         # Glare Suppression
         self.glare_enabled.value = config.image_processing.glare_suppression.enabled

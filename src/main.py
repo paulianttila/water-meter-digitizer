@@ -627,7 +627,11 @@ def get_meter_data(url: str = "", saveimages: bool = False) -> MeterResult:
             sharpness=config.image_processing.sharpness,
             color=config.image_processing.color,
         )
-        .if_(config.image_processing.enabled and config.image_processing.autocontrast)
+        .endif_()
+        .if_(
+            config.image_processing.enabled
+            and config.image_processing.autocontrast.enabled
+        )
         .autocontrast_image(
             cutoff_low=config.image_processing.autocontrast.cutoff_low,
             cutoff_high=config.image_processing.autocontrast.cutoff_high,

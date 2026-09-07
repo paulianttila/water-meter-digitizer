@@ -210,15 +210,33 @@ class DrawRoisBaseStep(BaseStep):
         autocontrast: bool = False,
         cutoff_low: float = 2,
         cutoff_high: float = 45,
+        glare_suppression: bool = False,
+        glare_mode: str = "clahe",
+        glare_inpaint_threshold: int = 230,
+        glare_inpaint_radius: int = 3,
+        glare_clahe_clip_limit: float = 2.0,
+        glare_clahe_grid_size: int = 8,
     ) -> None:
         self.image = image
         self.autocontrast = autocontrast
         self.cutoff_low = cutoff_low
         self.cutoff_high = cutoff_high
+        self.glare_suppression = glare_suppression
+        self.glare_mode = glare_mode
+        self.glare_inpaint_threshold = glare_inpaint_threshold
+        self.glare_inpaint_radius = glare_inpaint_radius
+        self.glare_clahe_clip_limit = glare_clahe_clip_limit
+        self.glare_clahe_grid_size = glare_clahe_grid_size
 
     def _cut_images(self) -> list[CutImage]:
         positions = [
-            ImagePosition(roi.name, int(roi.x), int(roi.y), int(roi.w), int(roi.h))
+            ImagePosition(
+                name=roi.name,
+                x=int(roi.x),
+                y=int(roi.y),
+                w=int(roi.w),
+                h=int(roi.h),
+            )
             for roi in self.rois
         ]
         return (
@@ -230,6 +248,12 @@ class DrawRoisBaseStep(BaseStep):
                 autocontrast=self.autocontrast,
                 cutoff_low=self.cutoff_low,
                 cutoff_high=self.cutoff_high,
+                glare_suppression=getattr(self, "glare_suppression", False),
+                glare_mode=getattr(self, "glare_mode", "clahe"),
+                glare_inpaint_threshold=getattr(self, "glare_inpaint_threshold", 230),
+                glare_inpaint_radius=getattr(self, "glare_inpaint_radius", 3),
+                glare_clahe_clip_limit=getattr(self, "glare_clahe_clip_limit", 2.0),
+                glare_clahe_grid_size=getattr(self, "glare_clahe_grid_size", 8),
             )
             .stop_image_cutting()
             .save_cut_images()
