@@ -184,3 +184,55 @@ def test_get_reload_endpoint_error():
         data = response_json.json()
         assert data["status"] == "error"
         assert "Test reload failure" in data["message"]
+
+
+def test_set_previous_value_decimal(tmp_path):
+    client = TestClient(app)
+    with patch("previous_value.save_previous_value_to_file") as mock_save:
+        response = client.get("/setPreviousValue?name=total&value=00452.9024")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "success"
+        assert data["meter"] == "total"
+        assert data["value"] == "00452.9024"
+        assert data["error"] == ""
+        mock_save.assert_called_once()
+
+
+def test_set_previous_value_integer():
+    client = TestClient(app)
+    with patch("previous_value.save_previous_value_to_file") as mock_save:
+        response = client.get("/set_previous_value?name=digital&value=00452")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "success"
+        assert data["meter"] == "digital"
+        assert data["value"] == "00452"
+        mock_save.assert_called_once()
+
+
+def test_set_previous_value_invalid_string():
+    client = TestClient(app)
+    response = client.get("/setPreviousValue?name=total&value=abc")
+    assert response.status_code == 400
+    data = response.json()
+    assert data["status"] == "error"
+    assert "not a number" in data["error"]
+
+
+def test_set_previous_value_negative():
+    client = TestClient(app)
+    response = client.get("/setPreviousValue?name=total&value=-12.5")
+    assert response.status_code == 400
+    data = response.json()
+    assert data["status"] == "error"
+    assert "negative" in data["error"]
+
+
+def test_set_previous_value_empty_name():
+    client = TestClient(app)
+    response = client.get("/setPreviousValue?name=%20&value=123.45")
+    assert response.status_code == 400
+    data = response.json()
+    assert data["status"] == "error"
+    assert "name cannot be empty" in data["error"]

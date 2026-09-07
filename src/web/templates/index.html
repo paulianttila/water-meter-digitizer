@@ -387,66 +387,187 @@
             background-image: var(--gradient-card);
             border: 1px solid var(--border-color);
             border-radius: var(--radius-md);
-            padding: 1.25rem;
+            padding: 1.5rem;
             box-shadow: var(--shadow-card);
+            backdrop-filter: blur(12px);
+            transition: border-color 0.2s ease, box-shadow 0.2s ease;
+        }
+
+        .tool-panel:hover {
+            border-color: rgba(255, 255, 255, 0.15);
+        }
+
+        .tool-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            flex-wrap: wrap;
+            gap: 0.75rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .tool-title-wrap {
+            display: flex;
+            align-items: center;
+            gap: 0.625rem;
         }
 
         .tool-panel h3 {
-            font-size: 0.975rem;
+            font-size: 1rem;
             font-weight: 600;
             color: #f8fafc;
-            margin-bottom: 0.5rem;
             display: flex;
             align-items: center;
             gap: 0.5rem;
+            margin-bottom: 0;
         }
 
         .tool-panel p {
-            font-size: 0.825rem;
+            font-size: 0.85rem;
             color: var(--text-muted);
-            margin-bottom: 0.875rem;
+            margin-bottom: 1rem;
+            line-height: 1.45;
+        }
+
+        .tool-presets {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            flex-wrap: wrap;
+            margin-bottom: 1rem;
+        }
+
+        .tool-presets-label {
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            font-weight: 600;
+        }
+
+        .preset-chip {
+            background: rgba(255, 255, 255, 0.05);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            color: #94a3b8;
+            font-size: 0.75rem;
+            padding: 0.2rem 0.65rem;
+            border-radius: 9999px;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            user-select: none;
+            font-family: inherit;
+        }
+
+        .preset-chip:hover {
+            background: rgba(59, 130, 246, 0.15);
+            border-color: rgba(59, 130, 246, 0.4);
+            color: #60a5fa;
+        }
+
+        .preset-chip.active {
+            background: rgba(59, 130, 246, 0.25);
+            border-color: var(--accent-blue);
+            color: #93c5fd;
+            font-weight: 600;
         }
 
         .tool-form {
             display: flex;
-            gap: 0.75rem;
+            gap: 0.875rem;
             flex-wrap: wrap;
+            align-items: flex-end;
+        }
+
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            gap: 0.35rem;
+            flex: 1;
+            min-width: 170px;
+        }
+
+        .input-group label {
+            font-size: 0.75rem;
+            font-weight: 500;
+            color: #94a3b8;
+            display: flex;
+            align-items: center;
+            gap: 0.35rem;
         }
 
         .form-input {
-            background: rgba(15, 23, 42, 0.8);
+            background: rgba(15, 23, 42, 0.85);
             border: 1px solid rgba(255, 255, 255, 0.12);
             color: #ffffff;
-            padding: 0.6rem 0.875rem;
+            padding: 0.65rem 0.875rem;
             border-radius: var(--radius-sm);
-            font-size: 0.85rem;
+            font-size: 0.875rem;
             font-family: inherit;
-            flex: 1;
-            min-width: 140px;
-            transition: border-color 0.2s ease;
+            width: 100%;
+            transition: border-color 0.2s ease, box-shadow 0.2s ease;
         }
 
         .form-input:focus {
             outline: none;
             border-color: var(--accent-blue);
-            box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.25);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.25);
         }
 
-        .btn-secondary {
-            background: rgba(255, 255, 255, 0.08);
+        .btn-submit-baseline {
+            background: linear-gradient(135deg, #2563eb 0%, #0284c7 100%);
             border: 1px solid rgba(255, 255, 255, 0.15);
-            color: #f1f5f9;
+            color: #ffffff;
             font-weight: 600;
             font-size: 0.85rem;
-            padding: 0.6rem 1.1rem;
+            padding: 0.65rem 1.25rem;
             border-radius: var(--radius-sm);
             cursor: pointer;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
             transition: all 0.2s ease;
+            box-shadow: 0 4px 12px rgba(37, 99, 235, 0.25);
+            height: 40px;
+            font-family: inherit;
+            white-space: nowrap;
         }
 
-        .btn-secondary:hover {
-            background: rgba(255, 255, 255, 0.14);
-            border-color: rgba(255, 255, 255, 0.25);
+        .btn-submit-baseline:hover:not(:disabled) {
+            transform: translateY(-1px);
+            box-shadow: 0 6px 16px rgba(37, 99, 235, 0.4);
+            filter: brightness(1.1);
+        }
+
+        .btn-submit-baseline:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        /* Inline status feedback for baseline tool */
+        .baseline-feedback {
+            margin-top: 1rem;
+            padding: 0.75rem 1rem;
+            border-radius: var(--radius-sm);
+            font-size: 0.85rem;
+            display: none;
+            align-items: center;
+            gap: 0.75rem;
+            animation: fadeInSlide 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+        }
+
+        .baseline-feedback.success {
+            display: flex;
+            background: rgba(16, 185, 129, 0.12);
+            border: 1px solid rgba(16, 185, 129, 0.35);
+            color: #34d399;
+        }
+
+        .baseline-feedback.error {
+            display: flex;
+            background: rgba(239, 68, 68, 0.12);
+            border: 1px solid rgba(239, 68, 68, 0.35);
+            color: #f87171;
         }
 
         /* --- Footer --- */
@@ -1101,16 +1222,56 @@
         <!-- Section 3: Set Previous Value Tool -->
         <section>
             <div class="tool-panel">
-                <h3>
-                    <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-                    Set Previous Value Baseline
-                </h3>
-                <p>Override the cached meter value used for consistency and roll-over predecessor checks.</p>
-                <form action="/setPreviousValue" method="GET" class="tool-form">
-                    <input type="text" name="name" placeholder="Meter Name (e.g. total)" value="total" class="form-input" required>
-                    <input type="text" name="value" placeholder="Baseline Value (e.g. 00452.9124)" class="form-input" required>
-                    <button type="submit" class="btn-secondary">Update Value</button>
+                <div class="tool-header">
+                    <div class="tool-title-wrap">
+                        <div class="card-icon icon-teal" style="width: 28px; height: 28px; border-radius: 6px;">
+                            <svg viewBox="0 0 24 24" style="width: 15px; height: 15px;"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+                        </div>
+                        <h3>Set Previous Value Baseline</h3>
+                    </div>
+                    <span class="badge" style="background: rgba(16,185,129,0.15); border-color: rgba(16,185,129,0.3); color: #34d399; font-size: 0.7rem; padding: 0.15rem 0.5rem;">Consistency Engine</span>
+                </div>
+                <p>Override the cached meter baseline stored in <code style="color: #93c5fd;">previous_value.ini</code> used for roll-over sanity checks and predecessor continuity validation.</p>
+                
+                <div class="tool-presets">
+                    <span class="tool-presets-label">Quick meter:</span>
+                    <button type="button" class="preset-chip active" onclick="selectMeterPreset('total')">total</button>
+                    <button type="button" class="preset-chip" onclick="selectMeterPreset('digital')">digital</button>
+                    <button type="button" class="preset-chip" onclick="selectMeterPreset('analog')">analog</button>
+                </div>
+
+                <form id="form-set-previous-value" onsubmit="submitPreviousValue(event);" class="tool-form">
+                    <div class="input-group">
+                        <label for="baseline-meter-name">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><path d="M12 6v6l4 2"/></svg>
+                            Meter Identifier
+                        </label>
+                        <input type="text" id="baseline-meter-name" name="name" placeholder="Meter Name (e.g. total)" value="total" class="form-input" required>
+                    </div>
+
+                    <div class="input-group" style="flex: 1.5;">
+                        <label for="baseline-meter-value">
+                            <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="4" width="18" height="16" rx="2"/><line x1="7" y1="8" x2="17" y2="8"/><line x1="7" y1="12" x2="17" y2="12"/><line x1="7" y1="16" x2="12" y2="16"/></svg>
+                            Baseline Value
+                        </label>
+                        <input type="text" id="baseline-meter-value" name="value" placeholder="e.g. 00452.9024 or 00452" class="form-input" required pattern="^[0-9]+(\.[0-9]+)?$" title="Enter a valid numeric value (e.g. 00452.9024 or 00452)">
+                    </div>
+
+                    <button type="submit" id="btn-submit-baseline" class="btn-submit-baseline">
+                        <span id="baseline-spinner" class="spinner" style="display: none; width: 14px; height: 14px; border-width: 2px;"></span>
+                        <svg id="baseline-icon" width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="20 6 9 17 4 12"/></svg>
+                        <span id="baseline-btn-text">Update Baseline</span>
+                    </button>
                 </form>
+
+                <div id="baseline-feedback" class="baseline-feedback">
+                    <svg id="baseline-feedback-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="flex-shrink: 0;"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
+                    <div style="flex: 1;">
+                        <div id="baseline-feedback-msg" style="font-weight: 500;"></div>
+                        <div id="baseline-feedback-meta" style="font-size: 0.75rem; opacity: 0.8; margin-top: 0.15rem;"></div>
+                    </div>
+                    <button type="button" onclick="dismissBaselineFeedback();" style="background: none; border: none; color: inherit; opacity: 0.6; cursor: pointer; padding: 0 0.25rem; font-size: 1rem; line-height: 1;" title="Dismiss">&times;</button>
+                </div>
             </div>
         </section>
 
@@ -1714,6 +1875,79 @@
             } catch (err) {
                 badge.className = 'badge badge-status badge-offline';
                 text.textContent = 'Offline';
+            }
+        }
+
+        function selectMeterPreset(name) {
+            const input = document.getElementById('baseline-meter-name');
+            if (input) input.value = name;
+            document.querySelectorAll('.preset-chip').forEach(chip => {
+                chip.classList.toggle('active', chip.textContent.trim() === name);
+            });
+        }
+
+        function dismissBaselineFeedback() {
+            const feedback = document.getElementById('baseline-feedback');
+            if (feedback) {
+                feedback.className = 'baseline-feedback';
+                feedback.style.display = 'none';
+            }
+        }
+
+        async function submitPreviousValue(event) {
+            if (event) event.preventDefault();
+            const nameInput = document.getElementById('baseline-meter-name');
+            const valueInput = document.getElementById('baseline-meter-value');
+            const btn = document.getElementById('btn-submit-baseline');
+            const spinner = document.getElementById('baseline-spinner');
+            const icon = document.getElementById('baseline-icon');
+            const btnText = document.getElementById('baseline-btn-text');
+            const feedback = document.getElementById('baseline-feedback');
+            const feedbackMsg = document.getElementById('baseline-feedback-msg');
+            const feedbackMeta = document.getElementById('baseline-feedback-meta');
+            const feedbackIcon = document.getElementById('baseline-feedback-icon');
+
+            const name = nameInput ? nameInput.value.trim() : '';
+            const value = valueInput ? valueInput.value.trim() : '';
+
+            if (!name || !value) return;
+
+            if (btn) btn.disabled = true;
+            if (spinner) spinner.style.display = 'inline-block';
+            if (icon) icon.style.display = 'none';
+            if (btnText) btnText.textContent = 'Updating...';
+
+            const startTime = performance.now();
+
+            try {
+                const response = await fetch(`/setPreviousValue?name=${encodeURIComponent(name)}&value=${encodeURIComponent(value)}`);
+                const duration = Math.round(performance.now() - startTime);
+                const data = await response.json();
+
+                if (response.ok && (!data.error || data.error === '')) {
+                    feedback.className = 'baseline-feedback success';
+                    feedbackIcon.innerHTML = '<path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/>';
+                    feedbackMsg.textContent = data.message || `Baseline for meter "${data.meter || name}" updated to ${data.value || value}`;
+                    const timeStr = new Date().toLocaleTimeString();
+                    feedbackMeta.textContent = `Recorded at ${timeStr} • ${duration} ms`;
+                    if (valueInput) valueInput.value = '';
+                } else {
+                    feedback.className = 'baseline-feedback error';
+                    feedbackIcon.innerHTML = '<circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>';
+                    feedbackMsg.textContent = data.error || data.message || 'Failed to update baseline';
+                    feedbackMeta.textContent = `Error status ${response.status} • ${duration} ms`;
+                }
+            } catch (err) {
+                const duration = Math.round(performance.now() - startTime);
+                feedback.className = 'baseline-feedback error';
+                feedbackIcon.innerHTML = '<circle cx="12" cy="12" r="10"/><line x1="12" y1="8" x2="12" y2="12"/><line x1="12" y1="16" x2="12.01" y2="16"/>';
+                feedbackMsg.textContent = `Network error: ${err.message}`;
+                feedbackMeta.textContent = `${duration} ms`;
+            } finally {
+                if (btn) btn.disabled = false;
+                if (spinner) spinner.style.display = 'none';
+                if (icon) icon.style.display = 'inline-block';
+                if (btnText) btnText.textContent = 'Update Baseline';
             }
         }
 

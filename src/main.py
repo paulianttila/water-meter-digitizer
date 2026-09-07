@@ -337,18 +337,50 @@ def get_roi(
 
 
 @app.get("/setPreviousValue")
+@app.get("/set_previous_value")
 @log_execution_time
 def set_previous_value(name: str, value: str) -> Response:
     try:
-        if value is None or not value.isnumeric():
-            raise ValueError(f"Value {value} is not a number")
+        if not value or not isinstance(value, str):
+            raise ValueError("Value cannot be empty")
+        cleaned_value = value.strip()
+        try:
+            val_float = float(cleaned_value)
+            if val_float < 0:
+                raise ValueError("Value cannot be negative")
+        except ValueError as e:
+            if "negative" in str(e):
+                raise
+            raise ValueError(f"Value {value} is not a number") from e
+
+        if not name or not name.strip():
+            raise ValueError("Meter name cannot be empty")
+        cleaned_name = name.strip()
+
         previous_value.save_previous_value_to_file(
-            config.previous_value_file, name, value
+            config.previous_value_file, cleaned_name, cleaned_value
         )
-        err = ""
+        return JSONResponse(
+            {
+                "status": "success",
+                "message": (
+                    f"Successfully updated baseline for '{cleaned_name}' to "
+                    f"{cleaned_value}"
+                ),
+                "meter": cleaned_name,
+                "value": cleaned_value,
+                "error": "",
+            }
+        )
     except Exception as e:
-        err = f"{e}"
-    return Response(json.dumps({"error": err}), media_type="application/json")
+        return JSONResponse(
+            {
+                "status": "error",
+                "message": str(e),
+                "error": str(e),
+            },
+            status_code=400,
+        )
 
 
 @app.get("/meter")
