@@ -417,3 +417,62 @@ def suppress_glare(
         )
 
     return convert_np_array_to_image(result_np)
+
+
+def create_side_by_side_comparison(
+    left_image: Image,
+    right_image: Image,
+    label_left: str = "ORIGINAL",
+    label_right: str = "ADJUSTED",
+) -> Image:
+    """Combine two images horizontally with labeled badges and a separator."""
+    if left_image is None or right_image is None:
+        raise ValueError("Both images must be provided for comparison")
+
+    w1, h1 = left_image.size
+    w2, h2 = right_image.size
+    target_h = max(h1, h2)
+
+    if h1 != target_h:
+        w1 = max(1, int(w1 * (target_h / h1)))
+        left_img = left_image.resize((w1, target_h))
+    else:
+        left_img = left_image.copy()
+
+    if h2 != target_h:
+        w2 = max(1, int(w2 * (target_h / h2)))
+        right_img = right_image.resize((w2, target_h))
+    else:
+        right_img = right_image.copy()
+
+    total_w = w1 + w2 + 4
+    combined = PIL.Image.new("RGB", (total_w, target_h), color=(15, 23, 42))
+    combined.paste(left_img.convert("RGB"), (0, 0))
+    combined.paste(right_img.convert("RGB"), (w1 + 4, 0))
+
+    draw = ImageDraw.Draw(combined)
+    # Vertical cyan separator
+    draw.line([(w1 + 1, 0), (w1 + 1, target_h)], fill=(6, 182, 212), width=2)
+
+    font = ImageFont.load_default(size=12)
+    if label_left:
+        pad_w = len(label_left) * 7 + 12
+        draw.rectangle(
+            [(10, 10), (10 + pad_w, 30)],
+            fill=(15, 23, 42),
+            outline=(59, 130, 246),
+            width=1,
+        )
+        draw.text((16, 14), label_left, fill=(147, 197, 253), font=font)
+
+    if label_right:
+        pad_w = len(label_right) * 7 + 12
+        draw.rectangle(
+            [(w1 + 14, 10), (w1 + 14 + pad_w, 30)],
+            fill=(15, 23, 42),
+            outline=(16, 185, 129),
+            width=1,
+        )
+        draw.text((w1 + 20, 14), label_right, fill=(110, 231, 183), font=font)
+
+    return combined

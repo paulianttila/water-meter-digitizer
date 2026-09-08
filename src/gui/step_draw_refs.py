@@ -52,12 +52,6 @@ class DrawRefsStep(DrawRoisBaseStep):
             f'<rect x="{x}" y="{y}" width="{w}" height="{h}" style="{style}" />'
         )
 
-    def _select_all_rois(self) -> None:
-        state = self.select_all.value
-        for roi in self.rois:
-            roi.enabled = state
-        self._show_rois()
-
     def _add_roi(self) -> None:
         for roi in self.rois:
             roi.enabled = False
@@ -73,8 +67,15 @@ class DrawRefsStep(DrawRoisBaseStep):
             ):
                 with ui.row().classes("items-center gap-2"):
                     self.select_all = ui.checkbox(
-                        "Show all overlays", value=True, on_change=self._select_all_rois
+                        "Show all overlays",
+                        value=(
+                            bool(self.rois and all(r.enabled for r in self.rois))
+                            if self.rois
+                            else True
+                        ),
+                        on_change=self._select_all_rois,
                     ).tooltip("Toggle all reference point overlays on canvas")
+                    self._sync_select_all_checkbox()
 
                 with ui.row().classes("items-center gap-2"):
                     ui.button(

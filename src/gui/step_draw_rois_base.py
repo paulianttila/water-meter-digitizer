@@ -65,24 +65,50 @@ class DrawRoisBaseStep(BaseStep):
         self.autocontrast = False
         self.cutoff_low = 0
         self.cutoff_high = 0
+        self.select_all: ui.checkbox | None = None
+        self._updating_select_all: bool = False
+
+    def _sync_select_all_checkbox(self) -> None:
+        if hasattr(self, "select_all") and self.select_all is not None:
+            all_enabled = bool(self.rois and all(roi.enabled for roi in self.rois))
+            if self.select_all.value != all_enabled:
+                self._updating_select_all = True
+                try:
+                    self.select_all.value = all_enabled
+                finally:
+                    self._updating_select_all = False
+
+    def _select_all_rois(self) -> None:
+        if getattr(self, "_updating_select_all", False):
+            return
+        if hasattr(self, "select_all") and self.select_all is not None:
+            state = bool(self.select_all.value)
+            for roi in self.rois:
+                roi.enabled = state
+            self._show_rois()
+
+    def _on_roi_enabled_change(self) -> None:
+        self._show_rois()
+        self._sync_select_all_checkbox()
 
     def load_rois(self, items: list[ImagePosition | RefImage]) -> None:
         self.rois.clear()
         if hasattr(self, "container") and self.container is not None:
             self.container.clear()
-            for item in items:
-                roi = Roi(
-                    name=item.name,
-                    x=int(item.x),
-                    y=int(item.y),
-                    w=int(item.w),
-                    h=int(item.h),
-                    color=self.colors[len(self.rois) % len(self.colors)],
-                    enabled=True,
-                )
-                self.rois.append(roi)
-                self._add_roi_ui(roi)
-            self._show_rois()
+        for item in items:
+            roi = Roi(
+                name=item.name,
+                x=int(item.x),
+                y=int(item.y),
+                w=int(item.w),
+                h=int(item.h),
+                color=self.colors[len(self.rois) % len(self.colors)],
+                enabled=True,
+            )
+            self.rois.append(roi)
+            self._add_roi_ui(roi)
+        self._show_rois()
+        self._sync_select_all_checkbox()
 
     def _show_rois(self) -> None:
         content = "".join(
@@ -133,6 +159,7 @@ class DrawRoisBaseStep(BaseStep):
                 last = len(list(self.container)) - 1
                 self.container.remove(last)
             self._show_rois()
+            self._sync_select_all_checkbox()
 
     def _delete_roi(self, roi: Roi, row_elem) -> None:
         if roi in self.rois:
@@ -144,6 +171,7 @@ class DrawRoisBaseStep(BaseStep):
         ):
             self.container.remove(row_elem)
         self._show_rois()
+        self._sync_select_all_checkbox()
 
     def _align_top(self) -> None:
         y = None
@@ -378,15 +406,18 @@ class DrawRoisBaseStep(BaseStep):
         self.rois.append(roi)
         self._add_roi_ui(roi)
         self._show_rois()
+        self._sync_select_all_checkbox()
 
     def _add_roi_ui(self, roi: Roi) -> None:
+        if not hasattr(self, "container") or not hasattr(self.container, "__enter__"):
+            return
         with self.container:
             with ui.row().classes(
                 "w-full items-center justify-between p-2 rounded-xl "
                 "bg-slate-900/70 border border-white/10 shadow-sm gap-2 mb-2"
             ) as row_elem:
                 with ui.row().classes("items-center gap-2 flex-grow"):
-                    ui.checkbox(on_change=self._show_rois).bind_value(
+                    ui.checkbox(on_change=self._on_roi_enabled_change).bind_value(
                         roi, "enabled"
                     ).props(f"color={roi.color} keep-color").tooltip(
                         "Toggle ROI overlay visibility on canvas"

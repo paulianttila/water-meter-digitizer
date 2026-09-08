@@ -145,12 +145,6 @@ class DrawAnalogRoisStep(DrawRoisBaseStep):
             on_apply_callback=_apply,
         )
 
-    def _select_all_rois(self) -> None:
-        state = self.select_all.value
-        for roi in self.rois:
-            roi.enabled = state
-        self._show_rois()
-
     async def show(self, stepper, first_step=False, last_step=False) -> None:
         with ui.step(self.name):
             self.add_help(HELP_TEXT)
@@ -223,8 +217,15 @@ class DrawAnalogRoisStep(DrawRoisBaseStep):
 
                     with ui.row().classes("items-center gap-2"):
                         self.select_all = ui.checkbox(
-                            "Show All", on_change=self._select_all_rois
+                            "Show All",
+                            value=(
+                                bool(self.rois and all(r.enabled for r in self.rois))
+                                if self.rois
+                                else True
+                            ),
+                            on_change=self._select_all_rois,
                         ).tooltip("Toggle visibility of all bounding boxes on canvas")
+                        self._sync_select_all_checkbox()
                         ui.button(
                             "Add Dial ROI", icon="add", on_click=self._add_roi
                         ).props("dense unelevated").classes(
