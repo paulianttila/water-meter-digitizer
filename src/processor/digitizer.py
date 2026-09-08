@@ -175,7 +175,7 @@ class DigitizerProcessor:
         if self.analog_counter_reader is not None:
             result = []
             model = self._solve_model(
-                self.analog_model, self.analog_counter_reader.getModelDetails()
+                self.analog_model, self.analog_counter_reader.get_model_details()
             )
             for item in images:
                 if hasattr(self.analog_counter_reader, "readout_with_confidence"):
@@ -204,7 +204,7 @@ class DigitizerProcessor:
         if self.digital_counter_reader is not None:
             result = []
             model = self._solve_model(
-                self.digital_model, self.digital_counter_reader.getModelDetails()
+                self.digital_model, self.digital_counter_reader.get_model_details()
             )
             for item in images:
                 if hasattr(self.digital_counter_reader, "readout_with_confidence"):

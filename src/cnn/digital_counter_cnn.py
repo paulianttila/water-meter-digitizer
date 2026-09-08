@@ -38,7 +38,7 @@ class DigitalCounterCNN(CNNBase):
             probs = exp_z / sum_exp if sum_exp > 0 else np.zeros_like(exp_z)
         argmax = int(np.argmax(probs))
 
-        if self.getModelDetails().numer_output == 100:
+        if self.get_model_details().numer_output == 100:
             value = float(argmax) / 10.0
             # 3-bin probability density around the continuous peak
             low_idx = max(0, argmax - 1)

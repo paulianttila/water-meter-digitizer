@@ -27,7 +27,7 @@ class AnalogNeedleCNN(CNNBase):
     def readout_with_confidence(self, image: Image) -> tuple[float, float]:
         """Run inference and return (predicted_value, confidence_percentage)."""
         output_data = self._readout(image)
-        numer_output = self.getModelDetails().numer_output
+        numer_output = self.get_model_details().numer_output
 
         if numer_output == 100:
             z = np.array(output_data[0], dtype=float)

@@ -35,9 +35,9 @@ class CNNBase:
         self.dy = dy
         self.pool_size = pool_size
         self.pool: InterpreterPool | None = None
-        self._loadModel()
+        self._load_model()
 
-    def _loadModel(self) -> None:
+    def _load_model(self) -> None:
         filename, file_extension = os.path.splitext(self.modelfile)
         if file_extension != ".tflite":
             logger.error(
@@ -48,7 +48,7 @@ class CNNBase:
 
         try:
             self.pool = get_interpreter_pool(self.modelfile, max_size=self.pool_size)
-            self.getModelDetails()
+            self.get_model_details()
         except Exception as e:
             logger.error(f"Error occurred during model '{self.modelfile}' loading: {e}")
 
@@ -77,7 +77,7 @@ class CNNBase:
                 return inst.output_details
         return []
 
-    def getModelDetails(self) -> ModelDetails:
+    def get_model_details(self) -> ModelDetails:
         if self.pool is not None:
             details = self.pool.get_model_details()
             logger.debug(

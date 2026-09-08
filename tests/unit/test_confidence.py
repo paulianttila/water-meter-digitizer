@@ -24,9 +24,9 @@ from processor.digitizer import (
 
 
 def test_digital_counter_11class_high_confidence():
-    with patch.object(CNNBase, "_loadModel"):
+    with patch.object(CNNBase, "_load_model"):
         cnn = DigitalCounterCNN("dummy.tflite", 20, 32)
-        cnn.getModelDetails = MagicMock(
+        cnn.get_model_details = MagicMock(
             return_value=ModelDetails(
                 name="dummy.tflite", xsize=20, ysize=32, channels=3, numer_output=11
             )
@@ -42,9 +42,9 @@ def test_digital_counter_11class_high_confidence():
 
 
 def test_digital_counter_already_normalized_probabilities():
-    with patch.object(CNNBase, "_loadModel"):
+    with patch.object(CNNBase, "_load_model"):
         cnn = DigitalCounterCNN("dummy.tflite", 20, 32)
-        cnn.getModelDetails = MagicMock(
+        cnn.get_model_details = MagicMock(
             return_value=ModelDetails(
                 name="dummy.tflite", xsize=20, ysize=32, channels=3, numer_output=11
             )
@@ -59,9 +59,9 @@ def test_digital_counter_already_normalized_probabilities():
 
 
 def test_digital_counter_11class_nan_class():
-    with patch.object(CNNBase, "_loadModel"):
+    with patch.object(CNNBase, "_load_model"):
         cnn = DigitalCounterCNN("dummy.tflite", 20, 32)
-        cnn.getModelDetails = MagicMock(
+        cnn.get_model_details = MagicMock(
             return_value=ModelDetails(
                 name="dummy.tflite", xsize=20, ysize=32, channels=3, numer_output=11
             )
@@ -75,9 +75,9 @@ def test_digital_counter_11class_nan_class():
 
 
 def test_digital_counter_100class_density_window():
-    with patch.object(CNNBase, "_loadModel"):
+    with patch.object(CNNBase, "_load_model"):
         cnn = DigitalCounterCNN("dummy.tflite", 20, 32)
-        cnn.getModelDetails = MagicMock(
+        cnn.get_model_details = MagicMock(
             return_value=ModelDetails(
                 name="dummy.tflite", xsize=20, ysize=32, channels=3, numer_output=100
             )
@@ -99,9 +99,9 @@ def test_digital_counter_100class_density_window():
 
 
 def test_analog_needle_2output_vector_magnitude():
-    with patch.object(CNNBase, "_loadModel"):
+    with patch.object(CNNBase, "_load_model"):
         cnn = AnalogNeedleCNN("dummy.tflite", 32, 32)
-        cnn.getModelDetails = MagicMock(
+        cnn.get_model_details = MagicMock(
             return_value=ModelDetails(
                 name="dummy.tflite", xsize=32, ysize=32, channels=3, numer_output=2
             )
@@ -121,9 +121,9 @@ def test_analog_needle_2output_vector_magnitude():
 
 
 def test_analog_needle_100class_density_window():
-    with patch.object(CNNBase, "_loadModel"):
+    with patch.object(CNNBase, "_load_model"):
         cnn = AnalogNeedleCNN("dummy.tflite", 32, 32)
-        cnn.getModelDetails = MagicMock(
+        cnn.get_model_details = MagicMock(
             return_value=ModelDetails(
                 name="dummy.tflite", xsize=32, ysize=32, channels=3, numer_output=100
             )
