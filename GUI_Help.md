@@ -50,7 +50,12 @@ The **Meter** tab provides an operational overview of the digitizer:
 
 ## Setup Wizard (Step-by-Step)
 
-The **Setup** tab provides an 8-step guided configuration wizard. On the left is the **Interactive Image Canvas** (showing real-time coordinates, image dimensions, and SVG ROI overlays), and on the right is the **Step Navigator**.
+The **Setup** tab provides a 9-step guided configuration wizard. On the left is the **Interactive Image Canvas** (showing real-time coordinates, image dimensions, and SVG ROI overlays), and on the right is the **Step Navigator**.
+
+The top toolbar of the Setup Wizard includes quick recovery tools:
+- **Reset to File (`restart_alt`)**: Discards all unsaved in-memory wizard modifications and re-initializes all steps, inputs, and ROIs directly from the current `config.ini` file on disk.
+- **Restore Backup (`settings_backup_restore`)**: Opens a backup selection modal to immediately restore all wizard settings, parameters, and ROI definitions from any historical backup snapshot stored in `/config/backups/`.
+
 
 ### Step 1: Download Image
 - **Camera URL**: Enter the HTTP snapshot endpoint (e.g. `http://192.168.1.100/capture` or `file:///config/original.jpg`).
@@ -155,7 +160,14 @@ The **Setup** tab provides an 8-step guided configuration wizard. On the left is
 
 For power users, the **Config** tab allows direct editing of the INI configuration:
 - **Syntax Check (`verified`)**: Validates INI syntax and parameter types before saving.
-- **Save (`save`)**: Writes changes directly to `config.ini`.
+- **Save (`save`)**: Writes changes directly to `config.ini`. Automatically generates a timestamped safety backup in `/config/backups/` before overwriting.
+- **Undo (`undo`)**: Reverts the configuration to the immediately preceding backup snapshot in 1 click.
+- **History (`manage_history`)**: Opens the **Configuration History** management dialog:
+  - **Revisions Timeline**: Lists all automatic and manual backups with timestamps, relative age, file sizes, and labels.
+  - **Inline Visual Diff (`difference`)**: Expands a syntax-highlighted, line-by-line unified diff against the current `config.ini` (green for additions `+`, red for removals `-`, cyan for chunk headers `@@`).
+  - **Manual Snapshots**: Create named checkpoints (e.g. `Pre-Calibration`, `Winter-Settings`) for key milestones.
+  - **Restore (`restore`)**: Restores the selected historical backup over `config.ini` (automatically capturing a pre-restore safety snapshot).
+  - **Delete (`delete`)**: Removes unwanted backup files.
 - **Take in Use (`reopen_window`)**: Hot-reloads the active runtime without restarting the container.
 - **Show Parsed JSON (`preview`)**: Visualizes the parsed configuration hierarchy in formatted JSON.
 - **Reload (`refresh`)**: Reverts unsaved changes in the editor from disk.

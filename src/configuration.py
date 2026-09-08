@@ -1,9 +1,7 @@
 import configparser
-import datetime
 import io
 import logging
 import os
-import shutil
 from pydantic import BaseModel, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -186,17 +184,20 @@ class Config(BaseSettings):
         config.read(ini_file)
         return self.load_config(config)
 
-    def create_backup(self, ini_file: str = "config.ini") -> "Config":
-        date = datetime.datetime.now().strftime("%Y%m%d_%H%M%S")
-        backup_file = f"{ini_file}_{date}.bak"
-        shutil.copyfile(ini_file, backup_file)
+    def create_backup(self, ini_file: str = "config.ini", tag: str = "") -> "Config":
+        from config_history import ConfigHistoryManager
+
+        ConfigHistoryManager.create_backup(ini_file, tag=tag)
         return self
 
     def save_to_file(
-        self, ini_file: str = "config.ini", make_backup: bool = False
+        self,
+        ini_file: str = "config.ini",
+        make_backup: bool = False,
+        backup_tag: str = "",
     ) -> "Config":
-        if make_backup:
-            self.create_backup(ini_file)
+        if make_backup and os.path.exists(ini_file):
+            self.create_backup(ini_file, tag=backup_tag)
         with open(ini_file, "w") as configfile:
             self._save_to_io(configfile)
         return self

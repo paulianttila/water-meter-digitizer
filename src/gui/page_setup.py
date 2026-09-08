@@ -605,6 +605,114 @@ class SetupPage:
                     )
             reset_dialog.open()
 
+        def open_restore_backup_dialog() -> None:
+            try:
+                backups = self.callbacks.list_config_backups()
+            except Exception:
+                backups = []
+
+            with (
+                ui.dialog() as restore_dialog,
+                ui.card().classes(
+                    "bg-slate-900 border border-white/10 rounded-2xl p-5 "
+                    "max-w-xl w-full gap-4"
+                ),
+            ):
+                with ui.row().classes(
+                    "w-full justify-between items-center pb-2 border-b border-white/10"
+                ):
+                    with ui.row().classes("items-center gap-3"):
+                        with ui.element("div").classes(
+                            "w-10 h-10 rounded-xl bg-indigo-500/20 "
+                            "border border-indigo-500/30 flex items-center "
+                            "justify-center text-indigo-400"
+                        ):
+                            ui.icon("history", size="md")
+                        with ui.column().classes("gap-0"):
+                            ui.label("Restore Wizard from Backup").classes(
+                                "text-base font-bold text-slate-100"
+                            )
+                            ui.label(
+                                "Select a saved snapshot to load into the wizard"
+                            ).classes("text-xs text-slate-400")
+                    ui.button(icon="close", on_click=restore_dialog.close).props(
+                        "flat round dense"
+                    )
+
+                if not backups:
+                    with ui.column().classes(
+                        "w-full py-6 items-center justify-center text-slate-400 gap-2"
+                    ):
+                        ui.icon("inventory_2", size="lg")
+                        ui.label("No configuration backups found.").classes("text-sm")
+                else:
+                    with ui.column().classes(
+                        "w-full gap-2 max-h-[50vh] overflow-y-auto pr-1"
+                    ):
+                        for b in backups:
+                            b_name = b.get("name", "")
+                            b_time = b.get("formatted_time", "")
+                            b_tag = b.get("tag", "Auto Backup")
+                            b_size = b.get("size_bytes", 0)
+                            size_kb = (
+                                f"{b_size / 1024:.1f} KB"
+                                if b_size > 0
+                                else f"{b_size} B"
+                            )
+
+                            with ui.row().classes(
+                                "w-full items-center justify-between p-3 "
+                                "rounded-xl bg-slate-950/50 border border-white/5 "
+                                "hover:border-indigo-500/30 transition-all gap-2"
+                            ):
+                                with ui.column().classes("gap-0.5"):
+                                    with ui.row().classes("items-center gap-2"):
+                                        ui.label(b_time).classes(
+                                            "text-sm font-semibold text-slate-200"
+                                        )
+                                        ui.label(b_tag).classes(
+                                            "text-[10px] px-2 py-0.5 rounded-full "
+                                            "font-medium bg-cyan-950/60 text-cyan-300 "
+                                            "border border-cyan-500/30"
+                                        )
+                                    ui.label(f"{b_name} • {size_kb}").classes(
+                                        "text-xs font-mono text-slate-400"
+                                    )
+
+                                def make_wizard_restore(
+                                    target_name: str, target_time: str
+                                ):
+                                    async def do_wizard_restore():
+                                        restore_dialog.close()
+                                        try:
+                                            self.callbacks.restore_config_backup(
+                                                target_name
+                                            )
+                                            await reset_from_config_file()
+                                            ui.notify(
+                                                "Wizard restored from backup "
+                                                f"{target_time}",
+                                                type="positive",
+                                            )
+                                        except Exception as err:
+                                            ui.notify(
+                                                f"Restore failed: {err}",
+                                                type="negative",
+                                            )
+
+                                    return do_wizard_restore
+
+                                ui.button(
+                                    "Load Snapshot",
+                                    icon="restore",
+                                    on_click=make_wizard_restore(b_name, b_time),
+                                ).props("unelevated dense").classes(
+                                    "text-xs bg-indigo-600 hover:bg-indigo-500 "
+                                    "text-white px-3 py-1"
+                                )
+
+            restore_dialog.open()
+
         with ui.row().classes(
             "w-full justify-between items-center mb-3 p-3 bg-slate-900/60 "
             "border border-white/10 rounded-2xl shadow-md backdrop-blur-md shrink-0"
@@ -621,6 +729,17 @@ class SetupPage:
                 self.spinner = ui.spinner("dots", size="md", color="indigo")
                 self.spinner.visible = False
             with ui.row().classes("items-center gap-2"):
+                ui.button(
+                    "Restore Backup",
+                    icon="history",
+                    on_click=open_restore_backup_dialog,
+                ).props("outline dense").classes(
+                    "border-white/20 text-slate-300 hover:bg-white/10 text-xs "
+                    "font-medium px-3 py-1"
+                ).tooltip(
+                    "Select and restore a previous configuration backup"
+                )
+
                 ui.button(
                     "Reset to File",
                     icon="restart_alt",

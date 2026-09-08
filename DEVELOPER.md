@@ -14,7 +14,11 @@ Welcome to the **Water Meter Digitizer** codebase. This document is a comprehens
    - [3. Neural Network Inference (TFLite)](#3-neural-network-inference-tflite)
    - [4. Digitizer Postprocessing & Predecessors](#4-digitizer-postprocessing--predecessors)
    - [5. Consistency Checking & Value Persistence](#5-consistency-checking--value-persistence)
-   - [6. Web UI & Setup Wizard (NiceGUI)](#6-web-ui--setup-wizard-nicegui)
+   - [6. Storage & Telemetry Architecture](#6-storage--telemetry-architecture)
+   - [7. Background Polling & MQTT Auto-Discovery](#7-background-polling--mqtt-auto-discovery)
+   - [8. Zero-Flow Tracking & Continuous Leak Detection](#8-zero-flow-tracking--continuous-leak-detection)
+   - [9. Web UI & Setup Wizard (NiceGUI & FastAPI)](#9-web-ui--setup-wizard-nicegui--fastapi)
+   - [10. Configuration History & Backups](#10-configuration-history--backups)
 4. [Development Environment Setup](#development-environment-setup)
 5. [Running the Application Locally](#running-the-application-locally)
 6. [Testing Guide](#testing-guide)
@@ -81,6 +85,7 @@ water-meter-digitizer/
 │   ├── readout.py               # Readout orchestration and result aggregator
 │   ├── callbacks.py             # Event/action hooks across GUI and backend
 │   ├── previous_value.py        # Thread-safe persistence for last valid reading
+│   ├── config_history.py        # Backup management, unified diffs, and snapshots
 │   │
 │   ├── cnn/                     # Google LiteRT / TFLite neural network runners
 │   │   ├── base.py              # Base CNN wrapper with async offloading
@@ -232,6 +237,14 @@ config/neuralnets/
 - Implemented with a hybrid architecture combining **FastAPI** (REST API, diagnostics, dashboard templates) and **NiceGUI** (Vue/Quasar interactive frontend).
 - The setup page (`page_setup.py`) features an interactive canvas with real-time mouse coordinate tracking, SVG ROI drawing overlays, offline placeholder fallback on camera timeout, and live inference preview on cropped ROIs.
 - The main landing dashboard (`src/web/templates/index.html`) is a glassmorphic single-page application with live diagnostics telemetry, interactive API console, historical consumption visualizers, and leak detection telemetry.
+
+### 10. Configuration History & Backups
+- **Subsystem (`src/config_history.py`)**: `ConfigHistoryManager` automates versioned configuration backups, manual snapshots, and change tracking.
+- **Dedicated Storage**: Backups are preserved in `/config/backups/` subfolder using timestamped conventions (`config.ini_YYYYMMDD_HHMMSS[_Tag].bak`).
+- **Safety Snapshots**: Every restore or save operation captures an automatic safety snapshot before modifying active files on disk.
+- **Visual Diff Engine**: Computes unified line-by-line diffs (`difflib.unified_diff`) between active `config.ini` and any historical backup.
+- **Thread Safety**: All configuration file reads, writes, snapshots, and diff operations are guarded by a reentrant lock (`_config_lock = threading.RLock()` in `src/main.py`) to prevent deadlocks and race conditions.
+
 
 ---
 

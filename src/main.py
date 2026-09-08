@@ -48,7 +48,7 @@ COLOR_BLUE = (0, 0, 255)
 
 config_file = os.environ.get("CONFIG_FILE", "/config/config.ini")
 config = Config()
-_config_lock = threading.Lock()
+_config_lock = threading.RLock()
 
 logging.basicConfig(
     stream=sys.stdout,
@@ -827,6 +827,50 @@ def save_config_file(data: str) -> None:
         new_config.save_to_file(config_file, make_backup=True)
 
 
+def list_config_backups() -> list[dict[str, Any]]:
+    from config_history import ConfigHistoryManager
+
+    with _config_lock:
+        return [b.model_dump() for b in ConfigHistoryManager.list_backups(config_file)]
+
+
+def restore_config_backup(backup_name: str) -> None:
+    from config_history import ConfigHistoryManager
+
+    with _config_lock:
+        ConfigHistoryManager.restore_backup(config_file, backup_name)
+
+
+def undo_last_config() -> str | None:
+    from config_history import ConfigHistoryManager
+
+    with _config_lock:
+        return ConfigHistoryManager.undo_last(config_file)
+
+
+def create_config_snapshot(tag: str = "") -> str | None:
+    from config_history import ConfigHistoryManager
+
+    with _config_lock:
+        return ConfigHistoryManager.create_backup(config_file, tag=tag)
+
+
+def delete_config_backup(backup_name: str) -> bool:
+    from config_history import ConfigHistoryManager
+
+    with _config_lock:
+        return ConfigHistoryManager.delete_backup(config_file, backup_name)
+
+
+def diff_config_backup(backup_name: str) -> list[str]:
+    from config_history import ConfigHistoryManager
+
+    with _config_lock:
+        return ConfigHistoryManager.get_diff(
+            load_config_file(), backup_name, config_file=config_file
+        )
+
+
 def init_gui(app) -> None:
     from callbacks import Callbacks
     import gui.frontend as frontend
@@ -854,6 +898,24 @@ def init_gui(app) -> None:
 
         def get_storage(self) -> Any:
             return getattr(app.state, "storage", None)
+
+        def list_config_backups(self) -> list[dict[str, Any]]:
+            return list_config_backups()
+
+        def restore_config_backup(self, backup_name: str) -> None:
+            return restore_config_backup(backup_name)
+
+        def undo_last_config(self) -> str | None:
+            return undo_last_config()
+
+        def create_config_snapshot(self, tag: str = "") -> str | None:
+            return create_config_snapshot(tag=tag)
+
+        def delete_config_backup(self, backup_name: str) -> bool:
+            return delete_config_backup(backup_name)
+
+        def diff_config_backup(self, backup_name: str) -> list[str]:
+            return diff_config_backup(backup_name)
 
     frontend.init(app, CallbacksImpl())
 

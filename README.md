@@ -21,10 +21,12 @@ Automatically read analog and digital utility meters using a camera, image proce
 - **Open Standards & REST API** — Clean structured JSON endpoints for easy integration with openHAB, Node-RED, Prometheus, Grafana, or custom automations.
 
 ### 📊 Modern Web Dashboard & Setup
-- **Interactive Visual Setup Wizard (`/gui`)** — Intuitive step-by-step alignment tool to easily define reference markers and digit bounding boxes.
+- **Interactive Visual Setup Wizard (`/gui`)** — Intuitive 9-step alignment tool to easily define reference markers and digit bounding boxes, with instant Reset and Restore Backup tools.
+- **Config Editor & History Management** — Raw INI editor with syntax verification, 1-click Undo, automatic safety backups (`/config/backups/`), manual checkpoint snapshots, and inline color-coded line-by-line diff inspection.
 - **Glassmorphic Web Dashboard (`/`)** — Live meter status, real-time telemetry, model confidence indicators, and one-click API explorer.
 - **Interactive Consumption Charts** — Visual breakdown of hourly, daily, and weekly water usage with customizable time ranges.
 - **Diagnostics & Telemetry** — Real-time camera latency, system uptime, and memory utilization monitors.
+
 
 ### 🚀 Edge & Container Ready
 - **Lightweight & Fast** — High-performance on-device neural network inference optimized for low-power edge devices (e.g., Raspberry Pi).
@@ -91,8 +93,8 @@ uv run python src/main.py
 
 - **`/` — API Explorer & Status Page**: Real-time summary of configured meters, last reading timestamps, interactive API documentation, and live preview.
 - **`/gui` — NiceGUI Web Dashboard**:
-  - **Setup Wizard**: 9-step guided calibration flow (image capture, cropping/resizing, image processing, reference marker alignment, ROI bounding-box tuning, meter calculation setup, and background poller / MQTT / storage configuration).
-  - **Config Editor**: Direct visual and raw configuration editing with schema validation.
+  - **Setup Wizard**: 9-step guided calibration flow (image capture, cropping/resizing, image processing, reference marker alignment, ROI bounding-box tuning, meter calculation setup, and background poller / MQTT / storage configuration). Supports 1-click config reset and backup restoration.
+  - **Config Editor & History**: Direct visual and raw configuration editing with schema validation, 1-click Undo, automatic safety backups in `/config/backups/`, and inline line-by-line diff viewing.
 
 ---
 
@@ -260,6 +262,9 @@ All endpoints are served on port `3000`.
 ## Configuration
 
 The system is configured via an INI file format (default `/config/config.ini`), which can also be overridden using environment variables via Pydantic Settings.
+
+Every time the configuration is saved from the Web GUI or Setup Wizard, an automatic timestamped backup is preserved in the `/config/backups/` subfolder (e.g. `config.ini_20260908_120000.bak`). Historical snapshots can be compared with line-by-line unified diffs and rolled back with 1-click Undo or the History dialog.
+
 
 ### Environment Variables
 
