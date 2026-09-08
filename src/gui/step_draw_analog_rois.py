@@ -94,120 +94,179 @@ class DrawAnalogRoisStep(DrawRoisBaseStep):
         results = digitizerProcessor.cnn_analog_results
 
         self.test_result_container.clear()
-        text_size = "text-xs"
         with self.test_result_container:
-            with ui.grid(columns=len(analog_images)):
+            with ui.row().classes("w-full gap-3 flex-wrap items-center mt-2"):
                 for item in results:
                     base64img = self._get_base64_image_by_name(item.name, analog_images)
-                    with ui.card():
-                        ui.label(f"{item.name}").classes(text_size)
-                        ui.image(f"data:image/jpeg;base64,{base64img}")
-                        with ui.card_section():
-                            ui.label(f"{self._convert_value(item.value)}").classes(
-                                text_size
-                            )
-        self.time.text = f"Time: {round(time.time() - start_time, 2)}s"
+                    with ui.element("div").classes(
+                        "p-2.5 rounded-lg bg-slate-900/80 border "
+                        "border-white/10 flex flex-col items-center "
+                        "gap-1.5 min-w-[70px]"
+                    ):
+                        ui.label(f"{item.name}").classes(
+                            "text-[11px] text-gray-400 uppercase "
+                            "tracking-wider font-semibold"
+                        )
+                        ui.image(f"data:image/jpeg;base64,{base64img}").props(
+                            "fit=contain no-spinner"
+                        ).classes("w-16 h-16 rounded bg-slate-950 p-0.5")
+                        ui.label(f"{self._convert_value(item.value)}").classes(
+                            "font-['Outfit'] font-bold text-cyan-400 text-sm"
+                        )
+        self.time.text = f"⏱ {round(time.time() - start_time, 2)}s"
 
     def _select_all_rois(self) -> None:
         state = self.select_all.value
         for roi in self.rois:
             roi.enabled = state
+        self._show_rois()
 
     async def show(self, stepper, first_step=False, last_step=False) -> None:
         with ui.step(self.name):
             self.add_help(HELP_TEXT)
-            with ui.row():
-                ui.button(
-                    icon="sym_s_align_horizontal_left", on_click=self._align_left
-                ).bind_enabled_from(
-                    self, "container", lambda x: len(list(x)) > 0
-                ).tooltip(
-                    "Align left"
-                )
-                ui.button(
-                    icon="sym_s_align_vertical_top", on_click=self._align_top
-                ).bind_enabled_from(
-                    self, "container", lambda x: len(list(x)) > 0
-                ).tooltip(
-                    "Align top"
-                )
-                ui.button(
-                    icon="sym_s_align_vertical_bottom", on_click=self._align_bottom
-                ).bind_enabled_from(
-                    self, "container", lambda x: len(list(x)) > 0
-                ).tooltip(
-                    "Align bottom"
-                )
-                ui.button(
-                    icon="sym_s_align_horizontal_right", on_click=self._align_right
-                ).bind_enabled_from(
-                    self, "container", lambda x: len(list(x)) > 0
-                ).tooltip(
-                    "Align right"
-                )
-                ui.button(
-                    icon="sym_s_align_vertical_center", on_click=self._align_center
-                ).bind_enabled_from(
-                    self, "container", lambda x: len(list(x)) > 0
-                ).tooltip(
-                    "Align center"
-                )
-                ui.button(
-                    icon="sym_s_resize", on_click=self._resize_all
-                ).bind_enabled_from(
-                    self, "container", lambda x: len(list(x)) > 0
-                ).tooltip(
-                    "Resize all"
-                )
-            with ui.grid(columns="2fr 2fr 2fr 2fr 2fr 2fr").classes("w-full gap-2"):
-                self.select_all = ui.checkbox(
-                    "Show", on_change=self._select_all_rois
-                ).tooltip("Show all")
-                ui.label("Name")
-                ui.label("X-position")
-                ui.label("Y-position")
-                ui.label("Width")
-                ui.label("Height")
-            self.container = ui.row().classes("w-full")
-            with ui.row():
-                ui.button(icon="add", on_click=self._add_roi).tooltip(
-                    "Add analog region of interest"
-                )
-                ui.button(icon="remove", on_click=self._remove_roi).bind_enabled_from(
-                    self, "container", lambda x: len(list(x)) > 0
-                ).tooltip("Remove last analog region of interest")
-            with ui.row().classes("w-full"):
-                self.cnn_file = (
-                    ui.select(
-                        options=self._get_cnn_models(self.analog_models_dir),
-                        label="CNN model",
+
+            # Alignment & Action Bar
+            with ui.card().classes(
+                "w-full bg-slate-900/60 border border-white/10 rounded-xl p-3 my-2"
+            ):
+                with ui.row().classes(
+                    "w-full items-center justify-between gap-2 flex-wrap"
+                ):
+                    with ui.row().classes("items-center gap-1"):
+                        ui.label("Align:").classes(
+                            "text-xs font-semibold text-slate-400 mr-1"
+                        )
+                        ui.button(
+                            icon="format_align_left",
+                            on_click=self._align_left,
+                        ).props("flat dense").bind_enabled_from(
+                            self, "container", lambda x: len(list(x)) > 0
+                        ).tooltip(
+                            "Align Left"
+                        )
+                        ui.button(
+                            icon="vertical_align_top", on_click=self._align_top
+                        ).props("flat dense").bind_enabled_from(
+                            self, "container", lambda x: len(list(x)) > 0
+                        ).tooltip(
+                            "Align Top"
+                        )
+                        ui.button(
+                            icon="vertical_align_bottom",
+                            on_click=self._align_bottom,
+                        ).props("flat dense").bind_enabled_from(
+                            self, "container", lambda x: len(list(x)) > 0
+                        ).tooltip(
+                            "Align Bottom"
+                        )
+                        ui.button(
+                            icon="format_align_right",
+                            on_click=self._align_right,
+                        ).props("flat dense").bind_enabled_from(
+                            self, "container", lambda x: len(list(x)) > 0
+                        ).tooltip(
+                            "Align Right"
+                        )
+                        ui.button(
+                            icon="vertical_align_center",
+                            on_click=self._align_center,
+                        ).props("flat dense").bind_enabled_from(
+                            self, "container", lambda x: len(list(x)) > 0
+                        ).tooltip(
+                            "Align Center"
+                        )
+                        ui.button(
+                            icon="horizontal_distribute",
+                            on_click=self._distribute_horizontally,
+                        ).props("flat dense").bind_enabled_from(
+                            self, "container", lambda x: len(list(x)) > 1
+                        ).tooltip(
+                            "Distribute Horizontally"
+                        )
+                        ui.button(icon="aspect_ratio", on_click=self._resize_all).props(
+                            "flat dense"
+                        ).bind_enabled_from(
+                            self, "container", lambda x: len(list(x)) > 0
+                        ).tooltip(
+                            "Resize All to First ROI Size"
+                        )
+
+                    with ui.row().classes("items-center gap-2"):
+                        self.select_all = ui.checkbox(
+                            "Show All", on_change=self._select_all_rois
+                        ).tooltip("Toggle visibility of all bounding boxes on canvas")
+                        ui.button(
+                            "Add Dial ROI", icon="add", on_click=self._add_roi
+                        ).props("dense unelevated").classes(
+                            "bg-indigo-600 hover:bg-indigo-500 text-white text-xs "
+                            "px-2 py-1 font-medium"
+                        ).tooltip(
+                            "Add new analog dial bounding box"
+                        )
+
+            # ROI List Container
+            self.container = ui.column().classes("w-full gap-2 my-2")
+
+            # Inference & Testing Card
+            with ui.card().classes(
+                "w-full bg-slate-900/60 border border-white/10 rounded-xl "
+                "p-4 my-2 gap-3 shadow-md"
+            ):
+                with ui.row().classes(
+                    "w-full items-center gap-2 text-slate-300 font-semibold"
+                ):
+                    ui.icon("psychology", size="sm").classes("text-indigo-400")
+                    ui.label("Pointer Neural Network Model")
+
+                with ui.row().classes("w-full items-center gap-3 flex-wrap"):
+                    self.cnn_file = (
+                        ui.select(
+                            options=self._get_cnn_models(self.analog_models_dir),
+                            label="CNN Model File",
+                        )
+                        .classes("flex-grow min-w-[200px]")
+                        .tooltip(
+                            "Select TensorFlow Lite neural network model file "
+                            "for analog pointers"
+                        )
                     )
-                    .classes("w-3/5")
-                    .tooltip(
-                        "Select TensorFlow Lite neural network model file for "
-                        "analog pointers"
+                    self.cnn_type = (
+                        ui.select(
+                            options=["auto", "analog", "analog100"],
+                            value="auto",
+                            label="CNN Architecture",
+                        )
+                        .classes("w-40")
+                        .tooltip(
+                            "CNN architecture: auto (detect from output shape), "
+                            "analog (sin/cos pointer angles), or analog100 "
+                            "(continuous 0.0-9.9)"
+                        )
                     )
-                )
-                self.cnn_type = (
-                    ui.select(
-                        options=["auto", "analog", "analog100"],
-                        value="auto",
-                        label="CNN type",
-                    )
-                    .classes("w-1/5")
-                    .tooltip(
-                        "CNN architecture: auto (detect from output shape), "
-                        "analog (sin/cos pointer angles), or analog100 "
-                        "(continuous 0.0-9.9)"
-                    )
-                )
-            with ui.row():
-                ui.button("Test", icon="refresh", on_click=self._show_analogs).tooltip(
-                    "Digitize test result"
-                ).bind_enabled_from(
-                    self.cnn_file, "value", lambda x: x is not None and len(x) > 0
-                )
-                self.time = ui.label()
-            self.test_result_container = ui.row().classes("w-full")
+
+                with ui.row().classes(
+                    "w-full items-center justify-between pt-2 border-t border-white/10"
+                ):
+                    with ui.row().classes("items-center gap-2"):
+                        ui.button(
+                            "Run Inference Test",
+                            icon="play_arrow",
+                            on_click=self._show_analogs,
+                        ).props("unelevated").classes(
+                            "bg-gradient-to-r from-emerald-600 to-teal-600 "
+                            "hover:from-emerald-500 hover:to-teal-500 text-white "
+                            "font-medium"
+                        ).tooltip(
+                            "Digitize test result"
+                        ).bind_enabled_from(
+                            self.cnn_file,
+                            "value",
+                            lambda x: x is not None and len(x) > 0,
+                        )
+                        self.time = ui.label().classes(
+                            "text-xs font-mono text-slate-400"
+                        )
+
+                self.test_result_container = ui.row().classes("w-full")
 
             super().add_navigator(stepper, first_step, last_step)

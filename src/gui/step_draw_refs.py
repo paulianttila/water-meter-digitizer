@@ -56,6 +56,7 @@ class DrawRefsStep(DrawRoisBaseStep):
         state = self.select_all.value
         for roi in self.rois:
             roi.enabled = state
+        self._show_rois()
 
     def _add_roi(self) -> None:
         for roi in self.rois:
@@ -65,21 +66,27 @@ class DrawRefsStep(DrawRoisBaseStep):
     async def show(self, stepper, first_step=False, last_step=False) -> None:
         with ui.step(self.name):
             self.add_help(HELP_TEXT)
-            with ui.grid(columns="2fr 2fr 2fr 2fr 2fr 2fr").classes("w-full gap-2"):
-                self.select_all = ui.checkbox(
-                    "Show", on_change=self._select_all_rois
-                ).tooltip("Show all")
-                ui.label("Name")
-                ui.label("X-position")
-                ui.label("Y-position")
-                ui.label("Width")
-                ui.label("Height")
-            self.container = ui.row().classes("w-full")
-            with ui.row():
-                ui.button(icon="add", on_click=self._add_roi).tooltip(
-                    "Add reference point"
-                )
-                ui.button(icon="cancel", on_click=self._remove_roi).bind_enabled_from(
-                    self, "container", lambda x: len(list(x)) > 0
-                ).tooltip("Remove last reference point")
+
+            with ui.row().classes(
+                "w-full justify-between items-center px-3 py-2 rounded-xl "
+                "bg-slate-900/60 border border-white/10 mb-3"
+            ):
+                with ui.row().classes("items-center gap-2"):
+                    self.select_all = ui.checkbox(
+                        "Show all overlays", value=True, on_change=self._select_all_rois
+                    ).tooltip("Toggle all reference point overlays on canvas")
+
+                with ui.row().classes("items-center gap-2"):
+                    ui.button(
+                        "Add Reference Point",
+                        icon="add_circle_outline",
+                        on_click=self._add_roi,
+                    ).props("color=primary dense").classes(
+                        "px-3 py-1 text-xs font-semibold bg-gradient-to-r "
+                        "from-blue-600 to-cyan-600 text-white rounded-lg shadow-sm"
+                    ).tooltip(
+                        "Add a new reference landmark bounding box"
+                    )
+
+            self.container = ui.column().classes("w-full gap-2")
             super().add_navigator(stepper, first_step, last_step)

@@ -458,6 +458,26 @@ class SetupPage:
             step_forward = is_step_forward(step, self.previous_step)
             if step_forward:
                 logger.debug("Step forward")
+                if self.previous_step == NAME_DRAW_REFS or step == NAME_ADJUST:
+                    config_refs = self.callbacks.get_config().alignment.ref_images
+                    ref_images = []
+                    for roi in self.draw_refs_step.rois:
+                        matching_ref = next(
+                            (r for r in config_refs if r.name == roi.name),
+                            None,
+                        )
+                        file_name = matching_ref.file_name if matching_ref else ""
+                        ref_images.append(
+                            RefImage(
+                                name=roi.name,
+                                x=roi.x,
+                                y=roi.y,
+                                w=roi.w,
+                                h=roi.h,
+                                file_name=file_name,
+                            )
+                        )
+                    self.adjust_step.ref_images = ref_images
                 previous_img = get_image_by_step_name(self.previous_step)
                 set_image_by_step_name(step, previous_img)
                 img = get_image_by_step_name(step)
@@ -517,15 +537,26 @@ class SetupPage:
                 subtext="Check camera URL and click Download to retry",
             )
 
-        with ui.row().classes("w-full justify-between items-center mb-3"):
+        with ui.row().classes(
+            "w-full justify-between items-center mb-4 p-3 bg-slate-900/60 "
+            "border border-white/10 rounded-2xl shadow-md backdrop-blur-md"
+        ):
             with ui.row().classes("items-center gap-3"):
-                ui.label("Setup Wizard").classes("text-h4")
-                self.spinner = ui.spinner("dots", size="md", color="cyan")
+                ui.icon("auto_fix_high", size="md").classes("text-indigo-400")
+                with ui.column().classes("gap-0"):
+                    ui.label("Configuration Wizard").classes(
+                        "text-lg font-bold text-slate-100 leading-tight"
+                    )
+                    ui.label("Interactive Calibration & Deployment Pipeline").classes(
+                        "text-xs text-slate-400"
+                    )
+                self.spinner = ui.spinner("dots", size="md", color="indigo")
                 self.spinner.visible = False
-            ui.label("9-Step Visual Calibration").classes(
-                "text-xs font-semibold text-gray-400 bg-white/5 "
-                "border border-white/10 px-3 py-1 rounded-full"
-            )
+            with ui.row().classes("items-center gap-2"):
+                ui.label("9-Step Setup").classes(
+                    "text-xs font-semibold text-indigo-300 bg-indigo-950/70 "
+                    "border border-indigo-500/30 px-3 py-1 rounded-full shadow-inner"
+                )
 
         self.download_image_step = DownloadImageStep(
             name=NAME_DOWNLOAD_IMAGE,
@@ -588,29 +619,32 @@ class SetupPage:
             spinner=self.spinner,
         )
 
-        with ui.splitter(value=42).classes("w-full gap-4") as splitter:
+        with ui.splitter(value=42).classes("w-full gap-4 items-start") as splitter:
             with splitter.before:
                 with ui.element("div").classes(
-                    "w-full rounded-xl bg-slate-950 p-2.5 border border-white/10 "
-                    "shadow-lg shadow-black/40 flex flex-col gap-2"
+                    "sticky top-4 w-full rounded-2xl bg-slate-950/80 p-3 "
+                    "border border-white/10 shadow-2xl backdrop-blur-md "
+                    "flex flex-col gap-2"
                 ):
                     self.interactive_image = ui.interactive_image(
                         size=(640, 480),
                         on_mouse=mouse_handler,
                         events=["mousedown", "mouseup", "mousemove", "shiftKey"],
                         cross=True,
-                    ).classes("w-full rounded-lg bg-slate-900")
+                    ).classes("w-full rounded-xl bg-slate-900 shadow-inner")
                     with ui.row().classes(
-                        "w-full justify-between items-center px-2 py-1.5 "
-                        "rounded-lg bg-slate-900/80 border border-white/5 "
-                        "text-xs text-gray-400"
+                        "w-full justify-between items-center px-3 py-2 "
+                        "rounded-xl bg-slate-900/80 border border-white/5 "
+                        "text-xs text-slate-400"
                     ):
                         self.image_details = ui.label("").classes(
-                            "font-mono text-cyan-400"
+                            "font-mono text-cyan-400 font-semibold"
                         )
-                        self.mouse_position = ui.label("").classes("font-mono")
+                        self.mouse_position = ui.label("").classes(
+                            "font-mono text-slate-400"
+                        )
                         self.selected_position = ui.label("").classes(
-                            "font-mono text-emerald-400 font-semibold"
+                            "font-mono text-emerald-400 font-bold"
                         )
                     show_offline_placeholder(
                         "No Image Loaded",
@@ -620,7 +654,10 @@ class SetupPage:
                 with (
                     ui.stepper(on_value_change=lambda x: handle_stepper_change(x.value))
                     .props("vertical")
-                    .classes("w-full rounded-xl shadow-md") as stepper
+                    .classes(
+                        "w-full rounded-2xl shadow-xl bg-slate-900/40 border "
+                        "border-white/5"
+                    ) as stepper
                 ):
                     await self.download_image_step.show(stepper, first_step=True)
                     await self.initial_rotate_step.show(stepper)

@@ -77,6 +77,7 @@ class DrawRoisBaseStep(BaseStep):
                     color=self.colors[len(self.rois) % len(self.colors)],
                     enabled=True,
                 )
+                self.rois.append(roi)
                 self._add_roi_ui(roi)
             self._show_rois()
 
@@ -119,9 +120,27 @@ class DrawRoisBaseStep(BaseStep):
         return x, y, w, h
 
     def _remove_roi(self) -> None:
-        last = len(list(self.container)) - 1
-        self.container.remove(last)
-        self.rois.pop()
+        if self.rois:
+            self.rois.pop()
+            if (
+                hasattr(self, "container")
+                and self.container is not None
+                and len(list(self.container)) > 0
+            ):
+                last = len(list(self.container)) - 1
+                self.container.remove(last)
+            self._show_rois()
+
+    def _delete_roi(self, roi: Roi, row_elem) -> None:
+        if roi in self.rois:
+            self.rois.remove(roi)
+        if (
+            hasattr(self, "container")
+            and self.container is not None
+            and row_elem in self.container
+        ):
+            self.container.remove(row_elem)
+        self._show_rois()
 
     def _align_top(self) -> None:
         y = None
@@ -131,6 +150,7 @@ class DrawRoisBaseStep(BaseStep):
                     y = roi.y
                 else:
                     roi.y = y
+        self._show_rois()
 
     def _align_left(self) -> None:
         x = None
@@ -140,6 +160,7 @@ class DrawRoisBaseStep(BaseStep):
                     x = roi.x
                 else:
                     roi.x = x
+        self._show_rois()
 
     def _align_bottom(self) -> None:
         y = None
@@ -149,6 +170,7 @@ class DrawRoisBaseStep(BaseStep):
                     y = roi.y + roi.h
                 else:
                     roi.y = y - roi.h
+        self._show_rois()
 
     def _align_right(self) -> None:
         x = None
@@ -158,6 +180,7 @@ class DrawRoisBaseStep(BaseStep):
                     x = roi.x + roi.w
                 else:
                     roi.x = x - roi.w
+        self._show_rois()
 
     def _align_center(self) -> None:
         y = None
@@ -167,6 +190,7 @@ class DrawRoisBaseStep(BaseStep):
                     y = int(roi.y + roi.h / 2)
                 else:
                     roi.y = int(y - roi.h / 2)
+        self._show_rois()
 
     def _resize_all(self) -> None:
         search_first = True
@@ -176,15 +200,26 @@ class DrawRoisBaseStep(BaseStep):
         for roi in self.rois:
             if roi.enabled:
                 if search_first:
-                    # get width and height of the first selected roi
                     width = roi.w
                     height = roi.h
                     search_first = False
                 else:
-                    # set width and height of all other selected rois to the first
-                    # selected roi
                     roi.w = width
                     roi.h = height
+        self._show_rois()
+
+    def _distribute_horizontally(self) -> None:
+        enabled_rois = [roi for roi in self.rois if roi.enabled]
+        if len(enabled_rois) < 3:
+            return
+        enabled_rois.sort(key=lambda r: r.x)
+        min_x = enabled_rois[0].x
+        max_x = enabled_rois[-1].x
+        total_span = max_x - min_x
+        step = total_span / (len(enabled_rois) - 1)
+        for i, roi in enumerate(enabled_rois):
+            roi.x = int(min_x + i * step)
+        self._show_rois()
 
     def _get_cnn_models(self, dir: str) -> dict[str, str]:
         return {str(path): path.name for path in Path(dir).rglob("*.tflite")}
@@ -261,15 +296,15 @@ class DrawRoisBaseStep(BaseStep):
         )
 
     def _create_new_roi(self) -> Roi:
-        i = len(list(self.container))
+        i = len(self.rois)
         return Roi(
             color=self.colors[i % len(self.colors)],
-            name=f"{self.name_template}{i}",
+            name=f"{self.name_template}{i + 1}",
             enabled=True,
-            x=10 * i,
-            y=10 * i,
-            w=50,
-            h=50,
+            x=20 + (25 * (i % 8)),
+            y=20 + (25 * (i % 8)),
+            w=60,
+            h=80,
         )
 
     def _unselect_all_rois(self) -> None:
@@ -279,27 +314,43 @@ class DrawRoisBaseStep(BaseStep):
     def _add_roi(self) -> None:
         self._unselect_all_rois()
         roi = self._create_new_roi()
+        self.rois.append(roi)
         self._add_roi_ui(roi)
+        self._show_rois()
 
     def _add_roi_ui(self, roi: Roi) -> None:
         with self.container:
-            with ui.grid(columns="1fr 2fr 2fr 2fr 2fr 2fr").classes("w-full gap-2"):
-                ui.checkbox(on_change=self._show_rois).bind_value(roi, "enabled").props(
-                    f"color={roi.color} keep-color"
-                ).tooltip("Toggle ROI visibility on canvas")
-                ui.input().bind_value(roi, "name").tooltip(
-                    "Region of interest label / identifier"
+            with ui.row().classes(
+                "w-full items-center justify-between p-2 rounded-xl "
+                "bg-slate-900/70 border border-white/10 shadow-sm gap-2 mb-2"
+            ) as row_elem:
+                with ui.row().classes("items-center gap-2 flex-grow"):
+                    ui.checkbox(on_change=self._show_rois).bind_value(
+                        roi, "enabled"
+                    ).props(f"color={roi.color} keep-color").tooltip(
+                        "Toggle ROI overlay visibility on canvas"
+                    )
+                    ui.input(label="Name").bind_value(roi, "name").classes(
+                        "w-28 text-sm"
+                    ).tooltip("Region of interest name")
+                    ui.number("X", on_change=self._show_rois, step=1).bind_value(
+                        roi, "x", forward=lambda x: int(x or 0)
+                    ).classes("w-20 text-sm").tooltip("X coordinate in pixels")
+                    ui.number("Y", on_change=self._show_rois, step=1).bind_value(
+                        roi, "y", forward=lambda x: int(x or 0)
+                    ).classes("w-20 text-sm").tooltip("Y coordinate in pixels")
+                    ui.number("W", on_change=self._show_rois, min=1, step=1).bind_value(
+                        roi, "w", forward=lambda x: int(x or 1)
+                    ).classes("w-20 text-sm").tooltip("Width in pixels")
+                    ui.number("H", on_change=self._show_rois, min=1, step=1).bind_value(
+                        roi, "h", forward=lambda x: int(x or 1)
+                    ).classes("w-20 text-sm").tooltip("Height in pixels")
+
+                ui.button(
+                    icon="delete_outline",
+                    on_click=lambda r=roi, el=row_elem: self._delete_roi(r, el),
+                ).props("flat color=negative dense").classes(
+                    "rounded-lg hover:bg-red-500/20"
+                ).tooltip(
+                    "Delete this region"
                 )
-                ui.number(on_change=self._show_rois).bind_value(
-                    roi, "x", forward=lambda x: int(x)
-                ).tooltip("X position in pixels")
-                ui.number(on_change=self._show_rois).bind_value(
-                    roi, "y", forward=lambda x: int(x)
-                ).tooltip("Y position in pixels")
-                ui.number(on_change=self._show_rois).bind_value(
-                    roi, "w", forward=lambda x: int(x)
-                ).tooltip("Width in pixels")
-                ui.number(on_change=self._show_rois).bind_value(
-                    roi, "h", forward=lambda x: int(x)
-                ).tooltip("Height in pixels")
-                self.rois.append(roi)

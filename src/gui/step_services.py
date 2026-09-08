@@ -150,197 +150,263 @@ class ServicesStep(BaseStep):
         with ui.step(self.name):
             self.add_help(HELP_TEXT)
 
-            # Poller Section
-            with ui.expansion("Scheduled Background Poller", icon="schedule").classes(
-                "w-full bg-slate-900/60 border border-white/10 rounded-xl mb-2"
-            ):
-                with ui.row().classes("w-full items-center"):
-                    self.poller_enabled = ui.checkbox(
-                        "Enable Background Poller", value=False
-                    ).tooltip(
-                        "Enable automated background scheduled image capture "
-                        "and readout"
-                    )
-                    self.poller_run_on_startup = ui.checkbox(
-                        "Run on Startup", value=True
-                    ).tooltip("Trigger an immediate readout when the server starts up")
-                    self.poller_save_images = ui.checkbox(
-                        "Save Debug Images", value=False
-                    ).tooltip(
-                        "Save intermediate diagnostic debug crop images to disk on "
-                        "each scheduled run"
-                    )
+            with ui.column().classes("w-full gap-3 my-2"):
+                # Poller Section Card
+                with ui.card().classes(
+                    "w-full bg-slate-900/60 border border-white/10 rounded-xl "
+                    "p-4 gap-3 shadow-md"
+                ):
+                    with ui.row().classes("w-full items-center justify-between"):
+                        with ui.row().classes(
+                            "items-center gap-2 text-slate-300 font-semibold"
+                        ):
+                            ui.icon("schedule", size="sm").classes("text-amber-400")
+                            ui.label("Scheduled Background Poller")
+                        self.poller_enabled = ui.switch("Enabled").tooltip(
+                            "Enable automated background scheduled image capture "
+                            "and readout"
+                        )
 
-                with ui.grid(columns="1fr 1fr").classes("w-full gap-3 mt-2"):
-                    self.poller_interval = ui.number(
-                        "Interval (seconds)", value=300, min=5, step=10
-                    ).tooltip("Time between automatic readouts (e.g. 300 = 5 minutes)")
-                    self.poller_retry_interval = ui.number(
-                        "Retry Interval (seconds)", value=30, min=5, step=5
-                    ).tooltip("Delay before retrying after a failure")
+                    with ui.row().classes("w-full items-center gap-4 flex-wrap"):
+                        self.poller_run_on_startup = ui.checkbox(
+                            "Run on Startup", value=True
+                        ).tooltip(
+                            "Trigger an immediate readout when the server starts up"
+                        )
+                        self.poller_save_images = ui.checkbox(
+                            "Save Debug Images", value=False
+                        ).tooltip(
+                            "Save intermediate diagnostic debug crop images to "
+                            "disk on each scheduled run"
+                        )
 
-            # MQTT Section
-            with ui.expansion(
-                "MQTT & Home Assistant Discovery", icon="sensors"
-            ).classes("w-full bg-slate-900/60 border border-white/10 rounded-xl mb-2"):
-                with ui.row().classes("w-full items-center"):
-                    self.mqtt_enabled = ui.checkbox("Enable MQTT", value=False).tooltip(
-                        "Enable MQTT telemetry publishing for meter readings"
-                    )
-                    self.mqtt_tls = ui.checkbox("TLS Encryption", value=False).tooltip(
-                        "Enable TLS/SSL encryption for secure MQTT broker connection"
-                    )
-                    self.mqtt_retain = ui.checkbox(
-                        "Retain Messages", value=True
-                    ).tooltip(
-                        "Publish telemetry with MQTT retain flag so subscribers "
-                        "receive last known state on connect"
-                    )
-                    self.mqtt_ha_discovery = ui.checkbox(
-                        "Home Assistant Discovery", value=True
-                    ).tooltip(
-                        "Automatically publish Home Assistant MQTT Auto-Discovery "
-                        "configuration payloads"
-                    )
+                    with ui.grid(
+                        columns="repeat(auto-fit, minmax(180px, 1fr))"
+                    ).classes("w-full gap-3"):
+                        self.poller_interval = ui.number(
+                            "Interval (seconds)", value=300, min=5, step=10
+                        ).tooltip(
+                            "Time between automatic readouts (e.g. 300 = 5 minutes)"
+                        )
+                        self.poller_retry_interval = ui.number(
+                            "Retry Interval (seconds)", value=30, min=5, step=5
+                        ).tooltip("Delay before retrying after a failure")
 
-                with ui.grid(columns="2fr 1fr 1fr").classes("w-full gap-3 mt-2"):
-                    self.mqtt_broker = ui.input(
-                        "Broker Host", value="localhost"
-                    ).tooltip("MQTT broker IP address or hostname")
-                    self.mqtt_port = ui.number(
-                        "Port", value=1883, min=1, max=65535, step=1
-                    ).tooltip("MQTT broker port (e.g. 1883 for standard, 8883 for TLS)")
-                    self.mqtt_keepalive = ui.number(
-                        "Keepalive (s)", value=60, min=5, step=5
-                    ).tooltip("MQTT keepalive interval in seconds (default: 60)")
+                # MQTT Section Card
+                with ui.card().classes(
+                    "w-full bg-slate-900/60 border border-white/10 rounded-xl "
+                    "p-4 gap-3 shadow-md"
+                ):
+                    with ui.row().classes("w-full items-center justify-between"):
+                        with ui.row().classes(
+                            "items-center gap-2 text-slate-300 font-semibold"
+                        ):
+                            ui.icon("sensors", size="sm").classes("text-emerald-400")
+                            ui.label("MQTT & Home Assistant Discovery")
+                        self.mqtt_enabled = ui.switch("Enabled").tooltip(
+                            "Enable MQTT telemetry publishing for meter readings"
+                        )
 
-                with ui.grid(columns="1fr 1fr").classes("w-full gap-3 mt-2"):
-                    self.mqtt_username = ui.input(
-                        "Username", placeholder="Optional username"
-                    ).tooltip("Optional MQTT broker username authentication")
-                    self.mqtt_password = ui.input(
-                        "Password", password=True, placeholder="Optional password"
-                    ).tooltip("Optional MQTT broker password authentication")
+                    with ui.row().classes("w-full items-center gap-4 flex-wrap"):
+                        self.mqtt_tls = ui.checkbox(
+                            "TLS Encryption", value=False
+                        ).tooltip(
+                            "Enable TLS/SSL encryption for secure MQTT broker "
+                            "connection"
+                        )
+                        self.mqtt_retain = ui.checkbox(
+                            "Retain Messages", value=True
+                        ).tooltip(
+                            "Publish telemetry with MQTT retain flag so subscribers "
+                            "receive last known state on connect"
+                        )
+                        self.mqtt_ha_discovery = ui.checkbox(
+                            "Home Assistant Discovery", value=True
+                        ).tooltip(
+                            "Automatically publish Home Assistant MQTT Auto-Discovery "
+                            "configuration payloads"
+                        )
 
-                with ui.grid(columns="1fr 1fr").classes("w-full gap-3 mt-2"):
-                    self.mqtt_topic_prefix = ui.input(
-                        "Topic Prefix", value="watermeter"
-                    ).tooltip("Base MQTT topic prefix (e.g. watermeter)")
-                    self.mqtt_client_id = ui.input(
-                        "Client ID", value="water-meter-digitizer"
-                    ).tooltip("MQTT client identifier sent in connect packet")
+                    with ui.grid(
+                        columns="repeat(auto-fit, minmax(160px, 1fr))"
+                    ).classes("w-full gap-3"):
+                        self.mqtt_broker = ui.input(
+                            "Broker Host", value="localhost"
+                        ).tooltip("MQTT broker IP address or hostname")
+                        self.mqtt_port = ui.number(
+                            "Port", value=1883, min=1, max=65535, step=1
+                        ).tooltip(
+                            "MQTT broker port (e.g. 1883 for standard, 8883 for TLS)"
+                        )
+                        self.mqtt_keepalive = ui.number(
+                            "Keepalive (s)", value=60, min=5, step=5
+                        ).tooltip("MQTT keepalive interval in seconds (default: 60)")
 
-                with ui.grid(columns="1fr 1fr 1fr").classes("w-full gap-3 mt-2"):
-                    self.mqtt_discovery_prefix = ui.input(
-                        "HA Discovery Prefix", value="homeassistant"
-                    ).tooltip(
-                        "Home Assistant MQTT discovery root topic prefix "
-                        "(default: homeassistant)"
-                    )
-                    self.mqtt_device_name = ui.input(
-                        "Device Name", value="Water Meter Digitizer"
-                    ).tooltip(
-                        "Friendly device name displayed in Home Assistant device "
-                        "registry"
-                    )
-                    self.mqtt_device_id = ui.input(
-                        "Device ID", value="water_meter_digitizer"
-                    ).tooltip(
-                        "Unique device identifier for Home Assistant entity mapping"
-                    )
+                    with ui.grid(
+                        columns="repeat(auto-fit, minmax(180px, 1fr))"
+                    ).classes("w-full gap-3"):
+                        self.mqtt_username = ui.input(
+                            "Username", placeholder="Optional username"
+                        ).tooltip("Optional MQTT broker username authentication")
+                        self.mqtt_password = ui.input(
+                            "Password", password=True, placeholder="Optional password"
+                        ).tooltip("Optional MQTT broker password authentication")
 
-            # History Section
-            with ui.expansion("History & Storage", icon="history").classes(
-                "w-full bg-slate-900/60 border border-white/10 rounded-xl mb-2"
-            ):
-                with ui.row().classes("w-full items-center"):
-                    self.history_enabled = ui.checkbox(
-                        "Enable History Logging", value=True
-                    ).tooltip(
-                        "Enable persistent historical timeseries storage for "
-                        "meter readouts"
-                    )
-                    self.history_auto_vacuum = ui.checkbox(
-                        "Auto-Vacuum SQLite", value=True
-                    ).tooltip(
-                        "Enable automatic VACUUM on SQLite database to reclaim "
-                        "free disk space"
-                    )
+                    with ui.grid(
+                        columns="repeat(auto-fit, minmax(180px, 1fr))"
+                    ).classes("w-full gap-3"):
+                        self.mqtt_topic_prefix = ui.input(
+                            "Topic Prefix", value="watermeter"
+                        ).tooltip("Base MQTT topic prefix (e.g. watermeter)")
+                        self.mqtt_client_id = ui.input(
+                            "Client ID", value="water-meter-digitizer"
+                        ).tooltip("MQTT client identifier sent in connect packet")
 
-                with ui.grid(columns="1fr 1fr 1fr 1fr").classes("w-full gap-3 mt-2"):
-                    self.history_backend = ui.select(
-                        ["sqlite", "memory"], label="Backend", value="sqlite"
-                    ).tooltip(
-                        "Storage engine backend: SQLite (persistent file) or "
-                        "Memory (in-RAM)"
-                    )
-                    self.history_retention_days = ui.number(
-                        "Retention (Days)", value=30, min=0, step=1
-                    ).tooltip("0 to retain forever")
-                    self.history_max_records = ui.number(
-                        "Max Records", value=50000, min=0, step=1000
-                    ).tooltip("0 to disable record limit")
-                    self.history_prune_interval = ui.number(
-                        "Prune Interval", value=50, min=1, step=5
-                    ).tooltip("Readouts between automated pruning cycles")
+                    with ui.grid(
+                        columns="repeat(auto-fit, minmax(180px, 1fr))"
+                    ).classes("w-full gap-3"):
+                        self.mqtt_discovery_prefix = ui.input(
+                            "HA Discovery Prefix", value="homeassistant"
+                        ).tooltip(
+                            "Home Assistant MQTT discovery root topic prefix "
+                            "(default: homeassistant)"
+                        )
+                        self.mqtt_device_name = ui.input(
+                            "Device Name", value="Water Meter Digitizer"
+                        ).tooltip(
+                            "Friendly device name displayed in Home Assistant "
+                            "device registry"
+                        )
+                        self.mqtt_device_id = ui.input(
+                            "Device ID", value="water_meter_digitizer"
+                        ).tooltip(
+                            "Unique device identifier for Home Assistant "
+                            "entity mapping"
+                        )
 
-            # Zero-Flow & Leak Monitor Section
-            with ui.expansion(
-                "Zero-Flow Tracking & Leak Monitor", icon="water_damage"
-            ).classes("w-full bg-slate-900/60 border border-white/10 rounded-xl mb-2"):
-                with ui.row().classes("w-full items-center"):
-                    self.zero_flow_enabled = ui.checkbox(
-                        "Enable Zero-Flow Monitoring", value=False
-                    ).tooltip(
-                        "Detect continuous non-zero flow sustained over time "
-                        "without quiet periods"
-                    )
+                # History & Storage Card
+                with ui.card().classes(
+                    "w-full bg-slate-900/60 border border-white/10 rounded-xl "
+                    "p-4 gap-3 shadow-md"
+                ):
+                    with ui.row().classes("w-full items-center justify-between"):
+                        with ui.row().classes(
+                            "items-center gap-2 text-slate-300 font-semibold"
+                        ):
+                            ui.icon("history", size="sm").classes("text-blue-400")
+                            ui.label("History & Storage Backend")
+                        self.history_enabled = ui.switch("Enabled").tooltip(
+                            "Enable persistent historical timeseries storage "
+                            "for meter readouts"
+                        )
 
-                with ui.grid(columns="1fr 1fr 1fr").classes("w-full gap-3 mt-2"):
-                    self.zero_flow_meter_name = ui.input(
-                        "Target Meter Name", value="total"
-                    ).tooltip("Meter name to monitor for continuous flow")
-                    self.zero_flow_hours = ui.number(
-                        "Continuous Flow Alert (Hours)",
-                        value=2.0,
-                        min=0.1,
-                        step=0.5,
-                    ).tooltip("Hours of continuous flow before triggering a leak alert")
-                    self.zero_flow_min_volume = ui.number(
-                        "Min Leak Volume", value=0.010, min=0.0001, step=0.005
-                    ).tooltip(
-                        "Minimum cumulative volume required to trigger alert "
-                        "(filters optical jitter)"
-                    )
+                    with ui.row().classes("w-full items-center gap-4"):
+                        self.history_auto_vacuum = ui.checkbox(
+                            "Auto-Vacuum SQLite", value=True
+                        ).tooltip(
+                            "Enable automatic VACUUM on SQLite database to "
+                            "reclaim free disk space"
+                        )
 
-                with ui.grid(columns="1fr 1fr 1fr").classes("w-full gap-3 mt-2"):
-                    self.zero_flow_threshold = ui.number(
-                        "Flow Threshold", value=0.001, min=0.0001, step=0.0005
-                    ).tooltip("Minimum delta between readings to count as active flow")
-                    self.zero_flow_debounce_count = ui.number(
-                        "Resolve Debounce Count", value=2, min=1, step=1
-                    ).tooltip(
-                        "Consecutive zero readings required to auto-resolve alert"
-                    )
-                    self.zero_flow_max_history = ui.number(
-                        "Max History Events", value=50, min=5, step=10
-                    ).tooltip("Maximum historical leak events to retain")
+                    with ui.grid(
+                        columns="repeat(auto-fit, minmax(150px, 1fr))"
+                    ).classes("w-full gap-3"):
+                        self.history_backend = ui.select(
+                            ["sqlite", "memory"], label="Backend", value="sqlite"
+                        ).tooltip(
+                            "Storage engine backend: SQLite (persistent file) "
+                            "or Memory (in-RAM)"
+                        )
+                        self.history_retention_days = ui.number(
+                            "Retention (Days)", value=30, min=0, step=1
+                        ).tooltip("0 to retain forever")
+                        self.history_max_records = ui.number(
+                            "Max Records", value=50000, min=0, step=1000
+                        ).tooltip("0 to disable record limit")
+                        self.history_prune_interval = ui.number(
+                            "Prune Interval", value=50, min=1, step=5
+                        ).tooltip("Readouts between automated pruning cycles")
 
-            # Global Defaults Section
-            with ui.expansion("Global Settings", icon="settings").classes(
-                "w-full bg-slate-900/60 border border-white/10 rounded-xl mb-2"
-            ):
-                with ui.grid(columns="1fr 1fr").classes("w-full gap-3"):
-                    self.data_dir = ui.input("Data Directory", value="/data").tooltip(
-                        "Directory path for database, previous values, and "
-                        "debug artifacts"
-                    )
-                    self.min_confidence_threshold = ui.number(
-                        "Min Confidence Threshold (%)",
-                        value=50.0,
-                        min=0.0,
-                        max=100.0,
-                        step=1.0,
-                    ).tooltip("Reject readings below this confidence score")
+                # Zero-Flow & Leak Monitor Card
+                with ui.card().classes(
+                    "w-full bg-slate-900/60 border border-white/10 rounded-xl "
+                    "p-4 gap-3 shadow-md"
+                ):
+                    with ui.row().classes("w-full items-center justify-between"):
+                        with ui.row().classes(
+                            "items-center gap-2 text-slate-300 font-semibold"
+                        ):
+                            ui.icon("water_damage", size="sm").classes("text-cyan-400")
+                            ui.label("Zero-Flow Tracking & Leak Monitor")
+                        self.zero_flow_enabled = ui.switch("Enabled").tooltip(
+                            "Detect continuous non-zero flow sustained over time "
+                            "without quiet periods"
+                        )
+
+                    with ui.grid(
+                        columns="repeat(auto-fit, minmax(170px, 1fr))"
+                    ).classes("w-full gap-3"):
+                        self.zero_flow_meter_name = ui.input(
+                            "Target Meter Name", value="total"
+                        ).tooltip("Meter name to monitor for continuous flow")
+                        self.zero_flow_hours = ui.number(
+                            "Continuous Flow Alert (Hours)",
+                            value=2.0,
+                            min=0.1,
+                            step=0.5,
+                        ).tooltip(
+                            "Hours of continuous flow before triggering a leak alert"
+                        )
+                        self.zero_flow_min_volume = ui.number(
+                            "Min Leak Volume", value=0.010, min=0.0001, step=0.005
+                        ).tooltip(
+                            "Minimum cumulative volume required to trigger alert "
+                            "(filters optical jitter)"
+                        )
+
+                    with ui.grid(
+                        columns="repeat(auto-fit, minmax(170px, 1fr))"
+                    ).classes("w-full gap-3"):
+                        self.zero_flow_threshold = ui.number(
+                            "Flow Threshold", value=0.001, min=0.0001, step=0.0005
+                        ).tooltip(
+                            "Minimum delta between readings to count as active flow"
+                        )
+                        self.zero_flow_debounce_count = ui.number(
+                            "Resolve Debounce Count", value=2, min=1, step=1
+                        ).tooltip(
+                            "Consecutive zero readings required to auto-resolve alert"
+                        )
+                        self.zero_flow_max_history = ui.number(
+                            "Max History Events", value=50, min=5, step=10
+                        ).tooltip("Maximum historical leak events to retain")
+
+                # Global Defaults Card
+                with ui.card().classes(
+                    "w-full bg-slate-900/60 border border-white/10 rounded-xl "
+                    "p-4 gap-3 shadow-md"
+                ):
+                    with ui.row().classes(
+                        "w-full items-center gap-2 text-slate-300 font-semibold"
+                    ):
+                        ui.icon("settings", size="sm").classes("text-slate-400")
+                        ui.label("Global Settings")
+
+                    with ui.grid(
+                        columns="repeat(auto-fit, minmax(220px, 1fr))"
+                    ).classes("w-full gap-3"):
+                        self.data_dir = ui.input(
+                            "Data Directory", value="/data"
+                        ).tooltip(
+                            "Directory path for database, previous values, "
+                            "and debug artifacts"
+                        )
+                        self.min_confidence_threshold = ui.number(
+                            "Min Confidence Threshold (%)",
+                            value=50.0,
+                            min=0.0,
+                            max=100.0,
+                            step=1.0,
+                        ).tooltip("Reject readings below this confidence score")
 
             super().add_navigator(stepper, first_step, last_step)

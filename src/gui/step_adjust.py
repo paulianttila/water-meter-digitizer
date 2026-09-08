@@ -1,8 +1,9 @@
-from configuration import Config
 from typing import Callable
 
 from nicegui import ui
 
+from configuration import Config
+from data_classes import RefImage
 from processor.image import ImageProcessor
 from .step_base import BaseStep
 
@@ -29,6 +30,7 @@ class AdjustStep(BaseStep):
         )
         self.rotate_angle: ui.number
         self.org_image: str = ""
+        self.ref_images: list[RefImage] = []
 
     def update_image(self, image: str) -> None:
         self.org_image = image
@@ -111,15 +113,28 @@ class AdjustStep(BaseStep):
         self.alignment_min_match_score.value = config.alignment.min_match_score
         self.alignment_feature_detector.value = config.alignment.feature_detector
         self.alignment_transformation.value = config.alignment.transformation
+        self.ref_images = list(config.alignment.ref_images)
 
         # Rotation
         self.rotate_angle.value = config.alignment.post_rotate_angle
         self.rotate_enabled.value = config.alignment.post_rotate_angle != 0
 
     def _do_adjust(self, image: str) -> str:
+        ref_images = [
+            r for r in getattr(self, "ref_images", []) if getattr(r, "file_name", "")
+        ]
         return (
             ImageProcessor()
             .set_image_from_base64_str(image)
+            .if_(len(ref_images) > 0)
+            .align_image(
+                ref_images,
+                method=self.alignment_method.value or "hybrid",
+                min_match_score=float(self.alignment_min_match_score.value or 0.70),
+                feature_detector=self.alignment_feature_detector.value or "orb",
+                transformation=self.alignment_transformation.value or "auto",
+            )
+            .endif_()
             .if_(self.rotate_enabled.value)
             .rotate_image(self.rotate_angle.value)
             .endif_()
@@ -170,174 +185,300 @@ class AdjustStep(BaseStep):
         with ui.step(self.name):
             self.add_help(HELP_TEXT)
 
-            with ui.row().classes("w-full items-center"):
-                self.rotate_enabled = ui.checkbox("Enable Rotate", value=False).tooltip(
-                    "Enable fine rotation angle correction"
-                )
-                self.rotate_angle = ui.number(
-                    "Angle", min=-359, max=359, step=1, value=0
-                ).tooltip("Fine rotation angle in degrees (-359° to 359°)")
+            with ui.column().classes("w-full gap-3 my-2"):
+                # Geometry & Cropping Expansion
+                with ui.expansion(
+                    "Geometry & Cropping", icon="crop", value=True
+                ).classes(
+                    "w-full bg-slate-900/60 border border-white/10 rounded-xl "
+                    "shadow-md overflow-hidden"
+                ):
+                    with ui.column().classes("w-full gap-3 p-3"):
+                        with ui.row().classes("w-full items-center gap-4"):
+                            self.rotate_enabled = ui.checkbox(
+                                "Enable Rotation", value=False
+                            ).tooltip("Enable fine rotation angle correction")
+                            self.rotate_angle = (
+                                ui.number(
+                                    "Angle (°)", min=-359, max=359, step=1, value=0
+                                )
+                                .classes("w-28")
+                                .tooltip(
+                                    "Fine rotation angle in degrees (-359° to 359°)"
+                                )
+                            )
 
-            with ui.row().classes("w-full items-center"):
-                self.crop_enabled = ui.checkbox("Enable Crop", value=False).tooltip(
-                    "Enable rectangular cropping before alignment"
-                )
-                self.crop_x = ui.number("X", min=0, max=10000, step=1, value=0).tooltip(
-                    "Crop starting X position in pixels"
-                )
-                self.crop_y = ui.number("Y", min=0, max=10000, step=1, value=0).tooltip(
-                    "Crop starting Y position in pixels"
-                )
-                self.crop_w = ui.number(
-                    "Width", min=640, max=10000, step=1, value=0
-                ).tooltip("Crop area width in pixels")
-                self.crop_h = ui.number(
-                    "Height", min=480, max=10000, step=1, value=0
-                ).tooltip("Crop area height in pixels")
+                        with ui.row().classes("w-full items-center gap-2 flex-wrap"):
+                            self.crop_enabled = ui.checkbox(
+                                "Enable Crop", value=False
+                            ).tooltip("Enable rectangular cropping before alignment")
+                            self.crop_x = (
+                                ui.number("X", min=0, max=10000, step=1, value=0)
+                                .classes("w-20")
+                                .tooltip("Crop starting X position in pixels")
+                            )
+                            self.crop_y = (
+                                ui.number("Y", min=0, max=10000, step=1, value=0)
+                                .classes("w-20")
+                                .tooltip("Crop starting Y position in pixels")
+                            )
+                            self.crop_w = (
+                                ui.number("Width", min=640, max=10000, step=1, value=0)
+                                .classes("w-24")
+                                .tooltip("Crop area width in pixels")
+                            )
+                            self.crop_h = (
+                                ui.number("Height", min=480, max=10000, step=1, value=0)
+                                .classes("w-24")
+                                .tooltip("Crop area height in pixels")
+                            )
 
-            with ui.row().classes("w-full items-center"):
-                self.adjust_enabled = ui.checkbox("Enable Adjust", value=False).tooltip(
-                    "Enable color, brightness, contrast, and sharpness adjustments"
-                )
-                self.adjust_contrast = ui.number(
-                    "Contrast", min=-0, max=10, step=0.1, value=1.0
-                ).tooltip("Contrast adjustment factor (1.0 = normal)")
-                self.adjust_brightness = ui.number(
-                    "Brightness", min=-0, max=10, step=0.1, value=1.0
-                ).tooltip("Brightness adjustment factor (1.0 = normal)")
-                self.adjust_sharpness = ui.number(
-                    "Sharpness", min=-0, max=10, step=0.1, value=1.0
-                ).tooltip("Sharpness adjustment factor (1.0 = normal)")
-                self.adjust_color = ui.number(
-                    "Color", min=-0, max=10, step=0.1, value=1.0
-                ).tooltip("Color saturation factor (1.0 = normal, 0.0 = grayscale)")
+                        with ui.row().classes("w-full items-center gap-2 flex-wrap"):
+                            self.resize_enabled = ui.checkbox(
+                                "Enable Resize", value=False
+                            ).tooltip("Enable image resizing")
+                            self.resize_w = (
+                                ui.number("Width", min=0, max=10000, step=1, value=0)
+                                .classes("w-24")
+                                .tooltip("Resized image width in pixels")
+                            )
+                            self.resize_h = (
+                                ui.number("Height", min=0, max=10000, step=1, value=0)
+                                .classes("w-24")
+                                .tooltip("Resized image height in pixels")
+                            )
 
-            with ui.row().classes("w-full items-center"):
-                self.resize_enabled = ui.checkbox("Enable Resize", value=False).tooltip(
-                    "Enable image resizing"
-                )
-                self.resize_w = ui.number(
-                    "Width", min=-640, max=10000, step=1, value=0
-                ).tooltip("Resized image width in pixels")
-                self.resize_h = ui.number(
-                    "Height", min=-480, max=10000, step=1, value=0
-                ).tooltip("Resized image height in pixels")
+                # Tonal & Color Adjustments Expansion
+                with ui.expansion(
+                    "Tonal & Color Adjustments", icon="palette", value=False
+                ).classes(
+                    "w-full bg-slate-900/60 border border-white/10 rounded-xl "
+                    "shadow-md overflow-hidden"
+                ):
+                    with ui.column().classes("w-full gap-3 p-3"):
+                        with ui.row().classes("w-full items-center gap-4 flex-wrap"):
+                            self.adjust_enabled = ui.checkbox(
+                                "Enable Filters", value=False
+                            ).tooltip(
+                                "Enable color, brightness, contrast, and "
+                                "sharpness adjustments"
+                            )
+                            self.grayscale_enabled = ui.checkbox(
+                                "Grayscale", value=False
+                            ).tooltip("Convert the full image to grayscale")
 
-            with ui.row().classes("w-full items-center"):
-                self.grayscale_enabled = ui.checkbox(
-                    "Enable Grayscale image", value=False
-                ).tooltip("Convert the full image to grayscale")
+                        with ui.grid(
+                            columns="repeat(auto-fit, minmax(110px, 1fr))"
+                        ).classes("w-full gap-3"):
+                            self.adjust_contrast = ui.number(
+                                "Contrast", min=0, max=10, step=0.1, value=1.0
+                            ).tooltip("Contrast adjustment factor (1.0 = normal)")
+                            self.adjust_brightness = ui.number(
+                                "Brightness", min=0, max=10, step=0.1, value=1.0
+                            ).tooltip("Brightness adjustment factor (1.0 = normal)")
+                            self.adjust_sharpness = ui.number(
+                                "Sharpness", min=0, max=10, step=0.1, value=1.0
+                            ).tooltip("Sharpness adjustment factor (1.0 = normal)")
+                            self.adjust_color = ui.number(
+                                "Color", min=0, max=10, step=0.1, value=1.0
+                            ).tooltip(
+                                "Color saturation factor "
+                                "(1.0 = normal, 0.0 = grayscale)"
+                            )
 
-            with ui.row().classes("w-full items-center"):
-                self.autocontrast_enabled = ui.checkbox(
-                    "Enable Autocontrast", value=False
-                ).tooltip("Automatically optimize contrast histogram for full frame")
-                self.autocontrast_cutoff_low = ui.number(
-                    "Cutoff low", min=0, max=100, step=1, value=2
-                ).tooltip(
-                    "Percentage of darkest pixels removed before mapping (0–100%)"
-                )
-                self.autocontrast_cutoff_high = ui.number(
-                    "Cutoff high", min=0, max=100, step=1, value=45
-                ).tooltip(
-                    "Percentage of brightest pixels removed before mapping (0–100%)"
-                )
+                # Histogram & AutoContrast Expansion
+                with ui.expansion(
+                    "Histogram & AutoContrast", icon="auto_fix_high", value=False
+                ).classes(
+                    "w-full bg-slate-900/60 border border-white/10 rounded-xl "
+                    "shadow-md overflow-hidden"
+                ):
+                    with ui.column().classes("w-full gap-3 p-3"):
+                        with ui.row().classes("w-full items-center gap-2 flex-wrap"):
+                            self.autocontrast_enabled = ui.checkbox(
+                                "Full Frame AutoContrast", value=False
+                            ).tooltip(
+                                "Automatically optimize contrast histogram for "
+                                "full frame"
+                            )
+                            self.autocontrast_cutoff_low = (
+                                ui.number(
+                                    "Cutoff Low (%)", min=0, max=100, step=1, value=2
+                                )
+                                .classes("w-28")
+                                .tooltip(
+                                    "Percentage of darkest pixels removed before "
+                                    "mapping (0–100%)"
+                                )
+                            )
+                            self.autocontrast_cutoff_high = (
+                                ui.number(
+                                    "Cutoff High (%)", min=0, max=100, step=1, value=45
+                                )
+                                .classes("w-28")
+                                .tooltip(
+                                    "Percentage of brightest pixels removed before "
+                                    "mapping (0–100%)"
+                                )
+                            )
 
-            with ui.row().classes("w-full items-center"):
-                self.autocontrast_cut_images_enabled = ui.checkbox(
-                    "Enable Autocontrast for cut images", value=False
-                ).tooltip(
-                    "Apply automatic contrast stretching individually on cropped "
-                    "digit/pointer ROI images"
-                )
-                self.autocontrast_cut_images_cutoff_low = ui.number(
-                    "Cutoff low", min=0, max=100, step=1, value=2
-                ).tooltip("Low cutoff percentage for cropped ROI contrast stretching")
-                self.autocontrast_cut_images_cutoff_high = ui.number(
-                    "Cutoff high", min=0, max=100, step=1, value=45
-                ).tooltip("High cutoff percentage for cropped ROI contrast stretching")
+                        with ui.row().classes("w-full items-center gap-2 flex-wrap"):
+                            self.autocontrast_cut_images_enabled = ui.checkbox(
+                                "Cut Images (ROIs) AutoContrast", value=False
+                            ).tooltip(
+                                "Apply automatic contrast stretching individually on "
+                                "cropped digit/pointer ROI images"
+                            )
+                            self.autocontrast_cut_images_cutoff_low = (
+                                ui.number(
+                                    "Cutoff Low (%)", min=0, max=100, step=1, value=2
+                                )
+                                .classes("w-28")
+                                .tooltip(
+                                    "Low cutoff percentage for cropped ROI contrast "
+                                    "stretching"
+                                )
+                            )
+                            self.autocontrast_cut_images_cutoff_high = (
+                                ui.number(
+                                    "Cutoff High (%)", min=0, max=100, step=1, value=45
+                                )
+                                .classes("w-28")
+                                .tooltip(
+                                    "High cutoff percentage for cropped ROI contrast "
+                                    "stretching"
+                                )
+                            )
 
-            with ui.expansion(
-                "Glare & Specular Reflection Suppression", icon="flare"
-            ).classes("w-full bg-slate-900/60 border border-white/10 rounded-xl my-2"):
-                with ui.column().classes("w-full gap-2 p-2"):
-                    with ui.row().classes("w-full items-center"):
-                        self.glare_enabled = ui.checkbox(
-                            "Enable Glare Suppression", value=False
-                        ).tooltip("Suppress specular highlights on glossy meter glass")
-                        self.glare_apply_to_cut_images = ui.checkbox(
-                            "Apply to Cut Images (ROIs)", value=False
+                # Glare Suppression Expansion
+                with ui.expansion(
+                    "Glare & Specular Reflection Suppression",
+                    icon="flare",
+                    value=False,
+                ).classes(
+                    "w-full bg-slate-900/60 border border-white/10 rounded-xl "
+                    "shadow-md overflow-hidden"
+                ):
+                    with ui.column().classes("w-full gap-3 p-3"):
+                        with ui.row().classes("w-full items-center gap-4 flex-wrap"):
+                            self.glare_enabled = ui.checkbox(
+                                "Enable Glare Suppression", value=False
+                            ).tooltip(
+                                "Suppress specular highlights on glossy meter glass"
+                            )
+                            self.glare_apply_to_cut_images = ui.checkbox(
+                                "Apply to Cut Images (ROIs)", value=False
+                            ).tooltip(
+                                "Apply glare suppression to cropped digit/pointer "
+                                "images"
+                            )
+
+                        with ui.grid(
+                            columns="repeat(auto-fit, minmax(130px, 1fr))"
+                        ).classes("w-full gap-3"):
+                            self.glare_mode = ui.select(
+                                [
+                                    "clahe",
+                                    "inpaint",
+                                    "illumination_normalize",
+                                    "combined",
+                                ],
+                                label="Mode",
+                                value="clahe",
+                            ).tooltip(
+                                "Filter mode: clahe, inpaint, illumination_normalize, "
+                                "or combined"
+                            )
+                            self.glare_inpaint_threshold = ui.number(
+                                "Inpaint Threshold", min=100, max=255, step=1, value=230
+                            ).tooltip(
+                                "Luminance threshold (0–255) to detect "
+                                "specular hotspots"
+                            )
+                            self.glare_inpaint_radius = ui.number(
+                                "Inpaint Radius", min=1, max=20, step=1, value=3
+                            ).tooltip(
+                                "Radius in pixels for Telea inpainting around "
+                                "glare mask"
+                            )
+                            self.glare_clahe_clip_limit = ui.number(
+                                "CLAHE Clip Limit",
+                                min=0.1,
+                                max=10.0,
+                                step=0.5,
+                                value=2.0,
+                            ).tooltip("Threshold for contrast limiting in CLAHE")
+                            self.glare_clahe_grid_size = ui.number(
+                                "CLAHE Grid Size", min=2, max=32, step=1, value=8
+                            ).tooltip("Tile grid size for CLAHE (e.g. 8 for 8x8)")
+
+                # Alignment Algorithm Expansion
+                with ui.expansion(
+                    "Alignment Algorithm Parameters", icon="tune", value=False
+                ).classes(
+                    "w-full bg-slate-900/60 border border-white/10 rounded-xl "
+                    "shadow-md overflow-hidden"
+                ):
+                    with ui.grid(
+                        columns="repeat(auto-fit, minmax(140px, 1fr))"
+                    ).classes("w-full gap-3 p-3"):
+                        self.alignment_method = ui.select(
+                            ["hybrid", "template", "orb", "akaze", "sift"],
+                            label="Method",
+                            value="hybrid",
                         ).tooltip(
-                            "Apply glare suppression to cropped digit/pointer images"
+                            "Alignment algorithm: hybrid (fallback chain), template, "
+                            "orb, akaze, or sift"
                         )
-                    with ui.grid(columns="1fr 1fr 1fr 1fr 1fr").classes("w-full gap-3"):
-                        self.glare_mode = ui.select(
-                            ["clahe", "inpaint", "illumination_normalize", "combined"],
-                            label="Mode",
-                            value="clahe",
+                        self.alignment_min_match_score = ui.number(
+                            "Min Match Score", value=0.70, min=0.1, max=1.0, step=0.05
+                        ).tooltip("Minimum alignment template match score (0.10–1.00)")
+                        self.alignment_feature_detector = ui.select(
+                            ["orb", "akaze", "sift"],
+                            label="Feature Detector",
+                            value="orb",
                         ).tooltip(
-                            "Filter mode: clahe, inpaint, illumination_normalize, "
-                            "or combined"
+                            "Feature detector backend for keypoint matching: "
+                            "ORB, AKAZE, or SIFT"
                         )
-                        self.glare_inpaint_threshold = ui.number(
-                            "Inpaint Threshold", min=100, max=255, step=1, value=230
+                        self.alignment_transformation = ui.select(
+                            ["auto", "affine", "perspective"],
+                            label="Transformation",
+                            value="auto",
                         ).tooltip(
-                            "Luminance threshold (0–255) to detect specular hotspots"
+                            "Transformation model: auto (smart selection), affine "
+                            "(3-point), or perspective (4-point homography)"
                         )
-                        self.glare_inpaint_radius = ui.number(
-                            "Inpaint Radius", min=1, max=20, step=1, value=3
-                        ).tooltip(
-                            "Radius in pixels for Telea inpainting around glare mask"
-                        )
-                        self.glare_clahe_clip_limit = ui.number(
-                            "CLAHE Clip Limit", min=0.1, max=10.0, step=0.5, value=2.0
-                        ).tooltip("Threshold for contrast limiting in CLAHE")
-                        self.glare_clahe_grid_size = ui.number(
-                            "CLAHE Grid Size", min=2, max=32, step=1, value=8
-                        ).tooltip("Tile grid size for CLAHE (e.g. 8 for 8x8)")
 
-            with ui.expansion("Alignment Algorithm Parameters", icon="tune").classes(
-                "w-full bg-slate-900/60 border border-white/10 rounded-xl my-2"
+            # Preview & Reset Action Toolbar
+            with ui.row().classes(
+                "w-full items-center justify-between mt-2 pt-2 border-t "
+                "border-white/10"
             ):
-                with ui.grid(columns="1fr 1fr 1fr 1fr").classes("w-full gap-3 p-2"):
-                    self.alignment_method = ui.select(
-                        ["hybrid", "template", "orb", "akaze", "sift"],
-                        label="Method",
-                        value="hybrid",
-                    ).tooltip(
-                        "Alignment algorithm: hybrid (fallback chain), template, "
-                        "orb, akaze, or sift"
-                    )
-                    self.alignment_min_match_score = ui.number(
-                        "Min Match Score", value=0.70, min=0.1, max=1.0, step=0.05
-                    ).tooltip("Minimum alignment template match score (0.10–1.00)")
-                    self.alignment_feature_detector = ui.select(
-                        ["orb", "akaze", "sift"],
-                        label="Feature Detector",
-                        value="orb",
-                    ).tooltip(
-                        "Feature detector backend for keypoint matching: "
-                        "ORB, AKAZE, or SIFT"
-                    )
-                    self.alignment_transformation = ui.select(
-                        ["auto", "affine", "perspective"],
-                        label="Transformation",
-                        value="auto",
-                    ).tooltip(
-                        "Transformation model: auto (smart selection), affine "
-                        "(3-point), or perspective (4-point homography)"
-                    )
-
-            with ui.row().classes("w-full items-center"):
                 ui.button(
-                    icon="sym_s_resize", on_click=self.do_adjust
-                ).bind_enabled_from(self, "image", lambda image: image != "").tooltip(
-                    "Adjust image"
+                    "Preview Adjustments",
+                    icon="tune",
+                    on_click=self.do_adjust,
+                ).props("unelevated").classes(
+                    "bg-gradient-to-r from-blue-600 to-indigo-600 "
+                    "hover:from-blue-500 hover:to-indigo-500 text-white shadow-md "
+                    "transition-all font-medium"
+                ).bind_enabled_from(
+                    self, "image", lambda image: image != ""
+                ).tooltip(
+                    "Apply all current adjustment parameters to the preview canvas"
                 )
                 ui.button(
-                    icon="sym_s_restore", on_click=self._reset_image
-                ).bind_enabled_from(self, "image", lambda image: image != "").tooltip(
-                    "Restore original image"
+                    "Reset to Original",
+                    icon="restart_alt",
+                    on_click=self._reset_image,
+                ).props("outline").classes(
+                    "text-slate-300 border-white/20 hover:bg-white/10 "
+                    "transition-all font-medium"
+                ).bind_enabled_from(
+                    self, "image", lambda image: image != ""
+                ).tooltip(
+                    "Restore original unadjusted image"
                 )
 
             super().add_navigator(stepper, first_step, last_step)
