@@ -184,3 +184,111 @@ def test_adjust_step_debounced_on_param_change(
         cb.assert_called()
 
     asyncio.run(run_debounce_test())
+
+
+def test_adjust_step_comparison_callback_side_by_side(
+    sample_pil_image: Image.Image,
+) -> None:
+    """Verify side-by-side mode emits composite to set_comparison_callback."""
+    cb = MagicMock()
+    comp_cb = MagicMock()
+    step = AdjustStep(
+        name="Adjust",
+        set_image_callback=cb,
+        set_comparison_callback=comp_cb,
+    )
+
+    step.live_preview = MagicMock(value=True)
+    step.compare_mode = MagicMock(value="Side-by-Side")
+    step.crop_enabled = MagicMock(value=False)
+    step.crop_x = MagicMock(value=0)
+    step.crop_y = MagicMock(value=0)
+    step.crop_w = MagicMock(value=0)
+    step.crop_h = MagicMock(value=0)
+    step.resize_enabled = MagicMock(value=False)
+    step.resize_w = MagicMock(value=0)
+    step.resize_h = MagicMock(value=0)
+    step.rotate_enabled = MagicMock(value=False)
+    step.rotate_angle = MagicMock(value=0.0)
+    step.adjust_enabled = MagicMock(value=False)
+    step.adjust_contrast = MagicMock(value=1.0)
+    step.adjust_brightness = MagicMock(value=1.0)
+    step.adjust_sharpness = MagicMock(value=1.0)
+    step.adjust_color = MagicMock(value=1.0)
+    step.grayscale_enabled = MagicMock(value=False)
+    step.autocontrast_enabled = MagicMock(value=False)
+    step.autocontrast_cutoff_low = MagicMock(value=0.0)
+    step.autocontrast_cutoff_high = MagicMock(value=0.0)
+    step.glare_enabled = MagicMock(value=False)
+    step.glare_mode = MagicMock(value="clahe")
+    step.glare_inpaint_threshold = MagicMock(value=230)
+    step.glare_inpaint_radius = MagicMock(value=3)
+    step.glare_clahe_clip_limit = MagicMock(value=2.0)
+    step.glare_clahe_grid_size = MagicMock(value=8)
+
+    b64_orig = img_utils.convert_image_base64str(sample_pil_image)
+    step.org_image = b64_orig
+
+    async def run_test():
+        step._on_param_change()
+        await asyncio.sleep(0.2)
+        cb.assert_called_with(b64_orig)
+        comp_cb.assert_called()
+        # Non-empty base64 string
+        args, _ = comp_cb.call_args
+        assert isinstance(args[0], str)
+        assert len(args[0]) > 0
+
+    asyncio.run(run_test())
+
+
+def test_adjust_step_comparison_callback_single_clears(
+    sample_pil_image: Image.Image,
+) -> None:
+    """Verify single mode clears comparison image via set_comparison_callback."""
+    cb = MagicMock()
+    comp_cb = MagicMock()
+    step = AdjustStep(
+        name="Adjust",
+        set_image_callback=cb,
+        set_comparison_callback=comp_cb,
+    )
+
+    step.live_preview = MagicMock(value=True)
+    step.compare_mode = MagicMock(value="Single")
+    step.crop_enabled = MagicMock(value=False)
+    step.crop_x = MagicMock(value=0)
+    step.crop_y = MagicMock(value=0)
+    step.crop_w = MagicMock(value=0)
+    step.crop_h = MagicMock(value=0)
+    step.resize_enabled = MagicMock(value=False)
+    step.resize_w = MagicMock(value=0)
+    step.resize_h = MagicMock(value=0)
+    step.rotate_enabled = MagicMock(value=False)
+    step.rotate_angle = MagicMock(value=0.0)
+    step.adjust_enabled = MagicMock(value=False)
+    step.adjust_contrast = MagicMock(value=1.0)
+    step.adjust_brightness = MagicMock(value=1.0)
+    step.adjust_sharpness = MagicMock(value=1.0)
+    step.adjust_color = MagicMock(value=1.0)
+    step.grayscale_enabled = MagicMock(value=False)
+    step.autocontrast_enabled = MagicMock(value=False)
+    step.autocontrast_cutoff_low = MagicMock(value=0.0)
+    step.autocontrast_cutoff_high = MagicMock(value=0.0)
+    step.glare_enabled = MagicMock(value=False)
+    step.glare_mode = MagicMock(value="clahe")
+    step.glare_inpaint_threshold = MagicMock(value=230)
+    step.glare_inpaint_radius = MagicMock(value=3)
+    step.glare_clahe_clip_limit = MagicMock(value=2.0)
+    step.glare_clahe_grid_size = MagicMock(value=8)
+
+    b64_orig = img_utils.convert_image_base64str(sample_pil_image)
+    step.org_image = b64_orig
+
+    async def run_test():
+        step._on_param_change()
+        await asyncio.sleep(0.2)
+        cb.assert_called()
+        comp_cb.assert_called_with("")
+
+    asyncio.run(run_test())

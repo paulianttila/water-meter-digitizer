@@ -8,9 +8,9 @@ from configuration import Config
 from data_classes import RefImage
 from processor.image import ImageProcessor
 from .step_base import BaseStep
-import utils.image
 
 logger = logging.getLogger(__name__)
+
 
 HELP_TEXT = (
     "- **Live Visual Sliders**: Adjust parameters in real-time with instant "
@@ -33,6 +33,7 @@ class AdjustStep(BaseStep):
         self,
         name: str,
         set_image_callback: Callable[[str], None],
+        set_comparison_callback: Callable[[str], None] | None = None,
         spinner=None,
     ) -> None:
         super().__init__(
@@ -40,6 +41,7 @@ class AdjustStep(BaseStep):
             set_image_callback=set_image_callback,
             spinner=spinner,
         )
+        self.set_comparison_callback = set_comparison_callback
         self.org_image: str = ""
         self.ref_images: list[RefImage] = []
         self._debounce_task: asyncio.Task | None = None
@@ -92,6 +94,8 @@ class AdjustStep(BaseStep):
             self.image = self.org_image
         if self.set_image_callback is not None:
             self.set_image_callback(self.image)
+        if self.set_comparison_callback is not None:
+            self.set_comparison_callback("")
 
     def _on_param_change(self) -> None:
         """Debounced live preview update triggered by any slider or control."""
@@ -135,23 +139,18 @@ class AdjustStep(BaseStep):
         compare = getattr(self, "compare_mode", None)
         mode_val = compare.value if compare else "Single"
 
-        if mode_val == "Side-by-Side" and self.org_image:
-            try:
-                orig_aligned = self._get_base_aligned_image(self.org_image)
-                orig_pil = utils.image.convert_base64_str_to_image(orig_aligned)
-                adj_pil = utils.image.convert_base64_str_to_image(adjusted_b64)
-                comp_pil = utils.image.create_side_by_side_comparison(
-                    orig_pil, adj_pil, label_left="ORIGINAL", label_right="ADJUSTED"
-                )
-                display_b64 = utils.image.convert_image_base64str(comp_pil)
-            except Exception as e:
-                logger.debug(f"Side-by-side comparison failed: {e}")
-                display_b64 = adjusted_b64
+        if mode_val in ("Side-by-Side", "Compare") and self.org_image:
+            # Display original image on top interactive canvas
+            if self.set_image_callback is not None:
+                self.set_image_callback(self.org_image)
+            # Display adjusted image below status bar
+            if self.set_comparison_callback is not None:
+                self.set_comparison_callback(adjusted_b64)
         else:
-            display_b64 = adjusted_b64
-
-        if self.set_image_callback is not None:
-            self.set_image_callback(display_b64)
+            if self.set_comparison_callback is not None:
+                self.set_comparison_callback("")
+            if self.set_image_callback is not None:
+                self.set_image_callback(adjusted_b64)
 
     @BaseStep.decorator_spinner
     @BaseStep.decorator_catch_err

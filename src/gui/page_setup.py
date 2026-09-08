@@ -76,6 +76,11 @@ class SetupPage:
         self.services_step: ServicesStep
         self.final_step: FinalStep
         self.stepper: ui.stepper
+        self.wizard_prev_btn: ui.button
+        self.wizard_step_badge: ui.label
+        self.wizard_next_btn: ui.button
+        self.comparison_container: ui.column
+        self.comparison_image: ui.image
 
         self.previous_step: str = ""
 
@@ -483,11 +488,94 @@ class SetupPage:
             if step == NAME_FINAL:
                 self.refs_enabled_in_image = True
 
-            set_image(img)
+            if step == NAME_ADJUST:
+                self.adjust_step._update_preview_canvas()
+            else:
+                set_image(img)
+                set_comparison_image("")
+
             if step == NAME_FINAL:
                 gather_config()
                 self.final_step.set_config(self.config)
             self.previous_step = step
+            update_wizard_nav(step)
+
+        def set_comparison_image(base64_str: str = "") -> None:
+            if (
+                not hasattr(self, "comparison_container")
+                or self.comparison_container is None
+            ):
+                return
+            if base64_str:
+                self.comparison_image.set_source(f"data:image/jpeg;base64,{base64_str}")
+                self.comparison_container.set_visibility(True)
+
+                if (
+                    hasattr(self, "main_image_header")
+                    and self.main_image_header is not None
+                ):
+                    self.main_image_header.set_visibility(True)
+                    self.main_image_label.text = "Original Image"
+                    self.main_image_tag.text = "ORIGINAL"
+            else:
+                self.comparison_container.set_visibility(False)
+                if (
+                    hasattr(self, "main_image_header")
+                    and self.main_image_header is not None
+                ):
+                    if (
+                        hasattr(self, "stepper")
+                        and getattr(self.stepper, "value", "") == NAME_ADJUST
+                    ):
+                        self.main_image_header.set_visibility(True)
+                        self.main_image_label.text = "Adjusted Image Preview"
+                        self.main_image_tag.text = "ADJUSTED"
+                    else:
+                        self.main_image_header.set_visibility(False)
+
+        def update_wizard_nav(current_step: str) -> None:
+            if not hasattr(self, "wizard_prev_btn") or self.wizard_prev_btn is None:
+                return
+            idx = steps_order.index(current_step) if current_step in steps_order else 0
+            total = len(steps_order)
+
+            # Update Back button visibility
+            self.wizard_prev_btn.set_visibility(idx > 0)
+
+            # Update Step Badge
+            self.wizard_step_badge.text = f"Step {idx + 1} of {total}: {current_step}"
+
+            # Update Next button label & styling
+            if idx == total - 1:
+                self.wizard_next_btn.text = "Save Config"
+                self.wizard_next_btn.props("icon-right=save")
+                self.wizard_next_btn.classes(
+                    "px-5 py-2 rounded-xl text-sm font-semibold bg-gradient-to-r "
+                    "from-emerald-600 to-teal-600 hover:from-emerald-500 "
+                    "hover:to-teal-500 text-white shadow-lg "
+                    "shadow-emerald-950/40 transition-all",
+                    remove="from-blue-600 to-cyan-600 hover:from-blue-500 "
+                    "hover:to-cyan-500 shadow-cyan-950/40",
+                )
+            else:
+                self.wizard_next_btn.text = "Continue"
+                self.wizard_next_btn.props("icon-right=arrow_forward")
+                self.wizard_next_btn.classes(
+                    "px-5 py-2 rounded-xl text-sm font-semibold bg-gradient-to-r "
+                    "from-blue-600 to-cyan-600 hover:from-blue-500 "
+                    "hover:to-cyan-500 text-white shadow-lg "
+                    "shadow-cyan-950/40 transition-all",
+                    remove="from-emerald-600 to-teal-600 hover:from-emerald-500 "
+                    "hover:to-teal-500 shadow-emerald-950/40",
+                )
+
+        async def on_wizard_next() -> None:
+            curr = getattr(self.stepper, "value", steps_order[0])
+            idx = steps_order.index(curr) if curr in steps_order else 0
+            if idx == len(steps_order) - 1:
+                self.final_step._save_config()
+            else:
+                self.stepper.next()
 
         def show_offline_placeholder(
             message: str = "Camera Offline",
@@ -778,6 +866,7 @@ class SetupPage:
         self.adjust_step = AdjustStep(
             name=NAME_ADJUST,
             set_image_callback=set_image,
+            set_comparison_callback=set_comparison_image,
             spinner=self.spinner,
         )
         self.draw_digital_rois_step = DrawDigitalRoisStep(
@@ -819,7 +908,7 @@ class SetupPage:
 
         with (
             ui.splitter(value=42, limits=(20, 80))
-            .classes("w-full flex-1 min-h-0 items-start")
+            .classes("w-full flex-1 min-h-0 h-full")
             .props(
                 'separator-class="bg-white/10 hover:bg-indigo-500/70 '
                 'transition-all duration-200 cursor-col-resize" '
@@ -841,59 +930,170 @@ class SetupPage:
                     ui.element("div").classes("w-1 h-1 rounded-full bg-slate-400/80")
                     ui.element("div").classes("w-1 h-1 rounded-full bg-slate-400/80")
             with splitter.before:
-                with ui.element("div").classes(
-                    "w-full rounded-2xl bg-slate-950/80 p-3 "
+                with ui.column().classes(
+                    "w-full h-full rounded-2xl bg-slate-950/80 p-3 "
                     "border border-white/10 shadow-2xl backdrop-blur-md "
-                    "flex flex-col gap-2"
+                    "gap-3 overflow-y-auto overflow-x-hidden min-w-0 no-wrap"
                 ):
-                    self.interactive_image = ui.interactive_image(
-                        size=(640, 480),
-                        on_mouse=mouse_handler,
-                        events=["mousedown", "mouseup", "mousemove", "shiftKey"],
-                        cross=True,
-                    ).classes("w-full rounded-xl bg-slate-900 shadow-inner")
-                    with ui.row().classes(
-                        "w-full justify-between items-center px-3 py-2 "
-                        "rounded-xl bg-slate-900/80 border border-white/5 "
-                        "text-xs text-slate-400"
+                    # Original Image Card
+                    with ui.card().classes(
+                        "w-full p-2 bg-slate-900/60 border border-white/10 "
+                        "rounded-xl shadow-md flex flex-col gap-2 shrink-0 min-w-0"
                     ):
-                        self.image_details = ui.label("").classes(
-                            "font-mono text-cyan-400 font-semibold"
+                        with ui.row().classes(
+                            "w-full min-w-0 shrink-0 justify-between items-center px-1"
+                        ) as self.main_image_header:
+                            with ui.row().classes("items-center gap-1.5 min-w-0"):
+                                self.main_image_icon = ui.icon(
+                                    "image", size="xs"
+                                ).classes("text-indigo-400 shrink-0")
+                                self.main_image_label = ui.label(
+                                    "Original Image"
+                                ).classes(
+                                    "text-xs font-semibold text-slate-300 truncate"
+                                )
+                            self.main_image_tag = ui.label("ORIGINAL").classes(
+                                "text-[10px] font-mono font-bold text-cyan-400 "
+                                "px-2 py-0.5 rounded-md bg-cyan-950/60 "
+                                "border border-cyan-500/30 shrink-0"
+                            )
+
+                        self.interactive_image = ui.interactive_image(
+                            size=(640, 480),
+                            on_mouse=mouse_handler,
+                            events=["mousedown", "mouseup", "mousemove", "shiftKey"],
+                            cross=True,
+                        ).classes(
+                            "w-full max-w-full min-w-0 shrink-0 rounded-lg "
+                            "bg-slate-950 shadow-inner"
                         )
-                        self.mouse_position = ui.label("").classes(
-                            "font-mono text-slate-400"
+                        with ui.row().classes(
+                            "w-full min-w-0 shrink-0 justify-between items-center "
+                            "px-2 py-1.5 rounded-lg bg-slate-950/80 border "
+                            "border-white/5 text-xs text-slate-400 gap-2"
+                        ):
+                            self.image_details = ui.label("").classes(
+                                "font-mono text-cyan-400 font-semibold truncate"
+                            )
+                            self.mouse_position = ui.label("").classes(
+                                "font-mono text-slate-400 truncate"
+                            )
+                            self.selected_position = ui.label("").classes(
+                                "font-mono text-emerald-400 font-bold truncate"
+                            )
+                        show_offline_placeholder(
+                            "No Image Loaded",
+                            "Enter camera URL and click Download to start",
                         )
-                        self.selected_position = ui.label("").classes(
-                            "font-mono text-emerald-400 font-bold"
+
+                    # Adjusted Image Preview Card (under the status bar)
+                    with ui.card().classes(
+                        "w-full p-2 bg-slate-900/60 border border-white/10 "
+                        "rounded-xl shadow-md flex flex-col gap-2 shrink-0 min-w-0"
+                    ) as self.comparison_container:
+                        with ui.row().classes(
+                            "w-full min-w-0 shrink-0 items-center justify-between px-1"
+                        ):
+                            with ui.row().classes("items-center gap-1.5 min-w-0"):
+                                ui.icon("auto_fix_high", size="xs").classes(
+                                    "text-emerald-400 shrink-0"
+                                )
+                                ui.label("Adjusted Image").classes(
+                                    "text-xs font-semibold text-slate-300 truncate"
+                                )
+                            ui.label("ADJUSTED").classes(
+                                "text-[10px] font-mono font-bold text-emerald-400 "
+                                "px-2 py-0.5 rounded-md bg-emerald-950/60 "
+                                "border border-emerald-500/30 shrink-0"
+                            )
+
+                        self.comparison_image = (
+                            ui.image("")
+                            .props('fit=contain no-spinner ratio="1.3333"')
+                            .classes(
+                                "w-full max-w-full min-w-0 shrink-0 aspect-[4/3] "
+                                "min-h-[120px] rounded-lg bg-slate-950 shadow-inner"
+                            )
                         )
-                    show_offline_placeholder(
-                        "No Image Loaded",
-                        "Enter camera URL and click Download to start",
-                    )
+                    self.comparison_container.set_visibility(False)
+
             with splitter.after:
                 with ui.element("div").classes(
-                    "w-full max-h-[calc(100vh-175px)] overflow-y-auto pr-1"
+                    "w-full h-full flex flex-col justify-between min-h-0"
                 ):
-                    with (
-                        ui.stepper(
-                            on_value_change=lambda x: handle_stepper_change(x.value)
-                        )
-                        .props("vertical")
-                        .classes(
-                            "w-full rounded-2xl shadow-xl bg-slate-900/40 border "
-                            "border-white/5"
-                        ) as stepper
+                    with ui.element("div").classes(
+                        "w-full flex-1 min-h-0 overflow-y-auto pr-1"
                     ):
-                        self.stepper = stepper
-                        await self.download_image_step.show(stepper, first_step=True)
-                        await self.initial_rotate_step.show(stepper)
-                        await self.draw_refs_step.show(stepper)
-                        await self.adjust_step.show(stepper)
-                        await self.draw_digital_rois_step.show(stepper)
-                        await self.draw_analog_rois_step.show(stepper)
-                        await self.meters_step.show(stepper)
-                        await self.services_step.show(stepper)
-                        await self.final_step.show(stepper, last_step=True)
+                        with (
+                            ui.stepper(
+                                on_value_change=lambda x: handle_stepper_change(x.value)
+                            )
+                            .props("vertical")
+                            .classes(
+                                "w-full rounded-2xl shadow-xl bg-slate-900/40 "
+                                "border border-white/5"
+                            ) as stepper
+                        ):
+                            self.stepper = stepper
+                            await self.download_image_step.show(
+                                stepper, first_step=True
+                            )
+                            await self.initial_rotate_step.show(stepper)
+                            await self.draw_refs_step.show(stepper)
+                            await self.adjust_step.show(stepper)
+                            await self.draw_digital_rois_step.show(stepper)
+                            await self.draw_analog_rois_step.show(stepper)
+                            await self.meters_step.show(stepper)
+                            await self.services_step.show(stepper)
+                            await self.final_step.show(stepper, last_step=True)
+
+                    # Persistent Docked Bottom Navigation Bar
+                    with ui.row().classes(
+                        "w-full justify-between items-center p-3 mt-2 "
+                        "bg-slate-900/90 border border-white/10 rounded-2xl "
+                        "shadow-2xl backdrop-blur-md shrink-0"
+                    ):
+                        self.wizard_prev_btn = (
+                            ui.button(
+                                "Back",
+                                icon="arrow_back",
+                                on_click=lambda: self.stepper.previous(),
+                            )
+                            .props("flat color=grey text-color=white")
+                            .classes(
+                                "px-4 py-2 rounded-xl text-sm font-medium "
+                                "hover:bg-white/10 transition-all"
+                            )
+                            .tooltip("Return to previous step")
+                        )
+                        self.wizard_prev_btn.visible = False
+
+                        with ui.row().classes("items-center gap-2"):
+                            self.wizard_step_badge = ui.label(
+                                f"Step 1 of {len(steps_order)}: {steps_order[0]}"
+                            ).classes(
+                                "text-xs font-semibold text-slate-300 font-mono "
+                                "bg-slate-950/70 border border-white/10 px-3 "
+                                "py-1.5 rounded-xl shadow-inner"
+                            )
+
+                        self.wizard_next_btn = (
+                            ui.button(
+                                "Continue",
+                                on_click=on_wizard_next,
+                            )
+                            .props("unelevated icon-right=arrow_forward")
+                            .classes(
+                                "px-5 py-2 rounded-xl text-sm font-semibold "
+                                "bg-gradient-to-r from-blue-600 to-cyan-600 "
+                                "hover:from-blue-500 hover:to-cyan-500 "
+                                "text-white shadow-lg shadow-cyan-950/40 "
+                                "transition-all"
+                            )
+                            .tooltip("Proceed to next step")
+                        )
+
+        update_wizard_nav(self.stepper.value or steps_order[0])
 
         for img in self.callbacks.get_config().alignment.ref_images:
             if img.w == 0 or img.h == 0:

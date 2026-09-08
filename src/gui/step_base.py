@@ -68,25 +68,5 @@ class BaseStep:
                 ui.markdown(content).classes("text-caption leading-relaxed")
 
     def add_navigator(self, stepper, first_step=False, last_step=False) -> None:
-        with ui.stepper_navigation().classes(
-            "w-full flex justify-between items-center mt-4 pt-3 border-t "
-            "border-white/10"
-        ):
-            if not first_step:
-                ui.button("Back", icon="arrow_back", on_click=stepper.previous).props(
-                    "flat color=grey text-color=white"
-                ).classes("px-4 py-1.5 rounded-lg text-sm font-medium").tooltip(
-                    "Return to previous step"
-                )
-            else:
-                ui.element("div")  # Spacer to keep Next on the right
-
-            if not last_step:
-                ui.button("Continue", on_click=stepper.next).props(
-                    "icon-right=arrow_forward color=primary"
-                ).classes(
-                    "px-5 py-1.5 rounded-lg text-sm font-semibold bg-gradient-to-r "
-                    "from-blue-600 to-cyan-600 text-white shadow-md shadow-cyan-900/30"
-                ).tooltip(
-                    "Proceed to next step"
-                )
+        """Navigation is handled globally by the persistent wizard footer."""
+        pass

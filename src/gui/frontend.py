@@ -42,6 +42,24 @@ GLOBAL_CSS = (
         --radius-sm: 8px;
     }
 
+    html, body {
+        height: 100vh !important;
+        margin: 0 !important;
+        padding: 0 !important;
+        overflow: hidden !important;
+    }
+
+    .nicegui-content {
+        padding: 0 !important;
+        margin: 0 !important;
+        gap: 0 !important;
+        height: 100vh !important;
+        max-height: 100vh !important;
+        overflow: hidden !important;
+        display: flex !important;
+        flex-direction: column !important;
+    }
+
     body, body.body--dark {
         background-color: var(--bg-primary) !important;
         background-image:
@@ -168,7 +186,29 @@ GLOBAL_CSS = (
         resize: none !important;
         flex: 1 1 auto !important;
     }
+    .nicegui-interactive-image {
+        width: 100% !important;
+        max-width: 100% !important;
+        aspect-ratio: 4 / 3 !important;
+        min-height: 120px !important;
+        display: block !important;
+        position: relative !important;
+    }
+    .nicegui-interactive-image svg {
+        width: 100% !important;
+        height: 100% !important;
+        max-width: 100% !important;
+        display: block !important;
+    }
+    .nicegui-interactive-image img {
+        width: 100% !important;
+        height: 100% !important;
+        max-width: 100% !important;
+        object-fit: contain !important;
+        display: block !important;
+    }
 </style>
+
 <script>
     async function checkGuiHealth() {
         const badge = document.getElementById('gui-status-badge');
@@ -221,7 +261,7 @@ def init(fastapi_app: FastAPI, callbacks: Callbacks) -> None:
         # Top Navigation Bar
         with ui.row().classes(
             "w-full items-center justify-between px-4 py-2 border-b "
-            "border-white/10 bg-slate-950/80 backdrop-blur-md"
+            "border-white/10 bg-slate-950/80 backdrop-blur-md shrink-0 h-14"
         ):
             with ui.row().classes("items-center gap-3"):
                 with ui.element("div").classes(
@@ -260,7 +300,7 @@ def init(fastapi_app: FastAPI, callbacks: Callbacks) -> None:
                 ).classes("text-xs")
 
         with ui.splitter(value=7, limits=(6, 8)).classes(
-            "w-full h-[calc(100vh-60px)]"
+            "w-full flex-1 min-h-0"
         ) as splitter:
             with splitter.before:
                 with ui.tabs().props("vertical").classes("w-full") as tabs:
@@ -271,9 +311,11 @@ def init(fastapi_app: FastAPI, callbacks: Callbacks) -> None:
                     about = ui.tab("About", icon="info")
             with splitter.after:
                 with ui.tab_panels(tabs, value=main).classes(
-                    "w-full h-full p-4 overflow-auto"
+                    "w-full h-full p-4 overflow-hidden"
                 ):
-                    with ui.tab_panel(main):
+                    with ui.tab_panel(main).classes(
+                        "w-full h-full p-0 overflow-y-auto"
+                    ):
                         await meter_page.show()
                     with ui.tab_panel(setup).classes(
                         "w-full h-full p-0 overflow-hidden flex flex-col"
@@ -283,9 +325,13 @@ def init(fastapi_app: FastAPI, callbacks: Callbacks) -> None:
                         "w-full h-full p-0 overflow-hidden flex flex-col"
                     ):
                         config_page.show()
-                    with ui.tab_panel(help_tab):
+                    with ui.tab_panel(help_tab).classes(
+                        "w-full h-full p-0 overflow-y-auto"
+                    ):
                         help_page.show()
-                    with ui.tab_panel(about):
+                    with ui.tab_panel(about).classes(
+                        "w-full h-full p-0 overflow-y-auto"
+                    ):
                         about_page.show()
 
     # Nothing special is stored in the cookie, so it's fine to use random secret
