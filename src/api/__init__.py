@@ -1,4 +1,4 @@
-"""FastAPI APIRouter definitions for water-meter-system."""
+"""FastAPI APIRouter definitions for water-meter-digitizer."""
 
 from api.routes_system import router as system_router
 from api.routes_health import router as health_router

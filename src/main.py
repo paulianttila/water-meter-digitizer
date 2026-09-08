@@ -1,4 +1,4 @@
-"""Main application entry point and service orchestrator for water-meter-system."""
+"""Main application entry point and service orchestrator for water-meter-digitizer."""
 
 import argparse
 from contextlib import asynccontextmanager
