@@ -283,10 +283,6 @@ def test_step_adjust_load_autocontrast_cut_images():
     step.glare_clahe_clip_limit = MagicMock()
     step.glare_clahe_grid_size = MagicMock()
     step.glare_apply_to_cut_images = MagicMock()
-    step.alignment_method = MagicMock()
-    step.alignment_min_match_score = MagicMock()
-    step.alignment_feature_detector = MagicMock()
-    step.alignment_transformation = MagicMock()
     step.rotate_angle = MagicMock()
     step.rotate_enabled = MagicMock()
 

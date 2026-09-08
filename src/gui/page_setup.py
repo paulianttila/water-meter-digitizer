@@ -247,18 +247,6 @@ class SetupPage:
             config.alignment.post_rotate_angle = float(
                 self.adjust_step.rotate_angle.value or 0.0
             )
-            config.alignment.method = str(
-                self.adjust_step.alignment_method.value or "hybrid"
-            )
-            config.alignment.min_match_score = float(
-                self.adjust_step.alignment_min_match_score.value or 0.70
-            )
-            config.alignment.feature_detector = str(
-                self.adjust_step.alignment_feature_detector.value or "orb"
-            )
-            config.alignment.transformation = str(
-                self.adjust_step.alignment_transformation.value or "auto"
-            )
 
             for roi in self.draw_refs_step.rois:
                 config_dir = "${ConfigDir}"

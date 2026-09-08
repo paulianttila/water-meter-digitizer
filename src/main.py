@@ -337,13 +337,7 @@ def get_roi(
                 allowed_directories=get_allowed_asset_directories(),
             )
             .rotate_image(config.alignment.rotate_angle)
-            .align_image(
-                config.alignment.ref_images,
-                method=config.alignment.method,
-                min_match_score=config.alignment.min_match_score,
-                feature_detector=config.alignment.feature_detector,
-                transformation=config.alignment.transformation,
-            )
+            .align_image(config.alignment.ref_images)
             .if_(draw_refs)
             .draw_roi(config.alignment.ref_images, COLOR_GREEN)
             .endif_()
@@ -598,13 +592,7 @@ def get_meter_data(url: str = "", saveimages: bool = False) -> MeterResult:
         .save_image("original")
         .rotate_image(config.alignment.rotate_angle)
         .save_image("rotated")
-        .align_image(
-            config.alignment.ref_images,
-            method=config.alignment.method,
-            min_match_score=config.alignment.min_match_score,
-            feature_detector=config.alignment.feature_detector,
-            transformation=config.alignment.transformation,
-        )
+        .align_image(config.alignment.ref_images)
         .save_image("aligned")
         .rotate_image(config.alignment.post_rotate_angle)
         .save_image("post_rotated")

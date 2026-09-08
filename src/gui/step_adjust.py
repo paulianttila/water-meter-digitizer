@@ -108,11 +108,7 @@ class AdjustStep(BaseStep):
             config.image_processing.glare_suppression.apply_to_cut_images
         )
 
-        # Alignment Algorithm Parameters
-        self.alignment_method.value = config.alignment.method
-        self.alignment_min_match_score.value = config.alignment.min_match_score
-        self.alignment_feature_detector.value = config.alignment.feature_detector
-        self.alignment_transformation.value = config.alignment.transformation
+        # Alignment
         self.ref_images = list(config.alignment.ref_images)
 
         # Rotation
@@ -127,13 +123,7 @@ class AdjustStep(BaseStep):
             ImageProcessor()
             .set_image_from_base64_str(image)
             .if_(len(ref_images) > 0)
-            .align_image(
-                ref_images,
-                method=self.alignment_method.value or "hybrid",
-                min_match_score=float(self.alignment_min_match_score.value or 0.70),
-                feature_detector=self.alignment_feature_detector.value or "orb",
-                transformation=self.alignment_transformation.value or "auto",
-            )
+            .align_image(ref_images)
             .endif_()
             .if_(self.rotate_enabled.value)
             .rotate_image(self.rotate_angle.value)
@@ -411,44 +401,6 @@ class AdjustStep(BaseStep):
                             self.glare_clahe_grid_size = ui.number(
                                 "CLAHE Grid Size", min=2, max=32, step=1, value=8
                             ).tooltip("Tile grid size for CLAHE (e.g. 8 for 8x8)")
-
-                # Alignment Algorithm Expansion
-                with ui.expansion(
-                    "Alignment Algorithm Parameters", icon="tune", value=False
-                ).classes(
-                    "w-full bg-slate-900/60 border border-white/10 rounded-xl "
-                    "shadow-md overflow-hidden"
-                ):
-                    with ui.grid(
-                        columns="repeat(auto-fit, minmax(140px, 1fr))"
-                    ).classes("w-full gap-3 p-3"):
-                        self.alignment_method = ui.select(
-                            ["hybrid", "template", "orb", "akaze", "sift"],
-                            label="Method",
-                            value="hybrid",
-                        ).tooltip(
-                            "Alignment algorithm: hybrid (fallback chain), template, "
-                            "orb, akaze, or sift"
-                        )
-                        self.alignment_min_match_score = ui.number(
-                            "Min Match Score", value=0.70, min=0.1, max=1.0, step=0.05
-                        ).tooltip("Minimum alignment template match score (0.10–1.00)")
-                        self.alignment_feature_detector = ui.select(
-                            ["orb", "akaze", "sift"],
-                            label="Feature Detector",
-                            value="orb",
-                        ).tooltip(
-                            "Feature detector backend for keypoint matching: "
-                            "ORB, AKAZE, or SIFT"
-                        )
-                        self.alignment_transformation = ui.select(
-                            ["auto", "affine", "perspective"],
-                            label="Transformation",
-                            value="auto",
-                        ).tooltip(
-                            "Transformation model: auto (smart selection), affine "
-                            "(3-point), or perspective (4-point homography)"
-                        )
 
             # Preview & Reset Action Toolbar
             with ui.row().classes(
