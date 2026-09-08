@@ -167,15 +167,29 @@ water-meter-digitizer/
 - An affine transformation matrix is computed (`cv2.getAffineTransform`) to warp and rotate the frame back to canonical coordinate space, compensating for camera vibrations or physical movement.
 
 ### 3. Neural Network Inference & Interpreter Pooling
-The project supports four distinct model architectures:
+The project supports four distinct model architectures, organized in categorized subdirectories under `/config/neuralnets/`:
 
-| Model Type | Outputs | Architecture / Target |
-|---|---|---|
-| `analog` | 2 | Continuous `sin`/`cos` needle angle regression (0–10) |
-| `analog100` | 100 | High-resolution classification across 100 angular bins (0–9.99) |
-| `digital` | 11 | Classification for 0–9 digits plus an 11th class for half-transition/invalid |
-| `digital100` | 100 | Continuous 0–99 classification for rolling odometer drums |
+```
+config/neuralnets/
+├── digital/
+│   ├── class100/           # 100-class fractional digit classifiers (e.g. dig-class100_0168_s2_q.tflite)
+│   ├── class11/            # 11-class discrete digit classifiers (0-9 + NaN)
+│   ├── continuous/         # Continuous regression models
+│   └── legacy/             # Monolithic v6.2.0 models
+└── analog/
+    ├── class100/           # Discrete needle angle classifier
+    ├── continuous/         # Continuous needle angle regression
+    └── legacy/             # Monolithic v6.2.0 models
+```
 
+| Model Type | Outputs | Directory | Architecture / Target |
+|---|---|---|---|
+| `analog` | 2 | `analog/continuous/` | Continuous `sin`/`cos` needle angle regression (0–10) |
+| `analog100` | 100 | `analog/class100/` | High-resolution classification across 100 angular bins (0–9.99) |
+| `digital` | 11 | `digital/class11/` | Classification for 0–9 digits plus an 11th class for half-transition/invalid |
+| `digital100` | 100 | `digital/class100/` | Continuous 0–99 classification for rolling odometer drums |
+
+- **Quantized Models (`_q.tflite` / `⚡ Int8`)**: Models with `_q` suffix use 8-bit integer quantization, offering 3x–4x smaller disk/RAM footprints and significantly faster inference on edge CPUs (such as Raspberry Pi).
 - **LiteRT Runtime**: Models are executed via `ai_edge_litert` (Google LiteRT, with `tflite_runtime` and `tensorflow.lite` fallbacks) in `src/cnn/`.
 - **`InterpreterPool` (`src/cnn/pool.py`)**:
   - Model interpreters are pooled per model file using `queue.Queue` guarded by `threading.RLock`.

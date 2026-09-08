@@ -87,22 +87,24 @@ The **Setup** tab provides an 8-step guided configuration wizard. On the left is
 - **Alignment Tools**:
   - **Align Left / Right / Top / Bottom / Center**: Aligns selected ROIs along the specified edge or axis.
   - **Resize All**: Matches the dimensions of all selected ROIs to the first selected digit.
-- **CNN Model**: Choose a pre-trained `.tflite` model from `/config/neuralnets/digital`.
+- **CNN Model**: Choose a pre-trained `.tflite` model from `/config/neuralnets/digital` (organized by architecture: `class100/`, `class11/`, `continuous/`, and `legacy/`). Quantized models (`_q.tflite` / `⚡ Int8`) are recommended for optimal edge CPU performance.
 - **CNN Type**:
   - `auto`: Automatically detected from model shape.
   - `digital`: Standard classification (0–9 + invalid).
   - `digital100`: High-resolution continuous rolling digit model (0–99).
-- **Test Inference**: Click **Test** to crop the ROIs, run inference, and preview predicted digit numbers in real time.
+- **Test Inference**: Click **Test** to crop the ROIs, run inference on the selected model, and preview predicted digits with confidence percentages.
+- **Benchmark Models**: Click **Benchmark Models** to open the side-by-side evaluation dialog. Compares all candidate models against the cropped ROI ground-truth images, displays latency in `ms`, per-ROI predictions, and ranks models by confidence and speed with 1-click **Apply**.
 
 ### Step 6: Analog Region of Interest (ROIs)
 - Define circular bounding boxes for analog dial needles (`analog1`, `analog2`, ...).
 - **Alignment Tools**: Use the same left/top/center alignment and size matching tools as digital ROIs.
-- **CNN Model**: Choose a pre-trained `.tflite` model from `/config/neuralnets/analog`.
+- **CNN Model**: Choose a pre-trained `.tflite` model from `/config/neuralnets/analog` (organized by architecture: `class100/`, `continuous/`, and `legacy/`).
 - **CNN Type**:
   - `auto`: Detected from model shape.
   - `analog`: 0–10 continuous angle prediction.
   - `analog100`: High-resolution 100-class angular prediction (0–9.99).
 - **Test Inference**: Click **Test** to run needle angle detection and inspect real-time outputs.
+- **Benchmark Models**: Click **Benchmark Models** to benchmark all analog models against the dial needles and select the most accurate candidate.
 
 ### Step 7: Meters Definition
 - Define one or more named logical meters (e.g. `main`, `total`, `instant`).

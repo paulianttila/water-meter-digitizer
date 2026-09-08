@@ -24,8 +24,8 @@ def _find_model(rel_path: str) -> str:
     return os.path.join("config", rel_path)
 
 
-DIGITAL_MODEL = _find_model("neuralnets/digital/dig-class100_0168_s2_q.tflite")
-ANALOG_MODEL = _find_model("neuralnets/analog/ana-cont_1209_s2.tflite")
+DIGITAL_MODEL = _find_model("neuralnets/digital/class100/dig-class100_0168_s2_q.tflite")
+ANALOG_MODEL = _find_model("neuralnets/analog/continuous/ana-cont_1209_s2.tflite")
 
 
 def test_interpreter_pool_lifecycle():

@@ -1,5 +1,3 @@
-import dataclasses
-import json
 from typing import Callable
 
 from nicegui import ui
@@ -56,7 +54,7 @@ class FinalStep(BaseStep):
         try:
             config = Config()
             config.load_from_string(self.editor.value)
-            j = json.dumps(dataclasses.asdict(config), indent=4)
+            j = config.model_dump_json(indent=4)
             with ui.dialog() as dialog:
                 with ui.card().classes(
                     "bg-slate-900 border border-white/10 rounded-2xl p-4 "

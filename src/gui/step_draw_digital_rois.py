@@ -4,6 +4,7 @@ from typing import Callable
 from nicegui import ui
 
 from configuration import CNNParams
+from .step_base import BaseStep
 from .step_draw_rois_base import DrawRoisBaseStep
 from processor.digitizer import DigitizerProcessor
 
@@ -39,8 +40,8 @@ class DrawDigitalRoisStep(DrawRoisBaseStep):
             spinner=spinner,
         )
         self.digital_models_dir = digital_models_dir
-        self.cnn_file: ui.select
-        self.cnn_type: ui.select
+        self.cnn_file = None
+        self.cnn_type = None
 
     def load_from_config(self, digital_readout: CNNParams) -> None:
         if hasattr(self, "cnn_type") and self.cnn_type is not None:
@@ -100,10 +101,16 @@ class DrawDigitalRoisStep(DrawRoisBaseStep):
                     base64img = self._get_base64_image_by_name(
                         item.name, digital_images
                     )
+                    c = item.confidence
+                    c_color = (
+                        "text-emerald-400"
+                        if c >= 90
+                        else ("text-amber-400" if c >= 70 else "text-red-400")
+                    )
                     with ui.element("div").classes(
                         "p-2.5 rounded-lg bg-slate-900/80 border "
                         "border-white/10 flex flex-col items-center "
-                        "gap-1.5 min-w-[70px]"
+                        "gap-1 min-w-[70px]"
                     ):
                         ui.label(f"{item.name}").classes(
                             "text-[11px] text-gray-400 uppercase "
@@ -115,7 +122,30 @@ class DrawDigitalRoisStep(DrawRoisBaseStep):
                         ui.label(f"{self._convert_value(item.value)}").classes(
                             "font-['Outfit'] font-bold text-cyan-400 text-sm"
                         )
+                        ui.label(f"{c:.0f}%").classes(
+                            f"text-[10px] font-semibold {c_color} font-mono"
+                        ).tooltip(f"Confidence: {c:.1f}%")
         self.time.text = f"⏱ {round(time.time() - start_time, 2)}s"
+
+    @BaseStep.decorator_spinner
+    @BaseStep.decorator_catch_err
+    async def _benchmark_models(self) -> None:
+        def _apply(modelfile: str):
+            if hasattr(self, "cnn_file") and self.cnn_file is not None:
+                self.cnn_file.value = modelfile
+            self._show_digits()
+
+        cnn_type_val = (
+            self.cnn_type.value
+            if hasattr(self, "cnn_type") and self.cnn_type is not None
+            else "auto"
+        )
+        await self.open_benchmark_dialog(
+            models_dir=self.digital_models_dir,
+            model_type="digital",
+            cnn_type_val=cnn_type_val,
+            on_apply_callback=_apply,
+        )
 
     def _select_all_rois(self) -> None:
         state = self.select_all.value
@@ -264,6 +294,20 @@ class DrawDigitalRoisStep(DrawRoisBaseStep):
                             self.cnn_file,
                             "value",
                             lambda x: x is not None and len(x) > 0,
+                        )
+                        ui.button(
+                            "Benchmark Models",
+                            icon="analytics",
+                            on_click=self._benchmark_models,
+                        ).props("outline").classes(
+                            "text-indigo-300 border-indigo-500/40 "
+                            "hover:bg-indigo-500/10 font-medium"
+                        ).tooltip(
+                            "Benchmark and compare all models side-by-side"
+                        ).bind_enabled_from(
+                            self,
+                            "rois",
+                            lambda rois: len(rois) > 0,
                         )
                         self.time = ui.label().classes(
                             "text-xs font-mono text-slate-400"

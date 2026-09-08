@@ -79,7 +79,7 @@ def test_config():
     assert config.digital_readout.enabled is True
     assert (
         config.digital_readout.model_file
-        == "/config/neuralnets/digital/dig-class100_0168_s2_q.tflite"
+        == "/config/neuralnets/digital/class100/dig-class100_0168_s2_q.tflite"
     )
     assert config.digital_readout.model == "auto"
     assert config.digital_readout.cut_images == [
@@ -93,7 +93,7 @@ def test_config():
     assert config.analog_readout.enabled is True
     assert (
         config.analog_readout.model_file
-        == "/config/neuralnets/analog/ana-cont_1209_s2.tflite"
+        == "/config/neuralnets/analog/continuous/ana-cont_1209_s2.tflite"
     )
     assert config.analog_readout.model == "auto"
     assert config.analog_readout.cut_images == [

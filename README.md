@@ -163,7 +163,7 @@ All endpoints are served on port `3000`.
   "models": {
     "digital": {
       "enabled": true,
-      "path": "/config/neuralnets/digital/dig-class100_0168_s2_q.tflite",
+      "path": "/config/neuralnets/digital/class100/dig-class100_0168_s2_q.tflite",
       "exists": true,
       "size_bytes": 172832,
       "metrics": {
@@ -184,7 +184,7 @@ All endpoints are served on port `3000`.
     },
     "analog": {
       "enabled": true,
-      "path": "/config/neuralnets/analog/ana-cont_1209_s2.tflite",
+      "path": "/config/neuralnets/analog/continuous/ana-cont_1209_s2.tflite",
       "exists": true,
       "size_bytes": 145920,
       "metrics": {
@@ -573,7 +573,7 @@ y=386
 [Digits]
 Enabled=True
 names=digit1, digit2, digit3, digit4, digit5
-Modelfile=${DigitalModelsDir}/dig-class100_0168_s2_q.tflite
+Modelfile=${DigitalModelsDir}/class100/dig-class100_0168_s2_q.tflite
 Model=auto
 
 [Digits.digit1]
@@ -609,7 +609,7 @@ h=75
 [Analog]
 Enabled=True
 names=analog1, analog2, analog3, analog4
-Modelfile=${AnalogModelsDir}/ana-cont_1209_s2.tflite
+Modelfile=${AnalogModelsDir}/continuous/ana-cont_1209_s2.tflite
 Model=auto
 
 [Analog.analog1]
