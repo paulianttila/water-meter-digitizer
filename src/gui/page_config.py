@@ -3,13 +3,14 @@ from nicegui import ui
 
 from callbacks import Callbacks
 from configuration import Config
-
-TAG_AUTO_CLS = "bg-cyan-500/10 text-cyan-400 border border-cyan-500/20"
-TAG_SNAP_CLS = "bg-purple-500/10 text-purple-400 border border-purple-500/20"
-BADGE_AUTO_CLS = "bg-cyan-950/60 text-cyan-300 border border-cyan-500/30"
-BADGE_SNAP_CLS = "bg-purple-950/60 text-purple-300 border border-purple-500/30"
-BTN_ACTIVE_CLS = "bg-cyan-600/80 text-white"
-BTN_INACTIVE_CLS = "text-cyan-400 hover:bg-cyan-500/10"
+from gui.theme import (
+    BADGE_AUTO_CLS,
+    BADGE_SNAP_CLS,
+    BTN_ACTIVE_CLS,
+    BTN_INACTIVE_CLS,
+    TAG_AUTO_CLS,
+    TAG_SNAP_CLS,
+)
 
 
 def format_diff_html(diff_lines: list[str]) -> str:
@@ -496,67 +497,73 @@ class ConfigPage:
 
             history_dialog.open()
 
-        with ui.row().classes("w-full justify-between items-center mb-3"):
-            ui.label("Configuration Editor").classes("text-h4")
-            ui.label("config.ini").classes(
-                "font-mono text-xs text-cyan-400 bg-cyan-500/10 "
-                "border border-cyan-500/30 px-3 py-1 rounded-full"
-            )
-
-        with ui.row().classes(
-            "w-full items-center justify-between gap-3 mb-3 p-3 "
-            "rounded-xl bg-slate-900/60 border border-white/10"
+        with ui.column().classes(
+            "w-full h-full flex flex-col gap-3 p-4 overflow-hidden"
         ):
-            with ui.row().classes("items-center gap-2"):
-                ui.button("Reload", icon="refresh", on_click=load_config).props(
-                    "outline color=grey-4"
-                ).tooltip("Reload from disk")
-                ui.button("Validate", icon="verified", on_click=syntax_check).props(
-                    "outline color=cyan"
-                ).tooltip("Validate INI syntax")
-                button_save = (
-                    ui.button("Save", icon="save", on_click=save_config)
-                    .props("unelevated color=primary")
-                    .tooltip("Save changes to disk (creates backup)")
+            with ui.row().classes("w-full justify-between items-center shrink-0 mb-1"):
+                ui.label("Configuration Editor").classes("text-h4")
+                ui.label("config.ini").classes(
+                    "font-mono text-xs text-cyan-400 bg-cyan-500/10 "
+                    "border border-cyan-500/30 px-3 py-1 rounded-full"
                 )
-                button_undo = (
-                    ui.button("Undo", icon="undo", on_click=undo_config)
-                    .props("outline color=amber")
-                    .tooltip("Revert to previous backup")
-                )
-                button_use_config = (
-                    ui.button(
-                        "Apply Runtime",
-                        icon="sym_s_reopen_window",
-                        on_click=use_config,
+
+            with ui.row().classes(
+                "w-full items-center justify-between gap-3 p-3 "
+                "rounded-xl bg-slate-900/60 border border-white/10 shrink-0"
+            ):
+                with ui.row().classes("items-center gap-2"):
+                    ui.button("Reload", icon="refresh", on_click=load_config).props(
+                        "outline color=grey-4"
+                    ).tooltip("Reload from disk")
+                    ui.button("Validate", icon="verified", on_click=syntax_check).props(
+                        "outline color=cyan"
+                    ).tooltip("Validate INI syntax")
+                    button_save = (
+                        ui.button("Save", icon="save", on_click=save_config)
+                        .props("unelevated color=primary")
+                        .tooltip("Save changes to disk (creates backup)")
                     )
-                    .props("outline color=emerald")
-                    .tooltip("Hot-apply saved config into memory")
+                    button_undo = (
+                        ui.button("Undo", icon="undo", on_click=undo_config)
+                        .props("outline color=amber")
+                        .tooltip("Revert to previous backup")
+                    )
+                    button_use_config = (
+                        ui.button(
+                            "Apply Runtime",
+                            icon="sym_s_reopen_window",
+                            on_click=use_config,
+                        )
+                        .props("outline color=emerald")
+                        .tooltip("Hot-apply saved config into memory")
+                    )
+
+                with ui.row().classes("items-center gap-2"):
+                    ui.button(
+                        "History",
+                        icon="manage_history",
+                        on_click=open_history_dialog,
+                    ).props("outline color=indigo").tooltip(
+                        "Manage configuration backups and diffs"
+                    )
+
+                    ui.button(
+                        "Inspect JSON", icon="preview", on_click=show_config
+                    ).props("flat color=grey-4").tooltip(
+                        "Inspect parsed configuration schema"
+                    )
+
+            with ui.element("div").classes(
+                "w-full flex-1 min-h-[300px] rounded-xl bg-slate-950 p-3 "
+                "border border-white/10 flex flex-col overflow-hidden"
+            ):
+                editor = (
+                    ui.textarea(
+                        value=self.callbacks.load_config_file(),
+                        on_change=check_buttons,
+                    )
+                    .classes("w-full h-full config-editor-field font-mono text-sm")
+                    .props("borderless")
                 )
 
-            with ui.row().classes("items-center gap-2"):
-                ui.button(
-                    "History",
-                    icon="manage_history",
-                    on_click=open_history_dialog,
-                ).props("outline color=indigo").tooltip(
-                    "Manage configuration backups and diffs"
-                )
-
-                ui.button("Inspect JSON", icon="preview", on_click=show_config).props(
-                    "flat color=grey-4"
-                ).tooltip("Inspect parsed configuration schema")
-
-        with ui.element("div").classes(
-            "w-full rounded-xl bg-slate-950 p-3 border border-white/10"
-        ):
-            editor = (
-                ui.textarea(
-                    value=self.callbacks.load_config_file(),
-                    on_change=check_buttons,
-                )
-                .classes("w-full h-full font-mono text-sm")
-                .props("autoResize rows=28 borderless")
-            )
-
-        check_buttons()
+            check_buttons()

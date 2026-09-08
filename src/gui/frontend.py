@@ -156,6 +156,18 @@ GLOBAL_CSS = (
     ::-webkit-scrollbar-thumb:hover {
         background: rgba(99, 102, 241, 0.6);
     }
+    .config-editor-field,
+    .config-editor-field .q-field__control,
+    .config-editor-field .q-field__control-container {
+        height: 100% !important;
+        display: flex !important;
+        flex-direction: column !important;
+    }
+    .config-editor-field textarea {
+        height: 100% !important;
+        resize: none !important;
+        flex: 1 1 auto !important;
+    }
 </style>
 <script>
     async function checkGuiHealth() {
@@ -267,7 +279,9 @@ def init(fastapi_app: FastAPI, callbacks: Callbacks) -> None:
                         "w-full h-full p-0 overflow-hidden flex flex-col"
                     ):
                         await setup_page.show()
-                    with ui.tab_panel(config):
+                    with ui.tab_panel(config).classes(
+                        "w-full h-full p-0 overflow-hidden flex flex-col"
+                    ):
                         config_page.show()
                     with ui.tab_panel(help_tab):
                         help_page.show()

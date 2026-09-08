@@ -79,13 +79,19 @@ The system processes camera captures into structured meter values via a multi-st
 water-meter-digitizer/
 ├── config/                      # Sample runtime config and reference images
 ├── src/                         # Main application source code
-│   ├── main.py                  # Entrypoint: loads config, starts FastAPI & NiceGUI
+│   ├── main.py                  # Entrypoint: orchestrator, startup lifecycle, and service wiring
 │   ├── configuration.py         # INI configuration parser and dataclasses
 │   ├── data_classes.py          # Domain data models (MeterConfig, HealthResponse, etc.)
-│   ├── readout.py               # Readout orchestration and result aggregator
-│   ├── callbacks.py             # Event/action hooks across GUI and backend
+│   ├── callbacks.py             # Event/action hooks protocol across GUI and backend
 │   ├── previous_value.py        # Thread-safe persistence for last valid reading
 │   ├── config_history.py        # Backup management, unified diffs, and snapshots
+│   │
+│   ├── api/                     # Modular FastAPI REST APIRouters
+│   │   ├── routes_meter.py      # /meter, /image/*, /roi, /setPreviousValue, /get_previous_values
+│   │   ├── routes_health.py     # /health, /healthcheck, asset directory validation
+│   │   ├── routes_services.py   # /poller/*, /mqtt/*, /leak/*
+│   │   ├── routes_history.py    # /history/consumption, /history/readings, /history/stats
+│   │   └── routes_system.py     # /, /version, /reload, /exit
 │   │
 │   ├── cnn/                     # Google LiteRT / TFLite neural network runners
 │   │   ├── base.py              # Base CNN wrapper with async offloading
@@ -116,7 +122,11 @@ water-meter-digitizer/
 │   │
 │   ├── gui/                     # Web interface built with NiceGUI
 │   │   ├── frontend.py          # Top-level page router and theme
+│   │   ├── callbacks_impl.py    # Callbacks implementation connecting GUI to backend
+│   │   ├── dialog_benchmark.py  # Model benchmark evaluation modal dialog
+│   │   ├── theme.py             # Reusable design tokens and CSS class constants
 │   │   ├── page_meter.py        # Live meter readout display page
+│   │   ├── page_config.py       # Configuration editor with backup history & 1-click undo
 │   │   ├── page_setup.py        # Interactive 9-step setup wizard
 │   │   ├── step_base.py         # Base class for wizard steps (spinners, callbacks)
 │   │   ├── step_download.py     # Wizard: Camera URL capture & offline placeholder
@@ -130,7 +140,8 @@ water-meter-digitizer/
 │   │   └── step_final.py        # Wizard: Config saving & verification
 │   │
 │   ├── web/templates/           # Dashboard HTML/CSS templates
-│   │   ├── index.html           # Main dashboard, API explorer, diagnostics modal
+│   │   ├── index.html           # Main dashboard with health, liveness, leak, reload & baseline modals
+│   │   ├── meters.html          # Live meter readout page with refresh & intermediate crops
 │   │   ├── reload.html          # Configuration reload status feedback page
 │   │   └── roi.html             # Aligned ROI verification view
 │   │

@@ -624,6 +624,11 @@
                 </div>
             </div>
             <div class="nav-actions">
+                <button class="btn-nav" id="btn-refresh-meter" onclick="refreshReadout();" style="cursor: pointer;" title="Refresh live meter readout">
+                    <span id="refresh-spinner" class="spinner" style="display: none; width: 13px; height: 13px; border-width: 2px;"></span>
+                    <svg id="refresh-icon" width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+                    <span id="refresh-text">Refresh</span>
+                </button>
                 <a href="/" class="btn-nav">
                     <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"></path><polyline points="9 22 9 12 15 12 15 22"></polyline></svg>
                     <span>Home</span>
@@ -911,6 +916,18 @@
             } catch (e) {
                 console.error('Failed to copy', e);
             }
+        }
+
+        function refreshReadout() {
+            const btn = document.getElementById('btn-refresh-meter');
+            const spinner = document.getElementById('refresh-spinner');
+            const icon = document.getElementById('refresh-icon');
+            const text = document.getElementById('refresh-text');
+            if (btn) btn.disabled = true;
+            if (spinner) spinner.style.display = 'inline-block';
+            if (icon) icon.style.display = 'none';
+            if (text) text.textContent = 'Refreshing...';
+            window.location.reload();
         }
     </script>
 </body>

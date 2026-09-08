@@ -114,10 +114,13 @@ All endpoints are served on port `3000`.
 | `GET` | `/image/{image}` | Stream an image from in-memory cache (e.g. `original.jpg`, `aligned.jpg`, `roi.jpg`, `{roi_name}.jpg`) |
 | `GET` | `/image_tmp/{image}` | Backward-compatible alias for `/image/{image}` |
 | `GET` | `/setPreviousValue?name=<n>&value=<v>` | Manually set the stored previous value for a meter |
-| `GET` | `/reload` | Reload configuration from disk |
+| `GET` | `/get_previous_values` | Retrieve all stored baseline values and properties of meters with previous value tracking enabled |
+| `GET` | `/reload` | Reload configuration from disk (supports `?format=json`) |
 | `GET` | `/version` | Return app version information as JSON |
 | `GET` | `/health` | Rich JSON diagnostics: camera latency, memory, cache hit ratio, models, uptime |
 | `GET` | `/healthcheck` | Liveness check, returns `Health - OK` |
+| `GET` | `/leak/status` | Current zero-flow tracking state (`OK`, `FLOW_ACTIVE`, `LEAK_DETECTED`) and duration metrics |
+| `POST` | `/leak/reset` | Acknowledge/reset active leak detection state and counter |
 | `GET` | `/poller/status` | Current background poller status, last run, and next run schedule |
 | `POST` | `/poller/trigger` | Trigger an immediate background readout cycle |
 | `GET` | `/mqtt/status` | MQTT connection status, broker details, and topic prefix |

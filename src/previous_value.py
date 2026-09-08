@@ -59,3 +59,22 @@ def save_previous_value_to_file(file: str, section: str, value: str) -> None:
             }
         with open(file, "w") as cfg:
             config.write(cfg)
+
+
+def get_all_previous_values(file: str) -> dict[str, dict[str, str]]:
+    with _previous_value_lock:
+        if not os.path.exists(file):
+            return {}
+        config = configparser.ConfigParser()
+        try:
+            config.read(file)
+            result: dict[str, dict[str, str]] = {}
+            for section in config.sections():
+                result[section] = {
+                    "time": config.get(section, "Time", fallback=""),
+                    "value": config.get(section, "Value", fallback=""),
+                }
+            return result
+        except Exception as e:
+            logger.error(f"Failed to read previous value file '{file}': {e}")
+            return {}

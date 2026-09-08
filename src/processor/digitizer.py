@@ -227,10 +227,21 @@ class DigitizerProcessor:
         return self
 
     # ------------------------------------------------------------------
-    # CNN results evaluation
+    # CNN results evaluation & Predecessor Rollover Logic
+    # ------------------------------------------------------------------
+    # Predecessor chaining corrects physical odometer drum transitions.
+    # When a drum rolls from 9 -> 0, the adjacent higher-significance drum
+    # starts moving halfway. The predecessor value (lower drum) determines
+    # whether the higher drum has already crossed the threshold:
+    #
+    #   Lower Drum (Predecessor)      Higher Drum (Current)
+    #   ────────────────────────────────────────────────────────
+    #   Fractional part < 0.5   --->  Already rolled over: floor(current + 0.5) % 10
+    #   Fractional part >= 0.5  --->  Mid-transition: (digit - 1) % 10 or 9
     # ------------------------------------------------------------------
 
     def evaluate_cnn_results(self) -> "DigitizerProcessor":
+        """Evaluate raw CNN predictions into preliminary discrete digits."""
         available_values: dict[str, int | str] = {}
 
         for result in self.cnn_analog_results + self.cnn_digital_results:
