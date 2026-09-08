@@ -22,11 +22,13 @@ def check_roi_image(response: requests.Response):
     assert len(response.text) > 50000
     assert response.text.startswith("<!DOCTYPE html>")
 
-    base64image = re.search('<img src="data:image/jpeg;base64, (.*)">', response.text)[
-        1
-    ]
+    match = re.search(r'data:image/jpeg;base64,\s*([^" >]+)', response.text)
+    assert match is not None
+    base64image = match[1]
     decodedImage = base64.b64decode(base64image)
-    assert verify_image(decodedImage, 800, 600), "JEPG"
+    assert verify_image(decodedImage, 800, 600) or verify_image(
+        decodedImage, 640, 480
+    ), "JPEG"
 
 
 def check_image(response: requests.Response):

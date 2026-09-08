@@ -75,6 +75,7 @@ class SetupPage:
         self.meters_step: MeterStep
         self.services_step: ServicesStep
         self.final_step: FinalStep
+        self.stepper: ui.stepper
 
         self.previous_step: str = ""
 
@@ -525,6 +526,85 @@ class SetupPage:
                 subtext="Check camera URL and click Download to retry",
             )
 
+        async def reset_from_config_file() -> None:
+            try:
+                config_str = self.callbacks.load_config_file()
+                fresh_config = Config()
+                fresh_config.load_from_string(config_str)
+
+                for img in fresh_config.alignment.ref_images:
+                    if img.w == 0 or img.h == 0:
+                        img.w, img.h = ImageUtils.image_size_from_file(img.file_name)
+
+                self.download_image_step.load_from_config(fresh_config.image_source)
+                self.initial_rotate_step.load_from_config(fresh_config.alignment)
+                self.draw_refs_step.load_from_config(fresh_config.alignment.ref_images)
+                self.adjust_step.load_from_config(fresh_config)
+                self.draw_digital_rois_step.load_from_config(
+                    fresh_config.digital_readout
+                )
+                self.draw_analog_rois_step.load_from_config(fresh_config.analog_readout)
+                self.meters_step.load_from_config(fresh_config.meter_configs)
+                self.services_step.load_from_config(fresh_config)
+
+                self.previous_step = ""
+                if hasattr(self, "stepper") and self.stepper is not None:
+                    self.stepper.value = NAME_DOWNLOAD_IMAGE
+
+                if fresh_config.image_source.url:
+                    await self.download_image_step.download()
+
+                ui.notify("Wizard reset from config file", type="positive")
+            except Exception as e:
+                logger.error(f"Failed to reset wizard: {e}")
+                ui.notify(f"Reset failed: {e}", type="negative")
+
+        def open_reset_dialog() -> None:
+            with (
+                ui.dialog() as reset_dialog,
+                ui.card().classes(
+                    "bg-slate-900 border border-white/10 rounded-2xl p-5 "
+                    "max-w-md w-full gap-4"
+                ),
+            ):
+                with ui.row().classes("items-center gap-3"):
+                    with ui.element("div").classes(
+                        "w-10 h-10 rounded-xl bg-amber-500/20 "
+                        "border border-amber-500/30 flex items-center "
+                        "justify-center text-amber-400"
+                    ):
+                        ui.icon("restart_alt", size="md")
+                    with ui.column().classes("gap-0"):
+                        ui.label("Reset Configuration Wizard?").classes(
+                            "text-base font-bold text-slate-100"
+                        )
+                        ui.label("Discard unsaved changes").classes(
+                            "text-xs text-slate-400"
+                        )
+                ui.label(
+                    "All wizard fields, ROIs, and adjustment parameters will be "
+                    "reloaded from the current config file on disk."
+                ).classes("text-sm text-slate-300 leading-relaxed")
+                with ui.row().classes("w-full justify-end items-center gap-2 mt-2"):
+                    ui.button("Cancel", on_click=reset_dialog.close).props(
+                        "flat dense"
+                    ).classes("text-slate-300 px-3")
+
+                    async def on_confirm():
+                        reset_dialog.close()
+                        await reset_from_config_file()
+
+                    ui.button(
+                        "Reset to File",
+                        icon="restart_alt",
+                        on_click=on_confirm,
+                    ).props("unelevated dense").classes(
+                        "bg-gradient-to-r from-amber-600 to-orange-600 "
+                        "hover:from-amber-500 hover:to-orange-500 text-white "
+                        "font-medium px-4 shadow-md"
+                    )
+            reset_dialog.open()
+
         with ui.row().classes(
             "w-full justify-between items-center mb-3 p-3 bg-slate-900/60 "
             "border border-white/10 rounded-2xl shadow-md backdrop-blur-md shrink-0"
@@ -541,6 +621,17 @@ class SetupPage:
                 self.spinner = ui.spinner("dots", size="md", color="indigo")
                 self.spinner.visible = False
             with ui.row().classes("items-center gap-2"):
+                ui.button(
+                    "Reset to File",
+                    icon="restart_alt",
+                    on_click=open_reset_dialog,
+                ).props("outline dense").classes(
+                    "border-white/20 text-slate-300 hover:bg-white/10 text-xs "
+                    "font-medium px-3 py-1"
+                ).tooltip(
+                    "Reload all wizard values from saved config file"
+                )
+
                 ui.label("9-Step Setup").classes(
                     "text-xs font-semibold text-indigo-300 bg-indigo-950/70 "
                     "border border-indigo-500/30 px-3 py-1 rounded-full shadow-inner"
@@ -674,6 +765,7 @@ class SetupPage:
                             "border-white/5"
                         ) as stepper
                     ):
+                        self.stepper = stepper
                         await self.download_image_step.show(stepper, first_step=True)
                         await self.initial_rotate_step.show(stepper)
                         await self.draw_refs_step.show(stepper)
