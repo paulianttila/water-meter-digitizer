@@ -526,8 +526,8 @@ class SetupPage:
             )
 
         with ui.row().classes(
-            "w-full justify-between items-center mb-4 p-3 bg-slate-900/60 "
-            "border border-white/10 rounded-2xl shadow-md backdrop-blur-md"
+            "w-full justify-between items-center mb-3 p-3 bg-slate-900/60 "
+            "border border-white/10 rounded-2xl shadow-md backdrop-blur-md shrink-0"
         ):
             with ui.row().classes("items-center gap-3"):
                 ui.icon("auto_fix_high", size="md").classes("text-indigo-400")
@@ -609,7 +609,7 @@ class SetupPage:
 
         with (
             ui.splitter(value=42, limits=(20, 80))
-            .classes("w-full items-start")
+            .classes("w-full flex-1 min-h-0 items-start")
             .props(
                 'separator-class="bg-white/10 hover:bg-indigo-500/70 '
                 'transition-all duration-200 cursor-col-resize" '
@@ -632,7 +632,7 @@ class SetupPage:
                     ui.element("div").classes("w-1 h-1 rounded-full bg-slate-400/80")
             with splitter.before:
                 with ui.element("div").classes(
-                    "sticky top-4 w-full rounded-2xl bg-slate-950/80 p-3 "
+                    "w-full rounded-2xl bg-slate-950/80 p-3 "
                     "border border-white/10 shadow-2xl backdrop-blur-md "
                     "flex flex-col gap-2"
                 ):
@@ -661,23 +661,28 @@ class SetupPage:
                         "Enter camera URL and click Download to start",
                     )
             with splitter.after:
-                with (
-                    ui.stepper(on_value_change=lambda x: handle_stepper_change(x.value))
-                    .props("vertical")
-                    .classes(
-                        "w-full rounded-2xl shadow-xl bg-slate-900/40 border "
-                        "border-white/5"
-                    ) as stepper
+                with ui.element("div").classes(
+                    "w-full max-h-[calc(100vh-175px)] overflow-y-auto pr-1"
                 ):
-                    await self.download_image_step.show(stepper, first_step=True)
-                    await self.initial_rotate_step.show(stepper)
-                    await self.draw_refs_step.show(stepper)
-                    await self.adjust_step.show(stepper)
-                    await self.draw_digital_rois_step.show(stepper)
-                    await self.draw_analog_rois_step.show(stepper)
-                    await self.meters_step.show(stepper)
-                    await self.services_step.show(stepper)
-                    await self.final_step.show(stepper, last_step=True)
+                    with (
+                        ui.stepper(
+                            on_value_change=lambda x: handle_stepper_change(x.value)
+                        )
+                        .props("vertical")
+                        .classes(
+                            "w-full rounded-2xl shadow-xl bg-slate-900/40 border "
+                            "border-white/5"
+                        ) as stepper
+                    ):
+                        await self.download_image_step.show(stepper, first_step=True)
+                        await self.initial_rotate_step.show(stepper)
+                        await self.draw_refs_step.show(stepper)
+                        await self.adjust_step.show(stepper)
+                        await self.draw_digital_rois_step.show(stepper)
+                        await self.draw_analog_rois_step.show(stepper)
+                        await self.meters_step.show(stepper)
+                        await self.services_step.show(stepper)
+                        await self.final_step.show(stepper, last_step=True)
 
         for img in self.callbacks.get_config().alignment.ref_images:
             if img.w == 0 or img.h == 0:

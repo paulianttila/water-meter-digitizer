@@ -141,9 +141,20 @@ GLOBAL_CSS = (
         animation: none;
     }
 
-    @keyframes pulse {
-        0%, 100% { opacity: 1; transform: scale(1); }
-        50% { opacity: 0.5; transform: scale(0.85); }
+    /* Custom Sleek Scrollbar */
+    ::-webkit-scrollbar {
+        width: 6px;
+        height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+        background: transparent;
+    }
+    ::-webkit-scrollbar-thumb {
+        background: rgba(255, 255, 255, 0.15);
+        border-radius: 9999px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+        background: rgba(99, 102, 241, 0.6);
     }
 </style>
 <script>
@@ -252,7 +263,9 @@ def init(fastapi_app: FastAPI, callbacks: Callbacks) -> None:
                 ):
                     with ui.tab_panel(main):
                         await meter_page.show()
-                    with ui.tab_panel(setup):
+                    with ui.tab_panel(setup).classes(
+                        "w-full h-full p-0 overflow-hidden flex flex-col"
+                    ):
                         await setup_page.show()
                     with ui.tab_panel(config):
                         config_page.show()
