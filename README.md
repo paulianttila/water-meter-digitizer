@@ -91,10 +91,18 @@ uv run python src/main.py
 
 ## Web Interfaces
 
+<p align="center">
+  <img src="docs/images/web_dashboard.png" alt="Water Meter Web Dashboard" width="850">
+</p>
+
 - **`/` — API Explorer & Status Page**: Real-time summary of configured meters, last reading timestamps, interactive API documentation, and live preview.
 - **`/gui` — NiceGUI Web Dashboard**:
   - **Setup Wizard**: 9-step guided calibration flow (image capture, cropping/resizing, image processing, reference marker alignment, ROI bounding-box tuning, meter calculation setup, and background poller / MQTT / storage configuration). Supports 1-click config reset and backup restoration.
   - **Config Editor & History**: Direct visual and raw configuration editing with schema validation, 1-click Undo, automatic safety backups in `/config/backups/`, and inline line-by-line diff viewing.
+
+<p align="center">
+  <img src="docs/images/setup_wizard.png" alt="Setup Wizard & Canvas" width="850">
+</p>
 
 ---
 

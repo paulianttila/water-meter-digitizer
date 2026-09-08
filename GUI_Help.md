@@ -40,6 +40,8 @@ The interface is divided into a collapsible left sidebar and the main workspace:
 
 ## Meter Page (Live Readouts)
 
+![Meter Live Readouts](docs/images/meter_page.png)
+
 The **Meter** tab provides an operational overview of the digitizer:
 - **Trigger Readout**: Click the refresh button to capture a frame and perform immediate inference.
 - **Save Intermediate Images**: Checkbox to save rotated, aligned, and cropped ROI images to `/image/{name}` for diagnostics.
@@ -49,6 +51,8 @@ The **Meter** tab provides an operational overview of the digitizer:
 ---
 
 ## Setup Wizard (Step-by-Step)
+
+![Setup Wizard Overview](docs/images/setup_wizard.png)
 
 The **Setup** tab provides a 9-step guided configuration wizard. On the left is the **Interactive Image Canvas** (showing real-time coordinates, image dimensions, and SVG ROI overlays), and on the right is the **Step Navigator**.
 
