@@ -607,7 +607,29 @@ class SetupPage:
             spinner=self.spinner,
         )
 
-        with ui.splitter(value=42).classes("w-full gap-4 items-start") as splitter:
+        with (
+            ui.splitter(value=42, limits=(20, 80))
+            .classes("w-full items-start")
+            .props(
+                'separator-class="bg-white/10 hover:bg-indigo-500/70 '
+                'transition-all duration-200 cursor-col-resize" '
+                'separator-style="width: 2px; margin: 0 8px;"'
+            ) as splitter
+        ):
+            with splitter.add_slot("separator"):
+                with (
+                    ui.element("div")
+                    .classes(
+                        "w-2.5 h-8 -ml-[4px] rounded-full bg-slate-800/90 border "
+                        "border-white/20 flex flex-col items-center justify-center "
+                        "gap-0.5 hover:bg-indigo-600 hover:border-indigo-400 "
+                        "transition-all duration-150 shadow-md cursor-col-resize"
+                    )
+                    .tooltip("Resize panels")
+                ):
+                    ui.element("div").classes("w-1 h-1 rounded-full bg-slate-400/80")
+                    ui.element("div").classes("w-1 h-1 rounded-full bg-slate-400/80")
+                    ui.element("div").classes("w-1 h-1 rounded-full bg-slate-400/80")
             with splitter.before:
                 with ui.element("div").classes(
                     "sticky top-4 w-full rounded-2xl bg-slate-950/80 p-3 "
