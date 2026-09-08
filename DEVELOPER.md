@@ -332,10 +332,10 @@ Unit tests are written with `pytest` and verify mathematical helpers, configurat
 
 ```bash
 # Run all unit tests with uv
-uv run pytest tests/unit -v
+uv run python -m pytest tests/unit -v
 
 # Run a specific test module
-uv run pytest tests/unit/test_predecessor.py -v
+uv run python -m pytest tests/unit/test_predecessor.py -v
 ```
 
 ### Running Integration Tests (Tavern)

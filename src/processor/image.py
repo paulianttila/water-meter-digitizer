@@ -29,15 +29,6 @@ class ImageProcessor:
         self.enable_img_saving = False
         self.pictures: dict[str, Image] = {}
 
-    @property
-    def cutted_images(self) -> list[CutImage]:
-        """Backwards-compatible alias for cut_images_list."""
-        return self.cut_images_list
-
-    @cutted_images.setter
-    def cutted_images(self, value: list[CutImage]) -> None:
-        self.cut_images_list = value
-
     def if_(self, a) -> "ImageProcessor":
         self.condition = a
         return self
@@ -279,10 +270,6 @@ class ImageProcessor:
     def get_cut_images(self) -> list[CutImage]:
         return self.cut_images_list
 
-    def get_cutted_images(self) -> list[CutImage]:
-        """Backwards-compatible alias for get_cut_images."""
-        return self.get_cut_images()
-
     @_conditional_func
     def stop_image_cutting(self) -> "ImageProcessor":
         return self
@@ -292,11 +279,6 @@ class ImageProcessor:
         for img in self.cut_images_list:
             self.pictures[img.name] = img.image
         return self
-
-    @_conditional_func
-    def save_cutted_images(self) -> "ImageProcessor":
-        """Backwards-compatible alias for save_cut_images."""
-        return self.save_cut_images()
 
     @_conditional_func
     def draw_roi(

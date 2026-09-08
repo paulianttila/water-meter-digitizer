@@ -111,13 +111,22 @@ def rotate(image: Image, angle: float, keep_org_size: bool = True) -> Image:
 def align(image: Image, reference_images: Sequence[RefImage]) -> Image:
     if image is None:
         raise ValueError("No image to align")
+    if not reference_images:
+        return image
+
     data = convert_image_to_np_array(image)
     w, h = image.size
 
-    ref_image_coordinates = [
-        _get_ref_coordinate(data, cv2.imread(reference_images[i].file_name))  # TODO
-        for i in range(len(reference_images))
-    ]
+    ref_image_coordinates = []
+    for ref in reference_images:
+        template = cv2.imread(ref.file_name)
+        if template is None:
+            raise FileNotFoundError(
+                f"Alignment reference image file '{ref.file_name}' "
+                f"for marker '{ref.name}' could not be loaded"
+            )
+        ref_image_coordinates.append(_get_ref_coordinate(data, template))
+
     alignment_ref_pos = [
         (
             reference_images[i].x,
@@ -149,6 +158,9 @@ def _get_ref_coordinate(image: np.ndarray, template: np.ndarray) -> tuple[int, i
     Normalized coefficient correlation (CV_TM_CCOEFF_NORMED): In this method,
         the correlation coefficient is normalized.
     """
+    if image is None or template is None:
+        raise ValueError("Image and template must not be None")
+
     # method = cv2.TM_SQDIFF
     # method = cv2.TM_SQDIFF_NORMED
     # method = cv2.TM_CCORR_NORMED

@@ -149,15 +149,6 @@ class Config(BaseSettings):
     mqtt: MQTT = Field(default_factory=MQTT)
     zero_flow_monitor: ZeroFlowMonitor = Field(default_factory=ZeroFlowMonitor)
 
-    @property
-    def prevoius_value_file(self) -> str:
-        """Backwards-compatible alias for previous_value_file."""
-        return self.previous_value_file
-
-    @prevoius_value_file.setter
-    def prevoius_value_file(self, value: str) -> None:
-        self.previous_value_file = value
-
     def load_from_string(self, config_string: str) -> "Config":
         config = configparser.ConfigParser(
             interpolation=configparser.ExtendedInterpolation(),
