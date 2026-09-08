@@ -1,0 +1,35 @@
+# Version control
+.git
+.gitignore
+.gitattributes
+.github
+
+# Python bytecode & environments
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+env/
+venv/
+
+# Testing & QA
+.pytest_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+tests/
+test_config/
+test_config2/
+test_config3/
+run_tests.sh
+
+# IDE & OS files
+.vscode/
+.idea/
+.DS_Store
+*.swp
+
+# Temporary and local runtime data
+image_tmp/
+data/
+*.log
