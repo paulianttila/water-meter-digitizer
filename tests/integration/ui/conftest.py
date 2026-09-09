@@ -1,7 +1,9 @@
 """Pytest fixtures for Web UI integration testing using Playwright."""
 
 import os
+import re
 import socket
+import tempfile
 import threading
 import time
 from pathlib import Path
@@ -26,14 +28,53 @@ def live_server_url() -> Generator[str, None, None]:
     """Start the FastAPI + NiceGUI server in a background thread and yield URL."""
     import main
 
-    # Ensure test configuration is loaded
+    # Determine configuration file from env, /config, or repository config/
+    config_file_env = os.environ.get("CONFIG_FILE")
     project_root = Path(__file__).resolve().parents[3]
-    test_config_path = project_root / "test_config" / "config.ini"
-    if not test_config_path.exists():
-        test_config_path = Path("test_config/config.ini").resolve()
 
-    os.environ["CONFIG_FILE"] = str(test_config_path)
-    main.config_file = str(test_config_path)
+    candidates = [
+        Path(config_file_env).resolve() if config_file_env else None,
+        Path("/config/config.ini"),
+        project_root / "config" / "config.ini",
+        Path("config/config.ini").resolve(),
+    ]
+
+    selected_config = next(
+        (p for p in candidates if p is not None and p.is_file()), None
+    )
+    if selected_config is None:
+        raise RuntimeError("No valid configuration file found for UI tests.")
+
+    # If /config does not exist on filesystem, adapt ConfigDir to repo config/
+    temp_config_file = None
+    if not Path("/config").exists() and (project_root / "config").exists():
+        raw_text = selected_config.read_text()
+        repo_config_dir = str((project_root / "config").resolve())
+        adapted_text = re.sub(
+            r"^\s*ConfigDir\s*=\s*/config.*$",
+            f"ConfigDir = {repo_config_dir}",
+            raw_text,
+            flags=re.MULTILINE | re.IGNORECASE,
+        )
+        adapted_text = re.sub(
+            r"file:///config/",
+            f"file://{repo_config_dir}/",
+            adapted_text,
+            flags=re.IGNORECASE,
+        )
+        temp_file = tempfile.NamedTemporaryFile(
+            mode="w", suffix="_test_config.ini", delete=False
+        )
+        temp_file.write(adapted_text)
+        temp_file.flush()
+        temp_file.close()
+        temp_config_file = temp_file.name
+        final_config_path = temp_config_file
+    else:
+        final_config_path = str(selected_config)
+
+    os.environ["CONFIG_FILE"] = final_config_path
+    main.config_file = final_config_path
 
     main.init_config()
     main.init_gui(main.app)
@@ -69,12 +110,20 @@ def live_server_url() -> Generator[str, None, None]:
 
     if not server_ready:
         server.should_exit = True
+        if temp_config_file and os.path.exists(temp_config_file):
+            os.unlink(temp_config_file)
         raise RuntimeError(f"Server at {base_url} failed to start within timeout.")
 
     yield base_url
 
     server.should_exit = True
     thread.join(timeout=3.0)
+
+    if temp_config_file and os.path.exists(temp_config_file):
+        try:
+            os.unlink(temp_config_file)
+        except OSError:
+            pass
 
 
 @pytest.fixture(scope="session")

@@ -5,15 +5,21 @@ set -e
 # --- Configuration & Defaults ---
 TAVERN_LOG_LEVEL=${TAVERN_LOG_LEVEL:-INFO}
 PWD=$(pwd)
+AUTO_TEMP_CONFIG=""
 if [ -z "${CONFIG_FILE}" ]; then
-  if [ -f "${PWD}/test_config/config.ini" ]; then
-    export CONFIG_FILE="${PWD}/test_config/config.ini"
-  elif [ -f "/config/config.ini" ]; then
+  if [ -f "/config/config.ini" ]; then
     export CONFIG_FILE="/config/config.ini"
   elif [ -f "${PWD}/config/config.ini" ]; then
-    export CONFIG_FILE="${PWD}/config/config.ini"
-  else
-    export CONFIG_FILE="${PWD}/test_config/config.ini"
+    if [ ! -d "/config" ]; then
+      AUTO_TEMP_CONFIG="${PWD}/image_tmp/test_config.ini"
+      mkdir -p "${PWD}/image_tmp"
+      sed -e "s|^ConfigDir.*=.*|ConfigDir = ${PWD}/config|g" \
+          -e "s|file:///config/|file://${PWD}/config/|g" \
+          "${PWD}/config/config.ini" > "${AUTO_TEMP_CONFIG}"
+      export CONFIG_FILE="${AUTO_TEMP_CONFIG}"
+    else
+      export CONFIG_FILE="${PWD}/config/config.ini"
+    fi
   fi
 fi
 
@@ -56,6 +62,9 @@ stop_mqtt_broker() {
 clean_up() {
   stop_test_app
   stop_mqtt_broker
+  if [ -n "${AUTO_TEMP_CONFIG}" ] && [ -f "${AUTO_TEMP_CONFIG}" ]; then
+    rm -f "${AUTO_TEMP_CONFIG}"
+  fi
 }
 trap clean_up EXIT INT TERM
 
@@ -72,7 +81,7 @@ start_mqtt_broker() {
 
   if [ -n "${mosquitto_bin}" ]; then
     echo -e "${BLUE}Using Mosquitto broker: ${mosquitto_bin}${NC}"
-    "${mosquitto_bin}" -c "${PWD}/test_config/mosquitto.conf" &
+    "${mosquitto_bin}" -c "${PWD}/tests/integration/mosquitto.conf" &
     MQTT_BROKER_PID=$!
   else
     echo -e "${BLUE}Mosquitto not found, using Python amqtt broker...${NC}"
