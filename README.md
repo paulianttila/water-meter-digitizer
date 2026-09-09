@@ -76,6 +76,18 @@ docker compose up -d
 
 The web dashboard is available at **http://localhost:3000**.
 
+#### Supported Container Architectures
+
+Official multi-architecture container images are automatically built and published for:
+
+| Architecture | Device Target | Support Status | Notes |
+|---|---|---|---|
+| **`linux/amd64`** | x86-64 PCs, Intel/AMD Servers, Proxmox, NAS | ✅ Supported | Native 64-bit x86 |
+| **`linux/arm64`** | Raspberry Pi 3/4/5, Zero 2 W, Apple Silicon | ✅ Supported | Requires 64-bit OS |
+| **`linux/arm/v7`** | Legacy 32-bit Raspberry Pi 1/2 | ❌ Not Supported | Upstream LiteRT requires 64-bit |
+
+---
+
 ### Run Locally (development with `uv`)
 
 ```bash
