@@ -19,6 +19,10 @@ logger = logging.getLogger(__name__)
 _callbacks: Callbacks
 
 GLOBAL_CSS = (
+    f'<link rel="icon" type="image/svg+xml" href="/static/favicon.svg?v={VERSION}">\n'
+    f'<link rel="icon" type="image/x-icon" href="/static/favicon.ico?v={VERSION}">\n'
+    f'<link rel="apple-touch-icon" href="/static/apple-touch-icon.png?v={VERSION}">\n'
+    f'<link rel="mask-icon" href="/static/favicon.svg?v={VERSION}" color="#3b82f6">\n'
     '<link rel="preconnect" href="https://fonts.googleapis.com">\n'
     '<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>\n'
     '<link href="https://fonts.googleapis.com/css2?'
@@ -250,7 +254,11 @@ def init(fastapi_app: FastAPI, callbacks: Callbacks) -> None:
     global _callbacks
     _callbacks = callbacks
 
-    @ui.page("/")
+    @ui.page(
+        "/",
+        title="Water Meter Digitizer",
+        favicon=f"/static/favicon.svg?v={VERSION}",
+    )
     async def show() -> None:
         ui.dark_mode(True)
         ui.add_head_html(GLOBAL_CSS)

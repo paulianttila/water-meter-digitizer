@@ -5,7 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="description" content="Configuration reload status for Water Meter Digitizer.">
     <title>{% if error %}Reload Failed{% else %}Configuration Reloaded{% endif %} - Water Meter Digitizer</title>
-    <link id="favicon" rel="icon" type="image/x-icon" href="/static/favicon.ico">
+    <link id="favicon-svg" rel="icon" type="image/svg+xml" href="/static/favicon.svg?v={{ version or '1.0.0' }}">
+    <link id="favicon" rel="icon" type="image/x-icon" href="/static/favicon.ico?v={{ version or '1.0.0' }}">
+    <link rel="apple-touch-icon" href="/static/apple-touch-icon.png?v={{ version or '1.0.0' }}">
+    <link rel="mask-icon" href="/static/favicon.svg?v={{ version or '1.0.0' }}" color="#3b82f6">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@600;700;800&family=JetBrains+Mono:wght@400;500;600&display=swap" rel="stylesheet">

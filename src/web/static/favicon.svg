@@ -1,0 +1,51 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="100%" height="100%">
+  <defs>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#0f172a" />
+      <stop offset="100%" stop-color="#020617" />
+    </linearGradient>
+    <linearGradient id="gaugeGrad" x1="0%" y1="100%" x2="100%" y2="0%">
+      <stop offset="0%" stop-color="#2563eb" />
+      <stop offset="50%" stop-color="#06b6d4" />
+      <stop offset="100%" stop-color="#10b981" />
+    </linearGradient>
+    <linearGradient id="dropGrad" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#38bdf8" />
+      <stop offset="50%" stop-color="#2563eb" />
+      <stop offset="100%" stop-color="#1d4ed8" />
+    </linearGradient>
+    <filter id="glow" x="-20%" y="-20%" width="140%" height="140%">
+      <feGaussianBlur stdDeviation="8" result="blur" />
+      <feComposite in="SourceGraphic" in2="blur" operator="over" />
+    </filter>
+  </defs>
+
+  <!-- Base Circle with Glassmorphic Border -->
+  <circle cx="256" cy="256" r="236" fill="url(#bgGrad)" stroke="#3b82f6" stroke-width="8" stroke-opacity="0.6" />
+
+  <!-- Outer Gauge Arc -->
+  <path d="M 118 394 A 195 195 0 1 1 394 394" fill="none" stroke="url(#gaugeGrad)" stroke-width="20" stroke-linecap="round" filter="url(#glow)" />
+
+  <!-- Gauge Radial Ticks -->
+  <g stroke="#94a3b8" stroke-width="6" stroke-linecap="round" opacity="0.75">
+    <line x1="118" y1="394" x2="135" y2="377" />
+    <line x1="61" y1="256" x2="85" y2="256" />
+    <line x1="118" y1="118" x2="135" y2="135" />
+    <line x1="256" y1="61" x2="256" y2="85" />
+    <line x1="394" y1="118" x2="377" y2="135" />
+    <line x1="451" y1="256" x2="427" y2="256" />
+    <line x1="394" y1="394" x2="377" y2="377" />
+  </g>
+
+  <!-- Water Droplet Silhouette -->
+  <path d="M 256 120 C 256 120 160 250 160 316 C 160 369 203 412 256 412 C 309 412 352 369 352 316 C 352 250 256 120 256 120 Z" fill="url(#dropGrad)" />
+
+  <!-- Specular Reflection Highlight inside Droplet -->
+  <ellipse cx="225" cy="275" rx="28" ry="46" transform="rotate(-30 225 275)" fill="#ffffff" opacity="0.35" />
+
+  <!-- Meter Pointer Needle -->
+  <line x1="256" y1="316" x2="370" y2="175" stroke="#10b981" stroke-width="12" stroke-linecap="round" filter="url(#glow)" />
+
+  <!-- Center Hub Pin -->
+  <circle cx="256" cy="316" r="16" fill="#f8fafc" stroke="#0f172a" stroke-width="4" />
+</svg>
