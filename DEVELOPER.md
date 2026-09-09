@@ -155,7 +155,8 @@ water-meter-digitizer/
 │
 ├── tests/                       # Automated test suite
 │   ├── unit/                    # Unit tests for algorithms, parser, processors, pool
-│   └── integration/             # Tavern integration tests with live HTTP/MQTT requests
+│   └── integration/             # Tavern API & Playwright Web UI integration tests
+│       └── ui/                  # Playwright browser integration tests for Web UI & wizard
 │
 ├── pyproject.toml               # Build metadata, ruff & bandit configuration
 ├── requirements.in              # Direct production dependencies
@@ -289,8 +290,8 @@ source .venv/bin/activate
 ### Running the Server
 
 ```bash
-# Set configuration path
-export CONFIG_FILE=$(pwd)/test_config/config.ini
+# Set configuration path (optional when using ./config/config.ini)
+export CONFIG_FILE=$(pwd)/config/config.ini
 
 # Start the application using uv
 cd src
@@ -314,7 +315,7 @@ A VS Code launch configuration can be set up in `.vscode/launch.json`:
       "program": "${workspaceFolder}/src/main.py",
       "cwd": "${workspaceFolder}/src",
       "env": {
-        "CONFIG_FILE": "${workspaceFolder}/test_config/config.ini"
+        "CONFIG_FILE": "${workspaceFolder}/config/config.ini"
       },
       "console": "integratedTerminal"
     }
@@ -343,7 +344,6 @@ uv run python -m pytest tests/unit/test_predecessor.py -v
 Integration tests spin up the application, MQTT broker, and execute REST API assertions with Tavern:
 
 ```bash
-export CONFIG_FILE=$(pwd)/test_config/config.ini
 ./run_tests.sh -i
 ```
 

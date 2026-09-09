@@ -167,12 +167,25 @@ class Config(BaseSettings):
         if not os.path.exists(ini_file):
             raise ConfigurationMissing(f"Configuration file '{ini_file}' not found")
 
+        ini_dir = os.path.dirname(os.path.abspath(ini_file))
         config = configparser.ConfigParser(
             interpolation=configparser.ExtendedInterpolation(),
             allow_no_value=True,
             inline_comment_prefixes=("#", ";"),
         )
         config.read(ini_file)
+
+        env_config_dir = os.environ.get("CONFIG_DIR")
+        raw_cfg_dir = config.get("DEFAULT", "ConfigDir", fallback="/config").strip()
+        if env_config_dir:
+            config.set("DEFAULT", "ConfigDir", env_config_dir)
+        elif (
+            raw_cfg_dir == "/config"
+            and not os.path.exists("/config")
+            and os.path.exists(ini_dir)
+        ):
+            config.set("DEFAULT", "ConfigDir", ini_dir)
+
         return self.load_config(config)
 
     def create_backup(self, ini_file: str = "config.ini", tag: str = "") -> "Config":

@@ -1,17 +1,20 @@
+import os
+
 from configuration import Config, ConfigurationMissing
 from data_classes import ImagePosition, MeterConfig, RefImage
 
 
 def test_config():
     config = Config().load_from_file("config/config.ini")
+    cfg_dir = "/config" if os.path.exists("/config") else os.path.abspath("config")
 
     assert config.log_level == "INFO"
-    assert config.config_dir == "/config"
-    assert config.digital_models_dir == "/config/neuralnets/digital"
-    assert config.analog_models_dir == "/config/neuralnets/analog"
-    assert config.previous_value_file == "/config/prevalue.ini"
+    assert config.config_dir == cfg_dir
+    assert config.digital_models_dir == f"{cfg_dir}/neuralnets/digital"
+    assert config.analog_models_dir == f"{cfg_dir}/neuralnets/analog"
+    assert config.previous_value_file == f"{cfg_dir}/prevalue.ini"
 
-    assert config.image_source.url == "file:///config/original.jpg"
+    assert config.image_source.url == f"file://{cfg_dir}/original.jpg"
     assert config.image_source.timeout == 10
     assert config.image_source.min_size == 20000
 
@@ -24,7 +27,7 @@ def test_config():
             y=219,
             w=0,
             h=0,
-            file_name="/config/Ref_ZR_x99_y219.jpg",
+            file_name=f"{cfg_dir}/Ref_ZR_x99_y219.jpg",
         ),
         RefImage(
             name="ref1",
@@ -32,7 +35,7 @@ def test_config():
             y=117,
             w=0,
             h=0,
-            file_name="/config/Ref_m3_x512_y117.jpg",
+            file_name=f"{cfg_dir}/Ref_m3_x512_y117.jpg",
         ),
         RefImage(
             name="ref2",
@@ -40,7 +43,7 @@ def test_config():
             y=386,
             w=0,
             h=0,
-            file_name="/config/Ref_x0_x301_y386.jpg",
+            file_name=f"{cfg_dir}/Ref_x0_x301_y386.jpg",
         ),
     ]
 
@@ -79,7 +82,7 @@ def test_config():
     assert config.digital_readout.enabled is True
     assert (
         config.digital_readout.model_file
-        == "/config/neuralnets/digital/class100/dig-class100_0168_s2_q.tflite"
+        == f"{cfg_dir}/neuralnets/digital/class100/dig-class100_0168_s2_q.tflite"
     )
     assert config.digital_readout.model == "auto"
     assert config.digital_readout.cut_images == [
@@ -93,7 +96,7 @@ def test_config():
     assert config.analog_readout.enabled is True
     assert (
         config.analog_readout.model_file
-        == "/config/neuralnets/analog/continuous/ana-cont_1209_s2.tflite"
+        == f"{cfg_dir}/neuralnets/analog/continuous/ana-cont_1209_s2.tflite"
     )
     assert config.analog_readout.model == "auto"
     assert config.analog_readout.cut_images == [
