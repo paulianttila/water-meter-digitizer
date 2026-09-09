@@ -29,8 +29,7 @@ from mqtt.client import MQTTService
 from poller.scheduler import BackgroundPoller
 from storage import get_storage_backend
 from utils.cache import ImageCache
-
-VERSION = "8.0.0"
+from version import __version__ as VERSION
 
 config_file = os.environ.get("CONFIG_FILE", "/config/config.ini")
 ensure_config_initialized(config_file)

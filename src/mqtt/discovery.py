@@ -2,12 +2,13 @@ from typing import Any
 
 from configuration import MQTT
 from data_classes import MeterConfig
+from version import __version__
 
 
 def build_homeassistant_discovery_payloads(
     mqtt_config: MQTT,
     meter_configs: list[MeterConfig],
-    version: str = "8.0.0",
+    version: str = __version__,
 ) -> list[tuple[str, dict[str, Any]]]:
     """Generate Home Assistant MQTT Auto-Discovery topics and configuration payloads."""
     payloads: list[tuple[str, dict[str, Any]]] = []

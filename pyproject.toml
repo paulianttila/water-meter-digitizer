@@ -1,7 +1,7 @@
 [project]
 name = "water-meter-digitizer"
-version = "8.0.0"
-description = "Automatic utility meter digitizer using neural network inference"
+version = "1.0.0"
+description = "AI-powered water meter digitizer with NiceGUI dashboard, REST API, MQTT, SQLite/SQLAlchemy metrics, and automated ROI calibration"
 readme = "README.md"
 requires-python = ">=3.11, <3.12"
 dependencies = [

@@ -16,6 +16,7 @@ from utils.diagnostics import (
     get_process_memory_info,
     get_system_info,
 )
+from version import __version__
 
 router = APIRouter(tags=["health"])
 
@@ -50,7 +51,7 @@ def get_health(request: Request) -> HealthResponse:
     uptime_human = format_uptime(uptime_seconds)
 
     config = getattr(request.app.state, "config", None)
-    version = getattr(request.app.state, "version", "8.0.0")
+    version = getattr(request.app.state, "version", __version__)
 
     image_source_url = config.image_source.url if config else ""
 

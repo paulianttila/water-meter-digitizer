@@ -19,6 +19,7 @@ Welcome to the **Water Meter Digitizer** codebase. This document is a comprehens
    - [8. Zero-Flow Tracking & Continuous Leak Detection](#8-zero-flow-tracking--continuous-leak-detection)
    - [9. Web UI & Setup Wizard (NiceGUI & FastAPI)](#9-web-ui--setup-wizard-nicegui--fastapi)
    - [10. Configuration History & Backups](#10-configuration-history--backups)
+   - [11. Single Source of Truth (SSoT) Versioning](#11-single-source-of-truth-ssot-versioning)
 4. [Development Environment Setup](#development-environment-setup)
 5. [Running the Application Locally](#running-the-application-locally)
 6. [Testing Guide](#testing-guide)
@@ -80,6 +81,7 @@ water-meter-digitizer/
 ├── config/                      # Sample runtime config and reference images
 ├── src/                         # Main application source code
 │   ├── main.py                  # Entrypoint: orchestrator, startup lifecycle, and service wiring
+│   ├── version.py               # Single Source of Truth (SSoT) application versioning module
 │   ├── configuration.py         # INI configuration parser and dataclasses
 │   ├── data_classes.py          # Domain data models (MeterConfig, HealthResponse, etc.)
 │   ├── callbacks.py             # Event/action hooks protocol across GUI and backend
@@ -106,8 +108,9 @@ water-meter-digitizer/
 │   ├── storage/                 # Historical readings retention & database
 │   │   ├── __init__.py          # Dual-mode persistence factory
 │   │   ├── base.py              # BaseStorageBackend abstract interface
-│   │   ├── sqlite.py            # SQLite/SQLAlchemy persistent storage
-│   │   └── memory.py            # In-memory circular buffer fallback storage
+│   │   ├── sql.py               # SQLAlchemy / SQLite persistent storage backend
+│   │   ├── memory.py            # In-memory circular buffer fallback storage
+│   │   └── seed.py              # Synthetic readings generator for historical test data
 │   │
 │   ├── poller/                  # Background scheduling subsystem
 │   │   └── scheduler.py         # Async scheduler for periodic automated readouts
@@ -118,7 +121,8 @@ water-meter-digitizer/
 │   │   └── tracker.py           # Noise-resilient tracking, debounced resolution, history
 │   │
 │   ├── mqtt/                    # IoT & Home Assistant integration
-│   │   └── client.py            # MQTT publisher with Home Assistant Auto-Discovery
+│   │   ├── client.py            # MQTT publisher client
+│   │   └── discovery.py         # Home Assistant MQTT discovery payload generator
 │   │
 │   ├── gui/                     # Web interface built with NiceGUI
 │   │   ├── frontend.py          # Top-level page router and theme
@@ -154,7 +158,7 @@ water-meter-digitizer/
 │       └── decorators.py        # Timing and logging decorators
 │
 ├── tests/                       # Automated test suite
-│   ├── unit/                    # Unit tests for algorithms, parser, processors, pool
+│   ├── unit/                    # Unit tests for algorithms, parser, processors, pool, version
 │   └── integration/             # Tavern API & Playwright Web UI integration tests
 │       └── ui/                  # Playwright browser integration tests for Web UI & wizard
 │
@@ -257,6 +261,13 @@ config/neuralnets/
 - **Visual Diff Engine**: Computes unified line-by-line diffs (`difflib.unified_diff`) between active `config.ini` and any historical backup.
 - **Thread Safety**: All configuration file reads, writes, snapshots, and diff operations are guarded by a reentrant lock (`_config_lock = threading.RLock()` in `src/main.py`) to prevent deadlocks and race conditions.
 
+### 11. Single Source of Truth (SSoT) Versioning
+- **Central Authority (`pyproject.toml`)**: The project version is canonically defined once in `pyproject.toml` (`[project] version = "1.0.0"`).
+- **Runtime Resolution (`src/version.py`)**: The `__version__` variable dynamically reads `pyproject.toml` using `tomllib` (Python 3.11 standard library), with fallbacks to `importlib.metadata.version("water-meter-digitizer")` when running from an installed package, and a static `FALLBACK_VERSION` if uninstalled in standalone mode.
+- **Unified Propagation**: All components consume `src.version.__version__` directly:
+  - **FastAPI Application**: Injected into the root application instance (`app.version`), `/version` endpoint, and `/health` diagnostics.
+  - **MQTT & Home Assistant Discovery**: Published in device software version telemetry (`sw_version`) in discovery payloads and status topics.
+  - **Web Dashboard & UI**: Rendered in the header banner, footer, and sidebar.
 
 ---
 

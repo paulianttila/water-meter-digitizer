@@ -9,6 +9,7 @@ import paho.mqtt.client as mqtt
 from configuration import MQTT
 from data_classes import MeterConfig
 from processor.digitizer import MeterResult
+from version import __version__
 
 from .discovery import build_homeassistant_discovery_payloads
 
@@ -22,7 +23,7 @@ class MQTTService:
         self,
         config: MQTT,
         meter_configs: list[MeterConfig] | None = None,
-        version: str = "8.0.0",
+        version: str = __version__,
     ) -> None:
         self.config = config
         self.meter_configs = meter_configs or []

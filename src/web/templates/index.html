@@ -2226,7 +2226,8 @@
                 statusTitle.textContent = status === 'healthy' ? 'All Systems Operational' : (status === 'degraded' ? 'System Degraded' : 'System Needs Attention');
             }
             if (statusSub) {
-                statusSub.textContent = `Uptime: ${data.uptime?.uptime_human || '0s'} • Version: v${data.system?.version || '8.0.0'}`;
+                const ver = data.system?.version ? ` • Version: v${data.system.version}` : '';
+                statusSub.textContent = `Uptime: ${data.uptime?.uptime_human || '0s'}${ver}`;
             }
             if (statusPill) {
                 statusPill.textContent = (data.status || 'Healthy').toUpperCase();
@@ -2278,7 +2279,7 @@
 
             if (sysUptime) sysUptime.textContent = data.uptime?.uptime_human || '—';
             if (sysStarted) sysStarted.textContent = data.uptime?.started_at ? new Date(data.uptime.started_at).toLocaleString() : '—';
-            if (sysVersions) sysVersions.textContent = `v${data.system?.version || '8.0.0'} (Python ${data.system?.python_version || '3.11'})`;
+            if (sysVersions) sysVersions.textContent = data.system?.version ? `v${data.system.version} (Python ${data.system?.python_version || '3.11'})` : '—';
             if (sysPlatform) sysPlatform.textContent = data.system?.platform || '—';
 
             // Memory Card

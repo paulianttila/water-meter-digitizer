@@ -11,6 +11,7 @@ from fastapi.responses import HTMLResponse, JSONResponse
 from fastapi.templating import Jinja2Templates
 
 from decorators.decorators import log_execution_time
+from version import __version__
 
 logger = logging.getLogger(__name__)
 
@@ -22,7 +23,7 @@ templates = Jinja2Templates(directory=str(BASE_DIR / "web" / "templates"))
 
 def get_version(request: Request) -> str:
     """Retrieve application version from app state."""
-    return getattr(request.app.state, "version", "8.0.0")
+    return getattr(request.app.state, "version", __version__)
 
 
 @router.get("/", response_class=HTMLResponse)

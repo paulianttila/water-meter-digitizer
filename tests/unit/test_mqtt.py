@@ -5,6 +5,7 @@ from data_classes import MeterConfig
 from mqtt.client import MQTTService
 from mqtt.discovery import build_homeassistant_discovery_payloads
 from processor.digitizer import MeterResult, MeterValue
+from version import __version__
 
 
 def test_homeassistant_discovery_payload_generation():
@@ -20,9 +21,10 @@ def test_homeassistant_discovery_payload_generation():
         MeterConfig(name="garden", format="{d2}", unit="L"),
     ]
 
-    payloads = build_homeassistant_discovery_payloads(mqtt_cfg, meters, version="8.0.0")
+    payloads = build_homeassistant_discovery_payloads(mqtt_cfg, meters)
     # 2 sensors per meter (value, conf) + 2 system sensors + 3 leak sensors = 9
     assert len(payloads) == 9
+    assert payloads[0][1]["device"]["sw_version"] == __version__
 
     topics = [p[0] for p in payloads]
     assert "homeassistant/sensor/water_meter_digitizer/main_value/config" in topics

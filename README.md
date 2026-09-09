@@ -33,7 +33,7 @@ Automatically read analog and digital utility meters using a camera, image proce
 - **Docker Ready** — Official multi-architecture (x86_64, ARM64) container images with integrated health check probes.
 - **Resilient Storage** — Dual-mode persistence with automatic in-memory failover for read-only or immutable container environments.
 
-> 💡 *For architectural diagrams, neural network specifications, and developer documentation, see [DEVELOPER.md](DEVELOPER.md).*
+> 💡 *For architectural diagrams, neural network specifications, and developer documentation, see [DEVELOPER.md](DEVELOPER.md). For a step-by-step visual calibration walkthrough, see [GUI_Help.md](GUI_Help.md).*
 
 ---
 
@@ -220,7 +220,7 @@ All endpoints are served on port `3000`.
     "avg_inference_ms": 15.15
   },
   "system": {
-    "version": "8.0.0",
+    "version": "1.0.0",
     "python_version": "3.11.13",
     "platform": "Darwin-24.0.0"
   }
