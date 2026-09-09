@@ -24,9 +24,9 @@ ENV PYTHONUNBUFFERED=1 \
 
 WORKDIR /app
 
-# Install Python dependencies with layer caching
-COPY pyproject.toml requirements.txt ./
-RUN uv pip install --system --no-cache -r requirements.txt
+# Install Python dependencies with layer caching directly from uv.lock
+COPY pyproject.toml uv.lock ./
+RUN uv export --frozen --no-dev --format requirements-txt | uv pip install --system --no-cache -r -
 
 # Create application directories, populate seed config template, and set ownership
 RUN mkdir -p /config /data /app /app/default_config

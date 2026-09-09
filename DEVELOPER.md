@@ -162,9 +162,8 @@ water-meter-digitizer/
 │   └── integration/             # Tavern API & Playwright Web UI integration tests
 │       └── ui/                  # Playwright browser integration tests for Web UI & wizard
 │
-├── pyproject.toml               # Build metadata, ruff & bandit configuration
-├── requirements.in              # Direct production dependencies
-├── requirements.txt             # Pinned runtime dependencies
+├── pyproject.toml               # Project metadata, dependencies, and tool configurations
+├── uv.lock                      # Deterministic cross-platform dependency lockfile
 ├── run_tests.sh                 # Unified test & QA execution script
 └── Dockerfile                   # Production multi-arch container definition
 ```

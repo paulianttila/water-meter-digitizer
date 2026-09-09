@@ -103,13 +103,33 @@ class MQTTService:
                 str(rc),
             )
 
-    def _on_disconnect(self, client: Any, userdata: Any, rc: Any, *args: Any) -> None:
+    def _on_disconnect(self, client: Any, userdata: Any, *args: Any) -> None:
         self.is_connected = False
-        rc_code = getattr(rc, "value", rc)
-        if rc_code != 0:
-            logger.warning("Unexpected disconnection from MQTT broker (rc=%s)", str(rc))
+        # In paho v2 (VERSION2): args = (disconnect_flags, reason_code, properties)
+        # In paho v1 (VERSION1): args = (rc,)
+        if len(args) >= 2:
+            rc = args[1]
+        elif len(args) == 1:
+            rc = args[0]
         else:
-            logger.info("Disconnected from MQTT broker")
+            rc = 0
+
+        is_error = getattr(rc, "is_failure", None)
+        if is_error is not None:
+            if is_error:
+                logger.warning(
+                    "Unexpected disconnection from MQTT broker (reason=%s)", str(rc)
+                )
+            else:
+                logger.info("Disconnected from MQTT broker (%s)", str(rc))
+        else:
+            rc_code = getattr(rc, "value", rc)
+            if rc_code != 0:
+                logger.warning(
+                    "Unexpected disconnection from MQTT broker (rc=%s)", str(rc)
+                )
+            else:
+                logger.info("Disconnected from MQTT broker")
 
     def start(self) -> None:
         """Start background connection loop."""
