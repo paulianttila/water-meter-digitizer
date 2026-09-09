@@ -1,0 +1,90 @@
+"""Pytest fixtures for Web UI integration testing using Playwright."""
+
+import os
+import socket
+import threading
+import time
+from pathlib import Path
+from typing import Generator
+import urllib.request
+
+import pytest
+import uvicorn
+
+from main import app
+
+
+def find_free_port() -> int:
+    """Find and return an available TCP port on localhost."""
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        s.bind(("127.0.0.1", 0))
+        return s.getsockname()[1]
+
+
+@pytest.fixture(scope="session")
+def live_server_url() -> Generator[str, None, None]:
+    """Start the FastAPI + NiceGUI server in a background thread and yield URL."""
+    import main
+
+    # Ensure test configuration is loaded
+    project_root = Path(__file__).resolve().parents[3]
+    test_config_path = project_root / "test_config" / "config.ini"
+    if not test_config_path.exists():
+        test_config_path = Path("test_config/config.ini").resolve()
+
+    os.environ["CONFIG_FILE"] = str(test_config_path)
+    main.config_file = str(test_config_path)
+
+    main.init_config()
+    main.init_gui(main.app)
+
+    port = find_free_port()
+    host = "127.0.0.1"
+
+    config = uvicorn.Config(
+        app,
+        host=host,
+        port=port,
+        log_level="warning",
+        loop="asyncio",
+    )
+    server = uvicorn.Server(config)
+
+    thread = threading.Thread(target=server.run, daemon=True)
+    thread.start()
+
+    # Wait for server to become responsive
+    base_url = f"http://{host}:{port}"
+    deadline = time.time() + 15.0
+    server_ready = False
+
+    while time.time() < deadline:
+        try:
+            with urllib.request.urlopen(f"{base_url}/health", timeout=1) as response:
+                if response.status == 200:
+                    server_ready = True
+                    break
+        except Exception:
+            time.sleep(0.1)
+
+    if not server_ready:
+        server.should_exit = True
+        raise RuntimeError(f"Server at {base_url} failed to start within timeout.")
+
+    yield base_url
+
+    server.should_exit = True
+    thread.join(timeout=3.0)
+
+
+@pytest.fixture(scope="session")
+def browser_context_args(browser_context_args):
+    """Set default browser context options for consistent UI testing."""
+    return {
+        **browser_context_args,
+        "viewport": {
+            "width": 1440,
+            "height": 900,
+        },
+        "ignore_https_errors": True,
+    }

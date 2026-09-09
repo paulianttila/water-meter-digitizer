@@ -29,10 +29,13 @@ jobs:
       - name: Install dependencies
         run: uv sync --frozen
 
+      - name: Install Playwright browsers & dependencies
+        run: uv run playwright install --with-deps chromium
+
       - name: Static analysis (Ruff, Black, Bandit)
         run: ./run_tests.sh -s
 
-      - name: Run unit and integration tests
+      - name: Run unit, UI, and integration tests
         run: |
           sudo cp -R config /
           sudo chmod -R 777 /config

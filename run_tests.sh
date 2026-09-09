@@ -24,17 +24,12 @@ BLUE='\033[0;34m'
 YELLOW='\033[1;33m'
 NC='\033[0m'
 
-# --- Runner / Environment Detection ---
-if command -v uv >/dev/null 2>&1; then
-  RUNNER="uv run --no-sync"
-  PYTHON="uv run --no-sync python"
-elif [ -f "${PWD}/.venv/bin/python" ]; then
-  RUNNER="${PWD}/.venv/bin"
-  PYTHON="${PWD}/.venv/bin/python"
-else
-  RUNNER=""
-  PYTHON="python3"
+# --- Runner Validation ---
+if ! command -v uv >/dev/null 2>&1; then
+  echo -e "${RED}Error: 'uv' is required to run tests. Please install uv: https://docs.astral.sh/uv/${NC}"
+  exit 1
 fi
+PYTHON="uv run --no-sync python"
 
 TEST_APP_PID=
 MQTT_BROKER_PID=
@@ -132,13 +127,18 @@ run_unit_tests() {
   ${PYTHON} -m pytest tests/unit -v
 }
 
+run_ui_tests() {
+  echo -e "${BLUE}Running Web UI integration tests (Playwright)...${NC}"
+  ${PYTHON} -m pytest tests/integration/ui/ -v
+}
+
 run_integration_tests() {
   start_mqtt_broker
   start_test_app
   echo -e "${BLUE}Running Tavern integration tests...${NC}"
   export PYTHONPATH=${PYTHONPATH}:${PWD}/tests/integration/
   local status=0
-  ${PYTHON} -m pytest --log-cli-level="${TAVERN_LOG_LEVEL}" tests/integration/ || status=$?
+  ${PYTHON} -m pytest --log-cli-level="${TAVERN_LOG_LEVEL}" -m "not ui" tests/integration/ || status=$?
   stop_test_app
   stop_mqtt_broker
   return ${status}
@@ -149,13 +149,13 @@ run_static_analysis() {
   echo -e "${BLUE}Running static analysis (ruff, black, bandit)...${NC}"
 
   echo -e "${BLUE}▶ Ruff check...${NC}"
-  ${RUNNER:+${RUNNER} }ruff check . || exit_code=1
+  ${PYTHON} -m ruff check . || exit_code=1
 
   echo -e "${BLUE}▶ Black format check...${NC}"
-  ${RUNNER:+${RUNNER} }black --check . || exit_code=1
+  ${PYTHON} -m black --check . || exit_code=1
 
   echo -e "${BLUE}▶ Bandit security scan...${NC}"
-  ${RUNNER:+${RUNNER} }bandit -c pyproject.toml -r . || exit_code=1
+  ${PYTHON} -m bandit -c pyproject.toml -r . || exit_code=1
 
   return ${exit_code}
 }
@@ -169,37 +169,51 @@ print_help() {
   echo "Usage: ./run_tests.sh [OPTION]"
   echo ""
   echo "Options:"
-  echo "  (no args)  Run all tests (unit + integration)"
-  echo "  -u         Run unit tests only"
-  echo "  -i         Run integration tests only"
-  echo "  -s         Run static analysis only (ruff, black, bandit)"
-  echo "  -c         Run unit tests with code coverage report"
-  echo "  -a         Run complete test suite (unit, integration, and static analysis)"
-  echo "  -h         Show this help message"
+  echo "  (no args)               Run all tests (unit + UI + Tavern integration)"
+  echo "  -u, --unit              Run unit tests only"
+  echo "  -w, --ui, --web-ui      Run Web UI tests only (Playwright)"
+  echo "  -i, --integration       Run Tavern integration tests only"
+  echo "  -s, --static            Run static analysis only (ruff, black, bandit)"
+  echo "  -c, --coverage          Run unit tests with code coverage report"
+  echo "  -a, --all               Run complete test suite (unit, UI, Tavern integration, and static analysis)"
+  echo "  -h, --help              Show this help message"
 }
 
 # --- CLI Option Parsing ---
-while getopts ":uicas h" option; do
-  case $option in
-    u)
+if [ $# -eq 0 ]; then
+  # Default: run unit + UI + Tavern integration tests
+  run_unit_tests
+  run_ui_tests
+  run_integration_tests
+  exit 0
+fi
+
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    -u|--unit)
       run_unit_tests
-      exit 0
+      shift
       ;;
-    i)
+    -w|--ui|--web-ui)
+      run_ui_tests
+      shift
+      ;;
+    -i|--integration|--tavern)
       run_integration_tests
-      exit 0
+      shift
       ;;
-    s)
+    -s|--static)
       run_static_analysis
-      exit $?
+      shift
       ;;
-    c)
+    -c|--coverage)
       run_coverage
-      exit $?
+      shift
       ;;
-    a)
+    -a|--all)
       overall_status=0
       run_unit_tests || overall_status=1
+      run_ui_tests || overall_status=1
       run_integration_tests || overall_status=1
       run_static_analysis || overall_status=1
       if [ ${overall_status} -eq 0 ]; then
@@ -209,13 +223,14 @@ while getopts ":uicas h" option; do
       fi
       exit ${overall_status}
       ;;
-    h|\?)
+    -h|--help)
       print_help
       exit 0
       ;;
+    *)
+      echo -e "${RED}Unknown option: $1${NC}"
+      print_help
+      exit 1
+      ;;
   esac
 done
-
-# Default: run unit + integration tests
-run_unit_tests
-run_integration_tests

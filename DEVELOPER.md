@@ -338,21 +338,44 @@ uv run python -m pytest tests/unit -v
 uv run python -m pytest tests/unit/test_predecessor.py -v
 ```
 
-### Running Integration Tests (Tavern)
+### Running Integration Tests (Tavern REST API)
 
-Integration tests spin up the application and execute REST API assertions:
+Integration tests spin up the application, MQTT broker, and execute REST API assertions with Tavern:
 
 ```bash
 export CONFIG_FILE=$(pwd)/test_config/config.ini
-./run_tests.sh
+./run_tests.sh -i
+```
+
+### Running Web UI Integration Tests (Playwright)
+
+Browser-level UI integration tests are written with `pytest-playwright` and test NiceGUI components, top-level navigation, 9-step calibration wizard workflows, comparison modals, and the configuration editor:
+
+```bash
+# Install Chromium browser binary (one-time setup)
+uv run playwright install chromium
+
+# Run all Web UI tests headless
+uv run python -m pytest tests/integration/ui/ -v
+
+# Run with headed browser for live visual observation
+uv run python -m pytest tests/integration/ui/ --headed
+
+# Run via test runner script
+./run_tests.sh -w
 ```
 
 ### Running All QA Checks
 
 The `./run_tests.sh` helper supports several flags:
-- `./run_tests.sh -u`: Run unit tests only (`uv run pytest tests/unit`).
-- `./run_tests.sh -s`: Run static analysis only (`ruff`, `black`, `bandit`).
-- `./run_tests.sh -a`: Run full test app, Tavern integration tests, unit tests, and static analysis.
+- `./run_tests.sh` (no args): Run unit tests, Web UI tests, and Tavern integration tests.
+- `./run_tests.sh -u, --unit`: Run unit tests only (`tests/unit`).
+- `./run_tests.sh -w, --ui, --web-ui`: Run Web UI Playwright tests only (`tests/integration/ui`).
+- `./run_tests.sh -i, --integration`: Run Tavern REST API integration tests only.
+- `./run_tests.sh -s, --static`: Run static analysis only (`ruff`, `black`, `bandit`).
+- `./run_tests.sh -c, --coverage`: Run unit tests with code coverage report.
+- `./run_tests.sh -a, --all`: Run full test suite (unit tests, Web UI tests, Tavern integration tests, and static analysis).
+- `./run_tests.sh -h, --help`: Show help and usage.
 
 ---
 
