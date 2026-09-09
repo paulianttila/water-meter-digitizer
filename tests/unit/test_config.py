@@ -204,3 +204,38 @@ def test_config_json_schema():
     assert "properties" in schema
     assert "log_level" in schema["properties"]
     assert "image_source" in schema["properties"]
+
+
+def test_ensure_config_initialized_already_exists():
+    from configuration import ensure_config_initialized
+
+    assert ensure_config_initialized("config/config.ini") is True
+
+
+def test_ensure_config_initialized_populates_from_seed(tmp_path):
+    from configuration import ensure_config_initialized
+
+    seed_dir = tmp_path / "seed"
+    seed_dir.mkdir()
+    (seed_dir / "config.ini").write_text("[DEFAULT]\nLogLevel=DEBUG\n")
+    (seed_dir / "test.txt").write_text("hello")
+
+    target_config = tmp_path / "target" / "config.ini"
+    assert not target_config.exists()
+
+    result = ensure_config_initialized(str(target_config), seed_dir=str(seed_dir))
+    assert result is True
+    assert target_config.exists()
+    assert (tmp_path / "target" / "test.txt").exists()
+    assert (tmp_path / "target" / "test.txt").read_text() == "hello"
+
+
+def test_ensure_config_initialized_missing_seed(tmp_path):
+    from configuration import ensure_config_initialized
+
+    missing_seed = tmp_path / "nonexistent"
+    target_config = tmp_path / "target" / "config.ini"
+
+    result = ensure_config_initialized(str(target_config), seed_dir=str(missing_seed))
+    assert result is False
+    assert not target_config.exists()

@@ -28,9 +28,9 @@ WORKDIR /app
 COPY pyproject.toml requirements.txt ./
 RUN uv pip install --system --no-cache -r requirements.txt
 
-# Create application directories, populate seed config, and set ownership
-RUN mkdir -p /config /data /app
-COPY ./config/ /config/
+# Create application directories, populate seed config template, and set ownership
+RUN mkdir -p /config /data /app /app/default_config
+COPY ./config/ /app/default_config/
 RUN chown -R appuser:appuser /config /data /app
 
 # Copy application source code

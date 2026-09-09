@@ -20,7 +20,7 @@ from api.routes_history import router as history_router
 from api.routes_meter import get_meter_data, router as meter_router, set_app_ref
 from api.routes_services import router as services_router
 from api.routes_system import router as system_router
-from configuration import Config
+from configuration import Config, ensure_config_initialized
 from decorators.decorators import log_execution_time
 from leak.tracker import ZeroFlowTracker
 from mqtt.client import MQTTService
@@ -32,11 +32,11 @@ import utils.image
 VERSION = "8.0.0"
 
 config_file = os.environ.get("CONFIG_FILE", "/config/config.ini")
+ensure_config_initialized(config_file)
+
 if not os.path.exists(config_file):
     if os.path.exists("config/config.ini"):
         config_file = "config/config.ini"
-    elif os.path.exists("test_config/config.ini"):
-        config_file = "test_config/config.ini"
 
 config = Config()
 if os.path.exists(config_file):
