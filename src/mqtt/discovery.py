@@ -1,4 +1,5 @@
 from typing import Any
+
 from configuration import MQTT
 from data_classes import MeterConfig
 

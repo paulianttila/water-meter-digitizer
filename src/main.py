@@ -1,23 +1,25 @@
 """Main application entry point and service orchestrator for water-meter-digitizer."""
 
 import argparse
-from contextlib import asynccontextmanager
-from datetime import datetime, timezone
 import logging
 import os
-from pathlib import Path
 import sys
 import threading
 import time
+from contextlib import asynccontextmanager
+from datetime import UTC, datetime
+from pathlib import Path
 from typing import Any
 
+import uvicorn
 from fastapi import FastAPI, HTTPException
 from fastapi.staticfiles import StaticFiles
-import uvicorn
 
+import utils.image
 from api.routes_health import router as health_router
 from api.routes_history import router as history_router
-from api.routes_meter import get_meter_data, router as meter_router, set_app_ref
+from api.routes_meter import get_meter_data, set_app_ref
+from api.routes_meter import router as meter_router
 from api.routes_services import router as services_router
 from api.routes_system import router as system_router
 from configuration import Config, ensure_config_initialized
@@ -27,16 +29,14 @@ from mqtt.client import MQTTService
 from poller.scheduler import BackgroundPoller
 from storage import get_storage_backend
 from utils.cache import ImageCache
-import utils.image
 
 VERSION = "8.0.0"
 
 config_file = os.environ.get("CONFIG_FILE", "/config/config.ini")
 ensure_config_initialized(config_file)
 
-if not os.path.exists(config_file):
-    if os.path.exists("config/config.ini"):
-        config_file = "config/config.ini"
+if not os.path.exists(config_file) and os.path.exists("config/config.ini"):
+    config_file = "config/config.ini"
 
 config = Config()
 if os.path.exists(config_file):
@@ -114,7 +114,7 @@ app.state.image_cache = ImageCache(max_size=50, ttl_seconds=300.0)
 app.state.storage = get_storage_backend(config)
 app.state.zero_flow_tracker = ZeroFlowTracker(config.zero_flow_monitor)
 app.state.start_time = time.time()
-app.state.started_at = datetime.now(timezone.utc).isoformat()
+app.state.started_at = datetime.now(UTC).isoformat()
 app.state.mqtt_service = MQTTService(
     config=config.mqtt,
     meter_configs=config.meter_configs,
@@ -149,9 +149,8 @@ def get_image_as_base64_str(image_name: str) -> str:
 
 
 def load_config_file() -> str:
-    with _config_lock:
-        with open(config_file, "r") as f:
-            return f.read()
+    with _config_lock, open(config_file) as f:
+        return f.read()
 
 
 def save_config_file(data: str) -> None:

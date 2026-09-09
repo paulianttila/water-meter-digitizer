@@ -1,9 +1,10 @@
-from typing import Callable
+from collections.abc import Callable
 
 from nicegui import ui
 
 from configuration import Alignment
 from processor.image import ImageProcessor
+
 from .step_base import BaseStep
 
 HELP_TEXT = (
@@ -25,7 +26,7 @@ class InitialRotateStep(BaseStep):
             set_image_callback=set_image_callback,
             spinner=spinner,
         )
-        self.angle = 0
+        self.angle: float = 0.0
         self.org_image: str = ""
         self.angle_label: ui.label
 

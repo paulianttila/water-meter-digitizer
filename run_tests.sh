@@ -142,7 +142,7 @@ run_integration_tests() {
 
 run_static_analysis() {
   local exit_code=0
-  echo -e "${BLUE}Running static analysis (ruff, black, bandit)...${NC}"
+  echo -e "${BLUE}Running static analysis (ruff, black, bandit, mypy)...${NC}"
 
   echo -e "${BLUE}▶ Ruff check...${NC}"
   ${PYTHON} -m ruff check . || exit_code=1
@@ -152,6 +152,9 @@ run_static_analysis() {
 
   echo -e "${BLUE}▶ Bandit security scan...${NC}"
   ${PYTHON} -m bandit -c pyproject.toml -r . || exit_code=1
+
+  echo -e "${BLUE}▶ Mypy type check...${NC}"
+  ${PYTHON} -m mypy src || exit_code=1
 
   return ${exit_code}
 }

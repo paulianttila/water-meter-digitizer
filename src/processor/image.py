@@ -1,11 +1,11 @@
-from collections.abc import Callable, Sequence
 import logging
+from collections.abc import Callable, Sequence
 
 from PIL.Image import Image
 
-from data_classes import CutImage, ImagePosition, RefImage
-import utils.image
 import utils.download
+import utils.image
+from data_classes import CutImage, ImagePosition, RefImage
 
 logger = logging.getLogger(__name__)
 
@@ -23,7 +23,7 @@ def _conditional_func(func) -> Callable[..., "ImageProcessor"]:
 
 class ImageProcessor:
     def __init__(self) -> None:
-        self.condition = None
+        self.condition: bool | None = None
         self.image: Image
         self.cut_images_list: list[CutImage] = []
         self.enable_img_saving = False

@@ -1,16 +1,18 @@
 import logging
 import random
 import string
+
 from fastapi import FastAPI
 from nicegui import ui
 
 from callbacks import Callbacks
 from main import VERSION
+
+from .page_about import AboutPage
 from .page_config import ConfigPage
+from .page_help import HelpPage
 from .page_meter import MeterPage
 from .page_setup import SetupPage
-from .page_about import AboutPage
-from .page_help import HelpPage
 
 logger = logging.getLogger(__name__)
 
@@ -302,37 +304,37 @@ def init(fastapi_app: FastAPI, callbacks: Callbacks) -> None:
         with ui.splitter(value=7, limits=(6, 8)).classes(
             "w-full flex-1 min-h-0"
         ) as splitter:
-            with splitter.before:
-                with ui.tabs().props("vertical").classes("w-full") as tabs:
-                    main = ui.tab("Meter", icon="sym_s_speed")
-                    setup = ui.tab("Setup", icon="settings")
-                    config = ui.tab("Config", icon="sym_s_manufacturing")
-                    help_tab = ui.tab("Help", icon="help_outline")
-                    about = ui.tab("About", icon="info")
-            with splitter.after:
-                with ui.tab_panels(tabs, value=main).classes(
+            with (
+                splitter.before,
+                ui.tabs().props("vertical").classes("w-full") as tabs,
+            ):
+                main = ui.tab("Meter", icon="sym_s_speed")
+                setup = ui.tab("Setup", icon="settings")
+                config = ui.tab("Config", icon="sym_s_manufacturing")
+                help_tab = ui.tab("Help", icon="help_outline")
+                about = ui.tab("About", icon="info")
+            with (
+                splitter.after,
+                ui.tab_panels(tabs, value=main).classes(
                     "w-full h-full p-4 overflow-hidden"
+                ),
+            ):
+                with ui.tab_panel(main).classes("w-full h-full p-0 overflow-y-auto"):
+                    await meter_page.show()
+                with ui.tab_panel(setup).classes(
+                    "w-full h-full p-0 overflow-hidden flex flex-col"
                 ):
-                    with ui.tab_panel(main).classes(
-                        "w-full h-full p-0 overflow-y-auto"
-                    ):
-                        await meter_page.show()
-                    with ui.tab_panel(setup).classes(
-                        "w-full h-full p-0 overflow-hidden flex flex-col"
-                    ):
-                        await setup_page.show()
-                    with ui.tab_panel(config).classes(
-                        "w-full h-full p-0 overflow-hidden flex flex-col"
-                    ):
-                        config_page.show()
-                    with ui.tab_panel(help_tab).classes(
-                        "w-full h-full p-0 overflow-y-auto"
-                    ):
-                        help_page.show()
-                    with ui.tab_panel(about).classes(
-                        "w-full h-full p-0 overflow-y-auto"
-                    ):
-                        about_page.show()
+                    await setup_page.show()
+                with ui.tab_panel(config).classes(
+                    "w-full h-full p-0 overflow-hidden flex flex-col"
+                ):
+                    config_page.show()
+                with ui.tab_panel(help_tab).classes(
+                    "w-full h-full p-0 overflow-y-auto"
+                ):
+                    help_page.show()
+                with ui.tab_panel(about).classes("w-full h-full p-0 overflow-y-auto"):
+                    about_page.show()
 
     # Nothing special is stored in the cookie, so it's fine to use random secret
     secret = "".join(

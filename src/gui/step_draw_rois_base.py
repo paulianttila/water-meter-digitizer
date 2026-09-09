@@ -1,14 +1,15 @@
+import logging
 from collections.abc import Callable
 from dataclasses import dataclass
-import logging
 from pathlib import Path
 
 from nicegui import events, ui
 
-from data_classes import CutImage, ImagePosition, RefImage
-from .step_base import BaseStep
 import utils.image
+from data_classes import CutImage, ImagePosition, RefImage
 from processor.image import ImageProcessor
+
+from .step_base import BaseStep
 
 logger = logging.getLogger(__name__)
 
@@ -44,8 +45,8 @@ class DrawRoisBaseStep(BaseStep):
         self.draw_roi_func = draw_roi_func
         self.set_rois_to_svg_func = set_rois_to_svg_func
         self.show_temp_draw_in_svg_func = show_temp_draw_in_svg_func
-        self.container = []
-        self.test_result_container = None
+        self.container: ui.column | None = None
+        self.test_result_container: ui.element | None = None
         self.rois: list[Roi] = []
         self.mouse_x: int
         self.mouse_y: int
@@ -63,8 +64,8 @@ class DrawRoisBaseStep(BaseStep):
             "lime",
         ]
         self.autocontrast = False
-        self.cutoff_low = 0
-        self.cutoff_high = 0
+        self.cutoff_low: float = 0.0
+        self.cutoff_high: float = 0.0
         self.select_all: ui.checkbox | None = None
         self._updating_select_all: bool = False
 
@@ -409,40 +410,42 @@ class DrawRoisBaseStep(BaseStep):
         self._sync_select_all_checkbox()
 
     def _add_roi_ui(self, roi: Roi) -> None:
-        if not hasattr(self, "container") or not hasattr(self.container, "__enter__"):
+        if self.container is None:
             return
-        with self.container:
-            with ui.row().classes(
+        with (
+            self.container,
+            ui.row().classes(
                 "w-full items-center justify-between p-2 rounded-xl "
                 "bg-slate-900/70 border border-white/10 shadow-sm gap-2 mb-2"
-            ) as row_elem:
-                with ui.row().classes("items-center gap-2 flex-grow"):
-                    ui.checkbox(on_change=self._on_roi_enabled_change).bind_value(
-                        roi, "enabled"
-                    ).props(f"color={roi.color} keep-color").tooltip(
-                        "Toggle ROI overlay visibility on canvas"
-                    )
-                    ui.input(label="Name").bind_value(roi, "name").classes(
-                        "w-28 text-sm"
-                    ).tooltip("Region of interest name")
-                    ui.number("X", on_change=self._show_rois, step=1).bind_value(
-                        roi, "x", forward=lambda x: int(x or 0)
-                    ).classes("w-20 text-sm").tooltip("X coordinate in pixels")
-                    ui.number("Y", on_change=self._show_rois, step=1).bind_value(
-                        roi, "y", forward=lambda x: int(x or 0)
-                    ).classes("w-20 text-sm").tooltip("Y coordinate in pixels")
-                    ui.number("W", on_change=self._show_rois, min=1, step=1).bind_value(
-                        roi, "w", forward=lambda x: int(x or 1)
-                    ).classes("w-20 text-sm").tooltip("Width in pixels")
-                    ui.number("H", on_change=self._show_rois, min=1, step=1).bind_value(
-                        roi, "h", forward=lambda x: int(x or 1)
-                    ).classes("w-20 text-sm").tooltip("Height in pixels")
-
-                ui.button(
-                    icon="delete_outline",
-                    on_click=lambda r=roi, el=row_elem: self._delete_roi(r, el),
-                ).props("flat color=negative dense").classes(
-                    "rounded-lg hover:bg-red-500/20"
-                ).tooltip(
-                    "Delete this region"
+            ) as row_elem,
+        ):
+            with ui.row().classes("items-center gap-2 flex-grow"):
+                ui.checkbox(on_change=self._on_roi_enabled_change).bind_value(
+                    roi, "enabled"
+                ).props(f"color={roi.color} keep-color").tooltip(
+                    "Toggle ROI overlay visibility on canvas"
                 )
+                ui.input(label="Name").bind_value(roi, "name").classes(
+                    "w-28 text-sm"
+                ).tooltip("Region of interest name")
+                ui.number("X", on_change=self._show_rois, step=1).bind_value(
+                    roi, "x", forward=lambda x: int(x or 0)
+                ).classes("w-20 text-sm").tooltip("X coordinate in pixels")
+                ui.number("Y", on_change=self._show_rois, step=1).bind_value(
+                    roi, "y", forward=lambda x: int(x or 0)
+                ).classes("w-20 text-sm").tooltip("Y coordinate in pixels")
+                ui.number("W", on_change=self._show_rois, min=1, step=1).bind_value(
+                    roi, "w", forward=lambda x: int(x or 1)
+                ).classes("w-20 text-sm").tooltip("Width in pixels")
+                ui.number("H", on_change=self._show_rois, min=1, step=1).bind_value(
+                    roi, "h", forward=lambda x: int(x or 1)
+                ).classes("w-20 text-sm").tooltip("Height in pixels")
+
+            ui.button(
+                icon="delete_outline",
+                on_click=lambda r=roi, el=row_elem: self._delete_roi(r, el),
+            ).props("flat color=negative dense").classes(
+                "rounded-lg hover:bg-red-500/20"
+            ).tooltip(
+                "Delete this region"
+            )

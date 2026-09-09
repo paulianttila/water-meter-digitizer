@@ -1,4 +1,5 @@
 import re
+
 from PIL.Image import Image
 from pydantic import BaseModel, ConfigDict
 

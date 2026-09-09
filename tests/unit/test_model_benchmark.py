@@ -1,7 +1,9 @@
 import asyncio
 from unittest.mock import MagicMock, patch
-from gui.step_draw_digital_rois import DrawDigitalRoisStep
+
+import gui.dialog_benchmark  # noqa: F401
 from gui.step_draw_analog_rois import DrawAnalogRoisStep
+from gui.step_draw_digital_rois import DrawDigitalRoisStep
 from gui.step_draw_rois_base import Roi
 from processor.digitizer import ReadoutResult
 

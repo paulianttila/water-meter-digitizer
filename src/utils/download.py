@@ -1,8 +1,9 @@
 import logging
 import time
+
 import requests
 
-from utils.security import is_safe_path, extract_file_path_from_uri
+from utils.security import extract_file_path_from_uri, is_safe_path
 
 logger = logging.getLogger(__name__)
 
@@ -48,7 +49,7 @@ def load_file_from_url(
             )
         return data
     except Exception as e:
-        raise DownloadFailure(f"File download failure from {url}: {str(e)}") from e
+        raise DownloadFailure(f"File download failure from {url}: {e!s}") from e
     finally:
         logger.debug(f"File downloaded in {time.time() - startTime:.3f} sec")
 

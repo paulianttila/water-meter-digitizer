@@ -1,8 +1,9 @@
 import asyncio
-from datetime import datetime, timezone, timedelta
 import logging
 import time
-from typing import Any, Callable
+from collections.abc import Callable
+from datetime import UTC, datetime, timedelta
+from typing import Any
 
 from configuration import Poller
 from mqtt.client import MQTTService
@@ -74,14 +75,14 @@ class BackgroundPoller:
 
         while self._running:
             interval = max(5, self.config.interval_seconds)
-            self.next_run = datetime.now(timezone.utc) + timedelta(seconds=interval)
+            self.next_run = datetime.now(UTC) + timedelta(seconds=interval)
 
             try:
                 # Wait for interval or immediate trigger
                 await asyncio.wait_for(self._trigger_event.wait(), timeout=interval)
                 self._trigger_event.clear()
                 logger.debug("Poller triggered ahead of interval timer")
-            except asyncio.TimeoutError:
+            except TimeoutError:
                 pass
             except asyncio.CancelledError:
                 break
@@ -99,7 +100,7 @@ class BackgroundPoller:
 
         self._is_polling = True
         start_time = time.time()
-        self.last_run = datetime.now(timezone.utc)
+        self.last_run = datetime.now(UTC)
         self.total_runs += 1
 
         try:

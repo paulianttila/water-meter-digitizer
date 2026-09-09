@@ -1,11 +1,11 @@
-from collections import defaultdict
-from datetime import datetime, timedelta, timezone
 import json
 import logging
 import os
-from pathlib import Path
 import re
 import threading
+from collections import defaultdict
+from datetime import UTC, datetime, timedelta
+from pathlib import Path
 from typing import Any, Literal
 
 from sqlalchemy import (
@@ -179,37 +179,36 @@ class SQLAlchemyStorageBackend(StorageBackend):
         error: str = "",
     ) -> None:
         if timestamp.tzinfo is None:
-            timestamp = timestamp.replace(tzinfo=timezone.utc)
+            timestamp = timestamp.replace(tzinfo=UTC)
         else:
-            timestamp = timestamp.astimezone(timezone.utc)
+            timestamp = timestamp.astimezone(UTC)
 
         meters_dict = {k: v.model_dump() for k, v in meters.items()}
         meters_json = json.dumps(meters_dict)
         digital_json = json.dumps(digital_results) if digital_results else None
         analog_json = json.dumps(analog_results) if analog_results else None
 
-        with self._lock:
-            with self.Session() as session:
-                entry = ReadingModel(
-                    timestamp=timestamp,
-                    meters_json=meters_json,
-                    digital_json=digital_json,
-                    analog_json=analog_json,
-                    error=error or "",
-                )
-                session.add(entry)
-                session.commit()
+        with self._lock, self.Session() as session:
+            entry = ReadingModel(
+                timestamp=timestamp,
+                meters_json=meters_json,
+                digital_json=digital_json,
+                analog_json=analog_json,
+                error=error or "",
+            )
+            session.add(entry)
+            session.commit()
 
-                self._write_count += 1
-                if self._write_count % self.prune_interval == 0:
-                    self._prune_and_vacuum(session)
+            self._write_count += 1
+            if self._write_count % self.prune_interval == 0:
+                self._prune_and_vacuum(session)
 
     def record_meter_result(
         self,
         result: Any,
         timestamp: datetime | None = None,
     ) -> None:
-        ts = timestamp or datetime.now(timezone.utc)
+        ts = timestamp or datetime.now(UTC)
         meters: dict[str, MeterReading] = {}
         for m in result.meters:
             num_val: float | None = None
@@ -235,7 +234,7 @@ class SQLAlchemyStorageBackend(StorageBackend):
 
     def _prune_and_vacuum(self, session: Any) -> None:
         """Enforce time-based retention and max records limits, then vacuum."""
-        now = datetime.now(timezone.utc)
+        now = datetime.now(UTC)
 
         # 1. Time-based retention pruning
         if self.retention_days > 0:
@@ -269,9 +268,8 @@ class SQLAlchemyStorageBackend(StorageBackend):
 
     def prune(self) -> None:
         """Manually trigger pruning and vacuuming."""
-        with self._lock:
-            with self.Session() as session:
-                self._prune_and_vacuum(session)
+        with self._lock, self.Session() as session:
+            self._prune_and_vacuum(session)
 
     def get_readings(
         self,
@@ -280,30 +278,29 @@ class SQLAlchemyStorageBackend(StorageBackend):
         end: datetime | None = None,
         limit: int | None = None,
     ) -> list[ReadingRecord]:
-        with self._lock:
-            with self.Session() as session:
-                query = select(ReadingModel)
-                if start is not None:
-                    s_utc = (
-                        start.replace(tzinfo=timezone.utc)
-                        if start.tzinfo is None
-                        else start.astimezone(timezone.utc)
-                    )
-                    query = query.where(ReadingModel.timestamp >= s_utc)
-                if end is not None:
-                    e_utc = (
-                        end.replace(tzinfo=timezone.utc)
-                        if end.tzinfo is None
-                        else end.astimezone(timezone.utc)
-                    )
-                    query = query.where(ReadingModel.timestamp <= e_utc)
+        with self._lock, self.Session() as session:
+            query = select(ReadingModel)
+            if start is not None:
+                s_utc = (
+                    start.replace(tzinfo=UTC)
+                    if start.tzinfo is None
+                    else start.astimezone(UTC)
+                )
+                query = query.where(ReadingModel.timestamp >= s_utc)
+            if end is not None:
+                e_utc = (
+                    end.replace(tzinfo=UTC)
+                    if end.tzinfo is None
+                    else end.astimezone(UTC)
+                )
+                query = query.where(ReadingModel.timestamp <= e_utc)
 
-                if limit is not None and limit > 0:
-                    query = query.order_by(ReadingModel.timestamp.desc()).limit(limit)
-                    rows = list(reversed(session.scalars(query).all()))
-                else:
-                    query = query.order_by(ReadingModel.timestamp.asc())
-                    rows = session.scalars(query).all()
+            if limit is not None and limit > 0:
+                query = query.order_by(ReadingModel.timestamp.desc()).limit(limit)
+                rows = list(reversed(session.scalars(query).all()))
+            else:
+                query = query.order_by(ReadingModel.timestamp.asc())
+                rows = list(session.scalars(query).all())
 
         results: list[ReadingRecord] = []
         for r in rows:
@@ -324,7 +321,7 @@ class SQLAlchemyStorageBackend(StorageBackend):
 
             rec = ReadingRecord(
                 timestamp=(
-                    r.timestamp.replace(tzinfo=timezone.utc)
+                    r.timestamp.replace(tzinfo=UTC)
                     if r.timestamp.tzinfo is None
                     else r.timestamp
                 ),
@@ -419,18 +416,17 @@ class SQLAlchemyStorageBackend(StorageBackend):
         return consumption_records
 
     def get_summary(self) -> StorageSummary:
-        with self._lock:
-            with self.Session() as session:
-                total_records = session.scalar(select(func.count(ReadingModel.id))) or 0
-                min_ts = session.scalar(select(func.min(ReadingModel.timestamp)))
-                max_ts = session.scalar(select(func.max(ReadingModel.timestamp)))
+        with self._lock, self.Session() as session:
+            total_records = session.scalar(select(func.count(ReadingModel.id))) or 0
+            min_ts = session.scalar(select(func.min(ReadingModel.timestamp)))
+            max_ts = session.scalar(select(func.max(ReadingModel.timestamp)))
 
-                # Sample recent meters
-                sample_rows = session.scalars(
-                    select(ReadingModel.meters_json)
-                    .order_by(ReadingModel.timestamp.desc())
-                    .limit(10)
-                ).all()
+            # Sample recent meters
+            sample_rows = session.scalars(
+                select(ReadingModel.meters_json)
+                .order_by(ReadingModel.timestamp.desc())
+                .limit(10)
+            ).all()
 
         meters_tracked: set[str] = set()
         for s in sample_rows:
@@ -444,15 +440,14 @@ class SQLAlchemyStorageBackend(StorageBackend):
             if os.path.exists(self.sqlite_file_path):
                 mem_bytes = os.path.getsize(self.sqlite_file_path)
         elif self.is_memory:
-            with self._lock:
-                with self.Session() as session:
-                    try:
-                        page_count = session.scalar(text("PRAGMA page_count")) or 0
-                        page_size = session.scalar(text("PRAGMA page_size")) or 4096
-                        mem_bytes = page_count * page_size
-                    except Exception as e:
-                        logger.debug("Failed reading SQLite page metrics: %s", e)
-                        mem_bytes = total_records * 300
+            with self._lock, self.Session() as session:
+                try:
+                    page_count = session.scalar(text("PRAGMA page_count")) or 0
+                    page_size = session.scalar(text("PRAGMA page_size")) or 4096
+                    mem_bytes = page_count * page_size
+                except Exception as e:
+                    logger.debug("Failed reading SQLite page metrics: %s", e)
+                    mem_bytes = total_records * 300
         else:
             mem_bytes = total_records * 300
 
@@ -468,12 +463,12 @@ class SQLAlchemyStorageBackend(StorageBackend):
             memory_usage_bytes=mem_bytes,
             max_memory_bytes=self.max_records * 300,
             oldest_timestamp=(
-                min_ts.replace(tzinfo=timezone.utc)
+                min_ts.replace(tzinfo=UTC)
                 if min_ts and min_ts.tzinfo is None
                 else min_ts
             ),
             newest_timestamp=(
-                max_ts.replace(tzinfo=timezone.utc)
+                max_ts.replace(tzinfo=UTC)
                 if max_ts and max_ts.tzinfo is None
                 else max_ts
             ),
@@ -481,13 +476,12 @@ class SQLAlchemyStorageBackend(StorageBackend):
         )
 
     def clear(self) -> None:
-        with self._lock:
-            with self.Session() as session:
-                session.execute(delete(ReadingModel))
-                session.commit()
-                if self.is_sqlite and not self.is_memory:
-                    try:
-                        session.execute(text("VACUUM"))
-                        session.commit()
-                    except Exception as e:
-                        logger.debug("Vacuum on clear ignored error: %s", e)
+        with self._lock, self.Session() as session:
+            session.execute(delete(ReadingModel))
+            session.commit()
+            if self.is_sqlite and not self.is_memory:
+                try:
+                    session.execute(text("VACUUM"))
+                    session.commit()
+                except Exception as e:
+                    logger.debug("Vacuum on clear ignored error: %s", e)

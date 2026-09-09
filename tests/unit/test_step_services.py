@@ -1,4 +1,5 @@
 from unittest.mock import MagicMock
+
 from configuration import Config
 from gui.step_services import ServicesStep
 

@@ -1,11 +1,11 @@
 """Unit tests for image utilities in src/utils/image.py."""
 
 import numpy as np
-from PIL import Image
 import pytest
+from PIL import Image
 
-from data_classes import ImagePosition, RefImage
 import utils.image as img_utils
+from data_classes import ImagePosition, RefImage
 
 
 @pytest.fixture

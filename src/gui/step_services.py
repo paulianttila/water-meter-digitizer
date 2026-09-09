@@ -1,8 +1,9 @@
-from typing import Callable
+from collections.abc import Callable
 
 from nicegui import ui
 
 from configuration import Config
+
 from .step_base import BaseStep
 
 HELP_TEXT = (
@@ -21,7 +22,7 @@ class ServicesStep(BaseStep):
     def __init__(
         self,
         name: str,
-        set_image_callback: Callable[[str], None] = None,
+        set_image_callback: Callable[[str], None] | None = None,
         spinner=None,
     ) -> None:
         super().__init__(

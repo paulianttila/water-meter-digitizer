@@ -2,11 +2,24 @@
 
 import logging
 import time
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any, TypedDict
+
 from nicegui import ui
-from processor.digitizer import DigitizerProcessor
+
+from processor.digitizer import DigitizerProcessor, ReadoutResult
 
 logger = logging.getLogger(__name__)
+
+
+class BenchmarkResultItem(TypedDict):
+    file: str
+    name: str
+    latency_ms: float
+    avg_confidence: float
+    composite: str
+    results: list[ReadoutResult]
+    error: str | None
 
 
 def open_model_benchmark_dialog(
@@ -19,11 +32,11 @@ def open_model_benchmark_dialog(
     on_apply_callback: Callable[[str], None],
 ) -> None:
     """Render and open the interactive CNN Model Benchmark side-by-side dialog."""
-    benchmark_results: list[dict[str, Any]] = []
+    benchmark_results: list[BenchmarkResultItem] = []
 
-    for item in candidate_models:
-        modelfile = item["file"]
-        model_display_name = item["name"]
+    for cand in candidate_models:
+        modelfile = cand["file"]
+        model_display_name = cand["name"]
         start = time.time()
         try:
             dp = DigitizerProcessor()
@@ -180,247 +193,240 @@ def open_model_benchmark_dialog(
                         )
 
         # Benchmark Results Table Container
-        with ui.element("div").classes(
-            "w-full flex-1 min-h-0 overflow-y-auto p-4 flex flex-col gap-3 "
-            "custom-scrollbar"
+        with (
+            ui.element("div").classes(
+                "w-full flex-1 min-h-0 overflow-y-auto p-4 flex flex-col gap-3 "
+                "custom-scrollbar"
+            ),
+            ui.element("table").classes("w-full text-left border-collapse"),
         ):
-            with ui.element("table").classes("w-full text-left border-collapse"):
-                with ui.element("thead").classes(
+            with (
+                ui.element("thead").classes(
                     "text-xs font-semibold uppercase text-slate-400 "
                     "bg-slate-900/80 sticky top-0 z-10 border-b border-white/10"
-                ):
-                    with ui.element("tr"):
-                        with ui.element("th").classes("p-3"):
-                            ui.label("Model File")
-                        with ui.element("th").classes("p-3 text-center"):
-                            ui.label("Avg Conf")
-                        with ui.element("th").classes("p-3 text-center"):
-                            ui.label("Speed")
-                        with ui.element("th").classes("p-3"):
-                            ui.label("Per-ROI Predictions")
-                        with ui.element("th").classes("p-3 text-right"):
-                            ui.label("Action")
+                ),
+                ui.element("tr"),
+            ):
+                with ui.element("th").classes("p-3"):
+                    ui.label("Model File")
+                with ui.element("th").classes("p-3 text-center"):
+                    ui.label("Avg Conf")
+                with ui.element("th").classes("p-3 text-center"):
+                    ui.label("Speed")
+                with ui.element("th").classes("p-3"):
+                    ui.label("Per-ROI Predictions")
+                with ui.element("th").classes("p-3 text-right"):
+                    ui.label("Action")
 
-                with ui.element("tbody").classes("text-sm divide-y divide-white/5"):
-                    for idx, item in enumerate(benchmark_results):
-                        is_top = idx == 0 and item["error"] is None
-                        row_bg = (
-                            "bg-indigo-950/20 hover:bg-indigo-950/40"
-                            if is_top
-                            else "hover:bg-slate-900/60"
-                        )
-                        with ui.element("tr").classes(f"{row_bg} transition-colors"):
-                            # Model Name
-                            with ui.element("td").classes("p-3 align-middle"):
-                                with ui.column().classes("gap-1"):
-                                    with ui.row().classes(
-                                        "items-center gap-1.5 flex-nowrap"
-                                    ):
-                                        if is_top:
-                                            ui.icon("verified", size="xs").classes(
-                                                "text-emerald-400"
-                                            ).tooltip("Top Ranked Model")
-                                        ui.label(item["name"]).classes(
-                                            "font-medium text-slate-200 "
-                                            "font-mono text-xs"
-                                        ).tooltip(item["file"])
+            with ui.element("tbody").classes("text-sm divide-y divide-white/5"):
+                for idx, item in enumerate(benchmark_results):
+                    is_top = idx == 0 and item["error"] is None
+                    row_bg = (
+                        "bg-indigo-950/20 hover:bg-indigo-950/40"
+                        if is_top
+                        else "hover:bg-slate-900/60"
+                    )
+                    with ui.element("tr").classes(f"{row_bg} transition-colors"):
+                        # Model Name
+                        with (
+                            ui.element("td").classes("p-3 align-middle"),
+                            ui.column().classes("gap-1"),
+                        ):
+                            with ui.row().classes("items-center gap-1.5 flex-nowrap"):
+                                if is_top:
+                                    ui.icon("verified", size="xs").classes(
+                                        "text-emerald-400"
+                                    ).tooltip("Top Ranked Model")
+                                ui.label(item["name"]).classes(
+                                    "font-medium text-slate-200 " "font-mono text-xs"
+                                ).tooltip(item["file"])
 
-                                    # Architecture & Precision Badges
-                                    with ui.row().classes(
-                                        "items-center gap-1 flex-wrap"
-                                    ):
-                                        n_low = item["name"].lower()
-                                        if "class100" in n_low:
-                                            ui.label("Class 100").classes(
-                                                "text-[9px] px-1.5 py-0.2 "
-                                                "rounded bg-indigo-900/60 "
-                                                "text-indigo-300 font-semibold "
-                                                "border border-indigo-500/30"
-                                            )
-                                        elif "class11" in n_low:
-                                            ui.label("Class 11").classes(
-                                                "text-[9px] px-1.5 py-0.2 "
-                                                "rounded bg-purple-900/60 "
-                                                "text-purple-300 font-semibold "
-                                                "border border-purple-500/30"
-                                            )
-                                        elif "cont" in n_low:
-                                            ui.label("Continuous").classes(
-                                                "text-[9px] px-1.5 py-0.2 "
-                                                "rounded bg-cyan-900/60 "
-                                                "text-cyan-300 font-semibold "
-                                                "border border-cyan-500/30"
-                                            )
-                                        elif "legacy" in n_low or "version" in n_low:
-                                            ui.label("Legacy").classes(
-                                                "text-[9px] px-1.5 py-0.2 "
-                                                "rounded bg-slate-800 "
-                                                "text-slate-400 font-semibold "
-                                                "border border-white/10"
-                                            )
-
-                                        if "_q" in n_low or "-q" in n_low:
-                                            ui.label("⚡ Int8").classes(
-                                                "text-[9px] px-1.5 py-0.2 "
-                                                "rounded bg-emerald-950/80 "
-                                                "text-emerald-300 font-semibold "
-                                                "border border-emerald-500/30 "
-                                                "font-mono"
-                                            )
-                                        else:
-                                            ui.label("Float32").classes(
-                                                "text-[9px] px-1.5 py-0.2 "
-                                                "rounded bg-slate-900 "
-                                                "text-slate-400 font-semibold "
-                                                "border border-white/10 font-mono"
-                                            )
-
-                            # Avg Confidence
-                            with ui.element("td").classes(
-                                "p-3 align-middle text-center"
-                            ):
-                                if item["error"]:
-                                    ui.label("—").classes("text-slate-500")
-                                else:
-                                    conf = item["avg_confidence"]
-                                    if conf >= 90:
-                                        badge_cls = (
-                                            "bg-emerald-500/15 text-emerald-400 "
-                                            "border-emerald-500/30"
-                                        )
-                                    elif conf >= 70:
-                                        badge_cls = (
-                                            "bg-amber-500/15 text-amber-400 "
-                                            "border-amber-500/30"
-                                        )
-                                    else:
-                                        badge_cls = (
-                                            "bg-red-500/15 text-red-400 "
-                                            "border-red-500/30"
-                                        )
-                                    ui.label(f"{conf:.1f}%").classes(
-                                        "px-2 py-0.5 rounded-full "
-                                        "text-xs font-semibold border "
-                                        f"{badge_cls} font-mono"
+                            # Architecture & Precision Badges
+                            with ui.row().classes("items-center gap-1 flex-wrap"):
+                                n_low = item["name"].lower()
+                                if "class100" in n_low:
+                                    ui.label("Class 100").classes(
+                                        "text-[9px] px-1.5 py-0.2 "
+                                        "rounded bg-indigo-900/60 "
+                                        "text-indigo-300 font-semibold "
+                                        "border border-indigo-500/30"
+                                    )
+                                elif "class11" in n_low:
+                                    ui.label("Class 11").classes(
+                                        "text-[9px] px-1.5 py-0.2 "
+                                        "rounded bg-purple-900/60 "
+                                        "text-purple-300 font-semibold "
+                                        "border border-purple-500/30"
+                                    )
+                                elif "cont" in n_low:
+                                    ui.label("Continuous").classes(
+                                        "text-[9px] px-1.5 py-0.2 "
+                                        "rounded bg-cyan-900/60 "
+                                        "text-cyan-300 font-semibold "
+                                        "border border-cyan-500/30"
+                                    )
+                                elif "legacy" in n_low or "version" in n_low:
+                                    ui.label("Legacy").classes(
+                                        "text-[9px] px-1.5 py-0.2 "
+                                        "rounded bg-slate-800 "
+                                        "text-slate-400 font-semibold "
+                                        "border border-white/10"
                                     )
 
-                            # Speed
-                            with ui.element("td").classes(
-                                "p-3 align-middle text-center text-xs "
-                                "font-mono text-slate-400"
-                            ):
-                                ui.label(
-                                    f"{item['latency_ms']}ms"
-                                    if not item["error"]
-                                    else "—"
+                                if "_q" in n_low or "-q" in n_low:
+                                    ui.label("⚡ Int8").classes(
+                                        "text-[9px] px-1.5 py-0.2 "
+                                        "rounded bg-emerald-950/80 "
+                                        "text-emerald-300 font-semibold "
+                                        "border border-emerald-500/30 "
+                                        "font-mono"
+                                    )
+                                else:
+                                    ui.label("Float32").classes(
+                                        "text-[9px] px-1.5 py-0.2 "
+                                        "rounded bg-slate-900 "
+                                        "text-slate-400 font-semibold "
+                                        "border border-white/10 font-mono"
+                                    )
+
+                        # Avg Confidence
+                        with ui.element("td").classes("p-3 align-middle text-center"):
+                            if item["error"]:
+                                ui.label("—").classes("text-slate-500")
+                            else:
+                                conf = item["avg_confidence"]
+                                if conf >= 90:
+                                    badge_cls = (
+                                        "bg-emerald-500/15 text-emerald-400 "
+                                        "border-emerald-500/30"
+                                    )
+                                elif conf >= 70:
+                                    badge_cls = (
+                                        "bg-amber-500/15 text-amber-400 "
+                                        "border-amber-500/30"
+                                    )
+                                else:
+                                    badge_cls = (
+                                        "bg-red-500/15 text-red-400 "
+                                        "border-red-500/30"
+                                    )
+                                ui.label(f"{conf:.1f}%").classes(
+                                    "px-2 py-0.5 rounded-full "
+                                    "text-xs font-semibold border "
+                                    f"{badge_cls} font-mono"
                                 )
 
-                            # Per-ROI Predictions
-                            with ui.element("td").classes("p-3 align-middle"):
-                                if item["error"]:
-                                    ui.label("Failed to infer").classes(
-                                        "text-xs text-red-400 italic"
-                                    )
-                                else:
-                                    with ui.row().classes(
-                                        "items-center gap-2 flex-wrap"
-                                    ):
-                                        for res in item["results"]:
-                                            val_str = convert_value_fn(res.value)
-                                            c = res.confidence
-                                            c_color = (
-                                                "text-emerald-400"
-                                                if c >= 90
-                                                else (
-                                                    "text-amber-400"
-                                                    if c >= 70
-                                                    else "text-red-400"
-                                                )
+                        # Speed
+                        with ui.element("td").classes(
+                            "p-3 align-middle text-center text-xs "
+                            "font-mono text-slate-400"
+                        ):
+                            ui.label(
+                                f"{item['latency_ms']}ms" if not item["error"] else "—"
+                            )
+
+                        # Per-ROI Predictions
+                        with ui.element("td").classes("p-3 align-middle"):
+                            if item["error"]:
+                                ui.label("Failed to infer").classes(
+                                    "text-xs text-red-400 italic"
+                                )
+                            else:
+                                with ui.row().classes("items-center gap-2 flex-wrap"):
+                                    for res in item["results"]:
+                                        val_str = convert_value_fn(res.value)
+                                        c = res.confidence
+                                        c_color = (
+                                            "text-emerald-400"
+                                            if c >= 90
+                                            else (
+                                                "text-amber-400"
+                                                if c >= 70
+                                                else "text-red-400"
                                             )
-                                            b64 = roi_thumbnails.get(res.name, "")
-                                            thumb_w_h = (
-                                                "w-6 h-9"
-                                                if model_type == "digital"
-                                                else "w-8 h-8"
+                                        )
+                                        b64 = roi_thumbnails.get(res.name, "")
+                                        thumb_w_h = (
+                                            "w-6 h-9"
+                                            if model_type == "digital"
+                                            else "w-8 h-8"
+                                        )
+                                        with (
+                                            ui.element("div")
+                                            .classes(
+                                                "p-1.5 rounded-lg "
+                                                "bg-slate-900/90 border "
+                                                "border-white/10 text-xs "
+                                                "flex items-center gap-2 "
+                                                "font-mono "
+                                                "hover:border-cyan-500/40 "
+                                                "transition-colors"
                                             )
-                                            with (
-                                                ui.element("div")
-                                                .classes(
-                                                    "p-1.5 rounded-lg "
-                                                    "bg-slate-900/90 border "
-                                                    "border-white/10 text-xs "
-                                                    "flex items-center gap-2 "
-                                                    "font-mono "
-                                                    "hover:border-cyan-500/40 "
-                                                    "transition-colors"
+                                            .tooltip(
+                                                f"{res.name}: "
+                                                f"value={val_str}, "
+                                                f"confidence={c:.1f}%"
+                                            )
+                                        ):
+                                            if b64:
+                                                img_src = (
+                                                    f"data:image/jpeg;base64,{b64}"
                                                 )
-                                                .tooltip(
-                                                    f"{res.name}: "
-                                                    f"value={val_str}, "
-                                                    f"confidence={c:.1f}%"
+                                                ui.html(
+                                                    f'<img src="{img_src}" '
+                                                    f'class="{thumb_w_h} '
+                                                    "rounded bg-slate-950 "
+                                                    "p-0.5 border "
+                                                    "border-white/10 shrink-0 "
+                                                    "object-contain "
+                                                    'inline-block" />'
                                                 )
+                                            with ui.column().classes(
+                                                "gap-0 leading-tight"
                                             ):
-                                                if b64:
-                                                    img_src = (
-                                                        f"data:image/jpeg;base64,{b64}"
-                                                    )
-                                                    ui.html(
-                                                        f'<img src="{img_src}" '
-                                                        f'class="{thumb_w_h} '
-                                                        "rounded bg-slate-950 "
-                                                        "p-0.5 border "
-                                                        "border-white/10 shrink-0 "
-                                                        "object-contain "
-                                                        'inline-block" />'
-                                                    )
-                                                with ui.column().classes(
-                                                    "gap-0 leading-tight"
-                                                ):
-                                                    ui.label(f"{res.name}").classes(
-                                                        "text-slate-400 "
-                                                        "text-[10px] "
-                                                        "uppercase font-semibold"
-                                                    )
-                                                    ui.label(f"{val_str}").classes(
-                                                        "font-bold "
-                                                        "text-slate-100 text-xs"
-                                                    )
-                                                    ui.label(f"{c:.0f}%").classes(
-                                                        f"text-[10px] "
-                                                        f"font-semibold {c_color}"
-                                                    )
+                                                ui.label(f"{res.name}").classes(
+                                                    "text-slate-400 "
+                                                    "text-[10px] "
+                                                    "uppercase font-semibold"
+                                                )
+                                                ui.label(f"{val_str}").classes(
+                                                    "font-bold "
+                                                    "text-slate-100 text-xs"
+                                                )
+                                                ui.label(f"{c:.0f}%").classes(
+                                                    f"text-[10px] "
+                                                    f"font-semibold {c_color}"
+                                                )
 
-                            # Action Button
-                            with ui.element("td").classes(
-                                "p-3 align-middle text-right"
-                            ):
+                        # Action Button
+                        with ui.element("td").classes("p-3 align-middle text-right"):
 
-                                def _make_apply(f=item["file"], n=item["name"]):
-                                    def _apply():
-                                        on_apply_callback(f)
-                                        dialog.close()
-                                        ui.notify(
-                                            f"Applied model: {n}",
-                                            type="positive",
-                                        )
+                            def _make_apply(f=item["file"], n=item["name"]):
+                                def _apply():
+                                    on_apply_callback(f)
+                                    dialog.close()
+                                    ui.notify(
+                                        f"Applied model: {n}",
+                                        type="positive",
+                                    )
 
-                                    return _apply
+                                return _apply
 
-                                ui.button(
-                                    "Apply",
-                                    icon="check",
-                                    on_click=_make_apply(item["file"], item["name"]),
-                                ).props("unelevated dense").classes(
-                                    "bg-indigo-600 hover:bg-indigo-500 "
-                                    "text-white text-xs px-2.5 py-1 "
-                                    "rounded-lg font-medium"
-                                    if is_top
-                                    else "bg-slate-800 hover:bg-slate-700 "
-                                    "text-slate-300 border border-white/10 "
-                                    "text-xs px-2.5 py-1 rounded-lg"
-                                ).tooltip(
-                                    f"Set {item['name']} as active model"
-                                )
+                            ui.button(
+                                "Apply",
+                                icon="check",
+                                on_click=_make_apply(item["file"], item["name"]),
+                            ).props("unelevated dense").classes(
+                                "bg-indigo-600 hover:bg-indigo-500 "
+                                "text-white text-xs px-2.5 py-1 "
+                                "rounded-lg font-medium"
+                                if is_top
+                                else "bg-slate-800 hover:bg-slate-700 "
+                                "text-slate-300 border border-white/10 "
+                                "text-xs px-2.5 py-1 rounded-lg"
+                            ).tooltip(
+                                f"Set {item['name']} as active model"
+                            )
 
         # Dialog Footer
         with ui.row().classes(

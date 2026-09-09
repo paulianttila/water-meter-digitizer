@@ -1,4 +1,4 @@
-from typing import Callable
+from collections.abc import Callable
 
 from nicegui import ui
 
@@ -55,24 +55,26 @@ class FinalStep(BaseStep):
             config = Config()
             config.load_from_string(self.editor.value)
             j = config.model_dump_json(indent=4)
-            with ui.dialog() as dialog:
-                with ui.card().classes(
+            with (
+                ui.dialog() as dialog,
+                ui.card().classes(
                     "bg-slate-900 border border-white/10 rounded-2xl p-4 "
                     "max-w-4xl w-full"
+                ),
+            ):
+                with ui.row().classes(
+                    "w-full items-center justify-between pb-2 border-b "
+                    "border-white/10"
                 ):
-                    with ui.row().classes(
-                        "w-full items-center justify-between pb-2 border-b "
-                        "border-white/10"
-                    ):
-                        ui.label("Compiled Config (JSON)").classes(
-                            "font-semibold text-slate-200"
-                        )
-                        ui.button(icon="close", on_click=dialog.close).props(
-                            "flat round dense"
-                        )
-                    ui.code(j, language="json").classes(
-                        "w-full max-h-[70vh] overflow-auto text-xs rounded-xl"
+                    ui.label("Compiled Config (JSON)").classes(
+                        "font-semibold text-slate-200"
                     )
+                    ui.button(icon="close", on_click=dialog.close).props(
+                        "flat round dense"
+                    )
+                ui.code(j, language="json").classes(
+                    "w-full max-h-[70vh] overflow-auto text-xs rounded-xl"
+                )
             dialog.open()
         except Exception as e:
             ui.notify(f"Syntax error: {e}", type="negative")
@@ -96,56 +98,56 @@ class FinalStep(BaseStep):
         with ui.step(self.name):
             self.add_help(HELP_TEXT)
 
-            with ui.card().classes(
-                "w-full bg-slate-900/60 border border-white/10 rounded-xl p-3 my-2"
+            with (
+                ui.card().classes(
+                    "w-full bg-slate-900/60 border border-white/10 rounded-xl p-3 my-2"
+                ),
+                ui.row().classes("w-full items-center justify-between gap-2 flex-wrap"),
             ):
-                with ui.row().classes(
-                    "w-full items-center justify-between gap-2 flex-wrap"
-                ):
-                    with ui.row().classes("items-center gap-2"):
+                with ui.row().classes("items-center gap-2"):
+                    ui.button(
+                        "Check Syntax",
+                        icon="verified",
+                        on_click=self._syntax_check,
+                    ).props("outline dense").classes("text-slate-300 font-medium")
+
+                    ui.button(
+                        "JSON Preview",
+                        icon="code",
+                        on_click=self._show_config,
+                    ).props("outline dense").classes("text-slate-300 font-medium")
+
+                with ui.row().classes("items-center gap-2"):
+                    self.button_save = (
                         ui.button(
-                            "Check Syntax",
-                            icon="verified",
-                            on_click=self._syntax_check,
-                        ).props("outline dense").classes("text-slate-300 font-medium")
+                            "Save Config",
+                            icon="save",
+                            on_click=self._save_config,
+                        )
+                        .props("unelevated dense")
+                        .classes(
+                            "bg-emerald-600 hover:bg-emerald-500 text-white "
+                            "px-3 font-medium shadow-md"
+                        )
+                        .tooltip("Save configuration and marker images to disk")
+                    )
 
+                    self.button_use_config = (
                         ui.button(
-                            "JSON Preview",
-                            icon="code",
-                            on_click=self._show_config,
-                        ).props("outline dense").classes("text-slate-300 font-medium")
-
-                    with ui.row().classes("items-center gap-2"):
-                        self.button_save = (
-                            ui.button(
-                                "Save Config",
-                                icon="save",
-                                on_click=self._save_config,
-                            )
-                            .props("unelevated dense")
-                            .classes(
-                                "bg-emerald-600 hover:bg-emerald-500 text-white "
-                                "px-3 font-medium shadow-md"
-                            )
-                            .tooltip("Save configuration and marker images to disk")
+                            "Take In Use",
+                            icon="play_circle",
+                            on_click=self._use_config,
                         )
-
-                        self.button_use_config = (
-                            ui.button(
-                                "Take In Use",
-                                icon="play_circle",
-                                on_click=self._use_config,
-                            )
-                            .props("unelevated dense")
-                            .classes(
-                                "bg-gradient-to-r from-blue-600 to-indigo-600 "
-                                "hover:from-blue-500 hover:to-indigo-500 text-white "
-                                "px-3 font-medium shadow-md"
-                            )
-                            .tooltip(
-                                "Apply configuration immediately to live system runtime"
-                            )
+                        .props("unelevated dense")
+                        .classes(
+                            "bg-gradient-to-r from-blue-600 to-indigo-600 "
+                            "hover:from-blue-500 hover:to-indigo-500 text-white "
+                            "px-3 font-medium shadow-md"
                         )
+                        .tooltip(
+                            "Apply configuration immediately to live system runtime"
+                        )
+                    )
 
             with ui.card().classes(
                 "w-full bg-slate-950/80 border border-white/10 rounded-xl "

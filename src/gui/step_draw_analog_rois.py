@@ -1,12 +1,13 @@
 import time
-from typing import Callable
+from collections.abc import Callable
 
 from nicegui import ui
 
 from configuration import CNNParams
+from processor.digitizer import DigitizerProcessor
+
 from .step_base import BaseStep
 from .step_draw_rois_base import DrawRoisBaseStep
-from processor.digitizer import DigitizerProcessor
 
 HELP_TEXT = (
     "- **Analog Dials**: Add bounding boxes tightly around each "
@@ -40,13 +41,16 @@ class DrawAnalogRoisStep(DrawRoisBaseStep):
             spinner=spinner,
         )
         self.analog_models_dir = analog_models_dir
-        self.cnn_file = None
-        self.cnn_type = None
+        self.cnn_file: ui.select | None = None
+        self.cnn_type: ui.select | None = None
 
     def load_from_config(self, analog_readout: CNNParams) -> None:
-        if hasattr(self, "cnn_type") and self.cnn_type is not None:
-            if analog_readout.model in ["auto", "analog", "analog100"]:
-                self.cnn_type.value = analog_readout.model
+        if (
+            hasattr(self, "cnn_type")
+            and self.cnn_type is not None
+            and analog_readout.model in ["auto", "analog", "analog100"]
+        ):
+            self.cnn_type.value = analog_readout.model
         if (
             hasattr(self, "cnn_file")
             and self.cnn_file is not None
@@ -84,45 +88,53 @@ class DrawAnalogRoisStep(DrawRoisBaseStep):
         )
 
     def _show_analogs(self) -> None:
+        if (
+            self.cnn_file is None
+            or not self.cnn_file.value
+            or self.test_result_container is None
+        ):
+            return
         start_time = time.time()
         analog_images = self._cut_images()
         digitizerProcessor = (
             DigitizerProcessor()
-            .init_analog_model(self.cnn_file.value, "auto")  # type: ignore
+            .init_analog_model(self.cnn_file.value, "auto")
             .execute_analog_cnn(analog_images)
             .evaluate_cnn_results()
         )
         results = digitizerProcessor.cnn_analog_results
 
         self.test_result_container.clear()
-        with self.test_result_container:
-            with ui.row().classes("w-full gap-3 flex-wrap items-center mt-2"):
-                for item in results:
-                    base64img = self._get_base64_image_by_name(item.name, analog_images)
-                    c = item.confidence
-                    c_color = (
-                        "text-emerald-400"
-                        if c >= 90
-                        else ("text-amber-400" if c >= 70 else "text-red-400")
+        with (
+            self.test_result_container,
+            ui.row().classes("w-full gap-3 flex-wrap items-center mt-2"),
+        ):
+            for item in results:
+                base64img = self._get_base64_image_by_name(item.name, analog_images)
+                c = item.confidence
+                c_color = (
+                    "text-emerald-400"
+                    if c >= 90
+                    else ("text-amber-400" if c >= 70 else "text-red-400")
+                )
+                with ui.element("div").classes(
+                    "p-2.5 rounded-lg bg-slate-900/80 border "
+                    "border-white/10 flex flex-col items-center "
+                    "gap-1 min-w-[70px]"
+                ):
+                    ui.label(f"{item.name}").classes(
+                        "text-[11px] text-gray-400 uppercase "
+                        "tracking-wider font-semibold"
                     )
-                    with ui.element("div").classes(
-                        "p-2.5 rounded-lg bg-slate-900/80 border "
-                        "border-white/10 flex flex-col items-center "
-                        "gap-1 min-w-[70px]"
-                    ):
-                        ui.label(f"{item.name}").classes(
-                            "text-[11px] text-gray-400 uppercase "
-                            "tracking-wider font-semibold"
-                        )
-                        ui.image(f"data:image/jpeg;base64,{base64img}").props(
-                            "fit=contain no-spinner"
-                        ).classes("w-16 h-16 rounded bg-slate-950 p-0.5")
-                        ui.label(f"{self._convert_value(item.value)}").classes(
-                            "font-['Outfit'] font-bold text-cyan-400 text-sm"
-                        )
-                        ui.label(f"{c:.0f}%").classes(
-                            f"text-[10px] font-semibold {c_color} font-mono"
-                        ).tooltip(f"Confidence: {c:.1f}%")
+                    ui.image(f"data:image/jpeg;base64,{base64img}").props(
+                        "fit=contain no-spinner"
+                    ).classes("w-16 h-16 rounded bg-slate-950 p-0.5")
+                    ui.label(f"{self._convert_value(item.value)}").classes(
+                        "font-['Outfit'] font-bold text-cyan-400 text-sm"
+                    )
+                    ui.label(f"{c:.0f}%").classes(
+                        f"text-[10px] font-semibold {c_color} font-mono"
+                    ).tooltip(f"Confidence: {c:.1f}%")
         self.time.text = f"⏱ {round(time.time() - start_time, 2)}s"
 
     @BaseStep.decorator_spinner
@@ -150,90 +162,90 @@ class DrawAnalogRoisStep(DrawRoisBaseStep):
             self.add_help(HELP_TEXT)
 
             # Alignment & Action Bar
-            with ui.card().classes(
-                "w-full bg-slate-900/60 border border-white/10 rounded-xl p-3 my-2"
+            with (
+                ui.card().classes(
+                    "w-full bg-slate-900/60 border border-white/10 rounded-xl p-3 my-2"
+                ),
+                ui.row().classes("w-full items-center justify-between gap-2 flex-wrap"),
             ):
-                with ui.row().classes(
-                    "w-full items-center justify-between gap-2 flex-wrap"
-                ):
-                    with ui.row().classes("items-center gap-1"):
-                        ui.label("Align:").classes(
-                            "text-xs font-semibold text-slate-400 mr-1"
-                        )
-                        ui.button(
-                            icon="format_align_left",
-                            on_click=self._align_left,
-                        ).props("flat dense").bind_enabled_from(
-                            self, "container", lambda x: len(list(x)) > 0
-                        ).tooltip(
-                            "Align Left"
-                        )
-                        ui.button(
-                            icon="vertical_align_top", on_click=self._align_top
-                        ).props("flat dense").bind_enabled_from(
-                            self, "container", lambda x: len(list(x)) > 0
-                        ).tooltip(
-                            "Align Top"
-                        )
-                        ui.button(
-                            icon="vertical_align_bottom",
-                            on_click=self._align_bottom,
-                        ).props("flat dense").bind_enabled_from(
-                            self, "container", lambda x: len(list(x)) > 0
-                        ).tooltip(
-                            "Align Bottom"
-                        )
-                        ui.button(
-                            icon="format_align_right",
-                            on_click=self._align_right,
-                        ).props("flat dense").bind_enabled_from(
-                            self, "container", lambda x: len(list(x)) > 0
-                        ).tooltip(
-                            "Align Right"
-                        )
-                        ui.button(
-                            icon="vertical_align_center",
-                            on_click=self._align_center,
-                        ).props("flat dense").bind_enabled_from(
-                            self, "container", lambda x: len(list(x)) > 0
-                        ).tooltip(
-                            "Align Center"
-                        )
-                        ui.button(
-                            icon="horizontal_distribute",
-                            on_click=self._distribute_horizontally,
-                        ).props("flat dense").bind_enabled_from(
-                            self, "container", lambda x: len(list(x)) > 1
-                        ).tooltip(
-                            "Distribute Horizontally"
-                        )
-                        ui.button(icon="aspect_ratio", on_click=self._resize_all).props(
-                            "flat dense"
-                        ).bind_enabled_from(
-                            self, "container", lambda x: len(list(x)) > 0
-                        ).tooltip(
-                            "Resize All to First ROI Size"
-                        )
+                with ui.row().classes("items-center gap-1"):
+                    ui.label("Align:").classes(
+                        "text-xs font-semibold text-slate-400 mr-1"
+                    )
+                    ui.button(
+                        icon="format_align_left",
+                        on_click=self._align_left,
+                    ).props("flat dense").bind_enabled_from(
+                        self, "rois", lambda rois: len(rois) > 0
+                    ).tooltip(
+                        "Align Left"
+                    )
+                    ui.button(
+                        icon="vertical_align_top", on_click=self._align_top
+                    ).props("flat dense").bind_enabled_from(
+                        self, "rois", lambda rois: len(rois) > 0
+                    ).tooltip(
+                        "Align Top"
+                    )
+                    ui.button(
+                        icon="vertical_align_bottom",
+                        on_click=self._align_bottom,
+                    ).props("flat dense").bind_enabled_from(
+                        self, "rois", lambda rois: len(rois) > 0
+                    ).tooltip(
+                        "Align Bottom"
+                    )
+                    ui.button(
+                        icon="format_align_right",
+                        on_click=self._align_right,
+                    ).props("flat dense").bind_enabled_from(
+                        self, "rois", lambda rois: len(rois) > 0
+                    ).tooltip(
+                        "Align Right"
+                    )
+                    ui.button(
+                        icon="vertical_align_center",
+                        on_click=self._align_center,
+                    ).props("flat dense").bind_enabled_from(
+                        self, "rois", lambda rois: len(rois) > 0
+                    ).tooltip(
+                        "Align Center"
+                    )
+                    ui.button(
+                        icon="horizontal_distribute",
+                        on_click=self._distribute_horizontally,
+                    ).props("flat dense").bind_enabled_from(
+                        self, "rois", lambda rois: len(rois) > 1
+                    ).tooltip(
+                        "Distribute Horizontally"
+                    )
+                    ui.button(icon="aspect_ratio", on_click=self._resize_all).props(
+                        "flat dense"
+                    ).bind_enabled_from(
+                        self, "rois", lambda rois: len(rois) > 0
+                    ).tooltip(
+                        "Resize All to First ROI Size"
+                    )
 
-                    with ui.row().classes("items-center gap-2"):
-                        self.select_all = ui.checkbox(
-                            "Show All",
-                            value=(
-                                bool(self.rois and all(r.enabled for r in self.rois))
-                                if self.rois
-                                else True
-                            ),
-                            on_change=self._select_all_rois,
-                        ).tooltip("Toggle visibility of all bounding boxes on canvas")
-                        self._sync_select_all_checkbox()
-                        ui.button(
-                            "Add Dial ROI", icon="add", on_click=self._add_roi
-                        ).props("dense unelevated").classes(
-                            "bg-indigo-600 hover:bg-indigo-500 text-white text-xs "
-                            "px-2 py-1 font-medium"
-                        ).tooltip(
-                            "Add new analog dial bounding box"
-                        )
+                with ui.row().classes("items-center gap-2"):
+                    self.select_all = ui.checkbox(
+                        "Show All",
+                        value=(
+                            bool(self.rois and all(r.enabled for r in self.rois))
+                            if self.rois
+                            else True
+                        ),
+                        on_change=self._select_all_rois,
+                    ).tooltip("Toggle visibility of all bounding boxes on canvas")
+                    self._sync_select_all_checkbox()
+                    ui.button("Add Dial ROI", icon="add", on_click=self._add_roi).props(
+                        "dense unelevated"
+                    ).classes(
+                        "bg-indigo-600 hover:bg-indigo-500 text-white text-xs "
+                        "px-2 py-1 font-medium"
+                    ).tooltip(
+                        "Add new analog dial bounding box"
+                    )
 
             # ROI List Container
             self.container = ui.column().classes("w-full gap-2 my-2")
@@ -275,42 +287,42 @@ class DrawAnalogRoisStep(DrawRoisBaseStep):
                         )
                     )
 
-                with ui.row().classes(
-                    "w-full items-center justify-between pt-2 border-t border-white/10"
+                with (
+                    ui.row().classes(
+                        "w-full items-center justify-between pt-2 border-t border-white/10"
+                    ),
+                    ui.row().classes("items-center gap-2"),
                 ):
-                    with ui.row().classes("items-center gap-2"):
-                        ui.button(
-                            "Run Inference Test",
-                            icon="play_arrow",
-                            on_click=self._show_analogs,
-                        ).props("unelevated").classes(
-                            "bg-gradient-to-r from-emerald-600 to-teal-600 "
-                            "hover:from-emerald-500 hover:to-teal-500 text-white "
-                            "font-medium"
-                        ).tooltip(
-                            "Digitize test result"
-                        ).bind_enabled_from(
-                            self.cnn_file,
-                            "value",
-                            lambda x: x is not None and len(x) > 0,
-                        )
-                        ui.button(
-                            "Benchmark Models",
-                            icon="analytics",
-                            on_click=self._benchmark_models,
-                        ).props("outline").classes(
-                            "text-indigo-300 border-indigo-500/40 "
-                            "hover:bg-indigo-500/10 font-medium"
-                        ).tooltip(
-                            "Benchmark and compare all models side-by-side"
-                        ).bind_enabled_from(
-                            self,
-                            "rois",
-                            lambda rois: len(rois) > 0,
-                        )
-                        self.time = ui.label().classes(
-                            "text-xs font-mono text-slate-400"
-                        )
+                    ui.button(
+                        "Run Inference Test",
+                        icon="play_arrow",
+                        on_click=self._show_analogs,
+                    ).props("unelevated").classes(
+                        "bg-gradient-to-r from-emerald-600 to-teal-600 "
+                        "hover:from-emerald-500 hover:to-teal-500 text-white "
+                        "font-medium"
+                    ).tooltip(
+                        "Digitize test result"
+                    ).bind_enabled_from(
+                        self.cnn_file,
+                        "value",
+                        lambda x: x is not None and len(x) > 0,
+                    )
+                    ui.button(
+                        "Benchmark Models",
+                        icon="analytics",
+                        on_click=self._benchmark_models,
+                    ).props("outline").classes(
+                        "text-indigo-300 border-indigo-500/40 "
+                        "hover:bg-indigo-500/10 font-medium"
+                    ).tooltip(
+                        "Benchmark and compare all models side-by-side"
+                    ).bind_enabled_from(
+                        self,
+                        "rois",
+                        lambda rois: len(rois) > 0,
+                    )
+                    self.time = ui.label().classes("text-xs font-mono text-slate-400")
 
                 self.test_result_container = ui.row().classes("w-full")
 

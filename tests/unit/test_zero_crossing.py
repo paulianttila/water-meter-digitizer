@@ -1,5 +1,4 @@
 import math
-from typing import Union
 
 
 def check_digit_consistency(
@@ -72,9 +71,7 @@ def test() -> None:
     print("Adjusted input:", result)
 
 
-def determine_actual_value(
-    current_digit: float, previous_digit: float
-) -> Union[float, int]:
+def determine_actual_value(current_digit: float, previous_digit: float) -> float | int:
     """
     Determine the correct number based on the previous reading and current reading.
     Adjusts for zero crossing if necessary.
@@ -97,18 +94,18 @@ def determine_actual_value(
             return previous_digit + 1
         else:
             # No roll-over; round current to the nearest integer
-            return int(round(current_digit))
+            return round(current_digit)
     elif previous_digit >= 8:
         # Case 2: Previous number is 8 or above, nearing a full roll-over to 0
         if current_digit >= 8.9:
-            # If the reading is close to 9 or above, assume it’s actually a 0 roll-over
+            # If the reading is close to 9 or above, assume it's actually a 0 roll-over
             return 0
         else:
             # No roll-over; round current to the nearest integer
-            return int(round(current_digit))
+            return round(current_digit)
     else:
         # General case (default behavior)
-        return int(round(current_digit))
+        return round(current_digit)
 
 
 def test2() -> None:

@@ -2,12 +2,13 @@ import base64
 import io
 import logging
 from collections.abc import Sequence
-from PIL.Image import Image
+
+import cv2
+import numpy as np
 import PIL.Image
 import PIL.ImageEnhance
-from PIL import ImageOps, ImageDraw, ImageFont
-import numpy as np
-import cv2
+from PIL import ImageDraw, ImageFont, ImageOps
+from PIL.Image import Image
 
 from data_classes import ImagePosition, RefImage
 
@@ -28,11 +29,10 @@ def load_image_from_file(file_name: str) -> Image:
 
 
 def bytes_to_image(data: bytes) -> Image:
-    image = PIL.Image.open(io.BytesIO(data))
-    if image.format not in ["JPEG", "PNG"]:
+    image_file = PIL.Image.open(io.BytesIO(data))
+    if image_file.format not in ["JPEG", "PNG"]:
         raise ValueError("Invalid image format")
-    if image.mode != "RGB":
-        image = image.convert("RGB")
+    image: Image = image_file.convert("RGB") if image_file.mode != "RGB" else image_file
     return image
 
 
@@ -49,7 +49,7 @@ def convert_image_to_bytes(image: Image) -> bytes:
         image.save(buffered, format="JPEG")
         return buffered.getvalue()
     elif isinstance(image, np.ndarray):
-        is_success, im_buf_arr = cv2.imencode(".jpg", image)
+        _is_success, im_buf_arr = cv2.imencode(".jpg", image)
         return im_buf_arr.tobytes()
     else:
         raise ValueError("Invalid image")
@@ -166,7 +166,7 @@ def _get_ref_coordinate(image: np.ndarray, template: np.ndarray) -> tuple[int, i
     # method = cv2.TM_CCORR_NORMED
     method = cv2.TM_CCOEFF_NORMED
     res = cv2.matchTemplate(image, template, method)
-    min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(res)
+    _min_val, _max_val, min_loc, max_loc = cv2.minMaxLoc(res)
     point = min_loc if method in [cv2.TM_SQDIFF, cv2.TM_SQDIFF_NORMED] else max_loc
     return (point[0], point[1])
 
@@ -301,7 +301,7 @@ def detect_glare_mask(
         kernel = cv2.getStructuringElement(
             cv2.MORPH_ELLIPSE, (dilate_kernel, dilate_kernel)
         )
-        mask = cv2.dilate(mask, kernel, iterations=1)
+        mask = cv2.dilate(mask, kernel, iterations=1).astype(np.uint8)
 
     return mask
 

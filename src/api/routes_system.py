@@ -1,10 +1,10 @@
 """System routes: root dashboard, version, exit, and reload."""
 
-from datetime import datetime
 import logging
 import os
-from pathlib import Path
 import signal
+from datetime import datetime
+from pathlib import Path
 
 from fastapi import APIRouter, Request, Response
 from fastapi.responses import HTMLResponse, JSONResponse
@@ -36,10 +36,7 @@ def get_index(request: Request) -> Response:
         m.name for m in meter_configs if getattr(m, "use_previous_value", False)
     ]
     if not prev_value_meters and meters:
-        if "total" in meters:
-            prev_value_meters = ["total"]
-        else:
-            prev_value_meters = [meters[0]]
+        prev_value_meters = ["total"] if "total" in meters else [meters[0]]
 
     return templates.TemplateResponse(
         request=request,

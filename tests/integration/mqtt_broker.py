@@ -1,7 +1,9 @@
 """Lightweight Python MQTT broker runner using amqtt for integration tests."""
 
 import asyncio
+import contextlib
 import logging
+
 from amqtt.broker import Broker
 
 logger = logging.getLogger("mqtt_broker")
@@ -30,7 +32,5 @@ async def run_broker():
 
 
 if __name__ == "__main__":
-    try:
+    with contextlib.suppress(KeyboardInterrupt):
         asyncio.run(run_broker())
-    except KeyboardInterrupt:
-        pass

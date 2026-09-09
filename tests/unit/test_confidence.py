@@ -1,21 +1,22 @@
 import math
 from unittest.mock import MagicMock, patch
-import numpy as np
-from PIL import Image
-import pytest
 
+import numpy as np
+import pytest
+from PIL import Image
+
+from cnn.analog_needle_cnn import AnalogNeedleCNN
 from cnn.base import CNNBase, ModelDetails
 from cnn.digital_counter_cnn import DigitalCounterCNN
-from cnn.analog_needle_cnn import AnalogNeedleCNN
-from data_classes import MeterConfig
 from configuration import Config
+from data_classes import MeterConfig
 from processor.digitizer import (
-    DigitizerProcessor,
-    Meter,
-    ReadoutResult,
     INVALID_DIGIT,
     MODEL_ANALOG,
     MODEL_DIGITAL,
+    DigitizerProcessor,
+    Meter,
+    ReadoutResult,
 )
 
 # ======================================================================

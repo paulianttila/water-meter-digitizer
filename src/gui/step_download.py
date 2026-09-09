@@ -1,16 +1,17 @@
 import asyncio
 import contextlib
-from typing import Callable
+from collections.abc import Callable
 
 from nicegui import ui
 
 from configuration import ImageSource
 from processor.image import ImageProcessor
+
 from .step_base import BaseStep
 
 HELP_TEXT = (
     "- **Camera URL**: Enter snapshot endpoint (e.g. `http://...` or `file://...`).\n"
-    "- **Timeout**: Set network request timeout in seconds (1–60s).\n"
+    "- **Timeout**: Set network request timeout in seconds (1-60s).\n"
     "- **Download**: Click the download button to fetch a frame."
 )
 
@@ -20,7 +21,7 @@ class DownloadImageStep(BaseStep):
         self,
         name: str,
         set_image_callback: Callable[[str], None],
-        on_error_callback: Callable[[str], None] = None,
+        on_error_callback: Callable[[str], None] | None = None,
         spinner=None,
     ) -> None:
         self.url: ui.input
@@ -80,7 +81,7 @@ class DownloadImageStep(BaseStep):
                 self.timeout = (
                     ui.number("Timeout (s)", value=10, min=1, max=60, step=1)
                     .classes("w-28")
-                    .tooltip("Network request timeout in seconds (1–60s)")
+                    .tooltip("Network request timeout in seconds (1-60s)")
                 )
                 self.minsize = (
                     ui.number("Min Size (bytes)", value=10000, min=1000, step=1000)

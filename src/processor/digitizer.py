@@ -1,9 +1,14 @@
-from decimal import Decimal, InvalidOperation
-import math
 import logging
+import math
+from decimal import Decimal, InvalidOperation
+
 from pydantic import BaseModel, Field
 
-
+from cnn.analog_needle_cnn import AnalogNeedleCNN
+from cnn.base import ModelDetails
+from cnn.digital_counter_cnn import DigitalCounterCNN
+from data_classes import CutImage, MeterConfig
+from decorators.decorators import log_execution_time
 from previous_value import (
     load_previous_value_from_file,
     save_previous_value_to_file,
@@ -12,11 +17,6 @@ from utils.math import (
     fill_value_with_ending_zeros,
     fill_with_predecessor_digits,
 )
-from cnn.base import ModelDetails
-from cnn.digital_counter_cnn import DigitalCounterCNN
-from cnn.analog_needle_cnn import AnalogNeedleCNN
-from data_classes import MeterConfig, CutImage
-from decorators.decorators import log_execution_time
 
 logger = logging.getLogger(__name__)
 
@@ -300,7 +300,7 @@ class DigitizerProcessor:
     ) -> int | str:
 
         model = model.lower()
-
+        digit: int | str
         if model in ANALOG_MODELS:
             digit = self._evaluate_analog_counter(
                 name=name,
@@ -361,9 +361,9 @@ class DigitizerProcessor:
             if math.isnan(number) or number < 0 or number >= 100:
                 return INVALID_DIGIT
             if predecessor_value is None:
-                return int(math.floor(number)) % 10
+                return math.floor(number) % 10
 
-            return int(math.floor(number + 0.5)) % 10
+            return math.floor(number + 0.5) % 10
 
         raise ValueError(f"Unknown digital model: {model}")
 
@@ -373,9 +373,9 @@ class DigitizerProcessor:
         predecessor_value: float | None = None,
     ) -> int:
         if predecessor_value is None:
-            return int(math.floor(number + 0.5)) % 10
+            return math.floor(number + 0.5) % 10
 
-        digit = int(math.floor(number + 0.5)) % 10
+        digit = math.floor(number + 0.5) % 10
 
         if number % 1 >= 0.5 and predecessor_value % 1 < 0.5:
             return (digit - 1) % 10
@@ -515,8 +515,10 @@ class DigitizerProcessor:
         try:
             current = Decimal(currentValue)
             previous = Decimal(previousValue)
-        except InvalidOperation:
-            raise ConsistencyError(f"Invalid value: {currentValue} or {previousValue}")
+        except InvalidOperation as err:
+            raise ConsistencyError(
+                f"Invalid value: {currentValue} or {previousValue}"
+            ) from err
 
         delta = current - previous
         # delta = float(currentValue) - float(previous_value)

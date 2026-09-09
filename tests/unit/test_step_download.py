@@ -1,5 +1,6 @@
 import asyncio
 from unittest.mock import MagicMock, patch
+
 from configuration import ImageSource
 from gui.step_download import DownloadImageStep
 

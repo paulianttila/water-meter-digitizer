@@ -1,20 +1,20 @@
+from unittest.mock import MagicMock, patch
+
 import pytest
 
-from unittest.mock import MagicMock
-from src.cnn.base import ModelDetails
 from src.cnn.analog_needle_cnn import AnalogNeedleCNN
+from src.cnn.base import ModelDetails
 from src.cnn.digital_counter_cnn import DigitalCounterCNN
-from unittest.mock import patch
 from src.processor.digitizer import (
-    DigitizerProcessor,
-    MeterConfig,
-    Meter,
-    ConsistencyError,
-    ReadoutResult,
     MODEL_ANALOG,
-    MODEL_DIGITAL,
     MODEL_ANALOG100,
+    MODEL_DIGITAL,
     MODEL_DIGITAL100,
+    ConsistencyError,
+    DigitizerProcessor,
+    Meter,
+    MeterConfig,
+    ReadoutResult,
 )
 
 

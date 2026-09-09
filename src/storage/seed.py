@@ -1,5 +1,6 @@
-from datetime import datetime, timedelta, timezone
 import random
+from datetime import UTC, datetime, timedelta
+
 from storage.base import MeterReading, StorageBackend
 
 
@@ -12,7 +13,7 @@ def seed_demo_history(
     """Generate sample historical readings for visualization and testing."""
     if storage is None:
         return 0
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     current_val = base_val
     count = 0
     for day_offset in range(days, -1, -1):

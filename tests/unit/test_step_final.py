@@ -1,4 +1,5 @@
 from unittest.mock import MagicMock, patch
+
 from configuration import Config
 from gui.step_final import FinalStep
 

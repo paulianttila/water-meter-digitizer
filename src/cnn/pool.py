@@ -1,11 +1,12 @@
-from contextlib import contextmanager
-from dataclasses import dataclass
-from datetime import datetime, timezone
 import logging
 import os
 import queue
 import threading
-from typing import Any, Generator
+from collections.abc import Generator
+from contextlib import contextmanager
+from dataclasses import dataclass
+from datetime import UTC, datetime
+from typing import Any
 
 try:
     import ai_edge_litert.interpreter as tflite
@@ -153,7 +154,7 @@ class InterpreterPool:
             if self._max_inference_ms is None or duration_ms > self._max_inference_ms:
                 self._max_inference_ms = round(duration_ms, 2)
             self._last_inference_ms = round(duration_ms, 2)
-            self._last_inference_at = datetime.now(timezone.utc).isoformat()
+            self._last_inference_at = datetime.now(UTC).isoformat()
 
     def get_stats(self) -> dict[str, Any]:
         """Return runtime performance and pool metrics."""

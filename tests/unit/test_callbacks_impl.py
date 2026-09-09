@@ -1,6 +1,7 @@
 """Unit tests for CallbacksImpl bridging layer in src/gui/callbacks_impl.py."""
 
 from unittest.mock import MagicMock
+
 from gui.callbacks_impl import CallbacksImpl
 from processor.digitizer import MeterResult
 

@@ -14,14 +14,14 @@ import math
 import pytest
 
 from src.processor.digitizer import (
-    DigitizerProcessor,
     INVALID_DIGIT,
-    Meter,
-    MeterConfig,
     MODEL_ANALOG,
     MODEL_ANALOG100,
     MODEL_DIGITAL,
     MODEL_DIGITAL100,
+    DigitizerProcessor,
+    Meter,
+    MeterConfig,
     ReadoutResult,
 )
 

@@ -2,13 +2,14 @@
 
 import asyncio
 from unittest.mock import MagicMock
-import numpy as np
-from PIL import Image
-import pytest
 
+import numpy as np
+import pytest
+from PIL import Image
+
+import utils.image as img_utils
 from configuration import Config
 from gui.step_adjust import AdjustStep
-import utils.image as img_utils
 
 
 @pytest.fixture

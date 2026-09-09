@@ -1,5 +1,6 @@
 import asyncio
 from unittest.mock import MagicMock
+
 import pytest
 
 from configuration import Poller
@@ -83,6 +84,7 @@ async def test_background_poller_error_handling():
 
 def test_poller_and_mqtt_api_endpoints():
     from fastapi.testclient import TestClient
+
     from main import app
 
     client = TestClient(app)

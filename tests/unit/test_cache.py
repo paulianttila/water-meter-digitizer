@@ -1,5 +1,6 @@
 import concurrent.futures
 import time
+
 from PIL import Image
 
 from utils.cache import ImageCache

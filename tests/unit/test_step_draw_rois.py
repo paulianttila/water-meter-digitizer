@@ -1,4 +1,5 @@
 from unittest.mock import MagicMock
+
 from data_classes import ImagePosition, RefImage
 from gui.step_draw_analog_rois import DrawAnalogRoisStep
 from gui.step_draw_digital_rois import DrawDigitalRoisStep

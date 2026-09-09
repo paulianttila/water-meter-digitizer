@@ -1,4 +1,5 @@
 import html
+
 from nicegui import ui
 
 from callbacks import Callbacks
@@ -285,15 +286,17 @@ class ConfigPage:
                         )
 
                     if not backups:
-                        with backups_container:
-                            with ui.column().classes(
+                        with (
+                            backups_container,
+                            ui.column().classes(
                                 "w-full py-8 items-center "
                                 "justify-center text-slate-400 gap-1"
-                            ):
-                                ui.icon("inventory_2", size="lg")
-                                ui.label("No configuration backups found yet.").classes(
-                                    "text-sm"
-                                )
+                            ),
+                        ):
+                            ui.icon("inventory_2", size="lg")
+                            ui.label("No configuration backups found yet.").classes(
+                                "text-sm"
+                            )
                         return
 
                     with backups_container:

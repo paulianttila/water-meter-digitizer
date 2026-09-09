@@ -1,7 +1,9 @@
 import os
 from pathlib import Path
+
 import pytest
-from config_history import ConfigHistoryManager, BackupEntry
+
+from config_history import BackupEntry, ConfigHistoryManager
 
 
 @pytest.fixture
@@ -16,7 +18,7 @@ def temp_config_dir(tmp_path: Path):
 
 
 def test_create_and_list_backup(temp_config_dir):
-    cfg_dir, cfg_file = temp_config_dir
+    _cfg_dir, cfg_file = temp_config_dir
 
     backup_path = ConfigHistoryManager.create_backup(str(cfg_file))
     assert backup_path is not None
@@ -35,7 +37,7 @@ def test_create_and_list_backup(temp_config_dir):
 
 
 def test_create_named_snapshot(temp_config_dir):
-    cfg_dir, cfg_file = temp_config_dir
+    _cfg_dir, cfg_file = temp_config_dir
 
     backup_path = ConfigHistoryManager.create_backup(
         str(cfg_file), tag="Pre Calibration"
@@ -62,7 +64,7 @@ def test_legacy_backup_discovery(temp_config_dir):
 
 
 def test_restore_backup(temp_config_dir):
-    cfg_dir, cfg_file = temp_config_dir
+    _cfg_dir, cfg_file = temp_config_dir
 
     # Create initial backup
     backup_path = ConfigHistoryManager.create_backup(str(cfg_file), tag="v1")
@@ -86,7 +88,7 @@ def test_restore_backup(temp_config_dir):
 
 
 def test_undo_last(temp_config_dir):
-    cfg_dir, cfg_file = temp_config_dir
+    _cfg_dir, cfg_file = temp_config_dir
 
     # Create backup of v1
     b1 = ConfigHistoryManager.create_backup(str(cfg_file), tag="v1")
@@ -102,7 +104,7 @@ def test_undo_last(temp_config_dir):
 
 
 def test_delete_backup(temp_config_dir):
-    cfg_dir, cfg_file = temp_config_dir
+    _cfg_dir, cfg_file = temp_config_dir
 
     backup_path = ConfigHistoryManager.create_backup(str(cfg_file))
     assert backup_path is not None
@@ -115,7 +117,7 @@ def test_delete_backup(temp_config_dir):
 
 
 def test_diff_generation(temp_config_dir):
-    cfg_dir, cfg_file = temp_config_dir
+    _cfg_dir, cfg_file = temp_config_dir
 
     backup_path = ConfigHistoryManager.create_backup(str(cfg_file))
     assert backup_path is not None
@@ -142,7 +144,7 @@ def test_nonexistent_config_file(tmp_path: Path):
 def test_main_diff_config_backup_no_deadlock(temp_config_dir, monkeypatch):
     import main
 
-    cfg_dir, cfg_file = temp_config_dir
+    _cfg_dir, cfg_file = temp_config_dir
     monkeypatch.setattr(main, "config_file", str(cfg_file))
 
     # Create a backup

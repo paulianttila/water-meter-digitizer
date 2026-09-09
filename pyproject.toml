@@ -25,6 +25,7 @@ dev = [
     "bandit[toml]>=1.7.7",
     "black>=24.2.0",
     "coverage>=7.4.3",
+    "mypy>=1.9.0",
     "pytest>=7.2.2,<8.0.0",
     "pytest-playwright>=0.5.0",
     "ruff>=0.2.2",
@@ -37,6 +38,7 @@ dev = [
     "bandit[toml]>=1.7.7",
     "black>=24.2.0",
     "coverage>=7.4.3",
+    "mypy>=1.9.0",
     "pytest>=7.2.2,<8.0.0",
     "pytest-playwright>=0.5.0",
     "ruff>=0.2.2",
@@ -79,12 +81,12 @@ exclude = [
 ]
 
 [tool.ruff.lint]
-# Enable pycodestyle (`E`) and Pyflakes (`F`) codes by default.
-select = ["E", "F"]
-ignore = []
+# Enable pycodestyle (`E`), Pyflakes (`F`), isort (`I`), bugbear (`B`), pyupgrade (`UP`), simplify (`SIM`), ruff-specific (`RUF`).
+select = ["E", "F", "I", "B", "UP", "SIM", "RUF"]
+ignore = ["E501"]
 
 # Allow autofix for all enabled rules (when `--fix`) is provided.
-fixable = ["A", "B", "C", "D", "E", "F"]
+fixable = ["ALL"]
 unfixable = []
 
 # Allow unused variables when underscore-prefixed.
@@ -93,6 +95,14 @@ dummy-variable-rgx = "^(_+|(_+[a-zA-Z0-9_]*[a-zA-Z0-9]+?))$"
 [tool.ruff.lint.mccabe]
 # Unlike Flake8, default to a complexity level of 10.
 max-complexity = 10
+
+[tool.mypy]
+python_version = "3.11"
+ignore_missing_imports = true
+check_untyped_defs = true
+warn_unused_configs = true
+no_implicit_optional = true
+warn_return_any = false
 
 [tool.bandit]
 exclude_dirs = ["tests", ".venv", "dist", "build", "setup.py"]

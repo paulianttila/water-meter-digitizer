@@ -1,12 +1,13 @@
 import asyncio
 import logging
-from typing import Callable
+from collections.abc import Callable
 
 from nicegui import ui
 
 from configuration import Config
 from data_classes import RefImage
 from processor.image import ImageProcessor
+
 from .step_base import BaseStep
 
 logger = logging.getLogger(__name__)
@@ -311,7 +312,12 @@ class AdjustStep(BaseStep):
                         "text-xs border-indigo-400/40 text-indigo-300 "
                         "hover:bg-indigo-500/20 px-2 py-1"
                     ).on(
-                        "mousedown", lambda: self.set_image_callback(self.org_image)
+                        "mousedown",
+                        lambda: (
+                            self.set_image_callback(self.org_image)
+                            if self.set_image_callback
+                            else None
+                        ),
                     ).on(
                         "mouseup", self._update_preview_canvas
                     ).on(
@@ -322,482 +328,484 @@ class AdjustStep(BaseStep):
 
             with ui.column().classes("w-full gap-3 my-2"):
                 # Geometry & Cropping Expansion
-                with ui.expansion(
-                    "Geometry & Cropping", icon="crop", value=True
-                ).classes(
-                    "w-full bg-slate-900/60 border border-white/10 rounded-xl "
-                    "shadow-md overflow-hidden"
+                with (
+                    ui.expansion(
+                        "Geometry & Cropping", icon="crop", value=True
+                    ).classes(
+                        "w-full bg-slate-900/60 border border-white/10 rounded-xl "
+                        "shadow-md overflow-hidden"
+                    ),
+                    ui.column().classes("w-full gap-3 p-3"),
                 ):
-                    with ui.column().classes("w-full gap-3 p-3"):
-                        with ui.row().classes("w-full items-center gap-3 flex-wrap"):
-                            self.rotate_enabled = ui.checkbox(
-                                "Enable Fine Rotation",
-                                value=False,
+                    with ui.row().classes("w-full items-center gap-3 flex-wrap"):
+                        self.rotate_enabled = ui.checkbox(
+                            "Enable Fine Rotation",
+                            value=False,
+                            on_change=self._on_param_change,
+                        ).tooltip("Enable fine rotation angle correction")
+                        self.rotate_angle = (
+                            ui.number(
+                                "Angle (°)",
+                                min=-359,
+                                max=359,
+                                step=0.5,
+                                value=0,
                                 on_change=self._on_param_change,
-                            ).tooltip("Enable fine rotation angle correction")
-                            self.rotate_angle = (
-                                ui.number(
-                                    "Angle (°)",
-                                    min=-359,
-                                    max=359,
-                                    step=0.5,
-                                    value=0,
-                                    on_change=self._on_param_change,
-                                )
-                                .classes("w-28")
-                                .tooltip(
-                                    "Fine rotation angle in degrees (-359° to 359°)"
-                                )
                             )
+                            .classes("w-28")
+                            .tooltip("Fine rotation angle in degrees (-359° to 359°)")
+                        )
 
-                        with ui.row().classes("w-full items-center gap-2 flex-wrap"):
-                            self.crop_enabled = ui.checkbox(
-                                "Enable Crop",
-                                value=False,
+                    with ui.row().classes("w-full items-center gap-2 flex-wrap"):
+                        self.crop_enabled = ui.checkbox(
+                            "Enable Crop",
+                            value=False,
+                            on_change=self._on_param_change,
+                        ).tooltip("Enable rectangular cropping before alignment")
+                        self.crop_x = (
+                            ui.number(
+                                "X",
+                                min=0,
+                                max=10000,
+                                step=1,
+                                value=0,
                                 on_change=self._on_param_change,
-                            ).tooltip("Enable rectangular cropping before alignment")
-                            self.crop_x = (
-                                ui.number(
-                                    "X",
-                                    min=0,
-                                    max=10000,
-                                    step=1,
-                                    value=0,
-                                    on_change=self._on_param_change,
-                                )
-                                .classes("w-20")
-                                .tooltip("Crop starting X position in pixels")
                             )
-                            self.crop_y = (
-                                ui.number(
-                                    "Y",
-                                    min=0,
-                                    max=10000,
-                                    step=1,
-                                    value=0,
-                                    on_change=self._on_param_change,
-                                )
-                                .classes("w-20")
-                                .tooltip("Crop starting Y position in pixels")
+                            .classes("w-20")
+                            .tooltip("Crop starting X position in pixels")
+                        )
+                        self.crop_y = (
+                            ui.number(
+                                "Y",
+                                min=0,
+                                max=10000,
+                                step=1,
+                                value=0,
+                                on_change=self._on_param_change,
                             )
-                            self.crop_w = (
-                                ui.number(
-                                    "Width",
-                                    min=640,
-                                    max=10000,
-                                    step=1,
-                                    value=0,
-                                    on_change=self._on_param_change,
-                                )
-                                .classes("w-24")
-                                .tooltip("Crop area width in pixels")
+                            .classes("w-20")
+                            .tooltip("Crop starting Y position in pixels")
+                        )
+                        self.crop_w = (
+                            ui.number(
+                                "Width",
+                                min=640,
+                                max=10000,
+                                step=1,
+                                value=0,
+                                on_change=self._on_param_change,
                             )
-                            self.crop_h = (
-                                ui.number(
-                                    "Height",
-                                    min=480,
-                                    max=10000,
-                                    step=1,
-                                    value=0,
-                                    on_change=self._on_param_change,
-                                )
-                                .classes("w-24")
-                                .tooltip("Crop area height in pixels")
+                            .classes("w-24")
+                            .tooltip("Crop area width in pixels")
+                        )
+                        self.crop_h = (
+                            ui.number(
+                                "Height",
+                                min=480,
+                                max=10000,
+                                step=1,
+                                value=0,
+                                on_change=self._on_param_change,
                             )
+                            .classes("w-24")
+                            .tooltip("Crop area height in pixels")
+                        )
 
-                        with ui.row().classes("w-full items-center gap-2 flex-wrap"):
-                            self.resize_enabled = ui.checkbox(
-                                "Enable Resize",
-                                value=False,
+                    with ui.row().classes("w-full items-center gap-2 flex-wrap"):
+                        self.resize_enabled = ui.checkbox(
+                            "Enable Resize",
+                            value=False,
+                            on_change=self._on_param_change,
+                        ).tooltip("Enable image resizing")
+                        self.resize_w = (
+                            ui.number(
+                                "Width",
+                                min=0,
+                                max=10000,
+                                step=1,
+                                value=0,
                                 on_change=self._on_param_change,
-                            ).tooltip("Enable image resizing")
-                            self.resize_w = (
-                                ui.number(
-                                    "Width",
-                                    min=0,
-                                    max=10000,
-                                    step=1,
-                                    value=0,
-                                    on_change=self._on_param_change,
-                                )
-                                .classes("w-24")
-                                .tooltip("Resized image width in pixels")
                             )
-                            self.resize_h = (
-                                ui.number(
-                                    "Height",
-                                    min=0,
-                                    max=10000,
-                                    step=1,
-                                    value=0,
-                                    on_change=self._on_param_change,
-                                )
-                                .classes("w-24")
-                                .tooltip("Resized image height in pixels")
+                            .classes("w-24")
+                            .tooltip("Resized image width in pixels")
+                        )
+                        self.resize_h = (
+                            ui.number(
+                                "Height",
+                                min=0,
+                                max=10000,
+                                step=1,
+                                value=0,
+                                on_change=self._on_param_change,
                             )
+                            .classes("w-24")
+                            .tooltip("Resized image height in pixels")
+                        )
 
                 # Tonal & Color Adjustments Expansion
-                with ui.expansion(
-                    "Tonal & Color Adjustments", icon="palette", value=False
-                ).classes(
-                    "w-full bg-slate-900/60 border border-white/10 rounded-xl "
-                    "shadow-md overflow-hidden"
+                with (
+                    ui.expansion(
+                        "Tonal & Color Adjustments", icon="palette", value=False
+                    ).classes(
+                        "w-full bg-slate-900/60 border border-white/10 rounded-xl "
+                        "shadow-md overflow-hidden"
+                    ),
+                    ui.column().classes("w-full gap-3 p-3"),
                 ):
-                    with ui.column().classes("w-full gap-3 p-3"):
-                        with ui.row().classes("w-full items-center gap-4 flex-wrap"):
-                            self.adjust_enabled = ui.checkbox(
-                                "Enable Filters",
-                                value=False,
-                                on_change=self._on_param_change,
-                            ).tooltip(
-                                "Enable color, brightness, contrast, and "
-                                "sharpness adjustments"
-                            )
-                            self.grayscale_enabled = ui.checkbox(
-                                "Grayscale",
-                                value=False,
-                                on_change=self._on_param_change,
-                            ).tooltip("Convert the full image to grayscale")
-
-                        # Live Visual Sliders for Tonal Settings
-                        with ui.column().classes("w-full gap-4"):
-                            # Contrast
-                            with ui.row().classes("w-full items-center gap-3 py-1"):
-                                ui.label("Contrast").classes(
-                                    "w-24 text-xs font-semibold text-slate-300"
-                                )
-                                self.adjust_contrast = (
-                                    ui.slider(
-                                        min=0.0,
-                                        max=3.0,
-                                        step=0.05,
-                                        value=1.0,
-                                        on_change=self._on_param_change,
-                                    )
-                                    .classes("flex-1")
-                                    .props("label")
-                                )
-                                ui.label().classes(BADGE_CLASSES).bind_text_from(
-                                    self.adjust_contrast,
-                                    "value",
-                                    lambda v: f"{float(v or 1.0):.2f}x",
-                                )
-
-                            # Brightness
-                            with ui.row().classes("w-full items-center gap-3 py-1"):
-                                ui.label("Brightness").classes(
-                                    "w-24 text-xs font-semibold text-slate-300"
-                                )
-                                self.adjust_brightness = (
-                                    ui.slider(
-                                        min=0.0,
-                                        max=3.0,
-                                        step=0.05,
-                                        value=1.0,
-                                        on_change=self._on_param_change,
-                                    )
-                                    .classes("flex-1")
-                                    .props("label")
-                                )
-                                ui.label().classes(BADGE_CLASSES).bind_text_from(
-                                    self.adjust_brightness,
-                                    "value",
-                                    lambda v: f"{float(v or 1.0):.2f}x",
-                                )
-
-                            # Sharpness
-                            with ui.row().classes("w-full items-center gap-3 py-1"):
-                                ui.label("Sharpness").classes(
-                                    "w-24 text-xs font-semibold text-slate-300"
-                                )
-                                self.adjust_sharpness = (
-                                    ui.slider(
-                                        min=0.0,
-                                        max=3.0,
-                                        step=0.1,
-                                        value=1.0,
-                                        on_change=self._on_param_change,
-                                    )
-                                    .classes("flex-1")
-                                    .props("label")
-                                )
-                                ui.label().classes(BADGE_CLASSES).bind_text_from(
-                                    self.adjust_sharpness,
-                                    "value",
-                                    lambda v: f"{float(v or 1.0):.2f}x",
-                                )
-
-                            # Color Saturation
-                            with ui.row().classes("w-full items-center gap-3 py-1"):
-                                ui.label("Color / Sat").classes(
-                                    "w-24 text-xs font-semibold text-slate-300"
-                                )
-                                self.adjust_color = (
-                                    ui.slider(
-                                        min=0.0,
-                                        max=3.0,
-                                        step=0.1,
-                                        value=1.0,
-                                        on_change=self._on_param_change,
-                                    )
-                                    .classes("flex-1")
-                                    .props("label")
-                                )
-                                ui.label().classes(BADGE_CLASSES).bind_text_from(
-                                    self.adjust_color,
-                                    "value",
-                                    lambda v: f"{float(v or 1.0):.2f}x",
-                                )
-
-                # Histogram & AutoContrast Expansion
-                with ui.expansion(
-                    "Histogram & AutoContrast", icon="auto_fix_high", value=False
-                ).classes(
-                    "w-full bg-slate-900/60 border border-white/10 rounded-xl "
-                    "shadow-md overflow-hidden"
-                ):
-                    with ui.column().classes("w-full gap-3 p-3"):
-                        self.autocontrast_enabled = ui.checkbox(
-                            "Full Frame AutoContrast",
+                    with ui.row().classes("w-full items-center gap-4 flex-wrap"):
+                        self.adjust_enabled = ui.checkbox(
+                            "Enable Filters",
                             value=False,
                             on_change=self._on_param_change,
                         ).tooltip(
-                            "Automatically optimize contrast histogram for "
-                            "full frame"
+                            "Enable color, brightness, contrast, and "
+                            "sharpness adjustments"
                         )
-
-                        with ui.column().classes("w-full gap-4"):
-                            with ui.row().classes("w-full items-center gap-3 py-1"):
-                                ui.label("Cutoff Low").classes(
-                                    "w-24 text-xs font-semibold text-slate-300"
-                                )
-                                self.autocontrast_cutoff_low = (
-                                    ui.slider(
-                                        min=0,
-                                        max=50,
-                                        step=1,
-                                        value=2,
-                                        on_change=self._on_param_change,
-                                    )
-                                    .classes("flex-1")
-                                    .props("label")
-                                )
-                                ui.label().classes(BADGE_CLASSES).bind_text_from(
-                                    self.autocontrast_cutoff_low,
-                                    "value",
-                                    lambda v: f"{int(float(v or 0))}%",
-                                )
-
-                            with ui.row().classes("w-full items-center gap-3 py-1"):
-                                ui.label("Cutoff High").classes(
-                                    "w-24 text-xs font-semibold text-slate-300"
-                                )
-                                self.autocontrast_cutoff_high = (
-                                    ui.slider(
-                                        min=0,
-                                        max=50,
-                                        step=1,
-                                        value=45,
-                                        on_change=self._on_param_change,
-                                    )
-                                    .classes("flex-1")
-                                    .props("label")
-                                )
-                                ui.label().classes(BADGE_CLASSES).bind_text_from(
-                                    self.autocontrast_cutoff_high,
-                                    "value",
-                                    lambda v: f"{int(float(v or 0))}%",
-                                )
-
-                        ui.separator().classes("bg-white/10 my-1")
-
-                        self.autocontrast_cut_images_enabled = ui.checkbox(
-                            "Cut Images (ROIs) AutoContrast",
+                        self.grayscale_enabled = ui.checkbox(
+                            "Grayscale",
                             value=False,
                             on_change=self._on_param_change,
-                        ).tooltip(
-                            "Apply automatic contrast stretching individually on "
-                            "cropped digit/pointer ROI images"
-                        )
+                        ).tooltip("Convert the full image to grayscale")
 
-                        with ui.column().classes("w-full gap-4"):
-                            with ui.row().classes("w-full items-center gap-3 py-1"):
-                                ui.label("ROI Cutoff Low").classes(
-                                    "w-24 text-xs font-semibold text-slate-300"
-                                )
-                                self.autocontrast_cut_images_cutoff_low = (
-                                    ui.slider(
-                                        min=0,
-                                        max=50,
-                                        step=1,
-                                        value=2,
-                                        on_change=self._on_param_change,
-                                    )
-                                    .classes("flex-1")
-                                    .props("label")
-                                )
-                                ui.label().classes(BADGE_CLASSES).bind_text_from(
-                                    self.autocontrast_cut_images_cutoff_low,
-                                    "value",
-                                    lambda v: f"{int(float(v or 0))}%",
-                                )
-
-                            with ui.row().classes("w-full items-center gap-3 py-1"):
-                                ui.label("ROI Cutoff High").classes(
-                                    "w-24 text-xs font-semibold text-slate-300"
-                                )
-                                self.autocontrast_cut_images_cutoff_high = (
-                                    ui.slider(
-                                        min=0,
-                                        max=50,
-                                        step=1,
-                                        value=45,
-                                        on_change=self._on_param_change,
-                                    )
-                                    .classes("flex-1")
-                                    .props("label")
-                                )
-                                ui.label().classes(BADGE_CLASSES).bind_text_from(
-                                    self.autocontrast_cut_images_cutoff_high,
-                                    "value",
-                                    lambda v: f"{int(float(v or 0))}%",
-                                )
-
-                # Glare Suppression Expansion
-                with ui.expansion(
-                    "Glare & Specular Reflection Suppression",
-                    icon="flare",
-                    value=False,
-                ).classes(
-                    "w-full bg-slate-900/60 border border-white/10 rounded-xl "
-                    "shadow-md overflow-hidden"
-                ):
-                    with ui.column().classes("w-full gap-3 p-3"):
-                        with ui.row().classes("w-full items-center gap-4 flex-wrap"):
-                            self.glare_enabled = ui.checkbox(
-                                "Enable Glare Suppression",
-                                value=False,
-                                on_change=self._on_param_change,
-                            ).tooltip(
-                                "Suppress specular highlights on glossy meter glass"
+                    # Live Visual Sliders for Tonal Settings
+                    with ui.column().classes("w-full gap-4"):
+                        # Contrast
+                        with ui.row().classes("w-full items-center gap-3 py-1"):
+                            ui.label("Contrast").classes(
+                                "w-24 text-xs font-semibold text-slate-300"
                             )
-                            self.glare_apply_to_cut_images = ui.checkbox(
-                                "Apply to Cut Images (ROIs)",
-                                value=False,
-                                on_change=self._on_param_change,
-                            ).tooltip(
-                                "Apply glare suppression to cropped digit/pointer "
-                                "images"
-                            )
-                            self.glare_mode = (
-                                ui.select(
-                                    [
-                                        "clahe",
-                                        "inpaint",
-                                        "illumination_normalize",
-                                        "combined",
-                                    ],
-                                    label="Mode",
-                                    value="clahe",
+                            self.adjust_contrast = (
+                                ui.slider(
+                                    min=0.0,
+                                    max=3.0,
+                                    step=0.05,
+                                    value=1.0,
                                     on_change=self._on_param_change,
                                 )
-                                .classes("w-44")
-                                .tooltip(
-                                    "Filter mode: clahe, inpaint, "
-                                    "illumination_normalize, or combined"
-                                )
+                                .classes("flex-1")
+                                .props("label")
+                            )
+                            ui.label().classes(BADGE_CLASSES).bind_text_from(
+                                self.adjust_contrast,
+                                "value",
+                                lambda v: f"{float(v or 1.0):.2f}x",
                             )
 
-                        with ui.column().classes("w-full gap-4"):
-                            # CLAHE Clip Limit
-                            with ui.row().classes("w-full items-center gap-3 py-1"):
-                                ui.label("CLAHE Clip").classes(
-                                    "w-24 text-xs font-semibold text-slate-300"
+                        # Brightness
+                        with ui.row().classes("w-full items-center gap-3 py-1"):
+                            ui.label("Brightness").classes(
+                                "w-24 text-xs font-semibold text-slate-300"
+                            )
+                            self.adjust_brightness = (
+                                ui.slider(
+                                    min=0.0,
+                                    max=3.0,
+                                    step=0.05,
+                                    value=1.0,
+                                    on_change=self._on_param_change,
                                 )
-                                self.glare_clahe_clip_limit = (
-                                    ui.slider(
-                                        min=0.1,
-                                        max=10.0,
-                                        step=0.2,
-                                        value=2.0,
-                                        on_change=self._on_param_change,
-                                    )
-                                    .classes("flex-1")
-                                    .props("label")
-                                )
-                                ui.label().classes(BADGE_CLASSES).bind_text_from(
-                                    self.glare_clahe_clip_limit,
-                                    "value",
-                                    lambda v: f"{float(v or 2.0):.1f}",
-                                )
+                                .classes("flex-1")
+                                .props("label")
+                            )
+                            ui.label().classes(BADGE_CLASSES).bind_text_from(
+                                self.adjust_brightness,
+                                "value",
+                                lambda v: f"{float(v or 1.0):.2f}x",
+                            )
 
-                            # CLAHE Grid Size
-                            with ui.row().classes("w-full items-center gap-3 py-1"):
-                                ui.label("CLAHE Grid").classes(
-                                    "w-24 text-xs font-semibold text-slate-300"
+                        # Sharpness
+                        with ui.row().classes("w-full items-center gap-3 py-1"):
+                            ui.label("Sharpness").classes(
+                                "w-24 text-xs font-semibold text-slate-300"
+                            )
+                            self.adjust_sharpness = (
+                                ui.slider(
+                                    min=0.0,
+                                    max=3.0,
+                                    step=0.1,
+                                    value=1.0,
+                                    on_change=self._on_param_change,
                                 )
-                                self.glare_clahe_grid_size = (
-                                    ui.slider(
-                                        min=2,
-                                        max=32,
-                                        step=1,
-                                        value=8,
-                                        on_change=self._on_param_change,
-                                    )
-                                    .classes("flex-1")
-                                    .props("label")
-                                )
-                                ui.label().classes(BADGE_CLASSES).bind_text_from(
-                                    self.glare_clahe_grid_size,
-                                    "value",
-                                    lambda v: (
-                                        f"{int(float(v or 8))}x{int(float(v or 8))}"
-                                    ),
-                                )
+                                .classes("flex-1")
+                                .props("label")
+                            )
+                            ui.label().classes(BADGE_CLASSES).bind_text_from(
+                                self.adjust_sharpness,
+                                "value",
+                                lambda v: f"{float(v or 1.0):.2f}x",
+                            )
 
-                            # Inpaint Threshold
-                            with ui.row().classes("w-full items-center gap-3 py-1"):
-                                ui.label("Inpaint Thresh").classes(
-                                    "w-24 text-xs font-semibold text-slate-300"
+                        # Color Saturation
+                        with ui.row().classes("w-full items-center gap-3 py-1"):
+                            ui.label("Color / Sat").classes(
+                                "w-24 text-xs font-semibold text-slate-300"
+                            )
+                            self.adjust_color = (
+                                ui.slider(
+                                    min=0.0,
+                                    max=3.0,
+                                    step=0.1,
+                                    value=1.0,
+                                    on_change=self._on_param_change,
                                 )
-                                self.glare_inpaint_threshold = (
-                                    ui.slider(
-                                        min=100,
-                                        max=255,
-                                        step=1,
-                                        value=230,
-                                        on_change=self._on_param_change,
-                                    )
-                                    .classes("flex-1")
-                                    .props("label")
-                                )
-                                ui.label().classes(BADGE_CLASSES).bind_text_from(
-                                    self.glare_inpaint_threshold,
-                                    "value",
-                                    lambda v: f"{int(float(v or 230))}",
-                                )
+                                .classes("flex-1")
+                                .props("label")
+                            )
+                            ui.label().classes(BADGE_CLASSES).bind_text_from(
+                                self.adjust_color,
+                                "value",
+                                lambda v: f"{float(v or 1.0):.2f}x",
+                            )
 
-                            # Inpaint Radius
-                            with ui.row().classes("w-full items-center gap-3 py-1"):
-                                ui.label("Inpaint Radius").classes(
-                                    "w-24 text-xs font-semibold text-slate-300"
+                # Histogram & AutoContrast Expansion
+                with (
+                    ui.expansion(
+                        "Histogram & AutoContrast", icon="auto_fix_high", value=False
+                    ).classes(
+                        "w-full bg-slate-900/60 border border-white/10 rounded-xl "
+                        "shadow-md overflow-hidden"
+                    ),
+                    ui.column().classes("w-full gap-3 p-3"),
+                ):
+                    self.autocontrast_enabled = ui.checkbox(
+                        "Full Frame AutoContrast",
+                        value=False,
+                        on_change=self._on_param_change,
+                    ).tooltip(
+                        "Automatically optimize contrast histogram for " "full frame"
+                    )
+
+                    with ui.column().classes("w-full gap-4"):
+                        with ui.row().classes("w-full items-center gap-3 py-1"):
+                            ui.label("Cutoff Low").classes(
+                                "w-24 text-xs font-semibold text-slate-300"
+                            )
+                            self.autocontrast_cutoff_low = (
+                                ui.slider(
+                                    min=0,
+                                    max=50,
+                                    step=1,
+                                    value=2,
+                                    on_change=self._on_param_change,
                                 )
-                                self.glare_inpaint_radius = (
-                                    ui.slider(
-                                        min=1,
-                                        max=20,
-                                        step=1,
-                                        value=3,
-                                        on_change=self._on_param_change,
-                                    )
-                                    .classes("flex-1")
-                                    .props("label")
+                                .classes("flex-1")
+                                .props("label")
+                            )
+                            ui.label().classes(BADGE_CLASSES).bind_text_from(
+                                self.autocontrast_cutoff_low,
+                                "value",
+                                lambda v: f"{int(float(v or 0))}%",
+                            )
+
+                        with ui.row().classes("w-full items-center gap-3 py-1"):
+                            ui.label("Cutoff High").classes(
+                                "w-24 text-xs font-semibold text-slate-300"
+                            )
+                            self.autocontrast_cutoff_high = (
+                                ui.slider(
+                                    min=0,
+                                    max=50,
+                                    step=1,
+                                    value=45,
+                                    on_change=self._on_param_change,
                                 )
-                                ui.label().classes(BADGE_CLASSES).bind_text_from(
-                                    self.glare_inpaint_radius,
-                                    "value",
-                                    lambda v: f"{int(float(v or 3))}px",
+                                .classes("flex-1")
+                                .props("label")
+                            )
+                            ui.label().classes(BADGE_CLASSES).bind_text_from(
+                                self.autocontrast_cutoff_high,
+                                "value",
+                                lambda v: f"{int(float(v or 0))}%",
+                            )
+
+                    ui.separator().classes("bg-white/10 my-1")
+
+                    self.autocontrast_cut_images_enabled = ui.checkbox(
+                        "Cut Images (ROIs) AutoContrast",
+                        value=False,
+                        on_change=self._on_param_change,
+                    ).tooltip(
+                        "Apply automatic contrast stretching individually on "
+                        "cropped digit/pointer ROI images"
+                    )
+
+                    with ui.column().classes("w-full gap-4"):
+                        with ui.row().classes("w-full items-center gap-3 py-1"):
+                            ui.label("ROI Cutoff Low").classes(
+                                "w-24 text-xs font-semibold text-slate-300"
+                            )
+                            self.autocontrast_cut_images_cutoff_low = (
+                                ui.slider(
+                                    min=0,
+                                    max=50,
+                                    step=1,
+                                    value=2,
+                                    on_change=self._on_param_change,
                                 )
+                                .classes("flex-1")
+                                .props("label")
+                            )
+                            ui.label().classes(BADGE_CLASSES).bind_text_from(
+                                self.autocontrast_cut_images_cutoff_low,
+                                "value",
+                                lambda v: f"{int(float(v or 0))}%",
+                            )
+
+                        with ui.row().classes("w-full items-center gap-3 py-1"):
+                            ui.label("ROI Cutoff High").classes(
+                                "w-24 text-xs font-semibold text-slate-300"
+                            )
+                            self.autocontrast_cut_images_cutoff_high = (
+                                ui.slider(
+                                    min=0,
+                                    max=50,
+                                    step=1,
+                                    value=45,
+                                    on_change=self._on_param_change,
+                                )
+                                .classes("flex-1")
+                                .props("label")
+                            )
+                            ui.label().classes(BADGE_CLASSES).bind_text_from(
+                                self.autocontrast_cut_images_cutoff_high,
+                                "value",
+                                lambda v: f"{int(float(v or 0))}%",
+                            )
+
+                # Glare Suppression Expansion
+                with (
+                    ui.expansion(
+                        "Glare & Specular Reflection Suppression",
+                        icon="flare",
+                        value=False,
+                    ).classes(
+                        "w-full bg-slate-900/60 border border-white/10 rounded-xl "
+                        "shadow-md overflow-hidden"
+                    ),
+                    ui.column().classes("w-full gap-3 p-3"),
+                ):
+                    with ui.row().classes("w-full items-center gap-4 flex-wrap"):
+                        self.glare_enabled = ui.checkbox(
+                            "Enable Glare Suppression",
+                            value=False,
+                            on_change=self._on_param_change,
+                        ).tooltip("Suppress specular highlights on glossy meter glass")
+                        self.glare_apply_to_cut_images = ui.checkbox(
+                            "Apply to Cut Images (ROIs)",
+                            value=False,
+                            on_change=self._on_param_change,
+                        ).tooltip(
+                            "Apply glare suppression to cropped digit/pointer " "images"
+                        )
+                        self.glare_mode = (
+                            ui.select(
+                                [
+                                    "clahe",
+                                    "inpaint",
+                                    "illumination_normalize",
+                                    "combined",
+                                ],
+                                label="Mode",
+                                value="clahe",
+                                on_change=self._on_param_change,
+                            )
+                            .classes("w-44")
+                            .tooltip(
+                                "Filter mode: clahe, inpaint, "
+                                "illumination_normalize, or combined"
+                            )
+                        )
+
+                    with ui.column().classes("w-full gap-4"):
+                        # CLAHE Clip Limit
+                        with ui.row().classes("w-full items-center gap-3 py-1"):
+                            ui.label("CLAHE Clip").classes(
+                                "w-24 text-xs font-semibold text-slate-300"
+                            )
+                            self.glare_clahe_clip_limit = (
+                                ui.slider(
+                                    min=0.1,
+                                    max=10.0,
+                                    step=0.2,
+                                    value=2.0,
+                                    on_change=self._on_param_change,
+                                )
+                                .classes("flex-1")
+                                .props("label")
+                            )
+                            ui.label().classes(BADGE_CLASSES).bind_text_from(
+                                self.glare_clahe_clip_limit,
+                                "value",
+                                lambda v: f"{float(v or 2.0):.1f}",
+                            )
+
+                        # CLAHE Grid Size
+                        with ui.row().classes("w-full items-center gap-3 py-1"):
+                            ui.label("CLAHE Grid").classes(
+                                "w-24 text-xs font-semibold text-slate-300"
+                            )
+                            self.glare_clahe_grid_size = (
+                                ui.slider(
+                                    min=2,
+                                    max=32,
+                                    step=1,
+                                    value=8,
+                                    on_change=self._on_param_change,
+                                )
+                                .classes("flex-1")
+                                .props("label")
+                            )
+                            ui.label().classes(BADGE_CLASSES).bind_text_from(
+                                self.glare_clahe_grid_size,
+                                "value",
+                                lambda v: (
+                                    f"{int(float(v or 8))}x{int(float(v or 8))}"
+                                ),
+                            )
+
+                        # Inpaint Threshold
+                        with ui.row().classes("w-full items-center gap-3 py-1"):
+                            ui.label("Inpaint Thresh").classes(
+                                "w-24 text-xs font-semibold text-slate-300"
+                            )
+                            self.glare_inpaint_threshold = (
+                                ui.slider(
+                                    min=100,
+                                    max=255,
+                                    step=1,
+                                    value=230,
+                                    on_change=self._on_param_change,
+                                )
+                                .classes("flex-1")
+                                .props("label")
+                            )
+                            ui.label().classes(BADGE_CLASSES).bind_text_from(
+                                self.glare_inpaint_threshold,
+                                "value",
+                                lambda v: f"{int(float(v or 230))}",
+                            )
+
+                        # Inpaint Radius
+                        with ui.row().classes("w-full items-center gap-3 py-1"):
+                            ui.label("Inpaint Radius").classes(
+                                "w-24 text-xs font-semibold text-slate-300"
+                            )
+                            self.glare_inpaint_radius = (
+                                ui.slider(
+                                    min=1,
+                                    max=20,
+                                    step=1,
+                                    value=3,
+                                    on_change=self._on_param_change,
+                                )
+                                .classes("flex-1")
+                                .props("label")
+                            )
+                            ui.label().classes(BADGE_CLASSES).bind_text_from(
+                                self.glare_inpaint_radius,
+                                "value",
+                                lambda v: f"{int(float(v or 3))}px",
+                            )
 
             # Action Toolbar
             with ui.row().classes(

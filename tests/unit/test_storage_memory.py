@@ -1,14 +1,15 @@
-from datetime import datetime, timezone, timedelta
+from datetime import UTC, datetime, timedelta
+
 from configuration import Config
 from processor.digitizer import MeterResult, MeterValue
+from storage import get_storage_backend
 from storage.base import MeterReading
 from storage.memory import MemoryStorageBackend
-from storage import get_storage_backend
 
 
 def test_memory_storage_basic_record_and_get():
     storage = MemoryStorageBackend(max_memory_mb=10.0, max_records=100)
-    now = datetime(2026, 9, 6, 12, 0, 0, tzinfo=timezone.utc)
+    now = datetime(2026, 9, 6, 12, 0, 0, tzinfo=UTC)
 
     storage.record_reading(
         timestamp=now,
@@ -34,7 +35,7 @@ def test_memory_storage_basic_record_and_get():
 
 def test_memory_storage_record_meter_result():
     storage = MemoryStorageBackend(max_memory_mb=10.0, max_records=100)
-    now = datetime(2026, 9, 6, 14, 30, 0, tzinfo=timezone.utc)
+    now = datetime(2026, 9, 6, 14, 30, 0, tzinfo=UTC)
 
     res = MeterResult(
         meters=[
@@ -68,7 +69,7 @@ def test_memory_storage_record_meter_result():
 def test_memory_storage_limits_and_pruning():
     # Set small record limit = 5
     storage = MemoryStorageBackend(max_memory_mb=1.0, max_records=5)
-    base_time = datetime(2026, 9, 1, 0, 0, 0, tzinfo=timezone.utc)
+    base_time = datetime(2026, 9, 1, 0, 0, 0, tzinfo=UTC)
 
     for i in range(10):
         ts = base_time + timedelta(hours=i)
@@ -88,16 +89,16 @@ def test_memory_storage_daily_consumption():
     storage = MemoryStorageBackend()
 
     # Day 1: 3 readings (consumption = 300.5 - 300.0 = 0.5)
-    t1 = datetime(2026, 9, 1, 8, 0, tzinfo=timezone.utc)
-    t2 = datetime(2026, 9, 1, 14, 0, tzinfo=timezone.utc)
-    t3 = datetime(2026, 9, 1, 20, 0, tzinfo=timezone.utc)
+    t1 = datetime(2026, 9, 1, 8, 0, tzinfo=UTC)
+    t2 = datetime(2026, 9, 1, 14, 0, tzinfo=UTC)
+    t3 = datetime(2026, 9, 1, 20, 0, tzinfo=UTC)
     storage.record_reading(t1, {"total": MeterReading(value=300.0, unit="m3")})
     storage.record_reading(t2, {"total": MeterReading(value=300.2, unit="m3")})
     storage.record_reading(t3, {"total": MeterReading(value=300.5, unit="m3")})
 
     # Day 2: 2 readings (consumption = 301.2 - 300.5 = 0.7)
-    t4 = datetime(2026, 9, 2, 9, 0, tzinfo=timezone.utc)
-    t5 = datetime(2026, 9, 2, 19, 0, tzinfo=timezone.utc)
+    t4 = datetime(2026, 9, 2, 9, 0, tzinfo=UTC)
+    t5 = datetime(2026, 9, 2, 19, 0, tzinfo=UTC)
     storage.record_reading(t4, {"total": MeterReading(value=300.9, unit="m3")})
     storage.record_reading(t5, {"total": MeterReading(value=301.2, unit="m3")})
 
@@ -115,8 +116,8 @@ def test_memory_storage_daily_consumption():
 def test_memory_storage_hourly_and_weekly_consumption():
     storage = MemoryStorageBackend()
     # 2 readings in same hour
-    t1 = datetime(2026, 9, 1, 10, 5, tzinfo=timezone.utc)
-    t2 = datetime(2026, 9, 1, 10, 35, tzinfo=timezone.utc)
+    t1 = datetime(2026, 9, 1, 10, 5, tzinfo=UTC)
+    t2 = datetime(2026, 9, 1, 10, 35, tzinfo=UTC)
     storage.record_reading(t1, {"total": MeterReading(value=10.0, unit="m3")})
     storage.record_reading(t2, {"total": MeterReading(value=10.4, unit="m3")})
 
@@ -134,7 +135,7 @@ def test_memory_storage_hourly_and_weekly_consumption():
 def test_memory_storage_clear():
     storage = MemoryStorageBackend()
     storage.record_reading(
-        datetime.now(timezone.utc),
+        datetime.now(UTC),
         {"total": MeterReading(value=1.0)},
     )
     assert len(storage.get_readings()) == 1
@@ -173,12 +174,13 @@ RetentionDays = 60
 
 def test_history_api_endpoints():
     from fastapi.testclient import TestClient
+
     from main import app
 
     client = TestClient(app)
     # Seed reading
     app.state.storage.clear()
-    now = datetime.now(timezone.utc)
+    now = datetime.now(UTC)
     app.state.storage.record_reading(
         now,
         {"total": MeterReading(value=500.0, unit="m3")},

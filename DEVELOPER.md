@@ -372,7 +372,7 @@ The `./run_tests.sh` helper supports several flags:
 - `./run_tests.sh -u, --unit`: Run unit tests only (`tests/unit`).
 - `./run_tests.sh -w, --ui, --web-ui`: Run Web UI Playwright tests only (`tests/integration/ui`).
 - `./run_tests.sh -i, --integration`: Run Tavern REST API integration tests only.
-- `./run_tests.sh -s, --static`: Run static analysis only (`ruff`, `black`, `bandit`).
+- `./run_tests.sh -s, --static`: Run static analysis only (`ruff`, `black`, `bandit`, `mypy`).
 - `./run_tests.sh -c, --coverage`: Run unit tests with code coverage report.
 - `./run_tests.sh -a, --all`: Run full test suite (unit tests, Web UI tests, Tavern integration tests, and static analysis).
 - `./run_tests.sh -h, --help`: Show help and usage.
@@ -383,15 +383,19 @@ The `./run_tests.sh` helper supports several flags:
 
 ### Formatting & Linting
 - **Formatter**: `black` with an 88-character line length.
-- **Linter**: `ruff` (configured under `[tool.ruff.lint]` in `pyproject.toml`).
+- **Linter**: `ruff` with rules `["E", "F", "I", "B", "UP", "SIM", "RUF"]` (configured under `[tool.ruff.lint]` in `pyproject.toml`).
+- **Static Typing**: `mypy` (configured under `[tool.mypy]` in `pyproject.toml`).
 - **Security**: `bandit` (configured in `pyproject.toml`).
 
 ```bash
 # Auto-format code
 uv run black .
 
-# Check lint rules
+# Check lint rules and import sorting
 uv run ruff check .
+
+# Run static type checking
+uv run mypy src
 
 # Run security checks
 uv run bandit -c pyproject.toml -r .

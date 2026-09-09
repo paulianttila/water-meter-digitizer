@@ -1,8 +1,9 @@
-from collections import OrderedDict
-from dataclasses import dataclass
 import threading
 import time
+from collections import OrderedDict
+from dataclasses import dataclass
 from typing import Any
+
 from PIL.Image import Image
 
 

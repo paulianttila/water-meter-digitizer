@@ -1,13 +1,14 @@
 from unittest.mock import MagicMock, patch
-from fastapi.testclient import TestClient
-import requests
 
-from main import app, VERSION
+import requests
+from fastapi.testclient import TestClient
+
+from main import VERSION, app
 from utils.diagnostics import (
-    format_uptime,
-    get_process_memory_info,
     check_camera_reachability,
+    format_uptime,
     get_models_info,
+    get_process_memory_info,
     get_system_info,
 )
 

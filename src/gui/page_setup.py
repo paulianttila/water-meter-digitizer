@@ -1,23 +1,23 @@
 import base64
-from hashlib import sha256
 import logging
+from hashlib import sha256
 
 from nicegui import events, ui
 
+import utils.image as ImageUtils
 from callbacks import Callbacks
 from configuration import CNNParams, Config
 from data_classes import ImagePosition, MeterConfig, RefImage
+
+from .step_adjust import AdjustStep
+from .step_download import DownloadImageStep
+from .step_draw_analog_rois import DrawAnalogRoisStep
+from .step_draw_digital_rois import DrawDigitalRoisStep
+from .step_draw_refs import DrawRefsStep
+from .step_final import FinalStep
+from .step_initial_rotate import InitialRotateStep
 from .step_meters import MeterStep
 from .step_services import ServicesStep
-from .step_download import DownloadImageStep
-from .step_initial_rotate import InitialRotateStep
-from .step_draw_refs import DrawRefsStep
-from .step_adjust import AdjustStep
-from .step_draw_digital_rois import DrawDigitalRoisStep
-from .step_draw_analog_rois import DrawAnalogRoisStep
-
-from .step_final import FinalStep
-import utils.image as ImageUtils
 
 logger = logging.getLogger(__name__)
 
@@ -79,7 +79,7 @@ class SetupPage:
         self.wizard_prev_btn: ui.button
         self.wizard_step_badge: ui.label
         self.wizard_next_btn: ui.button
-        self.comparison_container: ui.column
+        self.comparison_container: ui.element
         self.comparison_image: ui.image
 
         self.previous_step: str = ""
@@ -89,9 +89,9 @@ class SetupPage:
         self.refs = ""
         self.refs_enabled_in_image = False
         self.digital_rois = ""
-        self.digital_rois_enabled_in_image = ""
+        self.digital_rois_enabled_in_image = False
         self.analog_rois = ""
-        self.analog_rois_enabled_in_image = ""
+        self.analog_rois_enabled_in_image = False
 
     async def show(self) -> None:
 
@@ -267,11 +267,13 @@ class SetupPage:
                     )
                 )
             model_file = ""
-            if self.draw_digital_rois_step.cnn_file.value is not None:
-                if isinstance(self.draw_digital_rois_step.cnn_file.options, dict):
-                    model_file = self.draw_digital_rois_step.cnn_file.options[
-                        self.draw_digital_rois_step.cnn_file.value
-                    ]
+            if (
+                self.draw_digital_rois_step.cnn_file is not None
+                and self.draw_digital_rois_step.cnn_file.value is not None
+            ) and isinstance(self.draw_digital_rois_step.cnn_file.options, dict):
+                model_file = self.draw_digital_rois_step.cnn_file.options[
+                    self.draw_digital_rois_step.cnn_file.value
+                ]
             model_dir = "${DigitalModelsDir}"
             digital_cut_images = []
             for roi in self.draw_digital_rois_step.rois:
@@ -284,19 +286,26 @@ class SetupPage:
                         h=roi.h,
                     )
                 )
+            digital_model_val = (
+                str(self.draw_digital_rois_step.cnn_type.value or "auto")
+                if self.draw_digital_rois_step.cnn_type is not None
+                else "auto"
+            )
             config.digital_readout = CNNParams(
                 enabled=len(digital_cut_images) > 0,
-                model=str(self.draw_digital_rois_step.cnn_type.value or "auto"),
+                model=digital_model_val,
                 model_file=f"{model_dir}/{model_file}" if model_file else "",
                 cut_images=digital_cut_images,
             )
 
             model_file = ""
-            if self.draw_analog_rois_step.cnn_file.value is not None:
-                if isinstance(self.draw_analog_rois_step.cnn_file.options, dict):
-                    model_file = self.draw_analog_rois_step.cnn_file.options[
-                        self.draw_analog_rois_step.cnn_file.value
-                    ]
+            if (
+                self.draw_analog_rois_step.cnn_file is not None
+                and self.draw_analog_rois_step.cnn_file.value is not None
+            ) and isinstance(self.draw_analog_rois_step.cnn_file.options, dict):
+                model_file = self.draw_analog_rois_step.cnn_file.options[
+                    self.draw_analog_rois_step.cnn_file.value
+                ]
             model_dir = "${AnalogModelsDir}"
             analog_cut_images = []
             for roi in self.draw_analog_rois_step.rois:
@@ -309,9 +318,14 @@ class SetupPage:
                         h=roi.h,
                     )
                 )
+            analog_model_val = (
+                str(self.draw_analog_rois_step.cnn_type.value or "auto")
+                if self.draw_analog_rois_step.cnn_type is not None
+                else "auto"
+            )
             config.analog_readout = CNNParams(
                 enabled=len(analog_cut_images) > 0,
-                model=str(self.draw_analog_rois_step.cnn_type.value or "auto"),
+                model=analog_model_val,
                 model_file=f"{model_dir}/{model_file}" if model_file else "",
                 cut_images=analog_cut_images,
             )
@@ -915,183 +929,181 @@ class SetupPage:
                 'separator-style="width: 2px; margin: 0 8px;"'
             ) as splitter
         ):
-            with splitter.add_slot("separator"):
-                with (
-                    ui.element("div")
-                    .classes(
-                        "w-2.5 h-8 -ml-[4px] rounded-full bg-slate-800/90 border "
-                        "border-white/20 flex flex-col items-center justify-center "
-                        "gap-0.5 hover:bg-indigo-600 hover:border-indigo-400 "
-                        "transition-all duration-150 shadow-md cursor-col-resize"
-                    )
-                    .tooltip("Resize panels")
-                ):
-                    ui.element("div").classes("w-1 h-1 rounded-full bg-slate-400/80")
-                    ui.element("div").classes("w-1 h-1 rounded-full bg-slate-400/80")
-                    ui.element("div").classes("w-1 h-1 rounded-full bg-slate-400/80")
-            with splitter.before:
-                with ui.column().classes(
+            with (
+                splitter.add_slot("separator"),
+                ui.element("div")
+                .classes(
+                    "w-2.5 h-8 -ml-[4px] rounded-full bg-slate-800/90 border "
+                    "border-white/20 flex flex-col items-center justify-center "
+                    "gap-0.5 hover:bg-indigo-600 hover:border-indigo-400 "
+                    "transition-all duration-150 shadow-md cursor-col-resize"
+                )
+                .tooltip("Resize panels"),
+            ):
+                ui.element("div").classes("w-1 h-1 rounded-full bg-slate-400/80")
+                ui.element("div").classes("w-1 h-1 rounded-full bg-slate-400/80")
+                ui.element("div").classes("w-1 h-1 rounded-full bg-slate-400/80")
+            with (
+                splitter.before,
+                ui.column().classes(
                     "w-full h-full rounded-2xl bg-slate-950/80 p-3 "
                     "border border-white/10 shadow-2xl backdrop-blur-md "
                     "gap-3 overflow-y-auto overflow-x-hidden min-w-0 no-wrap"
+                ),
+            ):
+                # Original Image Card
+                with ui.card().classes(
+                    "w-full p-2 bg-slate-900/60 border border-white/10 "
+                    "rounded-xl shadow-md flex flex-col gap-2 shrink-0 min-w-0"
                 ):
-                    # Original Image Card
-                    with ui.card().classes(
-                        "w-full p-2 bg-slate-900/60 border border-white/10 "
-                        "rounded-xl shadow-md flex flex-col gap-2 shrink-0 min-w-0"
-                    ):
-                        with ui.row().classes(
-                            "w-full min-w-0 shrink-0 justify-between items-center px-1"
-                        ) as self.main_image_header:
-                            with ui.row().classes("items-center gap-1.5 min-w-0"):
-                                self.main_image_icon = ui.icon(
-                                    "image", size="xs"
-                                ).classes("text-indigo-400 shrink-0")
-                                self.main_image_label = ui.label(
-                                    "Original Image"
-                                ).classes(
-                                    "text-xs font-semibold text-slate-300 truncate"
-                                )
-                            self.main_image_tag = ui.label("ORIGINAL").classes(
-                                "text-[10px] font-mono font-bold text-cyan-400 "
-                                "px-2 py-0.5 rounded-md bg-cyan-950/60 "
-                                "border border-cyan-500/30 shrink-0"
-                            )
-
-                        self.interactive_image = ui.interactive_image(
-                            size=(640, 480),
-                            on_mouse=mouse_handler,
-                            events=["mousedown", "mouseup", "mousemove", "shiftKey"],
-                            cross=True,
-                        ).classes(
-                            "w-full max-w-full min-w-0 shrink-0 rounded-lg "
-                            "bg-slate-950 shadow-inner"
-                        )
-                        with ui.row().classes(
-                            "w-full min-w-0 shrink-0 justify-between items-center "
-                            "px-2 py-1.5 rounded-lg bg-slate-950/80 border "
-                            "border-white/5 text-xs text-slate-400 gap-2"
-                        ):
-                            self.image_details = ui.label("").classes(
-                                "font-mono text-cyan-400 font-semibold truncate"
-                            )
-                            self.mouse_position = ui.label("").classes(
-                                "font-mono text-slate-400 truncate"
-                            )
-                            self.selected_position = ui.label("").classes(
-                                "font-mono text-emerald-400 font-bold truncate"
-                            )
-                        show_offline_placeholder(
-                            "No Image Loaded",
-                            "Enter camera URL and click Download to start",
-                        )
-
-                    # Adjusted Image Preview Card (under the status bar)
-                    with ui.card().classes(
-                        "w-full p-2 bg-slate-900/60 border border-white/10 "
-                        "rounded-xl shadow-md flex flex-col gap-2 shrink-0 min-w-0"
-                    ) as self.comparison_container:
-                        with ui.row().classes(
-                            "w-full min-w-0 shrink-0 items-center justify-between px-1"
-                        ):
-                            with ui.row().classes("items-center gap-1.5 min-w-0"):
-                                ui.icon("auto_fix_high", size="xs").classes(
-                                    "text-emerald-400 shrink-0"
-                                )
-                                ui.label("Adjusted Image").classes(
-                                    "text-xs font-semibold text-slate-300 truncate"
-                                )
-                            ui.label("ADJUSTED").classes(
-                                "text-[10px] font-mono font-bold text-emerald-400 "
-                                "px-2 py-0.5 rounded-md bg-emerald-950/60 "
-                                "border border-emerald-500/30 shrink-0"
-                            )
-
-                        self.comparison_image = (
-                            ui.image("")
-                            .props('fit=contain no-spinner ratio="1.3333"')
-                            .classes(
-                                "w-full max-w-full min-w-0 shrink-0 aspect-[4/3] "
-                                "min-h-[120px] rounded-lg bg-slate-950 shadow-inner"
-                            )
-                        )
-                    self.comparison_container.set_visibility(False)
-
-            with splitter.after:
-                with ui.element("div").classes(
-                    "w-full h-full flex flex-col justify-between min-h-0"
-                ):
-                    with ui.element("div").classes(
-                        "w-full flex-1 min-h-0 overflow-y-auto pr-1"
-                    ):
-                        with (
-                            ui.stepper(
-                                on_value_change=lambda x: handle_stepper_change(x.value)
-                            )
-                            .props("vertical")
-                            .classes(
-                                "w-full rounded-2xl shadow-xl bg-slate-900/40 "
-                                "border border-white/5"
-                            ) as stepper
-                        ):
-                            self.stepper = stepper
-                            await self.download_image_step.show(
-                                stepper, first_step=True
-                            )
-                            await self.initial_rotate_step.show(stepper)
-                            await self.draw_refs_step.show(stepper)
-                            await self.adjust_step.show(stepper)
-                            await self.draw_digital_rois_step.show(stepper)
-                            await self.draw_analog_rois_step.show(stepper)
-                            await self.meters_step.show(stepper)
-                            await self.services_step.show(stepper)
-                            await self.final_step.show(stepper, last_step=True)
-
-                    # Persistent Docked Bottom Navigation Bar
                     with ui.row().classes(
-                        "w-full justify-between items-center p-3 mt-2 "
-                        "bg-slate-900/90 border border-white/10 rounded-2xl "
-                        "shadow-2xl backdrop-blur-md shrink-0"
+                        "w-full min-w-0 shrink-0 justify-between items-center px-1"
+                    ) as self.main_image_header:
+                        with ui.row().classes("items-center gap-1.5 min-w-0"):
+                            self.main_image_icon = ui.icon("image", size="xs").classes(
+                                "text-indigo-400 shrink-0"
+                            )
+                            self.main_image_label = ui.label("Original Image").classes(
+                                "text-xs font-semibold text-slate-300 truncate"
+                            )
+                        self.main_image_tag = ui.label("ORIGINAL").classes(
+                            "text-[10px] font-mono font-bold text-cyan-400 "
+                            "px-2 py-0.5 rounded-md bg-cyan-950/60 "
+                            "border border-cyan-500/30 shrink-0"
+                        )
+
+                    self.interactive_image = ui.interactive_image(
+                        size=(640, 480),
+                        on_mouse=mouse_handler,
+                        events=["mousedown", "mouseup", "mousemove", "shiftKey"],
+                        cross=True,
+                    ).classes(
+                        "w-full max-w-full min-w-0 shrink-0 rounded-lg "
+                        "bg-slate-950 shadow-inner"
+                    )
+                    with ui.row().classes(
+                        "w-full min-w-0 shrink-0 justify-between items-center "
+                        "px-2 py-1.5 rounded-lg bg-slate-950/80 border "
+                        "border-white/5 text-xs text-slate-400 gap-2"
                     ):
-                        self.wizard_prev_btn = (
-                            ui.button(
-                                "Back",
-                                icon="arrow_back",
-                                on_click=lambda: self.stepper.previous(),
-                            )
-                            .props("flat color=grey text-color=white")
-                            .classes(
-                                "px-4 py-2 rounded-xl text-sm font-medium "
-                                "hover:bg-white/10 transition-all"
-                            )
-                            .tooltip("Return to previous step")
+                        self.image_details = ui.label("").classes(
+                            "font-mono text-cyan-400 font-semibold truncate"
                         )
-                        self.wizard_prev_btn.visible = False
-
-                        with ui.row().classes("items-center gap-2"):
-                            self.wizard_step_badge = ui.label(
-                                f"Step 1 of {len(steps_order)}: {steps_order[0]}"
-                            ).classes(
-                                "text-xs font-semibold text-slate-300 font-mono "
-                                "bg-slate-950/70 border border-white/10 px-3 "
-                                "py-1.5 rounded-xl shadow-inner"
-                            )
-
-                        self.wizard_next_btn = (
-                            ui.button(
-                                "Continue",
-                                on_click=on_wizard_next,
-                            )
-                            .props("unelevated icon-right=arrow_forward")
-                            .classes(
-                                "px-5 py-2 rounded-xl text-sm font-semibold "
-                                "bg-gradient-to-r from-blue-600 to-cyan-600 "
-                                "hover:from-blue-500 hover:to-cyan-500 "
-                                "text-white shadow-lg shadow-cyan-950/40 "
-                                "transition-all"
-                            )
-                            .tooltip("Proceed to next step")
+                        self.mouse_position = ui.label("").classes(
+                            "font-mono text-slate-400 truncate"
                         )
+                        self.selected_position = ui.label("").classes(
+                            "font-mono text-emerald-400 font-bold truncate"
+                        )
+                    show_offline_placeholder(
+                        "No Image Loaded",
+                        "Enter camera URL and click Download to start",
+                    )
+
+                # Adjusted Image Preview Card (under the status bar)
+                with ui.card().classes(
+                    "w-full p-2 bg-slate-900/60 border border-white/10 "
+                    "rounded-xl shadow-md flex flex-col gap-2 shrink-0 min-w-0"
+                ) as self.comparison_container:
+                    with ui.row().classes(
+                        "w-full min-w-0 shrink-0 items-center justify-between px-1"
+                    ):
+                        with ui.row().classes("items-center gap-1.5 min-w-0"):
+                            ui.icon("auto_fix_high", size="xs").classes(
+                                "text-emerald-400 shrink-0"
+                            )
+                            ui.label("Adjusted Image").classes(
+                                "text-xs font-semibold text-slate-300 truncate"
+                            )
+                        ui.label("ADJUSTED").classes(
+                            "text-[10px] font-mono font-bold text-emerald-400 "
+                            "px-2 py-0.5 rounded-md bg-emerald-950/60 "
+                            "border border-emerald-500/30 shrink-0"
+                        )
+
+                    self.comparison_image = (
+                        ui.image("")
+                        .props('fit=contain no-spinner ratio="1.3333"')
+                        .classes(
+                            "w-full max-w-full min-w-0 shrink-0 aspect-[4/3] "
+                            "min-h-[120px] rounded-lg bg-slate-950 shadow-inner"
+                        )
+                    )
+                self.comparison_container.set_visibility(False)
+
+            with (
+                splitter.after,
+                ui.element("div").classes(
+                    "w-full h-full flex flex-col justify-between min-h-0"
+                ),
+            ):
+                with (
+                    ui.element("div").classes(
+                        "w-full flex-1 min-h-0 overflow-y-auto pr-1"
+                    ),
+                    ui.stepper(on_value_change=lambda x: handle_stepper_change(x.value))
+                    .props("vertical")
+                    .classes(
+                        "w-full rounded-2xl shadow-xl bg-slate-900/40 "
+                        "border border-white/5"
+                    ) as stepper,
+                ):
+                    self.stepper = stepper
+                    await self.download_image_step.show(stepper, first_step=True)
+                    await self.initial_rotate_step.show(stepper)
+                    await self.draw_refs_step.show(stepper)
+                    await self.adjust_step.show(stepper)
+                    await self.draw_digital_rois_step.show(stepper)
+                    await self.draw_analog_rois_step.show(stepper)
+                    await self.meters_step.show(stepper)
+                    await self.services_step.show(stepper)
+                    await self.final_step.show(stepper, last_step=True)
+
+                # Persistent Docked Bottom Navigation Bar
+                with ui.row().classes(
+                    "w-full justify-between items-center p-3 mt-2 "
+                    "bg-slate-900/90 border border-white/10 rounded-2xl "
+                    "shadow-2xl backdrop-blur-md shrink-0"
+                ):
+                    self.wizard_prev_btn = (
+                        ui.button(
+                            "Back",
+                            icon="arrow_back",
+                            on_click=lambda: self.stepper.previous(),
+                        )
+                        .props("flat color=grey text-color=white")
+                        .classes(
+                            "px-4 py-2 rounded-xl text-sm font-medium "
+                            "hover:bg-white/10 transition-all"
+                        )
+                        .tooltip("Return to previous step")
+                    )
+                    self.wizard_prev_btn.visible = False
+
+                    with ui.row().classes("items-center gap-2"):
+                        self.wizard_step_badge = ui.label(
+                            f"Step 1 of {len(steps_order)}: {steps_order[0]}"
+                        ).classes(
+                            "text-xs font-semibold text-slate-300 font-mono "
+                            "bg-slate-950/70 border border-white/10 px-3 "
+                            "py-1.5 rounded-xl shadow-inner"
+                        )
+
+                    self.wizard_next_btn = (
+                        ui.button(
+                            "Continue",
+                            on_click=on_wizard_next,
+                        )
+                        .props("unelevated icon-right=arrow_forward")
+                        .classes(
+                            "px-5 py-2 rounded-xl text-sm font-semibold "
+                            "bg-gradient-to-r from-blue-600 to-cyan-600 "
+                            "hover:from-blue-500 hover:to-cyan-500 "
+                            "text-white shadow-lg shadow-cyan-950/40 "
+                            "transition-all"
+                        )
+                        .tooltip("Proceed to next step")
+                    )
 
         update_wizard_nav(self.stepper.value or steps_order[0])
 

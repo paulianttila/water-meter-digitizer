@@ -1,9 +1,10 @@
 import re
+from collections.abc import Callable
 from dataclasses import dataclass
-from typing import Callable
-from data_classes import MeterConfig
 
 from nicegui import ui
+
+from data_classes import MeterConfig
 
 from .step_base import BaseStep
 
@@ -90,7 +91,7 @@ class Meter:
                 )
                 self.digits = (
                     ui.select(
-                        self.digit_names + ["."],
+                        [*self.digit_names, "."],
                         multiple=True,
                         label="Ordered Digits & Analogs",
                         on_change=self.update_vals,

@@ -1,8 +1,8 @@
 """Meter readout, ROI visualization, baseline setting, and image caching endpoints."""
 
-from datetime import datetime, timezone
 import json
 import logging
+from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
@@ -10,14 +10,14 @@ from fastapi import APIRouter, HTTPException, Request, Response
 from fastapi.responses import JSONResponse
 from fastapi.templating import Jinja2Templates
 
+import previous_value
+import utils.image
 from api.routes_health import get_allowed_asset_directories
 from configuration import Config
 from decorators.decorators import log_execution_time
-import previous_value
 from processor.digitizer import DigitizerProcessor, MeterResult
 from processor.image import ImageProcessor
 from utils.download import DownloadFailure
-import utils.image
 
 logger = logging.getLogger(__name__)
 
@@ -226,7 +226,7 @@ def get_meters(
     try:
         result = get_meter_data(url=url, saveimages=saveimages, request=request)
     except Exception as e:
-        logger.warning(f"Error occurred: {str(e)}")
+        logger.warning(f"Error occurred: {e!s}")
         if format != "html":
             return Response(
                 json.dumps({"error": str(e)}), media_type="application/json"
@@ -430,7 +430,7 @@ def get_meter_data(
 
             if target_val is not None:
                 zero_status = zero_flow_tracker.evaluate_reading(
-                    timestamp=datetime.now(timezone.utc),
+                    timestamp=datetime.now(UTC),
                     meter_value=target_val,
                     confidence=target_conf,
                     quality=target_qual,

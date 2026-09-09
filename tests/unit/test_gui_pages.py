@@ -1,9 +1,10 @@
 """Unit tests for standalone GUI pages (AboutPage, HelpPage, theme)."""
 
 from unittest.mock import patch
+
+import gui.theme as theme
 from gui.page_about import AboutPage
 from gui.page_help import HelpPage
-import gui.theme as theme
 
 
 def test_theme_constants():

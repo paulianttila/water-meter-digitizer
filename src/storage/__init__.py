@@ -50,11 +50,11 @@ def get_storage_backend(config: Any) -> StorageBackend:
 
 __all__ = [
     "ConsumptionRecord",
+    "MemoryStorageBackend",
     "MeterReading",
     "ReadingRecord",
+    "SQLAlchemyStorageBackend",
     "StorageBackend",
     "StorageSummary",
-    "SQLAlchemyStorageBackend",
-    "MemoryStorageBackend",
     "get_storage_backend",
 ]

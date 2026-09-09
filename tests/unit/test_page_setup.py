@@ -1,4 +1,5 @@
 from unittest.mock import AsyncMock, MagicMock, patch
+
 from configuration import Config
 from gui.page_setup import SetupPage
 
@@ -76,7 +77,7 @@ def test_wizard_navigation_flow():
     page.final_step = MagicMock()
 
     # Define update helper inside test mirroring implementation
-    from gui.page_setup import steps_order, NAME_DOWNLOAD_IMAGE, NAME_FINAL
+    from gui.page_setup import NAME_DOWNLOAD_IMAGE, NAME_FINAL, steps_order
 
     def update_wizard_nav(current_step: str) -> None:
         idx = steps_order.index(current_step) if current_step in steps_order else 0

@@ -2,10 +2,11 @@ import datetime
 import difflib
 import logging
 import os
-from pathlib import Path
 import re
 import shutil
-from typing import Any, Optional
+from pathlib import Path
+from typing import Any
+
 from pydantic import BaseModel
 
 logger = logging.getLogger(__name__)
@@ -34,7 +35,7 @@ class ConfigHistoryManager:
         return backup_dir
 
     @classmethod
-    def create_backup(cls, config_file: str, tag: str = "") -> Optional[str]:
+    def create_backup(cls, config_file: str, tag: str = "") -> str | None:
         """Create a timestamped backup in the backups subfolder."""
         if not os.path.exists(config_file) or not os.path.isfile(config_file):
             return None
@@ -157,7 +158,7 @@ class ConfigHistoryManager:
         logger.info(f"Restored backup '{target_path.name}' to '{config_file}'")
 
     @classmethod
-    def undo_last(cls, config_file: str) -> Optional[str]:
+    def undo_last(cls, config_file: str) -> str | None:
         """Undo last configuration change by reverting to the most recent backup."""
         backups = cls.list_backups(config_file)
         if not backups:
@@ -216,7 +217,7 @@ class ConfigHistoryManager:
         if not target_path.exists() or not target_path.is_file():
             raise FileNotFoundError(f"Backup file '{backup_name_or_path}' not found")
 
-        with open(target_path, "r", encoding="utf-8", errors="replace") as f:
+        with open(target_path, encoding="utf-8", errors="replace") as f:
             backup_content = f.read()
 
         current_lines = current_content.splitlines(keepends=True)

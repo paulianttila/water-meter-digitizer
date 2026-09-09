@@ -1,8 +1,8 @@
 """Health, healthcheck, and diagnostic endpoints."""
 
-from datetime import datetime, timezone
 import os
 import time
+from datetime import UTC, datetime
 
 from fastapi import APIRouter, Request
 from fastapi.responses import HTMLResponse
@@ -45,9 +45,7 @@ def healthcheck():
 def get_health(request: Request) -> HealthResponse:
     now = time.time()
     start_time = getattr(request.app.state, "start_time", now)
-    started_at = getattr(
-        request.app.state, "started_at", datetime.now(timezone.utc).isoformat()
-    )
+    started_at = getattr(request.app.state, "started_at", datetime.now(UTC).isoformat())
     uptime_seconds = round(now - start_time, 2)
     uptime_human = format_uptime(uptime_seconds)
 

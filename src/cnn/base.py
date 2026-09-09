@@ -38,7 +38,7 @@ class CNNBase:
         self._load_model()
 
     def _load_model(self) -> None:
-        filename, file_extension = os.path.splitext(self.modelfile)
+        _filename, file_extension = os.path.splitext(self.modelfile)
         if file_extension != ".tflite":
             logger.error(
                 "Only TFLite-Model (*.tflite) are supported since "
@@ -93,8 +93,8 @@ class CNNBase:
             raise RuntimeError(f"Model '{self.modelfile}' is not loaded")
 
         test_image = image.resize((self.dx, self.dy), Resampling.NEAREST)
-        test_image = np.array(test_image, dtype="float32")
-        input_data = np.reshape(test_image, [1, self.dy, self.dx, 3])
+        img_array = np.array(test_image, dtype="float32")
+        input_data = np.reshape(img_array, [1, self.dy, self.dx, 3])
 
         start_time = time.perf_counter()
         with self.pool.acquire() as inst:

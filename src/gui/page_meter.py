@@ -1,6 +1,6 @@
 import asyncio
-from datetime import datetime, timedelta, timezone
 import json
+from datetime import UTC, datetime, timedelta
 
 from nicegui import ui
 
@@ -187,7 +187,7 @@ class MeterPage:
                 self.current_meter = tracked_meters[0]
 
             start_time = (
-                datetime.now(timezone.utc) - timedelta(days=self.current_days)
+                datetime.now(UTC) - timedelta(days=self.current_days)
                 if self.current_days > 0
                 else None
             )
@@ -203,6 +203,37 @@ class MeterPage:
                     "w-full justify-between items-center gap-4 flex-wrap "
                     "bg-slate-900/60 p-3 rounded-xl border border-white/10"
                 ):
+
+                    def on_meter_change(e) -> None:
+                        self.current_meter = e.value
+                        render_consumption()
+
+                    def on_interval_change(e) -> None:
+                        self.current_interval = e.value
+                        render_consumption()
+
+                    def on_days_change(e) -> None:
+                        self.current_days = int(e.value)
+                        render_consumption()
+
+                    def on_style_change(e) -> None:
+                        self.chart_style = e.value
+                        render_consumption()
+
+                    def on_mode_change(e) -> None:
+                        self.cumulative = e.value == "cumulative"
+                        render_consumption()
+
+                    def on_seed_demo() -> None:
+                        seed_demo_history(storage, self.current_meter, 14)
+                        ui.notify("Seeded 14 days of demo readings", type="positive")
+                        render_consumption()
+
+                    def on_clear_history() -> None:
+                        storage.clear()
+                        ui.notify("History cleared", type="info")
+                        render_consumption()
+
                     with ui.row().classes("items-center gap-3 flex-wrap"):
                         ui.label("Meter:").classes(
                             "text-xs font-semibold text-gray-400"
@@ -210,10 +241,7 @@ class MeterPage:
                         ui.select(
                             options=tracked_meters,
                             value=self.current_meter,
-                            on_change=lambda e: (
-                                setattr(self, "current_meter", e.value),
-                                render_consumption(),
-                            ),
+                            on_change=on_meter_change,
                         ).props("dense outlined").classes("w-36")
 
                         ui.label("Interval:").classes(
@@ -222,10 +250,7 @@ class MeterPage:
                         ui.toggle(
                             {"hourly": "Hourly", "daily": "Daily", "weekly": "Weekly"},
                             value=self.current_interval,
-                            on_change=lambda e: (
-                                setattr(self, "current_interval", e.value),
-                                render_consumption(),
-                            ),
+                            on_change=on_interval_change,
                         ).props("dense toggle-color=cyan")
 
                         ui.label("Range:").classes(
@@ -240,10 +265,7 @@ class MeterPage:
                                 0: "All Time",
                             },
                             value=self.current_days,
-                            on_change=lambda e: (
-                                setattr(self, "current_days", int(e.value)),
-                                render_consumption(),
-                            ),
+                            on_change=on_days_change,
                         ).props("dense outlined").classes("w-32")
 
                         ui.label("Style:").classes(
@@ -257,10 +279,7 @@ class MeterPage:
                                 "combined": "Combined",
                             },
                             value=self.chart_style,
-                            on_change=lambda e: (
-                                setattr(self, "chart_style", e.value),
-                                render_consumption(),
-                            ),
+                            on_change=on_style_change,
                         ).props("dense toggle-color=cyan")
 
                         ui.label("Mode:").classes(
@@ -269,24 +288,14 @@ class MeterPage:
                         ui.toggle(
                             {"interval": "Interval", "cumulative": "Cumulative"},
                             value="cumulative" if self.cumulative else "interval",
-                            on_change=lambda e: (
-                                setattr(self, "cumulative", e.value == "cumulative"),
-                                render_consumption(),
-                            ),
+                            on_change=on_mode_change,
                         ).props("dense toggle-color=cyan")
 
                     with ui.row().classes("items-center gap-2"):
                         ui.button(
                             "Seed Demo Data",
                             icon="sym_s_science",
-                            on_click=lambda: (
-                                seed_demo_history(storage, self.current_meter, 14),
-                                ui.notify(
-                                    "Seeded 14 days of demo readings",
-                                    type="positive",
-                                ),
-                                render_consumption(),
-                            ),
+                            on_click=on_seed_demo,
                         ).props("flat dense color=cyan text-color=cyan").classes(
                             "text-xs"
                         )
@@ -294,11 +303,7 @@ class MeterPage:
                             ui.button(
                                 "Clear",
                                 icon="delete_outline",
-                                on_click=lambda: (
-                                    storage.clear(),
-                                    ui.notify("History cleared", type="info"),
-                                    render_consumption(),
-                                ),
+                                on_click=on_clear_history,
                             ).props("flat dense color=grey text-color=grey-4").classes(
                                 "text-xs"
                             )
@@ -324,14 +329,7 @@ class MeterPage:
                         ui.button(
                             "Generate Demo Data",
                             icon="auto_awesome",
-                            on_click=lambda: (
-                                seed_demo_history(storage, self.current_meter, 14),
-                                ui.notify(
-                                    "Seeded 14 days of demo readings",
-                                    type="positive",
-                                ),
-                                render_consumption(),
-                            ),
+                            on_click=on_seed_demo,
                         ).props("unelevated color=primary").classes(
                             "shadow-md shadow-blue-500/20 mt-2"
                         )

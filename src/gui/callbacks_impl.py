@@ -1,6 +1,8 @@
 """Implementation of Callbacks protocol bridging NiceGUI frontend to backend."""
 
-from typing import Any, Callable
+from collections.abc import Callable
+from typing import Any
+
 from callbacks import Callbacks
 from configuration import Config
 from processor.digitizer import MeterResult

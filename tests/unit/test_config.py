@@ -174,7 +174,7 @@ def test_config_file_missing():
     except ConfigurationMissing as e:
         assert str(e) == "Configuration file 'config/missing.ini' not found"
     else:
-        assert False
+        raise AssertionError()
 
 
 def test_save():

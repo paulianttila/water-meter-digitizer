@@ -1,6 +1,6 @@
-from shutil import copyfile
 import os
 import time
+from shutil import copyfile
 
 
 def save_file(file: str, data: bytes) -> None:

@@ -4,9 +4,9 @@ import os
 import socket
 import threading
 import time
-from pathlib import Path
-from typing import Generator
 import urllib.request
+from collections.abc import Generator
+from pathlib import Path
 
 import pytest
 import uvicorn

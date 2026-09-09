@@ -1,8 +1,9 @@
-from typing import Callable
+from collections.abc import Callable
 
 from nicegui import ui
 
 from data_classes import RefImage
+
 from .step_draw_rois_base import DrawRoisBaseStep
 
 HELP_TEXT = (

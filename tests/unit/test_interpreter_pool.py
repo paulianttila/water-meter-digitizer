@@ -1,15 +1,16 @@
-from concurrent.futures import ThreadPoolExecutor
 import os
-from PIL import Image
-import pytest
+from concurrent.futures import ThreadPoolExecutor
 
+import pytest
+from PIL import Image
+
+from cnn.analog_needle_cnn import AnalogNeedleCNN
+from cnn.digital_counter_cnn import DigitalCounterCNN
 from cnn.pool import (
     InterpreterPool,
-    get_interpreter_pool,
     clear_interpreter_pools,
+    get_interpreter_pool,
 )
-from cnn.digital_counter_cnn import DigitalCounterCNN
-from cnn.analog_needle_cnn import AnalogNeedleCNN
 
 
 def _find_model(rel_path: str) -> str:

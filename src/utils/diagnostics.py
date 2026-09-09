@@ -4,10 +4,11 @@ import platform
 import sys
 import time
 from typing import Any
+
 import requests
 
 from cnn.pool import get_interpreter_pool
-from utils.security import is_safe_path, extract_file_path_from_uri
+from utils.security import extract_file_path_from_uri, is_safe_path
 
 try:
     import resource
@@ -53,15 +54,17 @@ def get_process_memory_info() -> dict[str, Any]:
 
     # Attempt to read current Resident Set Size (RSS) from /proc/self/status on Linux
     if os.path.exists("/proc/self/status"):
-        with contextlib.suppress(Exception):
-            with open("/proc/self/status", "r", encoding="utf-8") as f:
-                for line in f:
-                    if line.startswith("VmRSS:"):
-                        # VmRSS:     12345 kB
-                        parts = line.split()
-                        if len(parts) >= 2 and parts[1].isdigit():
-                            rss_mb = round(int(parts[1]) / 1024, 2)
-                        break
+        with (
+            contextlib.suppress(Exception),
+            open("/proc/self/status", encoding="utf-8") as f,
+        ):
+            for line in f:
+                if line.startswith("VmRSS:"):
+                    # VmRSS:     12345 kB
+                    parts = line.split()
+                    if len(parts) >= 2 and parts[1].isdigit():
+                        rss_mb = round(int(parts[1]) / 1024, 2)
+                    break
 
     if rss_mb is None:
         rss_mb = peak_rss_mb or 0.0

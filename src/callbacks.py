@@ -1,7 +1,7 @@
 from typing import Any, Protocol, runtime_checkable
 
-from processor.digitizer import MeterResult
 from configuration import Config
+from processor.digitizer import MeterResult
 
 
 @runtime_checkable

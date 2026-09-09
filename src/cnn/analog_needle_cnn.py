@@ -1,8 +1,8 @@
-import math
 import logging
+import math
 
-from PIL.Image import Image
 import numpy as np
+from PIL.Image import Image
 
 from cnn.base import CNNBase
 

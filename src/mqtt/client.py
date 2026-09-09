@@ -1,7 +1,7 @@
-from datetime import datetime, timezone
 import json
 import logging
 import ssl
+from datetime import UTC, datetime
 from typing import Any
 
 import paho.mqtt.client as mqtt
@@ -9,6 +9,7 @@ import paho.mqtt.client as mqtt
 from configuration import MQTT
 from data_classes import MeterConfig
 from processor.digitizer import MeterResult
+
 from .discovery import build_homeassistant_discovery_payloads
 
 logger = logging.getLogger(__name__)
@@ -82,13 +83,14 @@ class MQTTService:
                 self.config.port,
             )
             # Publish online status
-            status_topic = f"{self.config.topic_prefix}/status"
-            self._client.publish(
-                topic=status_topic,
-                payload="online",
-                qos=1,
-                retain=self.config.retain,
-            )
+            if self._client is not None:
+                status_topic = f"{self.config.topic_prefix}/status"
+                self._client.publish(
+                    topic=status_topic,
+                    payload="online",
+                    qos=1,
+                    retain=self.config.retain,
+                )
 
             # Publish Home Assistant Discovery if enabled
             if self.config.homeassistant_discovery:
@@ -183,7 +185,7 @@ class MQTTService:
 
         prefix = self.config.topic_prefix
         retain = self.config.retain
-        now_iso = datetime.now(timezone.utc).isoformat()
+        now_iso = datetime.now(UTC).isoformat()
 
         topics_published: dict[str, str] = {}
 

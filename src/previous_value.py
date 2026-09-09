@@ -1,9 +1,9 @@
 import configparser
-from datetime import datetime
 import logging
 import os
 import threading
 import time
+from datetime import datetime
 
 logger = logging.getLogger(__name__)
 
@@ -29,7 +29,7 @@ def load_previous_value_from_file(
                 if diff_minutes > max_age_minutes:
                     raise ValueError(
                         f"Previous value not loaded from file as value is too old: "
-                        f"{str(diff_minutes)} minutes"
+                        f"{diff_minutes!s} minutes"
                     )
 
             previous_value = config.get(section, "Value")
@@ -37,7 +37,7 @@ def load_previous_value_from_file(
             return previous_value
         except Exception as e:
             raise ValueError(
-                f"Error occured during previous value loading: {str(e)}"
+                f"Error occured during previous value loading: {e!s}"
             ) from e
 
 

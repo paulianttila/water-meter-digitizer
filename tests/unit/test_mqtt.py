@@ -2,8 +2,8 @@ from unittest.mock import MagicMock
 
 from configuration import MQTT
 from data_classes import MeterConfig
-from mqtt.discovery import build_homeassistant_discovery_payloads
 from mqtt.client import MQTTService
+from mqtt.discovery import build_homeassistant_discovery_payloads
 from processor.digitizer import MeterResult, MeterValue
 
 

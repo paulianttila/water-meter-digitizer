@@ -1,14 +1,15 @@
-from configuration import ImageSource
-from typing import Callable
+from collections.abc import Callable
 
 from nicegui import ui
+
+from configuration import ImageSource
 
 
 class BaseStep:
     def __init__(
         self,
         name: str,
-        set_image_callback: Callable[[str], None],
+        set_image_callback: Callable[[str], None] | None = None,
         spinner=None,
     ) -> None:
         self.name = name
@@ -40,10 +41,7 @@ class BaseStep:
         return wrapper
 
     def load_from_config(self, image_source: ImageSource) -> None:
-        if self.url:
-            self.url.value = image_source.url
-        if self.timeout:
-            self.timeout.value = image_source.timeout
+        pass
 
     def get_image(self) -> str:
         return self.image
@@ -62,10 +60,10 @@ class BaseStep:
         with (
             ui.expansion("Help & Guidance", icon="help_outline")
             .classes(classes)
-            .props("dense header-class='text-cyan-400 font-semibold'")
+            .props("dense header-class='text-cyan-400 font-semibold'"),
+            ui.column().classes("w-full px-3 py-2 text-slate-300"),
         ):
-            with ui.column().classes("w-full px-3 py-2 text-slate-300"):
-                ui.markdown(content).classes("text-caption leading-relaxed")
+            ui.markdown(content).classes("text-caption leading-relaxed")
 
     def add_navigator(self, stepper, first_step=False, last_step=False) -> None:
         """Navigation is handled globally by the persistent wizard footer."""

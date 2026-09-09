@@ -1,12 +1,13 @@
 import os
+
 import numpy as np
 import pytest
 from PIL import Image
 
+import utils.image
 from configuration import Config, GlareSuppression
 from data_classes import ImagePosition
 from processor.image import ImageProcessor
-import utils.image
 
 
 def create_synthetic_image_with_glare(
@@ -253,6 +254,7 @@ def test_config_glare_serialization():
 
 def test_step_adjust_load_autocontrast_cut_images():
     from unittest.mock import MagicMock
+
     from gui.step_adjust import AdjustStep
 
     step = AdjustStep(name="Adjust", set_image_callback=MagicMock())
@@ -304,6 +306,7 @@ def test_step_adjust_load_autocontrast_cut_images():
 
 def test_step_draw_rois_cut_images_with_glare():
     from unittest.mock import MagicMock
+
     from gui.step_draw_rois_base import DrawRoisBaseStep, Roi
 
     step = DrawRoisBaseStep(

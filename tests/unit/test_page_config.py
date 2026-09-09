@@ -1,4 +1,5 @@
 from unittest.mock import MagicMock, patch
+
 from gui.page_config import ConfigPage
 
 

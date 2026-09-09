@@ -32,11 +32,8 @@ jobs:
       - name: Install Playwright browsers & dependencies
         run: uv run playwright install --with-deps chromium
 
-      - name: Static analysis (Ruff, Black, Bandit)
+      - name: Static analysis (Ruff, Black, Bandit, Mypy)
         run: ./run_tests.sh -s
 
       - name: Run unit, UI, and integration tests
-        run: |
-          sudo cp -R config /
-          sudo chmod -R 777 /config
-          ./run_tests.sh
+        run: ./run_tests.sh
