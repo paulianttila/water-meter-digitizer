@@ -22,26 +22,26 @@ dependencies = [
 
 [project.optional-dependencies]
 dev = [
-    "bandit[toml]>=1.7.7",
-    "black>=24.2.0",
-    "coverage>=7.4.3",
-    "mypy>=1.9.0",
-    "pytest>=8.0.0",
-    "pytest-playwright>=0.5.0",
-    "ruff>=0.2.2",
+    "bandit[toml]>=1.8.0",
+    "black>=24.10.0",
+    "coverage>=7.6.0",
+    "mypy>=1.14.0",
+    "pytest>=8.3.0",
+    "pytest-playwright>=0.6.0",
+    "ruff>=0.8.0",
     "tavern>=3.0.0",
 ]
 
 [dependency-groups]
 dev = [
     "amqtt>=0.12.0",
-    "bandit[toml]>=1.7.7",
-    "black>=24.2.0",
-    "coverage>=7.4.3",
-    "mypy>=1.9.0",
-    "pytest>=8.0.0",
-    "pytest-playwright>=0.5.0",
-    "ruff>=0.2.2",
+    "bandit[toml]>=1.8.0",
+    "black>=24.10.0",
+    "coverage>=7.6.0",
+    "mypy>=1.14.0",
+    "pytest>=8.3.0",
+    "pytest-playwright>=0.6.0",
+    "ruff>=0.8.0",
     "tavern>=3.0.0",
 ]
 
