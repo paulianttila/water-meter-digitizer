@@ -1,5 +1,4 @@
 import asyncio
-import dataclasses
 from datetime import datetime, timedelta, timezone
 import json
 
@@ -167,7 +166,7 @@ class MeterPage:
             raw_container.clear()
             with raw_container:
                 ui.code(
-                    json.dumps(dataclasses.asdict(result), indent=4), language="json"
+                    json.dumps(result.model_dump(), indent=4), language="json"
                 ).classes(
                     "w-full rounded-lg bg-slate-950/80 border border-white/10 p-4"
                 )

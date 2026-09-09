@@ -1,7 +1,7 @@
 import re
-from data_classes import MeterConfig
 from dataclasses import dataclass
 from typing import Callable
+from data_classes import MeterConfig
 
 from nicegui import ui
 

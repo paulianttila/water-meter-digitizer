@@ -6,7 +6,9 @@ from processor.digitizer import MeterResult
 
 
 def test_callbacks_impl_methods():
-    mock_meter_data = MagicMock(return_value=MeterResult([], {}, {}))
+    mock_meter_data = MagicMock(
+        return_value=MeterResult(meters=[], digital_results={}, analog_results={})
+    )
     mock_image_b64 = MagicMock(return_value="base64img")
     mock_config = MagicMock()
     mock_load_cfg = MagicMock(return_value="[DEFAULT]\n")

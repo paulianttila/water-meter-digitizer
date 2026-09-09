@@ -1,7 +1,7 @@
-from dataclasses import dataclass, field
 from decimal import Decimal, InvalidOperation
 import math
 import logging
+from pydantic import BaseModel, Field
 
 
 from previous_value import (
@@ -35,16 +35,14 @@ ANALOG_MODELS = {MODEL_ANALOG, MODEL_ANALOG100}
 DIGITAL_MODELS = {MODEL_DIGITAL, MODEL_DIGITAL100}
 
 
-@dataclass
-class ReadoutResult:
+class ReadoutResult(BaseModel):
     name: str
     value: float
     model: str
     confidence: float = 100.0
 
 
-@dataclass
-class MeterValue:
+class MeterValue(BaseModel):
     name: str
     value: str
     unit: str = ""
@@ -52,17 +50,15 @@ class MeterValue:
     confidence: float = 100.0
 
 
-@dataclass
-class MeterResult:
-    meters: list[MeterValue]
-    digital_results: dict
-    analog_results: dict
-    confidence_scores: dict[str, float] = field(default_factory=dict)
+class MeterResult(BaseModel):
+    meters: list[MeterValue] = Field(default_factory=list)
+    digital_results: dict = Field(default_factory=dict)
+    analog_results: dict = Field(default_factory=dict)
+    confidence_scores: dict[str, float] = Field(default_factory=dict)
     error: str = ""
 
 
-@dataclass
-class Meter:
+class Meter(BaseModel):
     config: MeterConfig
     name: str = ""
     value: str = ""  # value after postprocessing
@@ -189,9 +185,9 @@ class DigitizerProcessor:
                 value = 0 if value == 10 else value
                 result.append(
                     ReadoutResult(
-                        item.name,
-                        value,
-                        model,
+                        name=item.name,
+                        value=value,
+                        model=model,
                         confidence=conf,
                     )
                 )
@@ -216,9 +212,9 @@ class DigitizerProcessor:
                     conf = 100.0
                 result.append(
                     ReadoutResult(
-                        item.name,
-                        value,
-                        model,
+                        name=item.name,
+                        value=value,
+                        model=model,
                         confidence=conf,
                     )
                 )

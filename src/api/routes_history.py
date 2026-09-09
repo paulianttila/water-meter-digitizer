@@ -1,6 +1,5 @@
 """Historical meter reading and consumption endpoints."""
 
-import dataclasses
 from datetime import datetime, timedelta, timezone
 import json
 
@@ -34,6 +33,7 @@ def get_history_consumption(
         interval=use_interval,
         start=start,
     )
+
     cum_total = 0.0
     data = []
     for r in records:
@@ -72,7 +72,7 @@ def get_history_readings(
     data = [
         {
             "timestamp": r.timestamp.isoformat(),
-            "meters": {k: dataclasses.asdict(v) for k, v in r.meters.items()},
+            "meters": {k: v.model_dump() for k, v in r.meters.items()},
             "digital_results": r.digital_results,
             "analog_results": r.analog_results,
             "error": r.error,

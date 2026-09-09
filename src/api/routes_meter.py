@@ -1,6 +1,5 @@
 """Meter readout, ROI visualization, baseline setting, and image caching endpoints."""
 
-import dataclasses
 from datetime import datetime, timezone
 import json
 import logging
@@ -236,7 +235,7 @@ def get_meters(
 
     if format != "html":
         return Response(
-            json.dumps(dataclasses.asdict(result)),
+            json.dumps(result.model_dump()),
             media_type="application/json",
         )
     return templates.TemplateResponse(

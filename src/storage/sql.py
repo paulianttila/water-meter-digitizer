@@ -1,5 +1,4 @@
 from collections import defaultdict
-from dataclasses import asdict
 from datetime import datetime, timedelta, timezone
 import json
 import logging
@@ -184,7 +183,7 @@ class SQLAlchemyStorageBackend(StorageBackend):
         else:
             timestamp = timestamp.astimezone(timezone.utc)
 
-        meters_dict = {k: asdict(v) for k, v in meters.items()}
+        meters_dict = {k: v.model_dump() for k, v in meters.items()}
         meters_json = json.dumps(meters_dict)
         digital_json = json.dumps(digital_results) if digital_results else None
         analog_json = json.dumps(analog_results) if analog_results else None

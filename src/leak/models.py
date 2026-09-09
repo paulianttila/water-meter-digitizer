@@ -1,7 +1,7 @@
-from dataclasses import asdict, dataclass, field
 from datetime import datetime
 from enum import Enum
 from typing import Any
+from pydantic import BaseModel, Field
 
 
 class LeakState(str, Enum):
@@ -10,8 +10,7 @@ class LeakState(str, Enum):
     LEAK_DETECTED = "LEAK_DETECTED"
 
 
-@dataclass
-class LeakEvent:
+class LeakEvent(BaseModel):
     event_id: str
     meter_name: str
     start_time: datetime
@@ -23,14 +22,13 @@ class LeakEvent:
     resolution_reason: str = ""
 
     def to_dict(self) -> dict[str, Any]:
-        res = asdict(self)
+        res = self.model_dump()
         res["start_time"] = self.start_time.isoformat()
         res["end_time"] = self.end_time.isoformat() if self.end_time else None
         return res
 
 
-@dataclass
-class ZeroFlowStatus:
+class ZeroFlowStatus(BaseModel):
     enabled: bool
     meter_name: str
     state: LeakState
@@ -41,13 +39,15 @@ class ZeroFlowStatus:
     current_flow_rate: float = 0.0
     consecutive_zero_readings: int = 0
     active_event: LeakEvent | None = None
-    recent_events: list[LeakEvent] = field(default_factory=list)
+    recent_events: list[LeakEvent] = Field(default_factory=list)
 
     def to_dict(self) -> dict[str, Any]:
         return {
             "enabled": self.enabled,
             "meter_name": self.meter_name,
-            "state": self.state.value,
+            "state": (
+                self.state.value if isinstance(self.state, LeakState) else self.state
+            ),
             "last_zero_flow_time": (
                 self.last_zero_flow_time.isoformat()
                 if self.last_zero_flow_time

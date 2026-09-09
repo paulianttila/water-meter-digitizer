@@ -1,11 +1,10 @@
 from abc import ABC, abstractmethod
-from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Literal
+from pydantic import BaseModel, Field
 
 
-@dataclass
-class MeterReading:
+class MeterReading(BaseModel):
     value: float | None = None
     raw_value: str = ""
     unit: str = ""
@@ -13,17 +12,15 @@ class MeterReading:
     confidence: float = 100.0
 
 
-@dataclass
-class ReadingRecord:
+class ReadingRecord(BaseModel):
     timestamp: datetime
-    meters: dict[str, MeterReading] = field(default_factory=dict)
-    digital_results: dict[str, str] = field(default_factory=dict)
-    analog_results: dict[str, str] = field(default_factory=dict)
+    meters: dict[str, MeterReading] = Field(default_factory=dict)
+    digital_results: dict[str, str] = Field(default_factory=dict)
+    analog_results: dict[str, str] = Field(default_factory=dict)
     error: str = ""
 
 
-@dataclass
-class ConsumptionRecord:
+class ConsumptionRecord(BaseModel):
     bucket: str  # e.g. "2026-09-06" or "2026-09-06 14:00" or "2026-W36"
     start_time: datetime
     end_time: datetime
@@ -37,15 +34,14 @@ class ConsumptionRecord:
     reading_count: int = 0
 
 
-@dataclass
-class StorageSummary:
+class StorageSummary(BaseModel):
     backend: str
     total_records: int
     memory_usage_bytes: int
     max_memory_bytes: int
     oldest_timestamp: datetime | None = None
     newest_timestamp: datetime | None = None
-    meters_tracked: list[str] = field(default_factory=list)
+    meters_tracked: list[str] = Field(default_factory=list)
 
 
 class StorageBackend(ABC):

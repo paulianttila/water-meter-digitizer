@@ -1,4 +1,3 @@
-import dataclasses
 from datetime import datetime, timezone
 import json
 import logging
@@ -261,7 +260,7 @@ class MQTTService:
                 )
 
             # 3. Complete readout JSON payload for generic integrations / openHAB
-            full_payload = dataclasses.asdict(meter_result)
+            full_payload = meter_result.model_dump(mode="json")
             full_payload["timestamp"] = now_iso
             full_payload["processing_time_seconds"] = round(processing_time_sec, 3)
 
