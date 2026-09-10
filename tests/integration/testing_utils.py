@@ -1,6 +1,4 @@
-import base64
 import io
-import re
 
 import PIL.Image
 import requests
@@ -20,16 +18,10 @@ def find_between(s, start, end):
 
 
 def check_roi_image(response: requests.Response):
-    assert len(response.text) > 50000
-    assert response.text.startswith("<!DOCTYPE html>")
-
-    match = re.search(r'data:image/jpeg;base64,\s*([^" >]+)', response.text)
-    assert match is not None
-    base64image = match[1]
-    decodedImage = base64.b64decode(base64image)
-    assert verify_image(decodedImage, 800, 600) or verify_image(
-        decodedImage, 640, 480
-    ), "JPEG"
+    assert len(response.content) > 5000
+    image = PIL.Image.open(io.BytesIO(response.content))
+    assert image.format == "JPEG"
+    assert image.size in ((800, 600), (640, 480))
 
 
 def check_image(response: requests.Response):

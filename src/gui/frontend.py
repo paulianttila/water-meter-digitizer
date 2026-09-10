@@ -333,10 +333,6 @@ def init(fastapi_app: FastAPI, callbacks: Callbacks) -> None:
                 ):
                     ui.label(f"v{VERSION}")
 
-                ui.button("Landing Page", icon="home").props(
-                    'flat dense color=cyan href="/"'
-                ).classes("text-xs")
-
         with ui.splitter(value=7, limits=(6, 8)).classes(
             "w-full flex-1 min-h-0"
         ) as splitter:
@@ -394,6 +390,6 @@ def init(fastapi_app: FastAPI, callbacks: Callbacks) -> None:
 
     ui.run_with(
         fastapi_app,
-        mount_path="/gui",
+        mount_path="",
         storage_secret=secret,
     )

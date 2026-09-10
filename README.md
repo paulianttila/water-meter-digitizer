@@ -107,10 +107,13 @@ uv run python src/main.py
   <img src="docs/images/web_dashboard.png" alt="Water Meter Web Dashboard" width="850">
 </p>
 
-- **`/` — API Explorer & Status Page**: Real-time summary of configured meters, last reading timestamps, interactive API documentation, and live preview.
-- **`/gui` — NiceGUI Web Dashboard**:
-  - **Setup Wizard**: 9-step guided calibration flow (image capture, cropping/resizing, image processing, reference marker alignment, ROI bounding-box tuning, meter calculation setup, and background poller / MQTT / storage configuration). Supports 1-click config reset and backup restoration.
-  - **Config Editor & History**: Direct visual and raw configuration editing with schema validation, 1-click Undo, automatic safety backups in `/config/backups/`, and inline line-by-line diff viewing.
+- **`/` (and `/gui`) — NiceGUI Web Dashboard & Administration**:
+  - **Meter Dashboard**: Live readings, primary metrics, confidence badges, cropped dial previews, color-coded ROI inspector, and consumption charts.
+  - **Services & Diagnostics**: Real-time camera latency, system uptime, memory usage, neural network inference telemetry, and continuous zero-flow leak tracking.
+  - **Setup Wizard**: 9-step guided calibration flow with live canvas, alignment markers, and backup restoration.
+  - **Config Editor & Snapshots**: Visual and raw INI configuration editor with schema validation, 1-click Undo, automated safety backups (`/config/backups/`), and inline diffs.
+  - **Baselines Manager**: View and manage persistent meter baseline values in a structured table.
+  - **API Console**: Full-page interactive REST API explorer with syntax highlighting and raw payload inspector.
 
 <p align="center">
   <img src="docs/images/setup_wizard.png" alt="Setup Wizard & Canvas" width="850">
@@ -123,19 +126,17 @@ uv run python src/main.py
 All endpoints are served on port `3000`.
 
 | Method | Endpoint | Description |
-|--------|----------|-------------|
-| `GET` | `/` | API Explorer & Status landing page (HTML) |
-| `GET` | `/gui` | NiceGUI Web Dashboard & Setup Wizard |
-| `GET` | `/meter?format=json` | Trigger a readout, return JSON result |
-| `GET` | `/meter?format=html` | Trigger a readout, return formatted HTML result |
+|---|---|---|
+| `GET` | `/` | NiceGUI Web Dashboard, Setup Wizard & API Console |
+| `GET` | `/gui` | Backward-compatible redirect to `/` |
+| `GET` | `/meter` | Trigger a readout, return structured JSON result (supports `?format=value` or `?format=json`) |
 | `GET` | `/meter?url=<cam_url>` | Override the camera URL for a single readout |
-| `GET` | `/meter?saveimages=true` | Save intermediate images to memory cache for debugging |
-| `GET` | `/roi` | Show current ROI overlays on the live aligned image |
-| `GET` | `/image/{image}` | Stream an image from in-memory cache (e.g. `original.jpg`, `aligned.jpg`, `roi.jpg`, `{roi_name}.jpg`) |
-| `GET` | `/image_tmp/{image}` | Backward-compatible alias for `/image/{image}` |
-| `GET` | `/setPreviousValue?name=<n>&value=<v>` | Manually set the stored previous value for a meter |
-| `GET` | `/get_previous_values` | Retrieve all stored baseline values and properties of meters with previous value tracking enabled |
-| `GET` | `/reload` | Reload configuration from disk (supports `?format=json`) |
+| `GET` | `/meter?saveimages=true` | Cache intermediate pipeline images for inspection |
+| `GET` | `/roi` | Stream composite ROI overlay JPEG image (`image/jpeg`) |
+| `GET` | `/image/{image}` | Stream an image from in-memory cache (`original.jpg`, `aligned.jpg`, `final.jpg`, `roi.jpg`, etc.) |
+| `GET` | `/set_previous_value?name=<n>&value=<v>` | Manually set the stored baseline reading for a meter |
+| `GET` | `/get_previous_values` | Retrieve all stored baseline values and properties of tracked meters |
+| `GET`, `POST` | `/reload` | Hot-reload configuration from disk and reinitialize services (JSON response) |
 | `GET` | `/version` | Return app version information as JSON |
 | `GET` | `/health` | Rich JSON diagnostics: camera latency, memory, cache hit ratio, models, uptime |
 | `GET` | `/healthcheck` | Liveness check, returns `Health - OK` |
@@ -149,7 +150,6 @@ All endpoints are served on port `3000`.
 | `GET` | `/history/stats` | Storage backend health, memory usage, and tracked meter statistics |
 | `POST` | `/history/seed?days=<d>&meter=<m>&base_val=<b>` | Seed synthetic readings history for testing |
 | `POST` | `/history/clear` | Clear all stored history readings |
-| `GET` | `/exit` | Graceful shutdown |
 
 ### Example JSON Responses
 

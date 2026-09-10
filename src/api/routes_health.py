@@ -29,8 +29,6 @@ def get_allowed_asset_directories(config=None) -> list[str]:
             allowed.append(config.config_dir)
         if getattr(config, "data_dir", None):
             allowed.append(config.data_dir)
-        if getattr(config, "image_tmp_dir", None):
-            allowed.append(config.image_tmp_dir)
     allowed.append(os.getcwd())
     return allowed
 

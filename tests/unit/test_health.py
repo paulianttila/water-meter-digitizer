@@ -157,20 +157,10 @@ def test_get_health_endpoint():
     assert data["system"]["version"] == VERSION
 
 
-def test_get_reload_endpoint_html():
-    client = TestClient(app)
-    with patch("main.init_config"):
-        response = client.get("/reload")
-        assert response.status_code == 200
-        assert "Configuration Reloaded" in response.text
-        assert "Return to Dashboard" in response.text
-        assert "text/html" in response.headers["content-type"]
-
-
 def test_get_reload_endpoint_json():
     client = TestClient(app)
     with patch("main.init_config"):
-        response = client.get("/reload?format=json")
+        response = client.get("/reload")
         assert response.status_code == 200
         data = response.json()
         assert data["status"] == "success"
@@ -178,17 +168,22 @@ def test_get_reload_endpoint_json():
         assert "version" in data
 
 
+def test_get_reload_endpoint_post():
+    client = TestClient(app)
+    with patch("main.init_config"):
+        response = client.post("/reload")
+        assert response.status_code == 200
+        data = response.json()
+        assert data["status"] == "success"
+        assert "Configuration reloaded successfully" in data["message"]
+
+
 def test_get_reload_endpoint_error():
     client = TestClient(app)
     with patch("main.init_config", side_effect=RuntimeError("Test reload failure")):
-        response_html = client.get("/reload")
-        assert response_html.status_code == 500
-        assert "Configuration Reload Failed" in response_html.text
-        assert "Test reload failure" in response_html.text
-
-        response_json = client.get("/reload?format=json")
-        assert response_json.status_code == 500
-        data = response_json.json()
+        response = client.get("/reload")
+        assert response.status_code == 500
+        data = response.json()
         assert data["status"] == "error"
         assert "Test reload failure" in data["message"]
 

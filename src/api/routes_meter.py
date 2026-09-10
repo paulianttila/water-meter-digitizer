@@ -1,14 +1,11 @@
 """Meter readout, ROI visualization, baseline setting, and image caching endpoints."""
 
-import json
 import logging
 from datetime import UTC, datetime
-from pathlib import Path
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, Request, Response
 from fastapi.responses import JSONResponse
-from fastapi.templating import Jinja2Templates
 
 import previous_value
 import utils.image
@@ -22,9 +19,6 @@ from utils.download import DownloadFailure
 logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["meter"])
-
-BASE_DIR = Path(__file__).resolve().parent.parent
-templates = Jinja2Templates(directory=str(BASE_DIR / "web" / "templates"))
 
 COLOR_RED = (255, 0, 0)
 COLOR_GREEN = (0, 255, 0)
@@ -52,7 +46,6 @@ def get_current_app(request: Request | None = None) -> Any:
 
 
 @router.get("/image/{image}")
-@router.get("/image_tmp/{image}")
 @log_execution_time
 def get_image(image: str, request: Request) -> Response:
     image = image.removesuffix(".jpg")
@@ -62,10 +55,10 @@ def get_image(image: str, request: Request) -> Response:
     if img is None:
         raise HTTPException(status_code=404, detail="Image not found")
     image_bytes = utils.image.convert_image_to_bytes(img)
-    return Response(content=image_bytes, media_type="image/jpg")
+    return Response(content=image_bytes, media_type="image/jpeg")
 
 
-@router.get("/roi", response_class=Response)
+@router.get("/roi")
 @log_execution_time
 def get_roi(
     request: Request,
@@ -73,20 +66,19 @@ def get_roi(
     draw_refs: bool = True,
     draw_digital: bool = True,
     draw_analog: bool = True,
-):
+) -> Response:
+    """Generate and return the composite ROI overlay image as a direct JPEG stream."""
     config: Config = getattr(request.app.state, "config", Config())
     try:
         url = url or config.image_source.url
         timeout = config.image_source.timeout
 
         if draw_refs:
-            # Check if the image width and height is set in the config file
-            # for the reference images. If not, auto fill them from the file.
             for img in config.alignment.ref_images:
                 if img.w == 0 or img.h == 0:
                     img.w, img.h = utils.image.image_size_from_file(img.file_name)
 
-        base64image = (
+        roi_proc = (
             ImageProcessor()
             .download_image(
                 url,
@@ -105,16 +97,14 @@ def get_roi(
             .if_(draw_analog)
             .draw_roi(config.analog_readout.cut_images, COLOR_ROI_ANALOG)
             .endif_()
-            .get_image_as_base64_str()
         )
 
-        return templates.TemplateResponse(
-            request=request,
-            name="roi.html",
-            context={"data": base64image},
-        )
+        image_bytes = utils.image.convert_image_to_bytes(roi_proc.get_image())
+        return Response(content=image_bytes, media_type="image/jpeg")
     except DownloadFailure as e:
-        return Response(f"Error: {e}", media_type="text/html")
+        return JSONResponse({"error": str(e)}, status_code=502)
+    except Exception as e:
+        return JSONResponse({"error": str(e)}, status_code=500)
 
 
 @router.get("/setPreviousValue")
@@ -220,34 +210,28 @@ def get_previous_values(request: Request) -> Response:
 @log_execution_time
 def get_meters(
     request: Request,
-    format: str = "html",
+    format: str = "json",
     url: str = "",
     saveimages: bool = False,
-):
-    if format not in ["html", "json"]:
-        return Response("Invalid format. Use 'html' or 'json'", media_type="text/html")
+) -> Response:
+    """Execute meter readout and return structured JSON (or raw value)."""
+    if format not in ["json", "value", "raw"]:
+        return JSONResponse(
+            {"error": "Invalid format. Use 'json' or 'value'"},
+            status_code=400,
+        )
 
     try:
         result = get_meter_data(url=url, saveimages=saveimages, request=request)
     except Exception as e:
         logger.warning(f"Error occurred: {e!s}")
-        if format != "html":
-            return Response(
-                json.dumps({"error": str(e)}), media_type="application/json"
-            )
-        return Response(f"Error: {e}", media_type="text/html")
+        return JSONResponse({"error": str(e)}, status_code=500)
 
-    if format != "html":
-        return Response(
-            json.dumps(result.model_dump()),
-            media_type="application/json",
-        )
-    return templates.TemplateResponse(
-        request=request,
-        name="meters.html",
-        context={"result": result},
-        media_type="text/html",
-    )
+    if format in ["value", "raw"]:
+        main_val = result.meters[0].value if result.meters else ""
+        return Response(content=main_val, media_type="text/plain")
+
+    return JSONResponse(result.model_dump())
 
 
 @log_execution_time

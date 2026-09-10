@@ -33,6 +33,6 @@ stages:
       status_code: 
         - 200
       headers:
-        content-type: image/jpg
+        content-type: image/jpeg
       verify_response_with:
         function: testing_utils:check_image

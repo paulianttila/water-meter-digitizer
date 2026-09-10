@@ -89,11 +89,11 @@ water-meter-digitizer/
 │   ├── config_history.py        # Backup management, unified diffs, and snapshots
 │   │
 │   ├── api/                     # Modular FastAPI REST APIRouters
-│   │   ├── routes_meter.py      # /meter, /image/*, /roi, /setPreviousValue, /get_previous_values
+│   │   ├── routes_meter.py      # /meter, /image/*, /roi, /set_previous_value, /get_previous_values
 │   │   ├── routes_health.py     # /health, /healthcheck, asset directory validation
 │   │   ├── routes_services.py   # /poller/*, /mqtt/*, /leak/*
 │   │   ├── routes_history.py    # /history/consumption, /history/readings, /history/stats
-│   │   └── routes_system.py     # /, /version, /reload, /exit
+│   │   └── routes_system.py     # /gui redirect, /version, /reload
 │   │
 │   ├── cnn/                     # Google LiteRT / TFLite neural network runners
 │   │   ├── base.py              # Base CNN wrapper with async offloading
@@ -143,8 +143,7 @@ water-meter-digitizer/
 │   │   ├── step_services.py     # Wizard: Poller, MQTT, and storage settings
 │   │   └── step_final.py        # Wizard: Config saving & verification
 │   │
-│   ├── web/templates/           # Dashboard HTML/CSS templates
-│   │   ├── index.html           # Main dashboard with health, liveness, leak, reload & baseline modals
+│   ├── web/templates/           # REST HTML response templates
 │   │   ├── meters.html          # Live meter readout page with refresh & intermediate crops
 │   │   ├── reload.html          # Configuration reload status feedback page
 │   │   └── roi.html             # Aligned ROI verification view
@@ -249,9 +248,9 @@ config/neuralnets/
 - **Home Assistant & REST Integration**: Auto-discovers binary leak sensors, continuous flow duration sensors, and state sensors via MQTT, plus exposes `/leak/status` and `/leak/reset` REST endpoints.
 
 ### 9. Web UI & Setup Wizard (NiceGUI & FastAPI)
-- Implemented with a hybrid architecture combining **FastAPI** (REST API, diagnostics, dashboard templates) and **NiceGUI** (Vue/Quasar interactive frontend).
-- The setup page (`page_setup.py`) features an interactive canvas with real-time mouse coordinate tracking, SVG ROI drawing overlays, offline placeholder fallback on camera timeout, and live inference preview on cropped ROIs.
-- The main landing dashboard (`src/web/templates/index.html`) is a glassmorphic single-page application with live diagnostics telemetry, interactive API console, historical consumption visualizers, and leak detection telemetry.
+- Implemented with a unified architecture combining **FastAPI** (providing the pure REST API layer: `/meter`, `/health`, `/poller`, `/mqtt`, `/history`, etc.) and **NiceGUI** (serving the complete modern web application directly at the root `/`).
+- The Web Dashboard provides complete operational control: live meter telemetry, consumption charts, neural network model inspector, zero-flow leak tracking, baseline values manager, raw API console, visual and raw INI configuration editor with safety backups, and the 9-step interactive setup wizard (`page_setup.py`).
+- A backward-compatible redirect on `/gui` redirects to `/` for seamless navigation.
 
 ### 10. Configuration History & Backups
 - **Subsystem (`src/config_history.py`)**: `ConfigHistoryManager` automates versioned configuration backups, manual snapshots, and change tracking.

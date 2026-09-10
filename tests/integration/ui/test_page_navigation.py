@@ -8,9 +8,9 @@ from playwright.sync_api import Page, expect
 
 @pytest.mark.ui
 def test_app_shell_header_and_tabs_navigation(page: Page, live_server_url: str):
-    """Test loading the Web UI and switching between all primary tabs."""
-    # 1. Open the NiceGUI dashboard
-    page.goto(f"{live_server_url}/gui", wait_until="domcontentloaded")
+    """Test loading the Web UI at root / (and /gui redirect) and switching tabs."""
+    # 1. Open root / directly
+    page.goto(f"{live_server_url}/", wait_until="domcontentloaded")
 
     # 2. Check top navigation header
     expect(page.get_by_text("Water Meter Digitizer")).to_be_visible(timeout=10000)
