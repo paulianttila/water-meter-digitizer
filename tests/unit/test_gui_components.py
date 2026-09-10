@@ -1,0 +1,262 @@
+import asyncio
+from unittest.mock import MagicMock, patch
+
+import pytest
+
+from gui.components.consumption_card import ConsumptionCard
+from gui.components.diagnostics_card import DiagnosticsCard
+from gui.components.history_table_card import HistoryTableCard
+from gui.components.leak_monitor_card import LeakMonitorCard
+from gui.components.services_status_card import ServicesStatusCard
+from gui.dialog_api_console import ApiConsoleDialog
+from gui.dialog_previous_values import PreviousValuesDialog
+from gui.page_services import ServicesPage
+
+
+@pytest.fixture(autouse=True)
+def mock_ui_notify():
+    with patch("nicegui.ui.notify"), patch("nicegui.ui.run_javascript"):
+        yield
+
+
+@pytest.fixture
+def mock_callbacks():
+    cb = MagicMock()
+    cb.get_health_data.return_value = {
+        "status": "healthy",
+        "uptime": {"uptime_human": "1d 2h", "uptime_seconds": 93600},
+        "camera": {
+            "reachable": True,
+            "latency_ms": 12.5,
+            "url": "http://cam.local/jpg",
+        },
+        "memory": {"rss_mb": 45.2, "peak_rss_mb": 50.1},
+        "cache": {
+            "hit_ratio_percent": 80.0,
+            "current_size": 4,
+            "max_size": 10,
+            "hits": 8,
+            "misses": 2,
+        },
+        "models": {
+            "total_inferences": 15,
+            "avg_inference_ms": 4.2,
+            "digital": {"exists": True, "enabled": True},
+            "analog": {"exists": True, "enabled": True},
+        },
+        "system": {
+            "version": "1.0.0",
+            "python_version": "3.11.13",
+            "platform": "Darwin",
+        },
+    }
+    cb.get_leak_status.return_value = {
+        "enabled": True,
+        "state": "OK",
+        "meter_name": "total",
+        "current_flow_rate": 0.0,
+        "current_flow_duration_seconds": 0.0,
+        "current_flow_volume": 0.0,
+        "consecutive_zero_readings": 5,
+        "last_zero_flow_time": "2026-09-10T12:00:00Z",
+        "recent_events": [
+            {
+                "start_time": "2026-09-10T10:00:00Z",
+                "duration_seconds": 60.0,
+                "leaked_volume": 0.05,
+                "resolved": True,
+            }
+        ],
+    }
+    cb.reset_leak_status.return_value = {
+        "enabled": True,
+        "state": "OK",
+        "meter_name": "total",
+    }
+    cb.get_poller_status.return_value = {
+        "enabled": True,
+        "running": True,
+        "interval_seconds": 30,
+        "total_runs": 10,
+        "successful_runs": 10,
+        "failed_runs": 0,
+        "next_run": "2026-09-10T12:00:30Z",
+    }
+    cb.trigger_poller.return_value = {
+        "status": "success",
+        "message": "Poller triggered successfully",
+    }
+    cb.get_mqtt_status.return_value = {
+        "enabled": True,
+        "connected": True,
+        "broker": "192.168.1.10",
+        "port": 1883,
+        "topic_prefix": "watermeter",
+        "ha_discovery": True,
+    }
+    cb.get_previous_values.return_value = {
+        "total": {"value": "123.456", "time": "2026.09.10 12:00:00"}
+    }
+    cb.set_previous_value.return_value = {
+        "status": "success",
+        "message": "Baseline updated",
+        "meter": "total",
+        "value": "123.456",
+    }
+    mock_cfg = MagicMock()
+    mock_meter = MagicMock()
+    mock_meter.name = "total"
+    mock_cfg.meter_configs = [mock_meter]
+    cb.get_config.return_value = mock_cfg
+
+    mock_storage = MagicMock()
+    mock_summary = MagicMock()
+    mock_summary.meters_tracked = ["total"]
+    mock_summary.total_records = 42
+    mock_storage.get_summary.return_value = mock_summary
+    mock_storage.get_consumption.return_value = []
+    cb.get_storage.return_value = mock_storage
+
+    return cb
+
+
+def test_diagnostics_card_rendering_and_update(mock_callbacks):
+    card = DiagnosticsCard(mock_callbacks)
+    card.render()
+    assert card.container is not None
+
+    # Update with healthy telemetry data
+    card.update_data(mock_callbacks.get_health_data())
+    assert card._data["status"] == "healthy"
+
+    # Update with degraded / empty telemetry
+    card.update_data({"status": "degraded"})
+    assert card._data["status"] == "degraded"
+
+
+def test_diagnostics_card_fetch(mock_callbacks):
+    card = DiagnosticsCard(mock_callbacks)
+    card.render()
+    asyncio.run(card.fetch_and_update())
+    mock_callbacks.get_health_data.assert_called_once()
+    assert card._data["status"] == "healthy"
+
+
+def test_leak_monitor_card_rendering_and_update(mock_callbacks):
+    card = LeakMonitorCard(mock_callbacks)
+    card.render()
+    assert card.container is not None
+
+    card.update_data(mock_callbacks.get_leak_status())
+    assert card._data["state"] == "OK"
+
+    # Test leak detected state
+    card.update_data({"enabled": True, "state": "LEAK_DETECTED"})
+    assert card._data["state"] == "LEAK_DETECTED"
+
+
+def test_leak_monitor_card_actions(mock_callbacks):
+    card = LeakMonitorCard(mock_callbacks)
+    card.render()
+    asyncio.run(card.fetch_and_update())
+    mock_callbacks.get_leak_status.assert_called_once()
+
+    asyncio.run(card.reset_leak_state())
+    mock_callbacks.reset_leak_status.assert_called_once()
+
+
+def test_services_status_card_rendering_and_update(mock_callbacks):
+    card = ServicesStatusCard(mock_callbacks)
+    card.render()
+    assert card.container is not None
+
+    card.update_data(
+        mock_callbacks.get_poller_status(), mock_callbacks.get_mqtt_status()
+    )
+    assert card._poller_data["running"] is True
+    assert card._mqtt_data["connected"] is True
+
+
+def test_services_status_card_actions(mock_callbacks):
+    card = ServicesStatusCard(mock_callbacks)
+    card.render()
+    asyncio.run(card.fetch_and_update())
+    mock_callbacks.get_poller_status.assert_called_once()
+    mock_callbacks.get_mqtt_status.assert_called_once()
+
+    asyncio.run(card.trigger_poller())
+    mock_callbacks.trigger_poller.assert_called_once()
+
+
+def test_previous_values_dialog(mock_callbacks):
+    dialog = PreviousValuesDialog(mock_callbacks)
+    dialog.open()
+    mock_callbacks.get_previous_values.assert_called_once()
+    dialog.close()
+
+
+def test_previous_values_dialog_save(mock_callbacks):
+    dialog = PreviousValuesDialog(mock_callbacks)
+    dialog.meter_select = MagicMock(value="total")
+    dialog.value_input = MagicMock(value="456.789")
+
+    asyncio.run(dialog._save_baseline())
+    mock_callbacks.set_previous_value.assert_called_once_with("total", "456.789")
+
+
+def test_api_console_dialog():
+    dialog = ApiConsoleDialog()
+    assert dialog.dialog is not None
+    dialog.open()
+    dialog.close()
+
+    # Test preset endpoint change
+    ev = MagicMock(value="/healthcheck")
+    dialog._on_endpoint_change(ev)
+    assert dialog.url_input.value == "/healthcheck"
+    assert dialog.selected_method == "GET"
+
+
+def test_api_console_dialog_execute():
+    dialog = ApiConsoleDialog()
+    dialog.url_input = MagicMock(value="/version")
+    dialog.selected_method = "GET"
+
+    with patch("requests.get") as mock_get:
+        mock_resp = MagicMock()
+        mock_resp.ok = True
+        mock_resp.status_code = 200
+        mock_resp.json.return_value = {"version": "1.0.0"}
+        mock_resp.text = '{"version": "1.0.0"}'
+        mock_get.return_value = mock_resp
+
+        asyncio.run(dialog._execute_request())
+        assert dialog.status_label.text == "HTTP 200"
+        assert "1.0.0" in dialog.response_viewer.content
+
+
+def test_consumption_card(mock_callbacks):
+    from nicegui import ui
+
+    card = ConsumptionCard(mock_callbacks)
+    with ui.column() as container:
+        card.render(container)
+    mock_callbacks.get_storage.assert_called()
+
+
+def test_history_table_card(mock_callbacks):
+    from nicegui import ui
+
+    card = HistoryTableCard(mock_callbacks)
+    with ui.column() as container:
+        card.render(container)
+    mock_callbacks.get_storage.assert_called()
+
+
+def test_services_page(mock_callbacks):
+    page = ServicesPage(mock_callbacks)
+    asyncio.run(page.fetch_all_telemetry())
+    mock_callbacks.get_health_data.assert_called()
+    mock_callbacks.get_leak_status.assert_called()
+    mock_callbacks.get_poller_status.assert_called()
+    mock_callbacks.get_mqtt_status.assert_called()

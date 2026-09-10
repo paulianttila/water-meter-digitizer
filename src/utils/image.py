@@ -198,11 +198,17 @@ def draw_text(
     rgb_colour: tuple = (255, 0, 0),
     thickness: int = 1,
     font_size: int = 12,
+    bg_colour: tuple | None = None,
 ) -> Image:
     if image is None:
         raise ValueError("No image to draw")
     font = ImageFont.load_default(size=font_size)
-    ImageDraw.Draw(image).text(
+    draw = ImageDraw.Draw(image)
+    if bg_colour is not None and text:
+        bbox = draw.textbbox((x, y), text, font=font)
+        padded_bbox = (bbox[0] - 3, bbox[1] - 1, bbox[2] + 3, bbox[3] + 1)
+        draw.rectangle(padded_bbox, fill=bg_colour)
+    draw.text(
         (x, y),
         text,
         fill=rgb_colour,

@@ -12,6 +12,9 @@ def test_config_editor_display_and_validate(page: Page, live_server_url: str):
 
     # 1. Assert header and actions
     expect(page.get_by_text("Configuration Editor")).to_be_visible(timeout=10000)
+    expect(page.get_by_role("button", name="Reload File")).to_be_visible()
+    expect(page.get_by_role("button", name="Save File")).to_be_visible()
+    expect(page.get_by_role("button", name="Hot-Reload")).to_be_visible()
     validate_btn = page.get_by_role("button", name="Validate")
     expect(validate_btn).to_be_visible()
 
@@ -45,8 +48,8 @@ def test_config_history_dialog(page: Page, live_server_url: str):
     page.goto(f"{live_server_url}/gui", wait_until="domcontentloaded")
     page.get_by_role("tab", name="Config").click()
 
-    # 1. Open History dialog
-    history_btn = page.get_by_role("button", name="History")
+    # 1. Open Snapshots dialog
+    history_btn = page.get_by_role("button", name="Snapshots & Diffs")
     expect(history_btn).to_be_visible(timeout=10000)
     history_btn.click()
 

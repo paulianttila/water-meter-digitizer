@@ -23,6 +23,19 @@ def test_callbacks_impl_methods():
     mock_delete = MagicMock(return_value=True)
     mock_diff = MagicMock(return_value=["+ line\n"])
 
+    mock_health = MagicMock(return_value={"status": "healthy"})
+    mock_leak = MagicMock(return_value={"enabled": True, "state": "OK"})
+    mock_reset_leak = MagicMock(return_value={"enabled": True, "state": "OK"})
+    mock_poller = MagicMock(return_value={"enabled": True, "running": True})
+    mock_trigger = MagicMock(return_value={"status": "success"})
+    mock_mqtt = MagicMock(return_value={"enabled": True, "connected": True})
+    mock_prev_vals = MagicMock(
+        return_value={"total": {"value": "100.0", "time": "2026.01.01 12:00:00"}}
+    )
+    mock_set_prev = MagicMock(
+        return_value={"status": "success", "meter": "total", "value": "120.0"}
+    )
+
     callbacks = CallbacksImpl(
         get_meter_data_fn=mock_meter_data,
         get_image_base64_fn=mock_image_b64,
@@ -37,6 +50,14 @@ def test_callbacks_impl_methods():
         create_snapshot_fn=mock_snapshot,
         delete_backup_fn=mock_delete,
         diff_backup_fn=mock_diff,
+        get_health_data_fn=mock_health,
+        get_leak_status_fn=mock_leak,
+        reset_leak_status_fn=mock_reset_leak,
+        get_poller_status_fn=mock_poller,
+        trigger_poller_fn=mock_trigger,
+        get_mqtt_status_fn=mock_mqtt,
+        get_previous_values_fn=mock_prev_vals,
+        set_previous_value_fn=mock_set_prev,
     )
 
     # Verify delegation for all methods
@@ -61,3 +82,48 @@ def test_callbacks_impl_methods():
     assert callbacks.create_config_snapshot("tag") == "snap.bak"
     assert callbacks.delete_config_backup("b1.bak") is True
     assert callbacks.diff_config_backup("b1.bak") == ["+ line\n"]
+
+    assert callbacks.get_health_data() == {"status": "healthy"}
+    assert callbacks.get_leak_status() == {"enabled": True, "state": "OK"}
+    assert callbacks.reset_leak_status() == {"enabled": True, "state": "OK"}
+    assert callbacks.get_poller_status() == {"enabled": True, "running": True}
+    assert callbacks.trigger_poller() == {"status": "success"}
+    assert callbacks.get_mqtt_status() == {"enabled": True, "connected": True}
+    assert callbacks.get_previous_values() == {
+        "total": {"value": "100.0", "time": "2026.01.01 12:00:00"}
+    }
+    assert callbacks.set_previous_value("total", "120.0") == {
+        "status": "success",
+        "meter": "total",
+        "value": "120.0",
+    }
+
+
+def test_callbacks_impl_fallbacks():
+    """Verify default fallback behaviors when optional delegates are omitted."""
+    callbacks = CallbacksImpl(
+        get_meter_data_fn=lambda **kwargs: MeterResult(
+            meters=[], digital_results={}, analog_results={}
+        ),
+        get_image_base64_fn=lambda name: "",
+        get_config_fn=MagicMock,
+        load_config_file_fn=lambda: "",
+        save_config_file_fn=lambda data: None,
+        use_config_fn=lambda: None,
+        get_storage_fn=lambda: None,
+        list_backups_fn=lambda: [],
+        restore_backup_fn=lambda name: None,
+        undo_backup_fn=lambda: None,
+        create_snapshot_fn=lambda tag: None,
+        delete_backup_fn=lambda name: False,
+        diff_backup_fn=lambda name: [],
+    )
+
+    assert callbacks.get_health_data() == {"status": "unknown"}
+    assert callbacks.get_leak_status() == {"enabled": False, "state": "OK"}
+    assert callbacks.reset_leak_status() == {"enabled": False, "state": "OK"}
+    assert callbacks.get_poller_status() == {"enabled": False, "running": False}
+    assert callbacks.trigger_poller()["status"] == "error"
+    assert callbacks.get_mqtt_status() == {"enabled": False, "connected": False}
+    assert callbacks.get_previous_values() == {}
+    assert callbacks.set_previous_value("total", "10.0")["status"] == "error"

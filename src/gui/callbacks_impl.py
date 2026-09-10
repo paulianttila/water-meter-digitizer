@@ -26,6 +26,14 @@ class CallbacksImpl(Callbacks):
         create_snapshot_fn: Callable[[str], str | None],
         delete_backup_fn: Callable[[str], bool],
         diff_backup_fn: Callable[[str], list[str]],
+        get_health_data_fn: Callable[[], dict[str, Any]] | None = None,
+        get_leak_status_fn: Callable[[], dict[str, Any]] | None = None,
+        reset_leak_status_fn: Callable[[], dict[str, Any]] | None = None,
+        get_poller_status_fn: Callable[[], dict[str, Any]] | None = None,
+        trigger_poller_fn: Callable[[], dict[str, Any]] | None = None,
+        get_mqtt_status_fn: Callable[[], dict[str, Any]] | None = None,
+        get_previous_values_fn: Callable[[], dict[str, dict[str, str]]] | None = None,
+        set_previous_value_fn: Callable[[str, str], dict[str, Any]] | None = None,
     ) -> None:
         self._get_meter_data = get_meter_data_fn
         self._get_image_base64 = get_image_base64_fn
@@ -40,6 +48,14 @@ class CallbacksImpl(Callbacks):
         self._create_snapshot = create_snapshot_fn
         self._delete_backup = delete_backup_fn
         self._diff_backup = diff_backup_fn
+        self._get_health_data = get_health_data_fn
+        self._get_leak_status = get_leak_status_fn
+        self._reset_leak_status = reset_leak_status_fn
+        self._get_poller_status = get_poller_status_fn
+        self._trigger_poller = trigger_poller_fn
+        self._get_mqtt_status = get_mqtt_status_fn
+        self._get_previous_values = get_previous_values_fn
+        self._set_previous_value = set_previous_value_fn
 
     def get_meter_data(self, url: str = "", saveimages: bool = False) -> MeterResult:
         if not url:
@@ -83,3 +99,43 @@ class CallbacksImpl(Callbacks):
 
     def diff_config_backup(self, backup_name: str) -> list[str]:
         return self._diff_backup(backup_name)
+
+    def get_health_data(self) -> dict[str, Any]:
+        if self._get_health_data is not None:
+            return self._get_health_data()
+        return {"status": "unknown"}
+
+    def get_leak_status(self) -> dict[str, Any]:
+        if self._get_leak_status is not None:
+            return self._get_leak_status()
+        return {"enabled": False, "state": "OK"}
+
+    def reset_leak_status(self) -> dict[str, Any]:
+        if self._reset_leak_status is not None:
+            return self._reset_leak_status()
+        return {"enabled": False, "state": "OK"}
+
+    def get_poller_status(self) -> dict[str, Any]:
+        if self._get_poller_status is not None:
+            return self._get_poller_status()
+        return {"enabled": False, "running": False}
+
+    def trigger_poller(self) -> dict[str, Any]:
+        if self._trigger_poller is not None:
+            return self._trigger_poller()
+        return {"status": "error", "message": "Poller trigger not configured"}
+
+    def get_mqtt_status(self) -> dict[str, Any]:
+        if self._get_mqtt_status is not None:
+            return self._get_mqtt_status()
+        return {"enabled": False, "connected": False}
+
+    def get_previous_values(self) -> dict[str, dict[str, str]]:
+        if self._get_previous_values is not None:
+            return self._get_previous_values()
+        return {}
+
+    def set_previous_value(self, name: str, value: str) -> dict[str, Any]:
+        if self._set_previous_value is not None:
+            return self._set_previous_value(name, value)
+        return {"status": "error", "message": "Previous value setter not configured"}

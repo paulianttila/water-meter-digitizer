@@ -57,3 +57,35 @@ class Callbacks(Protocol):
     def diff_config_backup(self, backup_name: str) -> list[str]:
         """Get line-by-line diff between current config and a backup"""
         ...
+
+    def get_health_data(self) -> dict[str, Any]:
+        """Get system health and diagnostics metrics"""
+        ...
+
+    def get_leak_status(self) -> dict[str, Any]:
+        """Get zero-flow leak monitor status and history"""
+        ...
+
+    def reset_leak_status(self) -> dict[str, Any]:
+        """Reset and acknowledge zero-flow leak state"""
+        ...
+
+    def get_poller_status(self) -> dict[str, Any]:
+        """Get background poller status and schedule"""
+        ...
+
+    def trigger_poller(self) -> dict[str, Any]:
+        """Trigger background poller readout immediately"""
+        ...
+
+    def get_mqtt_status(self) -> dict[str, Any]:
+        """Get MQTT client and Home Assistant connection status"""
+        ...
+
+    def get_previous_values(self) -> dict[str, dict[str, str]]:
+        """Get all stored baseline previous meter values"""
+        ...
+
+    def set_previous_value(self, name: str, value: str) -> dict[str, Any]:
+        """Save a new baseline previous meter value"""
+        ...

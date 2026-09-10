@@ -284,7 +284,7 @@ class ImageProcessor:
     def draw_roi(
         self, images: Sequence[ImagePosition], rgb_colour: tuple = (255, 0, 0)
     ) -> "ImageProcessor":
-        thickness = 1
+        thickness = 2
         for img in images:
             self.image = utils.image.draw_rectangle(
                 self.image,
@@ -295,11 +295,13 @@ class ImageProcessor:
                 rgb_colour=rgb_colour,
                 thickness=thickness,
             )
+            label_y = max(2, img.y - 14)
             self.image = utils.image.draw_text(
                 self.image,
                 img.name,
                 img.x,
-                img.y - 15,
+                label_y,
                 rgb_colour=rgb_colour,
+                bg_colour=(10, 15, 29),
             )
         return self

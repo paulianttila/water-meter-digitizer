@@ -30,6 +30,10 @@ COLOR_RED = (255, 0, 0)
 COLOR_GREEN = (0, 255, 0)
 COLOR_BLUE = (0, 0, 255)
 
+COLOR_ROI_REFS = (16, 185, 129)  # Emerald Green
+COLOR_ROI_DIGITAL = (59, 130, 246)  # Electric Blue
+COLOR_ROI_ANALOG = (245, 158, 11)  # Vivid Amber / Orange
+
 # Global fallback reference to the FastAPI app, populated during main startup
 _app_ref: Any = None
 
@@ -93,13 +97,13 @@ def get_roi(
             .rotate_image(config.alignment.rotate_angle)
             .align_image(config.alignment.ref_images)
             .if_(draw_refs)
-            .draw_roi(config.alignment.ref_images, COLOR_GREEN)
+            .draw_roi(config.alignment.ref_images, COLOR_ROI_REFS)
             .endif_()
             .if_(draw_digital)
-            .draw_roi(config.digital_readout.cut_images, COLOR_RED)
+            .draw_roi(config.digital_readout.cut_images, COLOR_ROI_DIGITAL)
             .endif_()
             .if_(draw_analog)
-            .draw_roi(config.analog_readout.cut_images, COLOR_BLUE)
+            .draw_roi(config.analog_readout.cut_images, COLOR_ROI_ANALOG)
             .endif_()
             .get_image_as_base64_str()
         )
@@ -374,6 +378,18 @@ def get_meter_data(
         .save_cut_images()
         .get_cut_images()
     )
+
+    # Generate and store ROI overlay image with distinct colors
+    final_img = image_processor.pictures.get("final")
+    if final_img is not None:
+        roi_proc = ImageProcessor().set_image(final_img.copy())
+        if config.alignment and config.alignment.ref_images:
+            roi_proc.draw_roi(config.alignment.ref_images, COLOR_ROI_REFS)
+        if config.digital_readout and config.digital_readout.cut_images:
+            roi_proc.draw_roi(config.digital_readout.cut_images, COLOR_ROI_DIGITAL)
+        if config.analog_readout and config.analog_readout.cut_images:
+            roi_proc.draw_roi(config.analog_readout.cut_images, COLOR_ROI_ANALOG)
+        image_processor.pictures["roi"] = roi_proc.get_image()
 
     if app and hasattr(app.state, "image_cache"):
         app.state.image_cache.set_many(image_processor.get_pictures())

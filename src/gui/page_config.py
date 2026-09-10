@@ -67,7 +67,7 @@ class ConfigPage:
     def show(self):
         def check_buttons() -> None:
             button_save.enabled = editor.value != self.txt
-            button_use_config.enabled = self.new_config_saved
+            button_use_config.enabled = True
             try:
                 backups = self.callbacks.list_config_backups()
                 button_undo.enabled = len(backups) > 0
@@ -88,8 +88,9 @@ class ConfigPage:
         def load_config() -> None:
             self.txt = self.callbacks.load_config_file()
             editor.value = self.txt
+            self.new_config_saved = False
             check_buttons()
-            ui.notify("Configuration reloaded from disk", type="info")
+            ui.notify("Configuration reloaded from disk into editor", type="info")
 
         def show_config() -> None:
             try:
@@ -119,10 +120,18 @@ class ConfigPage:
                 ui.notify(f"Syntax error: {e}", type="negative")
 
         def use_config() -> None:
+            if editor.value != self.txt:
+                ui.notify(
+                    "You have unsaved changes in the editor. Save File first before hot-reloading into runtime.",
+                    type="warning",
+                )
+                return
             self.callbacks.use_config()
             self.new_config_saved = False
             check_buttons()
-            ui.notify("Configuration hot-reloaded into runtime", type="positive")
+            ui.notify(
+                "Configuration hot-reloaded into runtime services", type="positive"
+            )
 
         def syntax_check() -> bool:
             try:
@@ -514,46 +523,53 @@ class ConfigPage:
                 "w-full items-center justify-between gap-3 p-3 "
                 "rounded-xl bg-slate-900/60 border border-white/10 shrink-0"
             ):
-                with ui.row().classes("items-center gap-2"):
-                    ui.button("Reload", icon="refresh", on_click=load_config).props(
-                        "outline color=grey-4"
-                    ).tooltip("Reload from disk")
+                with ui.row().classes("items-center gap-2 flex-wrap"):
+                    ui.button(
+                        "Reload File", icon="file_download", on_click=load_config
+                    ).props("outline color=grey-4").tooltip(
+                        "Discard editor changes and reload config.ini file from disk"
+                    )
                     ui.button("Validate", icon="verified", on_click=syntax_check).props(
                         "outline color=cyan"
-                    ).tooltip("Validate INI syntax")
+                    ).tooltip("Validate INI syntax and configuration structure")
                     button_save = (
-                        ui.button("Save", icon="save", on_click=save_config)
+                        ui.button("Save File", icon="save", on_click=save_config)
                         .props("unelevated color=primary")
-                        .tooltip("Save changes to disk (creates backup)")
+                        .tooltip(
+                            "Save editor changes to config.ini file on disk (creates auto-backup)"
+                        )
                     )
                     button_undo = (
                         ui.button("Undo", icon="undo", on_click=undo_config)
                         .props("outline color=amber")
-                        .tooltip("Revert to previous backup")
+                        .tooltip("Revert config.ini to the last snapshot backup")
                     )
                     button_use_config = (
                         ui.button(
-                            "Apply Runtime",
-                            icon="sym_s_reopen_window",
+                            "Hot-Reload",
+                            icon="bolt",
                             on_click=use_config,
                         )
-                        .props("outline color=emerald")
-                        .tooltip("Hot-apply saved config into memory")
+                        .props("unelevated color=warning")
+                        .classes("text-black font-semibold shadow-sm")
+                        .tooltip(
+                            "Hot-reload config.ini directly into running services without server restart (zero downtime)"
+                        )
                     )
 
-                with ui.row().classes("items-center gap-2"):
+                with ui.row().classes("items-center gap-2 flex-wrap"):
                     ui.button(
-                        "History",
+                        "Snapshots & Diffs",
                         icon="manage_history",
                         on_click=open_history_dialog,
                     ).props("outline color=indigo").tooltip(
-                        "Manage configuration backups and diffs"
+                        "Manage configuration snapshots and visual line diffs"
                     )
 
                     ui.button(
                         "Inspect JSON", icon="preview", on_click=show_config
                     ).props("flat color=grey-4").tooltip(
-                        "Inspect parsed configuration schema"
+                        "Inspect parsed configuration structure as JSON"
                     )
 
             with ui.element("div").classes(

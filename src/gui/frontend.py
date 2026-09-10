@@ -9,9 +9,12 @@ from callbacks import Callbacks
 from main import VERSION
 
 from .page_about import AboutPage
+from .page_api_console import ApiConsolePage
 from .page_config import ConfigPage
 from .page_help import HelpPage
 from .page_meter import MeterPage
+from .page_previous_values import PreviousValuesPage
+from .page_services import ServicesPage
 from .page_setup import SetupPage
 
 logger = logging.getLogger(__name__)
@@ -140,13 +143,26 @@ GLOBAL_CSS = (
         background: rgba(16, 185, 129, 0.12);
         border: 1px solid rgba(16, 185, 129, 0.3);
         color: #34d399;
+        cursor: pointer;
+        user-select: none;
         transition: all 0.3s ease;
+    }
+
+    .gui-badge-status:hover {
+        background: rgba(16, 185, 129, 0.22);
+        border-color: rgba(16, 185, 129, 0.5);
+        transform: translateY(-1px);
     }
 
     .gui-badge-status.gui-status-offline {
         background: rgba(239, 68, 68, 0.15);
         border-color: rgba(239, 68, 68, 0.35);
         color: #f87171;
+    }
+
+    .gui-badge-status.gui-status-offline:hover {
+        background: rgba(239, 68, 68, 0.25);
+        border-color: rgba(239, 68, 68, 0.55);
     }
 
     .status-pulse {
@@ -263,10 +279,20 @@ def init(fastapi_app: FastAPI, callbacks: Callbacks) -> None:
         ui.dark_mode(True)
         ui.add_head_html(GLOBAL_CSS)
         meter_page = MeterPage(callbacks=_callbacks)
+        services_page = ServicesPage(callbacks=_callbacks)
         setup_page = SetupPage(callbacks=_callbacks)
         config_page = ConfigPage(callbacks=_callbacks)
+        previous_values_page = PreviousValuesPage(callbacks=_callbacks)
+        api_console_page = ApiConsolePage()
         help_page = HelpPage()
         about_page = AboutPage()
+
+        tabs: ui.tabs | None = None
+        services: ui.tab | None = None
+
+        def navigate_to_services() -> None:
+            if tabs is not None and services is not None:
+                tabs.set_value(services)
 
         # Top Navigation Bar
         with ui.row().classes(
@@ -288,11 +314,13 @@ def init(fastapi_app: FastAPI, callbacks: Callbacks) -> None:
                         "text-xs text-gray-400 leading-tight"
                     )
 
-            with ui.row().classes("items-center gap-3"):
+            with ui.row().classes("items-center gap-2"):
                 with (
                     ui.element("div")
                     .classes("gui-badge-status")
                     .props('id="gui-status-badge"')
+                    .tooltip("Click to view Services & Diagnostics")
+                    .on("click", navigate_to_services)
                 ):
                     ui.element("span").classes("status-pulse")
                     ui.label("Online").props('id="gui-status-text"').classes(
@@ -317,8 +345,11 @@ def init(fastapi_app: FastAPI, callbacks: Callbacks) -> None:
                 ui.tabs().props("vertical").classes("w-full") as tabs,
             ):
                 main = ui.tab("Meter", icon="sym_s_speed")
+                services = ui.tab("Services", icon="hub")
                 setup = ui.tab("Setup", icon="settings")
                 config = ui.tab("Config", icon="sym_s_manufacturing")
+                baselines = ui.tab("Baselines", icon="tune")
+                api_console = ui.tab("API Console", icon="terminal")
                 help_tab = ui.tab("Help", icon="help_outline")
                 about = ui.tab("About", icon="info")
             with (
@@ -329,6 +360,10 @@ def init(fastapi_app: FastAPI, callbacks: Callbacks) -> None:
             ):
                 with ui.tab_panel(main).classes("w-full h-full p-0 overflow-y-auto"):
                     await meter_page.show()
+                with ui.tab_panel(services).classes(
+                    "w-full h-full p-0 overflow-y-auto"
+                ):
+                    await services_page.show()
                 with ui.tab_panel(setup).classes(
                     "w-full h-full p-0 overflow-hidden flex flex-col"
                 ):
@@ -337,6 +372,14 @@ def init(fastapi_app: FastAPI, callbacks: Callbacks) -> None:
                     "w-full h-full p-0 overflow-hidden flex flex-col"
                 ):
                     config_page.show()
+                with ui.tab_panel(baselines).classes(
+                    "w-full h-full p-0 overflow-y-auto"
+                ):
+                    previous_values_page.show()
+                with ui.tab_panel(api_console).classes(
+                    "w-full h-full p-0 overflow-hidden flex flex-col"
+                ):
+                    api_console_page.show()
                 with ui.tab_panel(help_tab).classes(
                     "w-full h-full p-0 overflow-y-auto"
                 ):

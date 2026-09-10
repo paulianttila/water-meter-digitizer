@@ -1,25 +1,30 @@
+"""Meter Dashboard Page for NiceGUI (Live Readouts, Cropped Dials, Analytics, and History Table)."""
+
 import asyncio
-import json
-from datetime import UTC, datetime, timedelta
 
 from nicegui import ui
 
 from callbacks import Callbacks
-from storage.seed import seed_demo_history
+from gui.components.consumption_card import ConsumptionCard
+from gui.components.history_table_card import HistoryTableCard
+from gui.theme import BADGE_ERROR, BADGE_SUCCESS, BADGE_WARNING
 
 
 class MeterPage:
+    """Page rendering live water meter deductions, processed captures, digit crops, statistics, and history table."""
+
     def __init__(self, callbacks: Callbacks) -> None:
         self.callbacks = callbacks
-        self.current_meter = "total"
-        self.current_interval = "daily"
-        self.current_days = 14
-        self.chart_style = "bar"
-        self.cumulative = False
+        self.consumption_card = ConsumptionCard(self.callbacks)
+        self.history_card = HistoryTableCard(self.callbacks)
+        self.spinner: ui.spinner | None = None
 
     async def show(self) -> None:
+        """Render the Meter Dashboard page."""
+
         async def do_fetch() -> None:
-            self.spinner.visible = True
+            if self.spinner:
+                self.spinner.visible = True
             value_container.clear()
             try:
                 await fetch_data()
@@ -33,8 +38,8 @@ class MeterPage:
                     icon="error",
                     timeout=0,
                 )
-            self.spinner.visible = False
-            render_consumption()
+            if self.spinner:
+                self.spinner.visible = False
 
         async def fetch_data() -> None:
             result = await asyncio.to_thread(
@@ -42,6 +47,17 @@ class MeterPage:
             )
 
             with value_container:
+                # 0. Optional Recognition Error/Warning Banner
+                if result.error:
+                    with ui.element("div").classes(
+                        "w-full p-3.5 rounded-xl bg-amber-950/40 border border-amber-500/30 "
+                        "text-amber-200 text-xs flex items-center gap-2 mb-4"
+                    ):
+                        ui.icon("warning", color="amber").classes("text-lg")
+                        ui.label(f"Recognition Status: {result.error}").classes(
+                            "font-semibold"
+                        )
+
                 # 1. Metric Summary Cards
                 with ui.row().classes("w-full gap-4 flex-wrap mb-4"):
                     for meter in result.meters:
@@ -62,12 +78,28 @@ class MeterPage:
                                 ui.label(meter.name.upper()).classes(
                                     "text-xs font-semibold text-gray-400 tracking-wider"
                                 )
-                                if is_total:
-                                    ui.label("PRIMARY").classes(
-                                        "text-[10px] font-bold text-emerald-400 "
-                                        "bg-emerald-500/10 px-2 py-0.5 rounded-full "
-                                        "border border-emerald-500/30"
+                                with ui.row().classes("items-center gap-1.5"):
+                                    if is_total:
+                                        ui.label("PRIMARY").classes(
+                                            "text-[10px] font-bold text-emerald-400 "
+                                            "bg-emerald-500/10 px-2 py-0.5 rounded-full "
+                                            "border border-emerald-500/30"
+                                        )
+                                    conf_val = getattr(meter, "confidence", 100.0)
+                                    qual = getattr(meter, "quality", "good").lower()
+                                    badge_cls = (
+                                        BADGE_SUCCESS
+                                        if qual == "good"
+                                        else (
+                                            BADGE_WARNING
+                                            if qual == "warning"
+                                            else BADGE_ERROR
+                                        )
                                     )
+                                    with ui.element("span").classes(badge_cls):
+                                        ui.label(
+                                            f"{conf_val:.1f}% • {qual.capitalize()}"
+                                        )
                             with ui.row().classes("items-baseline gap-2"):
                                 text_grad = (
                                     "text-transparent bg-clip-text "
@@ -86,12 +118,137 @@ class MeterPage:
                                     )
 
                 # 2. Main Processed Image & Crop Grids
+                def open_roi_dialog() -> None:
+                    roi_img = ""
+                    try:
+                        roi_img = self.callbacks.get_image_as_base64_str("roi")
+                    except Exception:
+                        try:
+                            roi_img = self.callbacks.get_image_as_base64_str("final")
+                        except Exception:
+                            roi_img = ""
+
+                    cfg = self.callbacks.get_config()
+                    n_refs = (
+                        len(getattr(cfg.alignment, "ref_images", []))
+                        if cfg and getattr(cfg, "alignment", None)
+                        else 0
+                    )
+                    n_dig = (
+                        len(getattr(cfg.digital_readout, "cut_images", []))
+                        if cfg and getattr(cfg, "digital_readout", None)
+                        else 0
+                    )
+                    n_ana = (
+                        len(getattr(cfg.analog_readout, "cut_images", []))
+                        if cfg and getattr(cfg, "analog_readout", None)
+                        else 0
+                    )
+
+                    with (
+                        ui.dialog() as roi_modal,
+                        ui.card().classes(
+                            "w-full max-w-4xl p-5 bg-slate-900 border border-white/10 rounded-2xl gap-4"
+                        ),
+                    ):
+                        with ui.row().classes(
+                            "w-full justify-between items-center pb-2 border-b border-white/10"
+                        ):
+                            with ui.row().classes("items-center gap-2"):
+                                ui.icon("crop_free", color="cyan").classes("text-xl")
+                                with ui.column().classes("gap-0"):
+                                    ui.label("ROI & Reference Marks Inspector").classes(
+                                        "font-['Outfit'] font-bold text-base text-gray-100"
+                                    )
+                                    ui.label(
+                                        "Visual alignment markers and digitization region bounding boxes"
+                                    ).classes("text-xs text-gray-400")
+                            ui.button(icon="close", on_click=roi_modal.close).props(
+                                "flat round dense text-xs"
+                            )
+
+                        # Color-Coded Legend Row
+                        with ui.row().classes(
+                            "w-full items-center justify-between gap-3 text-xs flex-wrap p-2 rounded-xl bg-slate-950/60 border border-white/5"
+                        ):
+                            with ui.row().classes("items-center gap-4 flex-wrap"):
+                                with ui.row().classes("items-center gap-1.5"):
+                                    ui.element("span").classes(
+                                        "w-3 h-3 rounded bg-emerald-500 shadow-sm shadow-emerald-500/50"
+                                    )
+                                    ui.label("Alignment References").classes(
+                                        "font-medium text-emerald-300"
+                                    )
+                                    ui.label(f"({n_refs})").classes(
+                                        "text-xs text-gray-400 font-mono"
+                                    )
+                                with ui.row().classes("items-center gap-1.5"):
+                                    ui.element("span").classes(
+                                        "w-3 h-3 rounded bg-blue-500 shadow-sm shadow-blue-500/50"
+                                    )
+                                    ui.label("Digital Counters").classes(
+                                        "font-medium text-blue-300"
+                                    )
+                                    ui.label(f"({n_dig})").classes(
+                                        "text-xs text-gray-400 font-mono"
+                                    )
+                                with ui.row().classes("items-center gap-1.5"):
+                                    ui.element("span").classes(
+                                        "w-3 h-3 rounded bg-amber-500 shadow-sm shadow-amber-500/50"
+                                    )
+                                    ui.label("Analog Dials").classes(
+                                        "font-medium text-amber-300"
+                                    )
+                                    ui.label(f"({n_ana})").classes(
+                                        "text-xs text-gray-400 font-mono"
+                                    )
+
+                            ui.label("Thickness: 2px | Pill Badges").classes(
+                                "text-[11px] text-gray-400 font-mono"
+                            )
+
+                        # Image Container
+                        with ui.element("div").classes(
+                            "w-full rounded-xl bg-slate-950 p-2 border border-white/10 flex items-center justify-center overflow-hidden max-h-[70vh]"
+                        ):
+                            if roi_img:
+                                ui.image(f"data:image/jpeg;base64,{roi_img}").classes(
+                                    "max-h-[65vh] object-contain rounded-lg"
+                                )
+                            else:
+                                ui.label("No ROI overlay image available").classes(
+                                    "text-xs text-gray-400 p-4"
+                                )
+
+                        with ui.row().classes(
+                            "w-full justify-between items-center pt-2 border-t border-white/10"
+                        ):
+                            ui.button("Open Raw /roi", icon="open_in_new").props(
+                                'flat dense color=cyan text-xs href="/roi" target="_blank"'
+                            )
+                            ui.button("Close", on_click=roi_modal.close).props(
+                                "flat dense color=primary text-xs"
+                            )
+
+                    roi_modal.open()
+
                 with ui.row().classes("w-full gap-6 items-start"):
                     # Processed image
                     with ui.column().classes("flex-1 min-w-[320px]"):
-                        ui.label("Processed Capture").classes(
-                            "font-['Outfit'] font-bold text-sm text-gray-300 mb-2"
-                        )
+                        with ui.row().classes(
+                            "w-full justify-between items-center mb-2"
+                        ):
+                            ui.label("Processed Capture").classes(
+                                "font-['Outfit'] font-bold text-sm text-gray-300"
+                            )
+                            ui.button(
+                                "Inspect ROIs",
+                                icon="crop_free",
+                                on_click=open_roi_dialog,
+                            ).props("flat dense color=cyan size=sm").classes(
+                                "text-xs font-semibold"
+                            )
+
                         with ui.element("div").classes(
                             "w-full rounded-xl bg-slate-950 p-2 border border-white/10 "
                             "flex items-center justify-center overflow-hidden"
@@ -108,41 +265,14 @@ class MeterPage:
                                 "font-['Outfit'] font-bold text-sm text-gray-300"
                             )
                             with ui.row().classes("w-full gap-3 flex-wrap"):
-                                for image, value in result.digital_results.items():
+                                for (
+                                    image,
+                                    value,
+                                ) in result.digital_results.items():
                                     with ui.element("div").classes(
                                         "p-2.5 rounded-lg bg-slate-900/80 border "
                                         "border-white/10 flex flex-col items-center "
-                                        "gap-1.5 min-w-[70px]"
-                                    ):
-                                        ui.label(image).classes(
-                                            "text-[11px] text-gray-400 "
-                                            "uppercase tracking-wider"
-                                        )
-                                        base64img = (
-                                            self.callbacks.get_image_as_base64_str(
-                                                image
-                                            )
-                                        )
-                                        ui.image(
-                                            f"data:image/jpeg;base64,{base64img}"
-                                        ).props("fit=contain").classes(
-                                            "w-14 h-24 rounded bg-slate-950 p-0.5"
-                                        )
-                                        ui.label(str(value)).classes(
-                                            "font-['Outfit'] font-bold "
-                                            "text-cyan-400 text-sm"
-                                        )
-
-                        if result.analog_results:
-                            ui.label("Analog Dials").classes(
-                                "font-['Outfit'] font-bold text-sm text-gray-300 mt-2"
-                            )
-                            with ui.row().classes("w-full gap-3 flex-wrap"):
-                                for image, value in result.analog_results.items():
-                                    with ui.element("div").classes(
-                                        "p-2.5 rounded-lg bg-slate-900/80 border "
-                                        "border-white/10 flex flex-col items-center "
-                                        "gap-1.5 min-w-[70px]"
+                                        "gap-1 min-w-[75px]"
                                     ):
                                         ui.label(image).classes(
                                             "text-[11px] text-gray-400 "
@@ -162,507 +292,73 @@ class MeterPage:
                                             "font-['Outfit'] font-bold "
                                             "text-cyan-400 text-sm"
                                         )
+                                        if (
+                                            result.confidence_scores
+                                            and image in result.confidence_scores
+                                        ):
+                                            c_score = result.confidence_scores[image]
+                                            c_col = (
+                                                "text-emerald-400"
+                                                if c_score >= 80
+                                                else (
+                                                    "text-amber-400"
+                                                    if c_score >= 60
+                                                    else "text-rose-400"
+                                                )
+                                            )
+                                            ui.label(f"{c_score:.0f}% conf").classes(
+                                                f"text-[10px] font-mono {c_col}"
+                                            )
 
-            raw_container.clear()
-            with raw_container:
-                ui.code(
-                    json.dumps(result.model_dump(), indent=4), language="json"
-                ).classes(
-                    "w-full rounded-lg bg-slate-950/80 border border-white/10 p-4"
-                )
-
-        def render_consumption() -> None:
-            consumption_container.clear()
-            storage = self.callbacks.get_storage()
-            if storage is None:
-                with consumption_container:
-                    ui.label("History storage backend is disabled.").classes(
-                        "text-gray-400 italic"
-                    )
-                return
-
-            summary = storage.get_summary()
-            tracked_meters = summary.meters_tracked or ["total"]
-            if self.current_meter not in tracked_meters:
-                self.current_meter = tracked_meters[0]
-
-            start_time = (
-                datetime.now(UTC) - timedelta(days=self.current_days)
-                if self.current_days > 0
-                else None
-            )
-            records = storage.get_consumption(
-                meter_name=self.current_meter,
-                interval=self.current_interval,  # type: ignore
-                start=start_time,
-            )
-
-            with consumption_container:
-                # Top Controls
-                with ui.row().classes(
-                    "w-full justify-between items-center gap-4 flex-wrap "
-                    "bg-slate-900/60 p-3 rounded-xl border border-white/10"
-                ):
-
-                    def on_meter_change(e) -> None:
-                        self.current_meter = e.value
-                        render_consumption()
-
-                    def on_interval_change(e) -> None:
-                        self.current_interval = e.value
-                        render_consumption()
-
-                    def on_days_change(e) -> None:
-                        self.current_days = int(e.value)
-                        render_consumption()
-
-                    def on_style_change(e) -> None:
-                        self.chart_style = e.value
-                        render_consumption()
-
-                    def on_mode_change(e) -> None:
-                        self.cumulative = e.value == "cumulative"
-                        render_consumption()
-
-                    def on_seed_demo() -> None:
-                        seed_demo_history(storage, self.current_meter, 14)
-                        ui.notify("Seeded 14 days of demo readings", type="positive")
-                        render_consumption()
-
-                    def on_clear_history() -> None:
-                        storage.clear()
-                        ui.notify("History cleared", type="info")
-                        render_consumption()
-
-                    with ui.row().classes("items-center gap-3 flex-wrap"):
-                        ui.label("Meter:").classes(
-                            "text-xs font-semibold text-gray-400"
-                        )
-                        ui.select(
-                            options=tracked_meters,
-                            value=self.current_meter,
-                            on_change=on_meter_change,
-                        ).props("dense outlined").classes("w-36")
-
-                        ui.label("Interval:").classes(
-                            "text-xs font-semibold text-gray-400 ml-2"
-                        )
-                        ui.toggle(
-                            {"hourly": "Hourly", "daily": "Daily", "weekly": "Weekly"},
-                            value=self.current_interval,
-                            on_change=on_interval_change,
-                        ).props("dense toggle-color=cyan")
-
-                        ui.label("Range:").classes(
-                            "text-xs font-semibold text-gray-400 ml-2"
-                        )
-                        ui.select(
-                            options={
-                                7: "7 Days",
-                                14: "14 Days",
-                                30: "30 Days",
-                                90: "90 Days",
-                                0: "All Time",
-                            },
-                            value=self.current_days,
-                            on_change=on_days_change,
-                        ).props("dense outlined").classes("w-32")
-
-                        ui.label("Style:").classes(
-                            "text-xs font-semibold text-gray-400 ml-2"
-                        )
-                        ui.toggle(
-                            {
-                                "bar": "Bar",
-                                "line": "Line",
-                                "area": "Area",
-                                "combined": "Combined",
-                            },
-                            value=self.chart_style,
-                            on_change=on_style_change,
-                        ).props("dense toggle-color=cyan")
-
-                        ui.label("Mode:").classes(
-                            "text-xs font-semibold text-gray-400 ml-2"
-                        )
-                        ui.toggle(
-                            {"interval": "Interval", "cumulative": "Cumulative"},
-                            value="cumulative" if self.cumulative else "interval",
-                            on_change=on_mode_change,
-                        ).props("dense toggle-color=cyan")
-
-                    with ui.row().classes("items-center gap-2"):
-                        ui.button(
-                            "Seed Demo Data",
-                            icon="sym_s_science",
-                            on_click=on_seed_demo,
-                        ).props("flat dense color=cyan text-color=cyan").classes(
-                            "text-xs"
-                        )
-                        if summary.total_records > 0:
-                            ui.button(
-                                "Clear",
-                                icon="delete_outline",
-                                on_click=on_clear_history,
-                            ).props("flat dense color=grey text-color=grey-4").classes(
-                                "text-xs"
+                        if result.analog_results:
+                            ui.label("Analog Dials").classes(
+                                "font-['Outfit'] font-bold text-sm text-gray-300"
                             )
-
-                        mem_kb = round(summary.memory_usage_bytes / 1024, 1)
-                        ui.label(
-                            f"{summary.total_records} records ({mem_kb} KB in RAM)"
-                        ).classes("text-xs text-gray-400")
-
-                if not records:
-                    with ui.element("div").classes(
-                        "w-full p-8 rounded-xl border border-white/10 bg-slate-900/40 "
-                        "flex flex-col items-center justify-center gap-3 text-center"
-                    ):
-                        ui.icon("bar_chart", color="gray").classes("text-5xl")
-                        ui.label("No consumption records in selected range").classes(
-                            "font-['Outfit'] font-bold text-lg text-gray-300"
-                        )
-                        ui.label(
-                            "Trigger meter readouts or click 'Seed Demo Data' "
-                            "to visualize consumption charts."
-                        ).classes("text-xs text-gray-400 max-w-md")
-                        ui.button(
-                            "Generate Demo Data",
-                            icon="auto_awesome",
-                            on_click=on_seed_demo,
-                        ).props("unelevated color=primary").classes(
-                            "shadow-md shadow-blue-500/20 mt-2"
-                        )
-                    return
-
-                # KPI Metrics Header
-                total_cons = sum(r.consumption for r in records)
-                unit = records[0].unit or "m³"
-                avg_cons = total_cons / len(records) if len(records) > 0 else 0.0
-                max_cons = max(r.consumption for r in records) if records else 0.0
-
-                with ui.row().classes("w-full gap-4 flex-wrap my-2"):
-                    with ui.element("div").classes(
-                        "p-4 rounded-xl border border-blue-500/30 bg-blue-950/20 "
-                        "flex-1 min-w-[160px]"
-                    ):
-                        ui.label("TOTAL CONSUMPTION").classes(
-                            "text-[10px] font-bold text-blue-400 tracking-wider"
-                        )
-                        with ui.row().classes("items-baseline gap-1 mt-1"):
-                            ui.label(f"{total_cons:.3f}").classes(
-                                "font-['Outfit'] text-2xl font-extrabold text-white"
-                            )
-                            ui.label(unit).classes(
-                                "text-xs text-gray-400 font-semibold"
-                            )
-
-                    with ui.element("div").classes(
-                        "p-4 rounded-xl border border-cyan-500/30 bg-cyan-950/20 "
-                        "flex-1 min-w-[160px]"
-                    ):
-                        ui.label("AVERAGE PER BUCKET").classes(
-                            "text-[10px] font-bold text-cyan-400 tracking-wider"
-                        )
-                        with ui.row().classes("items-baseline gap-1 mt-1"):
-                            ui.label(f"{avg_cons:.3f}").classes(
-                                "font-['Outfit'] text-2xl font-extrabold text-white"
-                            )
-                            ui.label(unit).classes(
-                                "text-xs text-gray-400 font-semibold"
-                            )
-
-                    with ui.element("div").classes(
-                        "p-4 rounded-xl border border-emerald-500/30 bg-emerald-950/20 "
-                        "flex-1 min-w-[160px]"
-                    ):
-                        ui.label("PEAK BUCKET USAGE").classes(
-                            "text-[10px] font-bold text-emerald-400 tracking-wider"
-                        )
-                        with ui.row().classes("items-baseline gap-1 mt-1"):
-                            ui.label(f"{max_cons:.3f}").classes(
-                                "font-['Outfit'] text-2xl font-extrabold text-white"
-                            )
-                            ui.label(unit).classes(
-                                "text-xs text-gray-400 font-semibold"
-                            )
-
-                # Apache ECharts Interactive Graph
-                buckets = [r.bucket for r in records]
-                interval_consumptions = [r.consumption for r in records]
-                indices = [r.end_value for r in records]
-
-                cum_val = 0.0
-                cumulative_consumptions = []
-                for c in interval_consumptions:
-                    cum_val += c
-                    cumulative_consumptions.append(round(cum_val, 3))
-
-                active_consumptions = (
-                    cumulative_consumptions
-                    if self.cumulative
-                    else interval_consumptions
-                )
-                metric_label = (
-                    "Cumulative Consumption" if self.cumulative else "Consumption"
-                )
-                y_axis_name = (
-                    f"Cumulative ({unit})" if self.cumulative else f"Usage ({unit})"
-                )
-
-                single_y_axis = [
-                    {
-                        "type": "value",
-                        "name": y_axis_name,
-                        "nameTextStyle": {"color": "#9ca3af"},
-                        "splitLine": {
-                            "lineStyle": {"color": "rgba(255, 255, 255, 0.06)"}
-                        },
-                        "axisLabel": {"color": "#9ca3af"},
-                    }
-                ]
-
-                if self.chart_style == "line":
-                    series = [
-                        {
-                            "name": metric_label,
-                            "type": "line",
-                            "smooth": True,
-                            "symbol": "circle",
-                            "symbolSize": 8,
-                            "data": active_consumptions,
-                            "itemStyle": {"color": "#38bdf8"},
-                            "lineStyle": {"width": 3, "color": "#38bdf8"},
-                        }
-                    ]
-                    legend_data = [metric_label]
-                    y_axis = single_y_axis
-                elif self.chart_style == "area":
-                    series = [
-                        {
-                            "name": metric_label,
-                            "type": "line",
-                            "smooth": True,
-                            "symbol": "circle",
-                            "symbolSize": 6,
-                            "data": active_consumptions,
-                            "itemStyle": {"color": "#06b6d4"},
-                            "lineStyle": {"width": 2.5, "color": "#06b6d4"},
-                            "areaStyle": {
-                                "color": {
-                                    "type": "linear",
-                                    "x": 0,
-                                    "y": 0,
-                                    "x2": 0,
-                                    "y2": 1,
-                                    "colorStops": [
-                                        {
-                                            "offset": 0,
-                                            "color": "rgba(6, 182, 212, 0.45)",
-                                        },
-                                        {
-                                            "offset": 1,
-                                            "color": "rgba(59, 130, 246, 0.02)",
-                                        },
-                                    ],
-                                }
-                            },
-                        }
-                    ]
-                    legend_data = [metric_label]
-                    y_axis = single_y_axis
-                elif self.chart_style == "combined":
-                    if self.cumulative:
-                        series = [
-                            {
-                                "name": "Interval Consumption",
-                                "type": "bar",
-                                "yAxisIndex": 0,
-                                "data": interval_consumptions,
-                                "itemStyle": {
-                                    "borderRadius": [6, 6, 0, 0],
-                                    "color": {
-                                        "type": "linear",
-                                        "x": 0,
-                                        "y": 0,
-                                        "x2": 0,
-                                        "y2": 1,
-                                        "colorStops": [
-                                            {"offset": 0, "color": "#06b6d4"},
-                                            {"offset": 1, "color": "#3b82f6"},
-                                        ],
-                                    },
-                                },
-                                "emphasis": {"itemStyle": {"color": "#38bdf8"}},
-                            },
-                            {
-                                "name": "Cumulative Consumption",
-                                "type": "line",
-                                "yAxisIndex": 1,
-                                "smooth": True,
-                                "data": cumulative_consumptions,
-                                "itemStyle": {"color": "#a855f7"},
-                                "lineStyle": {"width": 3, "color": "#a855f7"},
-                            },
-                        ]
-                        legend_data = [
-                            "Interval Consumption",
-                            "Cumulative Consumption",
-                        ]
-                        y_axis = [
-                            {
-                                "type": "value",
-                                "name": f"Interval ({unit})",
-                                "nameTextStyle": {"color": "#9ca3af"},
-                                "splitLine": {
-                                    "lineStyle": {"color": "rgba(255, 255, 255, 0.06)"}
-                                },
-                                "axisLabel": {"color": "#9ca3af"},
-                            },
-                            {
-                                "type": "value",
-                                "name": f"Cumulative ({unit})",
-                                "nameTextStyle": {"color": "#9ca3af"},
-                                "splitLine": {"show": False},
-                                "axisLabel": {"color": "#9ca3af"},
-                            },
-                        ]
-                    else:
-                        series = [
-                            {
-                                "name": "Consumption",
-                                "type": "bar",
-                                "yAxisIndex": 0,
-                                "data": interval_consumptions,
-                                "itemStyle": {
-                                    "borderRadius": [6, 6, 0, 0],
-                                    "color": {
-                                        "type": "linear",
-                                        "x": 0,
-                                        "y": 0,
-                                        "x2": 0,
-                                        "y2": 1,
-                                        "colorStops": [
-                                            {"offset": 0, "color": "#06b6d4"},
-                                            {"offset": 1, "color": "#3b82f6"},
-                                        ],
-                                    },
-                                },
-                                "emphasis": {"itemStyle": {"color": "#38bdf8"}},
-                            },
-                            {
-                                "name": "Reading Index",
-                                "type": "line",
-                                "yAxisIndex": 1,
-                                "smooth": True,
-                                "data": indices,
-                                "itemStyle": {"color": "#10b981"},
-                                "lineStyle": {"width": 2, "color": "#10b981"},
-                            },
-                        ]
-                        legend_data = ["Consumption", "Reading Index"]
-                        y_axis = [
-                            {
-                                "type": "value",
-                                "name": f"Usage ({unit})",
-                                "nameTextStyle": {"color": "#9ca3af"},
-                                "splitLine": {
-                                    "lineStyle": {"color": "rgba(255, 255, 255, 0.06)"}
-                                },
-                                "axisLabel": {"color": "#9ca3af"},
-                            },
-                            {
-                                "type": "value",
-                                "name": f"Index ({unit})",
-                                "nameTextStyle": {"color": "#9ca3af"},
-                                "splitLine": {"show": False},
-                                "axisLabel": {"color": "#9ca3af"},
-                            },
-                        ]
-                else:  # "bar"
-                    series = [
-                        {
-                            "name": metric_label,
-                            "type": "bar",
-                            "data": active_consumptions,
-                            "itemStyle": {
-                                "borderRadius": [6, 6, 0, 0],
-                                "color": {
-                                    "type": "linear",
-                                    "x": 0,
-                                    "y": 0,
-                                    "x2": 0,
-                                    "y2": 1,
-                                    "colorStops": [
-                                        {"offset": 0, "color": "#06b6d4"},
-                                        {"offset": 1, "color": "#3b82f6"},
-                                    ],
-                                },
-                            },
-                            "emphasis": {"itemStyle": {"color": "#38bdf8"}},
-                        }
-                    ]
-                    legend_data = [metric_label]
-                    y_axis = single_y_axis
-
-                echart_options = {
-                    "backgroundColor": "transparent",
-                    "tooltip": {
-                        "trigger": "axis",
-                        "axisPointer": {
-                            "type": (
-                                "line"
-                                if self.chart_style in ("line", "area")
-                                else "shadow"
-                            )
-                        },
-                        "backgroundColor": "rgba(15, 23, 42, 0.95)",
-                        "borderColor": "rgba(255, 255, 255, 0.15)",
-                        "textStyle": {"color": "#f8fafc"},
-                    },
-                    "legend": {
-                        "data": legend_data,
-                        "textStyle": {"color": "#9ca3af"},
-                        "top": "0%",
-                    },
-                    "grid": {
-                        "left": "3%",
-                        "right": "4%",
-                        "bottom": "14%",
-                        "top": "12%",
-                        "containLabel": True,
-                    },
-                    "xAxis": {
-                        "type": "category",
-                        "data": buckets,
-                        "axisLine": {
-                            "lineStyle": {"color": "rgba(255, 255, 255, 0.2)"}
-                        },
-                        "axisLabel": {
-                            "color": "#9ca3af",
-                            "rotate": 30 if len(buckets) > 10 else 0,
-                        },
-                    },
-                    "yAxis": y_axis,
-                    "dataZoom": [
-                        {"type": "inside"},
-                        {
-                            "type": "slider",
-                            "bottom": "0%",
-                            "height": 18,
-                            "borderColor": "transparent",
-                            "textStyle": {"color": "#9ca3af"},
-                            "fillerColor": "rgba(6, 182, 212, 0.2)",
-                        },
-                    ],
-                    "series": series,
-                }
-
-                with ui.element("div").classes(
-                    "w-full rounded-xl border border-white/10 bg-slate-900/60 p-4 "
-                    "h-[400px]"
-                ):
-                    ui.echart(echart_options).classes("w-full h-full")
+                            with ui.row().classes("w-full gap-3 flex-wrap"):
+                                for (
+                                    image,
+                                    value,
+                                ) in result.analog_results.items():
+                                    with ui.element("div").classes(
+                                        "p-2.5 rounded-lg bg-slate-900/80 border "
+                                        "border-white/10 flex flex-col items-center "
+                                        "gap-1 min-w-[75px]"
+                                    ):
+                                        ui.label(image).classes(
+                                            "text-[11px] text-gray-400 "
+                                            "uppercase tracking-wider"
+                                        )
+                                        base64img = (
+                                            self.callbacks.get_image_as_base64_str(
+                                                image
+                                            )
+                                        )
+                                        ui.image(
+                                            f"data:image/jpeg;base64,{base64img}"
+                                        ).props("fit=contain").classes(
+                                            "w-16 h-16 rounded bg-slate-950 p-0.5"
+                                        )
+                                        ui.label(str(value)).classes(
+                                            "font-['Outfit'] font-bold "
+                                            "text-cyan-400 text-sm"
+                                        )
+                                        if (
+                                            result.confidence_scores
+                                            and image in result.confidence_scores
+                                        ):
+                                            c_score = result.confidence_scores[image]
+                                            c_col = (
+                                                "text-emerald-400"
+                                                if c_score >= 80
+                                                else (
+                                                    "text-amber-400"
+                                                    if c_score >= 60
+                                                    else "text-rose-400"
+                                                )
+                                            )
+                                            ui.label(f"{c_score:.0f}% conf").classes(
+                                                f"text-[10px] font-mono {c_col}"
+                                            )
 
         # Top Bar
         with ui.row().classes("w-full justify-between items-center mb-2"):
@@ -681,17 +377,19 @@ class MeterPage:
             .props("align=left active-color=cyan") as tabs
         ):
             values = ui.tab("Values", icon="speed")
-            consumption = ui.tab("Consumption", icon="bar_chart")
-            raw = ui.tab("Raw Data", icon="code")
+            statistics = ui.tab("Statistics", icon="bar_chart")
+            history = ui.tab("History", icon="table_view")
 
         with ui.tab_panels(tabs, value=values).classes(
             "w-full h-full bg-transparent p-0 pt-4"
         ):
             with ui.tab_panel(values).classes("p-0"):
                 value_container = ui.column().classes("w-full")
-            with ui.tab_panel(consumption).classes("p-0"):
-                consumption_container = ui.column().classes("w-full")
-            with ui.tab_panel(raw).classes("p-0"):
-                raw_container = ui.column().classes("w-full")
+            with ui.tab_panel(statistics).classes("p-0"):
+                stats_container = ui.column().classes("w-full")
+                self.consumption_card.render(stats_container)
+            with ui.tab_panel(history).classes("p-0"):
+                history_container = ui.column().classes("w-full")
+                self.history_card.render(history_container)
 
         await do_fetch()

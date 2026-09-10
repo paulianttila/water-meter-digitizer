@@ -46,3 +46,12 @@ BADGE_SNAP_CLS = BADGE_PURPLE
 # --- Interactive Button States ---
 BTN_ACTIVE_CLS = "bg-cyan-600/80 text-white"
 BTN_INACTIVE_CLS = "text-cyan-400 hover:bg-cyan-500/10"
+
+# --- ROI Color Overlays (RGB & Hex) ---
+COLOR_ROI_REFS = (16, 185, 129)  # Emerald Green
+COLOR_ROI_DIGITAL = (59, 130, 246)  # Electric Blue
+COLOR_ROI_ANALOG = (245, 158, 11)  # Vivid Amber / Orange
+
+HEX_ROI_REFS = "#10b981"
+HEX_ROI_DIGITAL = "#3b82f6"
+HEX_ROI_ANALOG = "#f59e0b"
