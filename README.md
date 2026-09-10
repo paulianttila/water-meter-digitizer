@@ -291,20 +291,106 @@ Every time the configuration is saved from the Web GUI or Setup Wizard, an autom
 
 ### Environment Variables
 
-Settings can be specified either through the INI file or directly via environment variables:
+Settings can be specified through the `config.ini` file or configured dynamically via environment variables.
+
+#### 1. Core System & Container Variables
 
 | Variable | Default | Description |
-|----------|---------|-------------|
-| `CONFIG_FILE` | `/config/config.ini` | Path to the active configuration INI file |
-| `TZ` | — | Container timezone (e.g. `Europe/Helsinki`) |
-| `METER_LOG_LEVEL` | `INFO` | Override global logging level (`DEBUG`, `INFO`, `WARNING`, `ERROR`) |
-| `METER_CONFIG_DIR` | `/config` | Override base configuration directory |
-| `METER_DATA_DIR` | `/data` | Override data directory (for SQLite database storage) |
-| `METER_LOG_DIR` | `/log` | Override log directory |
-| `METER_IMAGE_SOURCE__URL` | `""` | Override camera image source URL |
-| `METER_IMAGE_SOURCE__TIMEOUT` | `30` | Override image download timeout in seconds |
+|---|---|---|
+| `CONFIG_FILE` | `/config/config.ini` | Path to the active configuration INI file. |
+| `CONFIG_DIR` | `/config` | Override directory path for `${ConfigDir}` variable substitution in `config.ini`. |
+| `DEFAULT_CONFIG_DIR` | `/app/default_config` | Seed directory containing fallback default configuration and asset templates. |
+| `TZ` | `UTC` | Container and log timestamp timezone (e.g. `Europe/Helsinki`, `America/New_York`). |
 
-> **Tip**: Any configuration key can be overridden using the `METER_<SECTION>__<KEY>` naming convention (e.g. `METER_IMAGE_PROCESSING__ENABLED=true`).
+#### 2. Configuration Overrides (`METER_*`)
+
+Any configuration parameter can be set or overridden via environment variables using the `METER_` prefix (with double underscores `__` for nested section keys):
+
+| Environment Variable | Type | Default | Description |
+|---|---|---|---|
+| **General / System** | | | |
+| `METER_LOG_LEVEL` | string | `INFO` | Global logging verbosity (`DEBUG`, `INFO`, `WARNING`, `ERROR`). |
+| `METER_CONFIG_DIR` | string | `/config` | Directory containing configuration files, reference images, and models. |
+| `METER_DATA_DIR` | string | `/data` | Dedicated persistent directory for SQLite database storage (`history.db`). |
+| `METER_PREVIOUS_VALUE_FILE` | string | `/config/prevalue.ini` | File path used to persist last valid meter readings across runs. |
+| `METER_DIGITAL_MODELS_DIR` | string | `/config/neuralnets/digital` | Directory containing LiteRT/TFLite models for digital counter digits. |
+| `METER_ANALOG_MODELS_DIR` | string | `/config/neuralnets/analog` | Directory containing LiteRT/TFLite models for analog dials. |
+| `METER_MIN_CONFIDENCE_THRESHOLD` | float | `60.0` | Minimum confidence score percentage required before flagging reading as `N` (NaN). |
+| **Image Source** | | | |
+| `METER_IMAGE_SOURCE__URL` | string | `""` | Source camera capture URL (`http://`, `https://`, or secure `file://`). |
+| `METER_IMAGE_SOURCE__TIMEOUT` | integer | `30` | Image download network timeout in seconds. |
+| `METER_IMAGE_SOURCE__MIN_SIZE` | integer | `10000` | Minimum byte size threshold to filter out corrupted or truncated camera frames. |
+| **Crop & Resize** | | | |
+| `METER_CROP__ENABLED` | boolean | `False` | Enable pre-cropping before alignment. |
+| `METER_CROP__X` / `Y` / `W` / `H` | integer | `0` | Pre-crop area coordinates and dimensions. |
+| `METER_RESIZE__ENABLED` | boolean | `False` | Enable image resizing. |
+| `METER_RESIZE__W` / `H` | integer | `0` | Target resize dimensions in pixels. |
+| **Image Processing & Enhancements** | | | |
+| `METER_IMAGE_PROCESSING__ENABLED` | boolean | `False` | Enable image adjustment pipeline. |
+| `METER_IMAGE_PROCESSING__CONTRAST` | float | `1.0` | Contrast enhancement multiplier. |
+| `METER_IMAGE_PROCESSING__BRIGHTNESS` | float | `1.0` | Brightness adjustment multiplier. |
+| `METER_IMAGE_PROCESSING__COLOR` | float | `1.0` | Color saturation adjustment multiplier. |
+| `METER_IMAGE_PROCESSING__SHARPNESS` | float | `1.0` | Sharpness filter multiplier. |
+| `METER_IMAGE_PROCESSING__GRAYSCALE` | boolean | `False` | Convert capture to grayscale before processing. |
+| `METER_IMAGE_PROCESSING__AUTOCONTRAST__ENABLED` | boolean | `False` | Enable histogram auto-contrast stretching. |
+| `METER_IMAGE_PROCESSING__AUTOCONTRAST__CUTOFF_LOW` | float | `2.0` | Low percentile cutoff for auto-contrast. |
+| `METER_IMAGE_PROCESSING__AUTOCONTRAST__CUTOFF_HIGH` | float | `45.0` | High percentile cutoff for auto-contrast. |
+| **Glare & Reflection Suppression** | | | |
+| `METER_IMAGE_PROCESSING__GLARE_SUPPRESSION__ENABLED` | boolean | `False` | Enable glare and specular reflection reduction. |
+| `METER_IMAGE_PROCESSING__GLARE_SUPPRESSION__MODE` | string | `clahe` | Algorithm mode (`clahe`, `inpaint`, `illumination_normalize`, `combined`). |
+| `METER_IMAGE_PROCESSING__GLARE_SUPPRESSION__INPAINT_THRESHOLD` | integer | `230` | Brightness threshold (0–255) for specular highlight mask. |
+| `METER_IMAGE_PROCESSING__GLARE_SUPPRESSION__INPAINT_RADIUS` | integer | `3` | Inpainting neighborhood radius in pixels. |
+| `METER_IMAGE_PROCESSING__GLARE_SUPPRESSION__CLAHE_CLIP_LIMIT` | float | `2.0` | CLAHE local contrast limiting threshold. |
+| `METER_IMAGE_PROCESSING__GLARE_SUPPRESSION__CLAHE_GRID_SIZE` | integer | `8` | CLAHE tile grid dimensions (e.g. `8` for 8x8 grid). |
+| `METER_IMAGE_PROCESSING__GLARE_SUPPRESSION__APPLY_TO_CUT_IMAGES` | boolean | `False` | Apply glare reduction directly to cropped sub-ROIs. |
+| **Alignment** | | | |
+| `METER_ALIGNMENT__ROTATE_ANGLE` | float | `0.0` | Initial coarse image rotation in degrees (e.g. `0`, `90`, `180`, `270`). |
+| `METER_ALIGNMENT__POST_ROTATE_ANGLE` | float | `0.0` | Fine-tune post-alignment rotation in degrees. |
+| **Neural Network Models (Digits & Analog)** | | | |
+| `METER_DIGITAL_READOUT__ENABLED` | boolean | `False` | Enable digit counter recognition. |
+| `METER_DIGITAL_READOUT__MODEL_FILE` | string | `""` | File path to digital recognition LiteRT/TFLite model. |
+| `METER_DIGITAL_READOUT__MODEL` | string | `""` | Model architecture mode (`auto`, `digital`, `digital100`). |
+| `METER_ANALOG_READOUT__ENABLED` | boolean | `False` | Enable analog dial needle recognition. |
+| `METER_ANALOG_READOUT__MODEL_FILE` | string | `""` | File path to analog needle LiteRT/TFLite model. |
+| `METER_ANALOG_READOUT__MODEL` | string | `""` | Model architecture mode (`auto`, `analog`, `analog100`). |
+| **Consumption History & Storage** | | | |
+| `METER_HISTORY__ENABLED` | boolean | `False` | Enable long-term consumption metrics storage. |
+| `METER_HISTORY__BACKEND` | string | `sqlite` | Storage engine (`sqlite` or `memory`). |
+| `METER_HISTORY__DB_URL` | string | `""` | SQLite database URI (default: `sqlite:////data/history.db`). |
+| `METER_HISTORY__MAX_MEMORY_MB` | integer | `32` | In-memory cache budget before pruning. |
+| `METER_HISTORY__MAX_RECORDS` | integer | `50000` | Maximum number of stored readings before FIFO eviction. |
+| `METER_HISTORY__RETENTION_DAYS` | integer | `30` | Time-to-live retention window in days for historical data. |
+| `METER_HISTORY__AUTO_VACUUM` | boolean | `True` | Run SQLite incremental vacuum on startup. |
+| `METER_HISTORY__PRUNE_INTERVAL` | integer | `50` | Number of writes between background pruning passes. |
+| **Background Poller Scheduler** | | | |
+| `METER_POLLER__ENABLED` | boolean | `False` | Enable periodic background readout scheduler. |
+| `METER_POLLER__INTERVAL_SECONDS` | integer | `300` | Polling cycle interval in seconds. |
+| `METER_POLLER__RUN_ON_STARTUP` | boolean | `True` | Trigger an immediate reading cycle on application startup. |
+| `METER_POLLER__SAVE_IMAGES` | boolean | `False` | Cache intermediate pipeline images for diagnostics. |
+| `METER_POLLER__RETRY_INTERVAL_SECONDS` | integer | `30` | Retry delay in seconds after a transient camera failure. |
+| **MQTT & Home Assistant Discovery** | | | |
+| `METER_MQTT__ENABLED` | boolean | `False` | Enable MQTT telemetry publishing. |
+| `METER_MQTT__BROKER` | string | `localhost` | MQTT broker hostname or IP address. |
+| `METER_MQTT__PORT` | integer | `1883` | MQTT broker port (`1883` standard, `8883` TLS). |
+| `METER_MQTT__USERNAME` | string | `""` | Optional MQTT broker username. |
+| `METER_MQTT__PASSWORD` | string | `""` | Optional MQTT broker password. |
+| `METER_MQTT__CLIENT_ID` | string | `water-meter-digitizer` | MQTT client identifier string. |
+| `METER_MQTT__TOPIC_PREFIX` | string | `watermeter` | Base MQTT topic prefix. |
+| `METER_MQTT__KEEPALIVE` | integer | `60` | MQTT keepalive ping interval in seconds. |
+| `METER_MQTT__TLS` | boolean | `False` | Enable TLS encryption for broker connection. |
+| `METER_MQTT__RETAIN` | boolean | `True` | Publish meter readings with MQTT retain flag set. |
+| `METER_MQTT__HOMEASSISTANT_DISCOVERY` | boolean | `True` | Automatically broadcast Home Assistant MQTT Auto-Discovery payloads. |
+| `METER_MQTT__DISCOVERY_PREFIX` | string | `homeassistant` | Home Assistant MQTT discovery prefix. |
+| `METER_MQTT__DEVICE_NAME` | string | `Water Meter Digitizer` | Friendly device name in Home Assistant registry. |
+| `METER_MQTT__DEVICE_ID` | string | `water_meter_digitizer` | Unique device entity identifier in Home Assistant. |
+| **Zero-Flow Continuous Leak Monitor** | | | |
+| `METER_ZERO_FLOW_MONITOR__ENABLED` | boolean | `False` | Enable continuous flow leak monitoring. |
+| `METER_ZERO_FLOW_MONITOR__METER_NAME` | string | `total` | Logical meter name to track for continuous flow. |
+| `METER_ZERO_FLOW_MONITOR__CONTINUOUS_FLOW_HOURS` | float | `2.0` | Hours of uninterrupted non-zero consumption before triggering leak alarm. |
+| `METER_ZERO_FLOW_MONITOR__MIN_LEAK_VOLUME` | float | `0.010` | Minimum volume consumed during active window (filters optical noise). |
+| `METER_ZERO_FLOW_MONITOR__FLOW_THRESHOLD` | float | `0.001` | Minimum change between readings to classify as active flow. |
+| `METER_ZERO_FLOW_MONITOR__RESOLVE_DEBOUNCE_COUNT` | integer | `2` | Consecutive zero-flow readings required to auto-resolve alarm. |
+| `METER_ZERO_FLOW_MONITOR__MAX_HISTORY_EVENTS` | integer | `50` | Maximum completed leak event logs retained in memory. |
 
 ---
 
@@ -584,23 +670,23 @@ Refs=ref0, ref1, ref2
 PostRotationAngle=0.0
 
 [Alignment.ref0]
-image=${ConfigDir}/Ref_ZR_x99_y219.jpg
+Image=${ConfigDir}/Ref_ZR_x99_y219.jpg
 x=99
 y=219
 
 [Alignment.ref1]
-image=${ConfigDir}/Ref_m3_x512_y117.jpg
+Image=${ConfigDir}/Ref_m3_x512_y117.jpg
 x=512
 y=117
 
 [Alignment.ref2]
-image=${ConfigDir}/Ref_x0_x301_y386.jpg
+Image=${ConfigDir}/Ref_x0_x301_y386.jpg
 x=301
 y=386
 
 [Digits]
 Enabled=True
-names=digit1, digit2, digit3, digit4, digit5
+Names=digit1, digit2, digit3, digit4, digit5
 Modelfile=${DigitalModelsDir}/class100/dig-class100_0168_s2_q.tflite
 Model=auto
 
@@ -636,7 +722,7 @@ h=75
 
 [Analog]
 Enabled=True
-names=analog1, analog2, analog3, analog4
+Names=analog1, analog2, analog3, analog4
 Modelfile=${AnalogModelsDir}/continuous/ana-cont_1209_s2.tflite
 Model=auto
 
