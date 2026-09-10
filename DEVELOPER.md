@@ -132,21 +132,25 @@ water-meter-digitizer/
 │   │   ├── page_meter.py        # Live meter readout display page
 │   │   ├── page_config.py       # Configuration editor with backup history & 1-click undo
 │   │   ├── page_setup.py        # Interactive 9-step setup wizard
+│   │   ├── page_services.py     # Background services & telemetry dashboard
+│   │   ├── page_previous_values.py # Calibration & baseline previous values page
+│   │   ├── page_api_console.py  # Interactive REST API explorer and console
+│   │   ├── page_about.py        # System diagnostic & version info
+│   │   ├── page_help.py         # In-app setup & configuration documentation
+│   │   ├── components/          # Reusable dashboard and telemetry cards
 │   │   ├── step_base.py         # Base class for wizard steps (spinners, callbacks)
 │   │   ├── step_download.py     # Wizard: Camera URL capture & offline placeholder
 │   │   ├── step_initial_rotate.py # Wizard: Coarse 90° rotation
 │   │   ├── step_draw_refs.py    # Wizard: Reference marker drawing
 │   │   ├── step_adjust.py       # Wizard: Fine rotation, alignment, filter tuning
+│   │   ├── step_draw_rois_base.py # Base class for interactive ROI drawing & SVG canvas
 │   │   ├── step_draw_digital_rois.py # Wizard: Digital ROI bounding box placement
 │   │   ├── step_draw_analog_rois.py  # Wizard: Analog ROI bounding box placement
 │   │   ├── step_meters.py       # Wizard: Multi-meter definitions and formatting
 │   │   ├── step_services.py     # Wizard: Poller, MQTT, and storage settings
 │   │   └── step_final.py        # Wizard: Config saving & verification
 │   │
-│   ├── web/templates/           # REST HTML response templates
-│   │   ├── meters.html          # Live meter readout page with refresh & intermediate crops
-│   │   ├── reload.html          # Configuration reload status feedback page
-│   │   └── roi.html             # Aligned ROI verification view
+│   ├── web/static/              # Static assets (favicons, touch icons, branding)
 │   │
 │   └── utils/                   # General utilities
 │       ├── download.py          # Async HTTP client for camera frame fetching
@@ -154,7 +158,8 @@ water-meter-digitizer/
 │       ├── security.py          # Path validation and LFI protection
 │       ├── diagnostics.py       # Telemetry aggregator for /health endpoint
 │       ├── math.py              # Zero-crossing & predecessor mathematical helpers
-│       └── decorators.py        # Timing and logging decorators
+│       ├── cache.py             # In-memory LRU / TTL image caching
+│       └── file.py              # File loading utilities
 │
 ├── tests/                       # Automated test suite
 │   ├── unit/                    # Unit tests for algorithms, parser, processors, pool, version

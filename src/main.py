@@ -152,19 +152,11 @@ def get_image_as_base64_str(image_name: str) -> str:
                     "final"
                 ) or app.state.image_cache.get("aligned")
                 if source_img is not None and cfg is not None:
-                    from gui.theme import (
-                        COLOR_ROI_ANALOG,
-                        COLOR_ROI_DIGITAL,
-                        COLOR_ROI_REFS,
+                    proc = (
+                        ImageProcessor()
+                        .set_image(source_img.copy())
+                        .draw_meter_rois(cfg)
                     )
-
-                    proc = ImageProcessor().set_image(source_img.copy())
-                    if cfg.alignment and cfg.alignment.ref_images:
-                        proc.draw_roi(cfg.alignment.ref_images, COLOR_ROI_REFS)
-                    if cfg.digital_readout and cfg.digital_readout.cut_images:
-                        proc.draw_roi(cfg.digital_readout.cut_images, COLOR_ROI_DIGITAL)
-                    if cfg.analog_readout and cfg.analog_readout.cut_images:
-                        proc.draw_roi(cfg.analog_readout.cut_images, COLOR_ROI_ANALOG)
                     return proc.get_image_as_base64_str()
         raise HTTPException(status_code=404, detail="Image not found")
     return utils.image.convert_image_base64str(img)
@@ -231,84 +223,11 @@ def init_gui(app_instance: FastAPI) -> None:
     from gui.callbacks_impl import CallbacksImpl
 
     def _get_health_data() -> dict[str, Any]:
-        import time
-        from datetime import UTC, datetime
+        from utils.diagnostics import collect_health_status
 
-        from api.routes_health import get_allowed_asset_directories
-        from utils.diagnostics import (
-            check_camera_reachability,
-            format_uptime,
-            get_models_info,
-            get_process_memory_info,
-            get_system_info,
-        )
-
-        now = time.time()
-        start_time = getattr(app_instance.state, "start_time", now)
-        started_at = getattr(
-            app_instance.state, "started_at", datetime.now(UTC).isoformat()
-        )
-        uptime_seconds = round(now - start_time, 2)
-        uptime_human = format_uptime(uptime_seconds)
         cfg = getattr(app_instance.state, "config", config)
         ver = getattr(app_instance.state, "version", VERSION)
-
-        image_source_url = cfg.image_source.url if cfg else ""
-        camera_diag = check_camera_reachability(
-            image_source_url,
-            timeout=2.0,
-            allowed_directories=get_allowed_asset_directories(cfg),
-        )
-        mem_diag = get_process_memory_info()
-        image_cache = getattr(app_instance.state, "image_cache", None)
-        cache_diag = (
-            image_cache.get_stats()
-            if image_cache
-            else {
-                "hits": 0,
-                "misses": 0,
-                "hit_ratio_percent": 0.0,
-                "current_size": 0,
-                "max_size": 0,
-                "total_evictions": 0,
-                "ttl_seconds": 0.0,
-            }
-        )
-        digital_enabled = cfg.digital_readout.enabled if cfg else False
-        digital_modelfile = cfg.digital_readout.model_file if cfg else ""
-        analog_enabled = cfg.analog_readout.enabled if cfg else False
-        analog_modelfile = cfg.analog_readout.model_file if cfg else ""
-
-        models_diag = get_models_info(
-            digital_enabled=digital_enabled,
-            digital_modelfile=digital_modelfile,
-            analog_enabled=analog_enabled,
-            analog_modelfile=analog_modelfile,
-        )
-        system_diag = get_system_info(ver)
-
-        status = "healthy"
-        if not image_source_url or not camera_diag["reachable"]:
-            status = "degraded"
-
-        for model_key in ("digital", "analog"):
-            m = models_diag[model_key]
-            if m["enabled"] and not m["exists"]:
-                status = "unhealthy"
-
-        return {
-            "status": status,
-            "uptime": {
-                "uptime_seconds": uptime_seconds,
-                "uptime_human": uptime_human,
-                "started_at": started_at,
-            },
-            "camera": camera_diag,
-            "memory": mem_diag,
-            "cache": cache_diag,
-            "models": models_diag,
-            "system": system_diag,
-        }
+        return collect_health_status(app_instance.state, cfg, ver)
 
     def _get_leak_status() -> dict[str, Any]:
         tracker = getattr(app_instance.state, "zero_flow_tracker", None)

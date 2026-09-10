@@ -4,7 +4,7 @@ import math
 import numpy as np
 from PIL.Image import Image
 
-from cnn.base import CNNBase
+from cnn.base import CNNBase, density_confidence, stable_softmax
 
 logger = logging.getLogger(__name__)
 
@@ -30,19 +30,11 @@ class AnalogNeedleCNN(CNNBase):
         numer_output = self.get_model_details().numer_output
 
         if numer_output == 100:
-            z = np.array(output_data[0], dtype=float)
-            if np.all(z >= 0) and np.isclose(np.sum(z), 1.0, atol=0.05):
-                probs = z
-            else:
-                exp_z = np.exp(z - np.max(z))
-                sum_exp = np.sum(exp_z)
-                probs = exp_z / sum_exp if sum_exp > 0 else np.zeros_like(exp_z)
+            probs = stable_softmax(output_data[0])
             argmax = int(np.argmax(probs))
             result = float(argmax) / 10.0
-            low_idx = max(0, argmax - 1)
-            high_idx = min(len(probs), argmax + 2)
-            conf = float(np.sum(probs[low_idx:high_idx])) * 100.0
-            return result, round(min(100.0, max(0.0, conf)), 1)
+            conf = density_confidence(probs, argmax, window=1)
+            return result, conf
         else:
             out_sin = float(output_data[0][0])
             out_cos = float(output_data[0][1])

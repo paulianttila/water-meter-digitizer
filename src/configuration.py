@@ -667,8 +667,8 @@ class Config(BaseSettings):
                 f"Meter.{name}", "MaxRateValue", fallback=0.0
             )
             use_previous_value = config.getboolean(
-                f"Meter.{name}", "UsePreviuosValue", fallback=False
-            )
+                f"Meter.{name}", "UsePreviousValue", fallback=False
+            ) or config.getboolean(f"Meter.{name}", "UsePreviuosValue", fallback=False)
             pre_value_from_file_max_age = config.getint(
                 f"Meter.{name}", "PreValueFromFileMaxAge", fallback=0
             )

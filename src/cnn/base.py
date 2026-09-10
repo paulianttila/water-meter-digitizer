@@ -17,9 +17,25 @@ spam_spec = util.find_spec("tensorflow")
 found_tensorflow = spam_spec is not None
 
 spam_spec = util.find_spec("ai_edge_litert") or util.find_spec("tflite_runtime")
-found_tflite = spam_spec is not None
-
 logger = logging.getLogger(__name__)
+
+
+def stable_softmax(logits: np.ndarray) -> np.ndarray:
+    """Compute numerically stable softmax or return normalized probabilities directly."""
+    z = np.array(logits, dtype=float)
+    if np.all(z >= 0) and np.isclose(np.sum(z), 1.0, atol=0.05):
+        return z
+    exp_z = np.exp(z - np.max(z))
+    sum_exp = np.sum(exp_z)
+    return exp_z / sum_exp if sum_exp > 0 else np.zeros_like(exp_z)
+
+
+def density_confidence(probs: np.ndarray, argmax: int, window: int = 1) -> float:
+    """Calculate multi-bin probability density confidence around argmax peak (in percent)."""
+    low_idx = max(0, argmax - window)
+    high_idx = min(len(probs), argmax + window + 1)
+    conf = float(np.sum(probs[low_idx:high_idx])) * 100.0
+    return round(min(100.0, max(0.0, conf)), 1)
 
 
 class CNNBase:

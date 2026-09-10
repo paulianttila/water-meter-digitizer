@@ -9,24 +9,18 @@ from fastapi.responses import JSONResponse
 
 import previous_value
 import utils.image
-from api.routes_health import get_allowed_asset_directories
 from configuration import Config
 from decorators.decorators import log_execution_time
 from processor.digitizer import DigitizerProcessor, MeterResult
-from processor.image import ImageProcessor
+from processor.image import (
+    ImageProcessor,
+)
+from utils.diagnostics import get_allowed_asset_directories
 from utils.download import DownloadFailure
 
 logger = logging.getLogger(__name__)
 
 router = APIRouter(tags=["meter"])
-
-COLOR_RED = (255, 0, 0)
-COLOR_GREEN = (0, 255, 0)
-COLOR_BLUE = (0, 0, 255)
-
-COLOR_ROI_REFS = (16, 185, 129)  # Emerald Green
-COLOR_ROI_DIGITAL = (59, 130, 246)  # Electric Blue
-COLOR_ROI_ANALOG = (245, 158, 11)  # Vivid Amber / Orange
 
 # Global fallback reference to the FastAPI app, populated during main startup
 _app_ref: Any = None
@@ -73,11 +67,6 @@ def get_roi(
         url = url or config.image_source.url
         timeout = config.image_source.timeout
 
-        if draw_refs:
-            for img in config.alignment.ref_images:
-                if img.w == 0 or img.h == 0:
-                    img.w, img.h = utils.image.image_size_from_file(img.file_name)
-
         roi_proc = (
             ImageProcessor()
             .download_image(
@@ -88,15 +77,12 @@ def get_roi(
             )
             .rotate_image(config.alignment.rotate_angle)
             .align_image(config.alignment.ref_images)
-            .if_(draw_refs)
-            .draw_roi(config.alignment.ref_images, COLOR_ROI_REFS)
-            .endif_()
-            .if_(draw_digital)
-            .draw_roi(config.digital_readout.cut_images, COLOR_ROI_DIGITAL)
-            .endif_()
-            .if_(draw_analog)
-            .draw_roi(config.analog_readout.cut_images, COLOR_ROI_ANALOG)
-            .endif_()
+            .draw_meter_rois(
+                config,
+                draw_refs=draw_refs,
+                draw_digital=draw_digital,
+                draw_analog=draw_analog,
+            )
         )
 
         image_bytes = utils.image.convert_image_to_bytes(roi_proc.get_image())
@@ -324,55 +310,35 @@ def get_meter_data(
         and config.image_processing.glare_suppression.enabled
         and config.image_processing.glare_suppression.apply_to_cut_images
     )
-    digital_images = (
-        image_processor.start_image_cutting()
-        .cut_images(
-            config.digital_readout.cut_images,
-            autocontrast=autocontrast,
-            cutoff_low=config.image_processing.autocontrast_cut_images.cutoff_low,
-            cutoff_high=config.image_processing.autocontrast_cut_images.cutoff_high,
-            ignore=config.image_processing.autocontrast_cut_images.ignore,
-            glare_suppression=glare_cut,
-            glare_mode=config.image_processing.glare_suppression.mode,
-            glare_inpaint_threshold=config.image_processing.glare_suppression.inpaint_threshold,
-            glare_inpaint_radius=config.image_processing.glare_suppression.inpaint_radius,
-            glare_clahe_clip_limit=config.image_processing.glare_suppression.clahe_clip_limit,
-            glare_clahe_grid_size=config.image_processing.glare_suppression.clahe_grid_size,
+
+    def _extract_rois(positions):
+        return (
+            image_processor.start_image_cutting()
+            .cut_images(
+                positions,
+                autocontrast=autocontrast,
+                cutoff_low=config.image_processing.autocontrast_cut_images.cutoff_low,
+                cutoff_high=config.image_processing.autocontrast_cut_images.cutoff_high,
+                ignore=config.image_processing.autocontrast_cut_images.ignore,
+                glare_suppression=glare_cut,
+                glare_mode=config.image_processing.glare_suppression.mode,
+                glare_inpaint_threshold=config.image_processing.glare_suppression.inpaint_threshold,
+                glare_inpaint_radius=config.image_processing.glare_suppression.inpaint_radius,
+                glare_clahe_clip_limit=config.image_processing.glare_suppression.clahe_clip_limit,
+                glare_clahe_grid_size=config.image_processing.glare_suppression.clahe_grid_size,
+            )
+            .stop_image_cutting()
+            .save_cut_images()
+            .get_cut_images()
         )
-        .stop_image_cutting()
-        .save_cut_images()
-        .get_cut_images()
-    )
-    analog_images = (
-        image_processor.start_image_cutting()
-        .cut_images(
-            config.analog_readout.cut_images,
-            autocontrast=autocontrast,
-            cutoff_low=config.image_processing.autocontrast_cut_images.cutoff_low,
-            cutoff_high=config.image_processing.autocontrast_cut_images.cutoff_high,
-            ignore=config.image_processing.autocontrast_cut_images.ignore,
-            glare_suppression=glare_cut,
-            glare_mode=config.image_processing.glare_suppression.mode,
-            glare_inpaint_threshold=config.image_processing.glare_suppression.inpaint_threshold,
-            glare_inpaint_radius=config.image_processing.glare_suppression.inpaint_radius,
-            glare_clahe_clip_limit=config.image_processing.glare_suppression.clahe_clip_limit,
-            glare_clahe_grid_size=config.image_processing.glare_suppression.clahe_grid_size,
-        )
-        .stop_image_cutting()
-        .save_cut_images()
-        .get_cut_images()
-    )
+
+    digital_images = _extract_rois(config.digital_readout.cut_images)
+    analog_images = _extract_rois(config.analog_readout.cut_images)
 
     # Generate and store ROI overlay image with distinct colors
     final_img = image_processor.pictures.get("final")
     if final_img is not None:
-        roi_proc = ImageProcessor().set_image(final_img.copy())
-        if config.alignment and config.alignment.ref_images:
-            roi_proc.draw_roi(config.alignment.ref_images, COLOR_ROI_REFS)
-        if config.digital_readout and config.digital_readout.cut_images:
-            roi_proc.draw_roi(config.digital_readout.cut_images, COLOR_ROI_DIGITAL)
-        if config.analog_readout and config.analog_readout.cut_images:
-            roi_proc.draw_roi(config.analog_readout.cut_images, COLOR_ROI_ANALOG)
+        roi_proc = ImageProcessor().set_image(final_img.copy()).draw_meter_rois(config)
         image_processor.pictures["roi"] = roi_proc.get_image()
 
     if app and hasattr(app.state, "image_cache"):

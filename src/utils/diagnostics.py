@@ -211,10 +211,118 @@ def get_models_info(
     }
 
 
+def get_allowed_asset_directories(config: Any = None) -> list[str]:
+    """Return list of allowed base directory paths for local file:// URIs."""
+    allowed: list[str] = []
+    if config:
+        if getattr(config, "config_dir", None):
+            allowed.append(config.config_dir)
+        if getattr(config, "data_dir", None):
+            allowed.append(config.data_dir)
+    allowed.append(os.getcwd())
+    return allowed
+
+
 def get_system_info(version: str) -> dict[str, Any]:
     """Return runtime and system platform details."""
     return {
         "version": version,
         "python_version": platform.python_version(),
         "platform": f"{platform.system()}-{platform.release()}",
+    }
+
+
+def collect_health_status(app_state: Any, config: Any, version: str) -> dict[str, Any]:
+    """Collect comprehensive system health and diagnostic telemetry."""
+    from datetime import UTC, datetime
+
+    now = time.time()
+    start_time = getattr(app_state, "start_time", now) if app_state else now
+    started_at = (
+        getattr(app_state, "started_at", datetime.now(UTC).isoformat())
+        if app_state
+        else datetime.now(UTC).isoformat()
+    )
+    uptime_seconds = round(now - start_time, 2)
+    uptime_human = format_uptime(uptime_seconds)
+
+    image_source_url = (
+        config.image_source.url if config and hasattr(config, "image_source") else ""
+    )
+
+    camera_diag = check_camera_reachability(
+        image_source_url,
+        timeout=2.0,
+        allowed_directories=get_allowed_asset_directories(config),
+    )
+
+    mem_diag = get_process_memory_info()
+
+    image_cache = getattr(app_state, "image_cache", None) if app_state else None
+    cache_diag = (
+        image_cache.get_stats()
+        if image_cache
+        else {
+            "hits": 0,
+            "misses": 0,
+            "total_requests": 0,
+            "hit_ratio_percent": 0.0,
+            "current_size": 0,
+            "max_size": 0,
+            "ttl_seconds": 0.0,
+            "cached_keys": [],
+        }
+    )
+
+    digital_enabled = (
+        config.digital_readout.enabled
+        if config and hasattr(config, "digital_readout")
+        else False
+    )
+    digital_modelfile = (
+        config.digital_readout.model_file
+        if config and hasattr(config, "digital_readout")
+        else ""
+    )
+    analog_enabled = (
+        config.analog_readout.enabled
+        if config and hasattr(config, "analog_readout")
+        else False
+    )
+    analog_modelfile = (
+        config.analog_readout.model_file
+        if config and hasattr(config, "analog_readout")
+        else ""
+    )
+
+    models_diag = get_models_info(
+        digital_enabled=digital_enabled,
+        digital_modelfile=digital_modelfile,
+        analog_enabled=analog_enabled,
+        analog_modelfile=analog_modelfile,
+    )
+
+    system_diag = get_system_info(version)
+
+    status = "healthy"
+    if not image_source_url or not camera_diag["reachable"]:
+        status = "degraded"
+
+    for model_key in ("digital", "analog"):
+        m = models_diag[model_key]
+        if m["enabled"] and not m["exists"]:
+            status = "unhealthy"
+
+    return {
+        "status": status,
+        "uptime": {
+            "uptime_seconds": uptime_seconds,
+            "uptime_human": uptime_human,
+            "started_at": started_at,
+        },
+        "camera": camera_diag,
+        "memory": mem_diag,
+        "cache": cache_diag,
+        "models": models_diag,
+        "system": system_diag,
     }

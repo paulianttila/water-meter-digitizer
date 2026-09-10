@@ -8,8 +8,8 @@ from gui.components.diagnostics_card import DiagnosticsCard
 from gui.components.history_table_card import HistoryTableCard
 from gui.components.leak_monitor_card import LeakMonitorCard
 from gui.components.services_status_card import ServicesStatusCard
-from gui.dialog_api_console import ApiConsoleDialog
-from gui.dialog_previous_values import PreviousValuesDialog
+from gui.page_api_console import ApiConsolePage
+from gui.page_previous_values import PreviousValuesPage
 from gui.page_services import ServicesPage
 
 
@@ -188,39 +188,40 @@ def test_services_status_card_actions(mock_callbacks):
     mock_callbacks.trigger_poller.assert_called_once()
 
 
-def test_previous_values_dialog(mock_callbacks):
-    dialog = PreviousValuesDialog(mock_callbacks)
-    dialog.open()
+def test_previous_values_page(mock_callbacks):
+    page = PreviousValuesPage(mock_callbacks)
+    page.table_container = MagicMock()
+    page.refresh_table()
     mock_callbacks.get_previous_values.assert_called_once()
-    dialog.close()
 
 
-def test_previous_values_dialog_save(mock_callbacks):
-    dialog = PreviousValuesDialog(mock_callbacks)
-    dialog.meter_select = MagicMock(value="total")
-    dialog.value_input = MagicMock(value="456.789")
+def test_previous_values_page_save(mock_callbacks):
+    page = PreviousValuesPage(mock_callbacks)
+    page.meter_select = MagicMock(value="total")
+    page.value_input = MagicMock(value="456.789")
 
-    asyncio.run(dialog._save_baseline())
+    asyncio.run(page._save_baseline())
     mock_callbacks.set_previous_value.assert_called_once_with("total", "456.789")
 
 
-def test_api_console_dialog():
-    dialog = ApiConsoleDialog()
-    assert dialog.dialog is not None
-    dialog.open()
-    dialog.close()
+def test_api_console_page():
+    page = ApiConsolePage()
+    assert page.port == 3000
 
     # Test preset endpoint change
+    page.url_input = MagicMock(value="")
     ev = MagicMock(value="/healthcheck")
-    dialog._on_endpoint_change(ev)
-    assert dialog.url_input.value == "/healthcheck"
-    assert dialog.selected_method == "GET"
+    page._on_endpoint_change(ev)
+    assert page.url_input.value == "/healthcheck"
+    assert page.selected_method == "GET"
 
 
-def test_api_console_dialog_execute():
-    dialog = ApiConsoleDialog()
-    dialog.url_input = MagicMock(value="/version")
-    dialog.selected_method = "GET"
+def test_api_console_page_execute():
+    page = ApiConsolePage()
+    page.url_input = MagicMock(value="/version")
+    page.selected_method = "GET"
+    page.status_label = MagicMock()
+    page.response_viewer = MagicMock(content="")
 
     with patch("requests.get") as mock_get:
         mock_resp = MagicMock()
@@ -230,9 +231,9 @@ def test_api_console_dialog_execute():
         mock_resp.text = '{"version": "1.0.0"}'
         mock_get.return_value = mock_resp
 
-        asyncio.run(dialog._execute_request())
-        assert dialog.status_label.text == "HTTP 200"
-        assert "1.0.0" in dialog.response_viewer.content
+        asyncio.run(page._execute_request())
+        assert page.status_label.text == "HTTP 200"
+        assert "1.0.0" in page.response_viewer.content
 
 
 def test_consumption_card(mock_callbacks):

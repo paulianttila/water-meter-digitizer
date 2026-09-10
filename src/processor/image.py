@@ -1,5 +1,6 @@
 import logging
 from collections.abc import Callable, Sequence
+from typing import Any
 
 from PIL.Image import Image
 
@@ -19,6 +20,11 @@ def _conditional_func(func) -> Callable[..., "ImageProcessor"]:
         return self
 
     return wrapper
+
+
+COLOR_ROI_REFS = (16, 185, 129)  # Emerald Green
+COLOR_ROI_DIGITAL = (59, 130, 246)  # Electric Blue
+COLOR_ROI_ANALOG = (245, 158, 11)  # Vivid Amber / Orange
 
 
 class ImageProcessor:
@@ -244,22 +250,20 @@ class ImageProcessor:
         glare_clahe_clip_limit: float = 2.0,
         glare_clahe_grid_size: int = 8,
     ) -> "ImageProcessor":
-        for img in positions:
-            image = utils.image.cut_image(self.image, img)
-            if autocontrast:
-                image = utils.image.autocontrast_image(
-                    image, cutoff_low, cutoff_high, ignore
-                )
-            if glare_suppression:
-                image = utils.image.suppress_glare(
-                    image,
-                    mode=glare_mode,
-                    inpaint_threshold=glare_inpaint_threshold,
-                    inpaint_radius=glare_inpaint_radius,
-                    clahe_clip_limit=glare_clahe_clip_limit,
-                    clahe_grid_size=glare_clahe_grid_size,
-                )
-            self.cut_images_list.append(CutImage(name=img.name, image=image))
+        for pos in positions:
+            self.cut_image(
+                position=pos,
+                autocontrast=autocontrast,
+                cutoff_low=cutoff_low,
+                cutoff_high=cutoff_high,
+                ignore=ignore,
+                glare_suppression=glare_suppression,
+                glare_mode=glare_mode,
+                glare_inpaint_threshold=glare_inpaint_threshold,
+                glare_inpaint_radius=glare_inpaint_radius,
+                glare_clahe_clip_limit=glare_clahe_clip_limit,
+                glare_clahe_grid_size=glare_clahe_grid_size,
+            )
         return self
 
     @_conditional_func
@@ -304,4 +308,38 @@ class ImageProcessor:
                 rgb_colour=rgb_colour,
                 bg_colour=(10, 15, 29),
             )
+        return self
+
+    @_conditional_func
+    def draw_meter_rois(
+        self,
+        config: Any,
+        draw_refs: bool = True,
+        draw_digital: bool = True,
+        draw_analog: bool = True,
+    ) -> "ImageProcessor":
+        """Draw all configured reference, digital, and analog ROIs onto the current image."""
+        if config is None:
+            return self
+
+        if draw_refs and hasattr(config, "alignment") and config.alignment.ref_images:
+            for ref in config.alignment.ref_images:
+                if (ref.w == 0 or ref.h == 0) and ref.file_name:
+                    ref.w, ref.h = utils.image.image_size_from_file(ref.file_name)
+            self.draw_roi(config.alignment.ref_images, COLOR_ROI_REFS)
+
+        if (
+            draw_digital
+            and hasattr(config, "digital_readout")
+            and config.digital_readout.cut_images
+        ):
+            self.draw_roi(config.digital_readout.cut_images, COLOR_ROI_DIGITAL)
+
+        if (
+            draw_analog
+            and hasattr(config, "analog_readout")
+            and config.analog_readout.cut_images
+        ):
+            self.draw_roi(config.analog_readout.cut_images, COLOR_ROI_ANALOG)
+
         return self
