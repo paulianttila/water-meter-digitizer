@@ -158,7 +158,7 @@ class CallbacksImpl(Callbacks):
             anomalies_only=anomalies_only,
             frames_only=frames_only,
         )
-        logger.info(
+        logger.debug(
             "CallbacksImpl.get_timeline: retrieved %d records (limit=%s, offset=%s, anomalies_only=%s, frames_only=%s)",
             len(records),
             limit,
@@ -190,19 +190,19 @@ class CallbacksImpl(Callbacks):
         ]
 
     def get_frame_data_uri(self, reading_id: int) -> str | None:
-        logger.info(
+        logger.debug(
             "CallbacksImpl.get_frame_data_uri requested for reading_id=%s", reading_id
         )
         storage = self.get_storage()
         if storage is None:
-            logger.warning(
+            logger.debug(
                 "CallbacksImpl.get_frame_data_uri: storage is None for reading_id=%s",
                 reading_id,
             )
             return None
         data, mime = storage.get_frame_bytes(reading_id)
         if not data:
-            logger.warning(
+            logger.debug(
                 "CallbacksImpl.get_frame_data_uri: storage returned no frame data for reading_id=%s",
                 reading_id,
             )
@@ -211,7 +211,7 @@ class CallbacksImpl(Callbacks):
 
         b64 = base64.b64encode(data).decode("ascii")
         mime_type = mime or ("image/webp" if data.startswith(b"RIFF") else "image/jpeg")
-        logger.info(
+        logger.debug(
             "CallbacksImpl.get_frame_data_uri: successfully generated data URI for reading_id=%s (%d raw bytes, mime=%s, b64_len=%d)",
             reading_id,
             len(data),
@@ -257,7 +257,7 @@ class CallbacksImpl(Callbacks):
     def get_frame_diff_data_uri(
         self, reading_id: int, compare_id: int | None = None
     ) -> str | None:
-        logger.info(
+        logger.debug(
             "CallbacksImpl.get_frame_diff_data_uri: reading_id=%s, compare_id=%s",
             reading_id,
             compare_id,

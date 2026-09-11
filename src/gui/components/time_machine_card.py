@@ -43,7 +43,7 @@ class TimeMachineCard:
         """Render the Time Machine interface."""
 
         def refresh_timeline() -> None:
-            logger.info(
+            logger.debug(
                 "TimeMachine: refreshing timeline (anomalies_only=%s, frames_only=%s)",
                 self.anomalies_only,
                 self.frames_only,
@@ -55,7 +55,7 @@ class TimeMachineCard:
                 frames_only=self.frames_only,
             )
             if not records and self.frames_only:
-                logger.info(
+                logger.debug(
                     "TimeMachine: no frames found with frames_only=True, falling back to all records"
                 )
                 records = self.callbacks.get_timeline(
@@ -67,7 +67,7 @@ class TimeMachineCard:
 
             # Store in chronological order (index 0 = Oldest past, index -1 = Latest live)
             self.timeline_records = list(reversed(records))
-            logger.info(
+            logger.debug(
                 "TimeMachine: timeline loaded %d records in chronological order",
                 len(self.timeline_records),
             )
@@ -266,7 +266,7 @@ class TimeMachineCard:
                     update_countdown_label()
 
                 def toggle_play() -> None:
-                    logger.info(
+                    logger.debug(
                         "TimeMachine: toggle_play called (current is_playing=%s, interval=%.2fs)",
                         self.is_playing,
                         self.playback_interval,
@@ -309,7 +309,7 @@ class TimeMachineCard:
                 def on_speed_change(e: Any) -> None:
                     self.playback_interval = float(e.value)
                     self._seconds_left = min(self._seconds_left, self.playback_interval)
-                    logger.info(
+                    logger.debug(
                         "TimeMachine: playback speed changed to %.2fs",
                         self.playback_interval,
                     )
@@ -367,7 +367,7 @@ class TimeMachineCard:
                     cur_rec = self.timeline_records[self.selected_index]
                     cur_id = cur_rec.get("id", 1)
 
-                    logger.info(
+                    logger.debug(
                         "TimeMachine: updating display for index=%d (reading_id=%s, mode=%s, is_playing=%s)",
                         self.selected_index,
                         cur_id,
@@ -463,7 +463,7 @@ class TimeMachineCard:
                         frame_data_uri = self.callbacks.get_frame_data_uri(cur_id)
                         compare_data_uri = self.callbacks.get_frame_data_uri(compare_id)
 
-                        logger.info(
+                        logger.debug(
                             "TimeMachine: frame_data_uri result for reading_id=%s: %s (compare_id=%s: %s)",
                             cur_id,
                             (
@@ -678,7 +678,7 @@ class TimeMachineCard:
                             or val == self.selected_index
                         ):
                             return
-                        logger.info("TimeMachine: manual slider drag value=%d", val)
+                        logger.debug("TimeMachine: manual slider drag value=%d", val)
                         if 0 <= val < len(self.timeline_records):
                             self.selected_index = val
                             self._programmatic_index = val

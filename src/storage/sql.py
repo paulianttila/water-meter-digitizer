@@ -670,12 +670,12 @@ class SQLAlchemyStorageBackend(StorageBackend):
         return results
 
     def get_frame_bytes(self, reading_id: int) -> tuple[bytes | None, str | None]:
-        logger.info("get_frame_bytes: lookup initiated for reading_id=%s", reading_id)
+        logger.debug("get_frame_bytes: lookup initiated for reading_id=%s", reading_id)
         # 1. Check in-memory ring buffer
         if reading_id in self._memory_frames:
             data, _ftype = self._memory_frames[reading_id]
             mime = "image/webp" if data.startswith(b"RIFF") else "image/jpeg"
-            logger.info(
+            logger.debug(
                 "get_frame_bytes: found frame in memory ring buffer for reading_id=%s (%d bytes, %s)",
                 reading_id,
                 len(data),
@@ -696,7 +696,7 @@ class SQLAlchemyStorageBackend(StorageBackend):
                 try:
                     data = target.read_bytes()
                     mime_type = _detect_mime(data, str(target))
-                    logger.info(
+                    logger.debug(
                         "get_frame_bytes: successfully read %s (%d bytes, mime=%s)",
                         target,
                         len(data),
@@ -721,7 +721,7 @@ class SQLAlchemyStorageBackend(StorageBackend):
                 row_frame_path = row.frame_path
                 row_frame_blob = row.frame_blob
                 row_frame_type = row.frame_type
-                logger.info(
+                logger.debug(
                     "get_frame_bytes: DB row #%s found: frame_path='%s', frame_type='%s', has_blob=%s",
                     reading_id,
                     row_frame_path,
@@ -729,7 +729,7 @@ class SQLAlchemyStorageBackend(StorageBackend):
                     row_frame_blob is not None,
                 )
             else:
-                logger.info(
+                logger.debug(
                     "get_frame_bytes: no DB row found for reading_id=%s", reading_id
                 )
 
@@ -777,7 +777,7 @@ class SQLAlchemyStorageBackend(StorageBackend):
                     return file_res[0], file_res[1]
 
         if row_frame_blob:
-            logger.info(
+            logger.debug(
                 "get_frame_bytes: returning frame_blob from DB row #%s (%d bytes)",
                 reading_id,
                 len(row_frame_blob),
@@ -797,7 +797,7 @@ class SQLAlchemyStorageBackend(StorageBackend):
             if d not in search_dirs:
                 search_dirs.append(d)
 
-        logger.info(
+        logger.debug(
             "get_frame_bytes: searching for snapshot files matching reading_id=%s in dirs: %s",
             reading_id,
             [str(d) for d in search_dirs],
@@ -811,7 +811,7 @@ class SQLAlchemyStorageBackend(StorageBackend):
                 continue
 
             existing_files = [f.name for f in list(s_dir.glob("*.*"))[:15]]
-            logger.info(
+            logger.debug(
                 "get_frame_bytes: dir '%s' contains %d files (sample: %s)",
                 s_dir,
                 len(list(s_dir.glob("*.*"))),
@@ -831,7 +831,7 @@ class SQLAlchemyStorageBackend(StorageBackend):
                     reverse=True,
                 )
                 if matches:
-                    logger.info(
+                    logger.debug(
                         "get_frame_bytes: pattern '%s' matched file %s in %s",
                         pattern,
                         matches[0],
@@ -841,8 +841,8 @@ class SQLAlchemyStorageBackend(StorageBackend):
                     if file_res[0] is not None:
                         return file_res[0], file_res[1]
 
-        logger.warning(
-            "get_frame_bytes: no snapshot frame found anywhere for reading_id=%s",
+        logger.debug(
+            "get_frame_bytes: no snapshot frame found for reading_id=%s",
             reading_id,
         )
         return None, None
