@@ -22,6 +22,7 @@ Automatically read analog and digital utility meters using a camera, image proce
 
 ### 📊 Modern Web Dashboard & Setup
 - **Interactive Visual Setup Wizard (`/gui`)** — Intuitive 9-step alignment tool to easily define reference markers and digit bounding boxes, with instant Reset and Restore Backup tools.
+- **Time Machine & Visual Frame Inspector** — Interactive historical timeline scrubber with side-by-side comparison of historical and live frames, live countdown timer, and ROI confidence score breakdowns.
 - **Config Editor & History Management** — Raw INI editor with syntax verification, 1-click Undo, automatic safety backups (`/config/backups/`), manual checkpoint snapshots, and inline color-coded line-by-line diff inspection.
 - **Glassmorphic Web Dashboard (`/`)** — Live meter status, real-time telemetry, model confidence indicators, and one-click API explorer.
 - **Interactive Consumption Charts** — Visual breakdown of hourly, daily, and weekly water usage with customizable time ranges.
@@ -88,7 +89,7 @@ Official multi-architecture container images are automatically built and publish
 
 ---
 
-### Run Locally (development with `uv`)
+## Run Locally (development with `uv`)
 
 ```bash
 # Install dependencies
@@ -109,6 +110,7 @@ uv run python src/main.py
 
 - **`/` (and `/gui`) — NiceGUI Web Dashboard & Administration**:
   - **Meter Dashboard**: Live readings, primary metrics, confidence badges, cropped dial previews, color-coded ROI inspector, and consumption charts.
+  - **Time Machine**: Interactive historical frame scrubber, side-by-side Historical vs. Live frame comparison with timestamps, and ROI confidence breakdown.
   - **Services & Diagnostics**: Real-time camera latency, system uptime, memory usage, neural network inference telemetry, and continuous zero-flow leak tracking.
   - **Setup Wizard**: 9-step guided calibration flow with live canvas, alignment markers, and backup restoration.
   - **Config Editor & Snapshots**: Visual and raw INI configuration editor with schema validation, 1-click Undo, automated safety backups (`/config/backups/`), and inline diffs.
@@ -147,7 +149,8 @@ All endpoints are served on port `3000`.
 | `GET` | `/mqtt/status` | MQTT connection status, broker details, and topic prefix |
 | `GET` | `/history/consumption?meter=<m>&interval=<i>&days=<d>&cumulative=<b>` | Aggregated consumption buckets (`hourly`, `daily`, `weekly`), with optional cumulative running total |
 | `GET` | `/history/readings?meter=<m>&limit=<n>` | Recent raw meter readings history |
-| `GET` | `/history/stats` | Storage backend health, memory usage, and tracked meter statistics |
+| `GET` | `/history/stats` | Storage backend health, memory usage, snapshot count, and tracked meter statistics |
+| `POST` | `/history/snapshots/prune` | Prune older historical snapshots based on retention and disk quota limits |
 | `POST` | `/history/seed?days=<d>&meter=<m>&base_val=<b>` | Seed synthetic readings history for testing |
 | `POST` | `/history/clear` | Clear all stored history readings |
 
@@ -565,6 +568,24 @@ Settings for SQLAlchemy-backed historical reading retention, SQLite database sto
 | `AutoVacuum` | boolean | `True` | Automatically execute SQLite incremental vacuuming after deletions to recover disk space. |
 | `PruneInterval` | integer | `50` | Number of recorded readings between automated background pruning cycles. |
 | `MaxMemoryMB` | float | `20.0` | In-memory cache memory limit threshold (for in-memory mode). |
+
+---
+
+### `[Snapshots]`
+Settings for compressed historical image archival and Time Machine timeline storage.
+
+| Parameter | Type | Default | Description |
+|---|---|---|---|
+| `Enabled` | boolean | `True` | Enable historical frame archival for the Time Machine visual inspector. |
+| `Mode` | string | `smart_tiered` | Archival strategy: `smart_tiered` (recent full frames + long-term ROI strips), `change_only`, `roi_strips_only`, `full_frames`, or `disabled`. |
+| `Format` | string | `webp` | Image compression format for archived snapshots (`webp` or `jpeg`). |
+| `Quality` | integer | `75` | Compression quality factor (1–100). |
+| `MaxDiskMB` | float | `500.0` | Disk space budget in MB for snapshot storage before automatic pruning. |
+| `RecentFullFrameDays` | integer | `2` | Number of days to retain high-resolution full frames before down-tiering. |
+| `RoiStripRetentionDays` | integer | `14` | Number of days to retain composite ROI strip crops. |
+| `IdleHeartbeatMinutes` | integer | `15` | Maximum interval in minutes between snapshot captures during periods of zero flow. |
+| `AlwaysSaveOnAnomaly` | boolean | `True` | Always archive a full camera frame whenever recognition errors or low confidence occurs. |
+| `StorageDir` | string | `/data/snapshots` | Filesystem directory for compressed snapshot storage. |
 
 ---
 

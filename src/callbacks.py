@@ -89,3 +89,29 @@ class Callbacks(Protocol):
     def set_previous_value(self, name: str, value: str) -> dict[str, Any]:
         """Save a new baseline previous meter value"""
         ...
+
+    def get_timeline(
+        self,
+        limit: int = 50,
+        offset: int = 0,
+        anomalies_only: bool = False,
+        frames_only: bool = False,
+    ) -> list[dict[str, Any]]:
+        """Get historical timeline frames and anomalies"""
+        ...
+
+    def get_frame_data_uri(self, reading_id: int) -> str | None:
+        """Get base64 data URI for a snapshot frame"""
+        ...
+
+    def get_frame_diff(
+        self, reading_id: int, compare_id: int | None = None
+    ) -> dict[str, Any]:
+        """Get visual diff metrics and heatmap for a specific timeline frame"""
+        ...
+
+    def get_frame_diff_data_uri(
+        self, reading_id: int, compare_id: int | None = None
+    ) -> str | None:
+        """Get base64 data URI for visual diff heatmap image"""
+        ...

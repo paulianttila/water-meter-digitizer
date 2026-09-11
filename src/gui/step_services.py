@@ -63,6 +63,32 @@ class ServicesStep(BaseStep):
         self.history_auto_vacuum.value = config.history.auto_vacuum
         self.history_prune_interval.value = config.history.prune_interval
 
+        # Snapshots / Time Machine
+        snap_cfg = getattr(config, "snapshots", None)
+        self.snapshot_mode.value = (
+            getattr(snap_cfg, "mode", "smart_tiered") if snap_cfg else "smart_tiered"
+        )
+        self.snapshot_format.value = (
+            getattr(snap_cfg, "format", "webp") if snap_cfg else "webp"
+        )
+        self.snapshot_quality.value = (
+            getattr(snap_cfg, "quality", 75) if snap_cfg else 75
+        )
+        self.snapshot_max_disk_mb.value = (
+            getattr(snap_cfg, "max_disk_mb", 500.0) if snap_cfg else 500.0
+        )
+        self.snapshot_heartbeat.value = (
+            getattr(snap_cfg, "idle_heartbeat_minutes", 15) if snap_cfg else 15
+        )
+        self.snapshot_save_anomaly.value = (
+            getattr(snap_cfg, "always_save_on_anomaly", True) if snap_cfg else True
+        )
+        self.snapshot_storage_dir.value = (
+            getattr(snap_cfg, "storage_dir", "/data/snapshots")
+            if snap_cfg
+            else "/data/snapshots"
+        )
+
         # Zero-Flow & Leak Monitor
         self.zero_flow_enabled.value = config.zero_flow_monitor.enabled
         self.zero_flow_meter_name.value = config.zero_flow_monitor.meter_name
@@ -119,6 +145,23 @@ class ServicesStep(BaseStep):
         config.history.max_records = int(self.history_max_records.value or 50000)
         config.history.auto_vacuum = bool(self.history_auto_vacuum.value)
         config.history.prune_interval = int(self.history_prune_interval.value or 50)
+
+        # Snapshots / Time Machine
+        if not hasattr(config, "snapshots") or config.snapshots is None:
+            from configuration import Snapshots
+
+            config.snapshots = Snapshots()
+        config.snapshots.mode = str(self.snapshot_mode.value or "smart_tiered")
+        config.snapshots.format = str(self.snapshot_format.value or "webp")
+        config.snapshots.quality = int(self.snapshot_quality.value or 75)
+        config.snapshots.max_disk_mb = float(self.snapshot_max_disk_mb.value or 500.0)
+        config.snapshots.idle_heartbeat_minutes = int(
+            self.snapshot_heartbeat.value or 15
+        )
+        config.snapshots.always_save_on_anomaly = bool(self.snapshot_save_anomaly.value)
+        config.snapshots.storage_dir = str(
+            self.snapshot_storage_dir.value or "/data/snapshots"
+        )
 
         # Zero-Flow & Leak Monitor
         config.zero_flow_monitor.enabled = bool(self.zero_flow_enabled.value)
@@ -327,6 +370,70 @@ class ServicesStep(BaseStep):
                         self.history_prune_interval = ui.number(
                             "Prune Interval", value=50, min=1, step=5
                         ).tooltip("Readouts between automated pruning cycles")
+
+                # Snapshots & Time Machine Archival Card
+                with (
+                    ui.card().classes(
+                        "w-full bg-slate-900/60 border border-white/10 rounded-xl "
+                        "p-4 gap-3 shadow-md"
+                    ),
+                    ui.row().classes("w-full items-center justify-between"),
+                    ui.row().classes("items-center gap-2 text-slate-300 font-semibold"),
+                ):
+                    ui.icon("history_toggle_off", size="sm").classes("text-cyan-400")
+                    ui.label("Snapshots & Time Machine Storage")
+
+                    with ui.grid(
+                        columns="repeat(auto-fit, minmax(180px, 1fr))"
+                    ).classes("w-full gap-3"):
+                        self.snapshot_mode = ui.select(
+                            [
+                                "smart_tiered",
+                                "change_only",
+                                "roi_strips_only",
+                                "full_frames",
+                                "disabled",
+                            ],
+                            label="Capture Strategy",
+                            value="smart_tiered",
+                        ).tooltip(
+                            "smart_tiered: High-res for recent/flow, ROI strips for older\n"
+                            "change_only: Only capture when flow is active or heartbeat\n"
+                            "roi_strips_only: Ultra-lightweight composite strips\n"
+                            "full_frames: Save complete raw camera frame on every reading"
+                        )
+                        self.snapshot_format = ui.select(
+                            ["webp", "jpeg"], label="Format", value="webp"
+                        ).tooltip(
+                            "Image compression format (WebP recommended for 50-70% size reduction)"
+                        )
+                        self.snapshot_quality = ui.number(
+                            "Quality (1-100)", value=75, min=1, max=100, step=5
+                        ).tooltip("Compression quality factor")
+                        self.snapshot_max_disk_mb = ui.number(
+                            "Max Disk Cap (MB)", value=500.0, min=10.0, step=50.0
+                        ).tooltip(
+                            "Maximum snapshot storage limit before automated FIFO pruning"
+                        )
+
+                    with ui.grid(
+                        columns="repeat(auto-fit, minmax(200px, 1fr))"
+                    ).classes("w-full gap-3"):
+                        self.snapshot_heartbeat = ui.number(
+                            "Idle Heartbeat (Minutes)", value=15, min=1, step=5
+                        ).tooltip(
+                            "Capture frame at least once every N minutes even if no water flows"
+                        )
+                        self.snapshot_save_anomaly = ui.checkbox(
+                            "Always Save on Anomaly / Error", value=True
+                        ).tooltip(
+                            "Always archive full camera frame when OCR recognition error or low confidence occurs"
+                        )
+                        self.snapshot_storage_dir = ui.input(
+                            "Snapshot Directory", value="/data/snapshots"
+                        ).tooltip(
+                            "Filesystem path where compressed snapshots are stored"
+                        )
 
                 # Zero-Flow & Leak Monitor Card
                 with ui.card().classes(

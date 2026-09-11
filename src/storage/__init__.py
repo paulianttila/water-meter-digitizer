@@ -25,6 +25,16 @@ def get_storage_backend(config: Any) -> StorageBackend:
     auto_vacuum = getattr(history_cfg, "auto_vacuum", True)
     prune_interval = getattr(history_cfg, "prune_interval", 50)
 
+    snap_cfg = getattr(config, "snapshots", None)
+    snapshots_dir = (
+        getattr(snap_cfg, "storage_dir", "/data/snapshots")
+        if snap_cfg
+        else "/data/snapshots"
+    )
+    snapshot_mode = (
+        getattr(snap_cfg, "mode", "smart_tiered") if snap_cfg else "smart_tiered"
+    )
+
     if backend_type == "memory" or db_url == "sqlite:///:memory:":
         return MemoryStorageBackend(
             max_memory_mb=max_memory_mb,
@@ -32,6 +42,7 @@ def get_storage_backend(config: Any) -> StorageBackend:
             max_records=max_records,
             auto_vacuum=auto_vacuum,
             prune_interval=prune_interval,
+            snapshot_mode=snapshot_mode,
         )
 
     if not db_url:
@@ -45,6 +56,8 @@ def get_storage_backend(config: Any) -> StorageBackend:
         max_records=max_records,
         auto_vacuum=auto_vacuum,
         prune_interval=prune_interval,
+        snapshots_dir=snapshots_dir,
+        snapshot_mode=snapshot_mode,
     )
 
 

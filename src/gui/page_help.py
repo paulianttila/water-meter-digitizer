@@ -18,13 +18,14 @@ class HelpPage:
                 "Overview & Navigation", icon="explore", value=True
             ).classes("w-full bg-slate-900/60 border border-white/10 rounded-xl"):
                 ui.markdown(
-                    "- **Meter**: View live meter readings, trigger manual "
-                    "readouts, and inspect individual CNN predictions.\n"
+                    "- **Meter**: View live meter readings, consumption history "
+                    "charts, and the interactive **Time Machine** historical frame "
+                    "scrubber with side-by-side comparison and ROI confidence breakdowns.\n"
                     "- **Setup**: Interactive 9-step wizard for camera capture, "
                     "affine alignment, ROI bounding boxes, meter formatting, and "
                     "services.\n"
                     "- **Config**: Raw `config.ini` editor with real-time "
-                    "syntax checking, JSON visualization, and hot reloading.\n"
+                    "syntax checking, JSON visualization, safety backups, and 1-click Undo.\n"
                     "- **About**: Version information, runtime details, and "
                     "system architecture summary."
                 ).classes("p-2 text-sm text-gray-300 leading-relaxed")

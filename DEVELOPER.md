@@ -20,6 +20,7 @@ Welcome to the **Water Meter Digitizer** codebase. This document is a comprehens
    - [9. Web UI & Setup Wizard (NiceGUI & FastAPI)](#9-web-ui--setup-wizard-nicegui--fastapi)
    - [10. Configuration History & Backups](#10-configuration-history--backups)
    - [11. Single Source of Truth (SSoT) Versioning](#11-single-source-of-truth-ssot-versioning)
+   - [12. Historical Snapshots & Time Machine Archival](#12-historical-snapshots--time-machine-archival)
 4. [Development Environment Setup](#development-environment-setup)
 5. [Running the Application Locally](#running-the-application-locally)
 6. [Testing Guide](#testing-guide)
@@ -271,6 +272,24 @@ config/neuralnets/
   - **FastAPI Application**: Injected into the root application instance (`app.version`), `/version` endpoint, and `/health` diagnostics.
   - **MQTT & Home Assistant Discovery**: Published in device software version telemetry (`sw_version`) in discovery payloads and status topics.
   - **Web Dashboard & UI**: Rendered in the header banner, footer, and sidebar.
+
+### 12. Historical Snapshots & Time Machine Archival
+- **Subsystem Architecture (`src/gui/components/time_machine_card.py`, `src/storage/`)**: Provides visual historical inspection, anomaly debugging, and before/after optical validation.
+- **Storage Strategies & Smart Tiering**:
+  - `smart_tiered`: Stores uncompressed or high-quality full camera frames (`frame_{id}_{ts}.webp`) for recent readings (e.g. 2 days), and down-tiers older frames into compact horizontal ROI composite strips (`strip_{id}_{ts}.webp`) spanning the full ROI array to preserve optical digits while using < 5 KB per frame.
+  - `change_only`: Only archives frames when flow is detected or when readings change.
+  - `full_frames` / `roi_strips_only`: Forces fixed storage format across the retention lifecycle.
+  - `always_save_on_anomaly`: Always captures high-resolution full frames whenever recognition errors or low confidence scores are encountered.
+- **Resilient Multi-Stage Lookup (`src/storage/sql.py`)**:
+  - Fast-path in-memory ring buffer lookup (`self._snapshot_ring_buffer`).
+  - Database row lookup (`frame_path`, `frame_type`, `has_blob`).
+  - Canonical and relative path resolution with fallback glob matching across candidate directories (`/data/snapshots`, `/config/data/snapshots`, current working directory).
+- **Frontend NiceGUI Architecture**:
+  - Chronological scrubber slider (`0` = Oldest past, `N-1` = Latest live) with endpoint timestamp indicators.
+  - Decoupled static controls container to eliminate UI destruction or focus loss during scrubbing and time-lapse playback.
+  - Standardized `360px` image viewport height ensuring timestamps under Historical and Live frames remain horizontally aligned regardless of aspect ratio or ROI strip display.
+  - Real-time 100ms countdown timer badge (`⏱️ Next: X.Xs`) with configurable playback speeds (0.5s to 10s).
+  - Integrated detection cards for Digital Drums and Analog Dials linking individual digit/pointer confidence percentages directly to the active Historical Frame.
 
 ---
 

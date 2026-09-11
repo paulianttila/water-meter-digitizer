@@ -158,6 +158,21 @@ class History(BaseModel):
     prune_interval: int = 50
 
 
+class Snapshots(BaseModel):
+    enabled: bool = True
+    mode: str = (
+        "smart_tiered"  # "smart_tiered", "change_only", "roi_strips_only", "full_frames", "disabled"
+    )
+    format: str = "webp"  # "webp", "jpeg"
+    quality: int = 75
+    max_disk_mb: float = 500.0
+    recent_full_frame_days: int = 2
+    roi_strip_retention_days: int = 14
+    idle_heartbeat_minutes: int = 15
+    always_save_on_anomaly: bool = True
+    storage_dir: str = "/data/snapshots"
+
+
 class Poller(BaseModel):
     enabled: bool = False
     interval_seconds: int = 300
@@ -216,6 +231,7 @@ class Config(BaseSettings):
     resize: Resize = Field(default_factory=Resize)
     image_processing: ImageProcessing = Field(default_factory=ImageProcessing)
     history: History = Field(default_factory=History)
+    snapshots: Snapshots = Field(default_factory=Snapshots)
     poller: Poller = Field(default_factory=Poller)
     mqtt: MQTT = Field(default_factory=MQTT)
     zero_flow_monitor: ZeroFlowMonitor = Field(default_factory=ZeroFlowMonitor)
@@ -469,6 +485,19 @@ class Config(BaseSettings):
             "FlowThreshold": str(self.zero_flow_monitor.flow_threshold),
             "ResolveDebounceCount": str(self.zero_flow_monitor.resolve_debounce_count),
             "MaxHistoryEvents": str(self.zero_flow_monitor.max_history_events),
+        }
+
+        config["Snapshots"] = {
+            "Enabled": str(self.snapshots.enabled),
+            "Mode": self.snapshots.mode,
+            "Format": self.snapshots.format,
+            "Quality": str(self.snapshots.quality),
+            "MaxDiskMB": str(self.snapshots.max_disk_mb),
+            "RecentFullFrameDays": str(self.snapshots.recent_full_frame_days),
+            "RoiStripRetentionDays": str(self.snapshots.roi_strip_retention_days),
+            "IdleHeartbeatMinutes": str(self.snapshots.idle_heartbeat_minutes),
+            "AlwaysSaveOnAnomaly": str(self.snapshots.always_save_on_anomaly),
+            "StorageDir": self.snapshots.storage_dir,
         }
 
         config.write(fp, space_around_delimiters=False)
@@ -773,6 +802,31 @@ class Config(BaseSettings):
             max_history_events=config.getint(
                 "ZeroFlowMonitor", "MaxHistoryEvents", fallback=50
             ),
+        )
+
+        ################## Snapshots / Time Machine Parameters #########################
+        snapshot_dir = config.get(
+            "Snapshots", "StorageDir", fallback=f"{self.data_dir}/snapshots"
+        )
+        self.snapshots = Snapshots(
+            enabled=config.getboolean("Snapshots", "Enabled", fallback=True),
+            mode=config.get("Snapshots", "Mode", fallback="smart_tiered").lower(),
+            format=config.get("Snapshots", "Format", fallback="webp").lower(),
+            quality=config.getint("Snapshots", "Quality", fallback=75),
+            max_disk_mb=config.getfloat("Snapshots", "MaxDiskMB", fallback=500.0),
+            recent_full_frame_days=config.getint(
+                "Snapshots", "RecentFullFrameDays", fallback=2
+            ),
+            roi_strip_retention_days=config.getint(
+                "Snapshots", "RoiStripRetentionDays", fallback=14
+            ),
+            idle_heartbeat_minutes=config.getint(
+                "Snapshots", "IdleHeartbeatMinutes", fallback=15
+            ),
+            always_save_on_anomaly=config.getboolean(
+                "Snapshots", "AlwaysSaveOnAnomaly", fallback=True
+            ),
+            storage_dir=snapshot_dir,
         )
 
         return self

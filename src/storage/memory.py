@@ -11,6 +11,7 @@ class MemoryStorageBackend(SQLAlchemyStorageBackend):
         retention_days: int = 30,
         auto_vacuum: bool = True,
         prune_interval: int = 50,
+        snapshot_mode: str = "smart_tiered",
     ) -> None:
         super().__init__(
             db_url="sqlite:///:memory:",
@@ -19,6 +20,8 @@ class MemoryStorageBackend(SQLAlchemyStorageBackend):
             max_records=max_records,
             auto_vacuum=auto_vacuum,
             prune_interval=prune_interval,
+            snapshots_dir=None,
+            snapshot_mode=snapshot_mode,
         )
 
 

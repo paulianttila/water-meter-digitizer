@@ -127,3 +127,55 @@ def test_callbacks_impl_fallbacks():
     assert callbacks.get_mqtt_status() == {"enabled": False, "connected": False}
     assert callbacks.get_previous_values() == {}
     assert callbacks.set_previous_value("total", "10.0")["status"] == "error"
+
+
+def test_callbacks_impl_frame_data_uris():
+    mock_storage = MagicMock()
+    # JPEG test image bytes
+    mock_storage.get_frame_bytes.return_value = (
+        b"\xff\xd8\xff\xe0test_bytes",
+        "image/jpeg",
+    )
+
+    callbacks = CallbacksImpl(
+        get_meter_data_fn=lambda **kwargs: MeterResult(
+            meters=[], digital_results={}, analog_results={}
+        ),
+        get_image_base64_fn=lambda name: "",
+        get_config_fn=MagicMock,
+        load_config_file_fn=lambda: "",
+        save_config_file_fn=lambda data: None,
+        use_config_fn=lambda: None,
+        get_storage_fn=lambda: mock_storage,
+        list_backups_fn=lambda: [],
+        restore_backup_fn=lambda name: None,
+        undo_backup_fn=lambda: None,
+        create_snapshot_fn=lambda tag: None,
+        delete_backup_fn=lambda name: False,
+        diff_backup_fn=lambda name: [],
+    )
+
+    uri = callbacks.get_frame_data_uri(1)
+    assert uri is not None
+    assert uri.startswith("data:image/jpeg;base64,")
+
+    # When storage is None
+    callbacks_no_store = CallbacksImpl(
+        get_meter_data_fn=lambda **kwargs: MeterResult(
+            meters=[], digital_results={}, analog_results={}
+        ),
+        get_image_base64_fn=lambda name: "",
+        get_config_fn=MagicMock,
+        load_config_file_fn=lambda: "",
+        save_config_file_fn=lambda data: None,
+        use_config_fn=lambda: None,
+        get_storage_fn=lambda: None,
+        list_backups_fn=lambda: [],
+        restore_backup_fn=lambda name: None,
+        undo_backup_fn=lambda: None,
+        create_snapshot_fn=lambda tag: None,
+        delete_backup_fn=lambda name: False,
+        diff_backup_fn=lambda name: [],
+    )
+    assert callbacks_no_store.get_frame_data_uri(1) is None
+    assert callbacks_no_store.get_frame_diff_data_uri(1) is None

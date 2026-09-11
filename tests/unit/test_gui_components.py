@@ -254,6 +254,38 @@ def test_history_table_card(mock_callbacks):
     mock_callbacks.get_storage.assert_called()
 
 
+def test_time_machine_card(mock_callbacks):
+    from nicegui import ui
+
+    from gui.components.time_machine_card import TimeMachineCard
+
+    mock_callbacks.get_frame_data_uri.return_value = "data:image/jpeg;base64,AAAA"
+
+    mock_callbacks.get_timeline.return_value = [
+        {
+            "id": 1,
+            "timestamp": "2026-09-10T12:00:00Z",
+            "meters": {"total": {"value": 123.4, "unit": "m3", "confidence": 98.0}},
+            "digital_results": {"0": "1", "1": "2"},
+            "analog_results": {"0": "3"},
+            "error": "",
+            "frame_type": "full",
+            "flow_detected": True,
+            "confidence_scores": {"digital_0": 99.0},
+        }
+    ]
+
+    card = TimeMachineCard(mock_callbacks)
+    with ui.column() as container:
+        card.render(container)
+    mock_callbacks.get_timeline.assert_called()
+
+    # Test rendering when no frame image is available
+    mock_callbacks.get_frame_data_uri.return_value = None
+    with ui.column() as c:
+        card.render(c)
+
+
 def test_services_page(mock_callbacks):
     page = ServicesPage(mock_callbacks)
     asyncio.run(page.fetch_all_telemetry())

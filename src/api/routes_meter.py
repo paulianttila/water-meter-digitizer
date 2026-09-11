@@ -364,7 +364,7 @@ def get_meter_data(
     storage = getattr(app.state, "storage", None) if app else None
     if storage is not None:
         try:
-            storage.record_meter_result(meter_result)
+            storage.record_meter_result(meter_result, image=final_img, config=config)
         except Exception as e:
             logger.warning(f"Error recording meter result to history: {e}")
 

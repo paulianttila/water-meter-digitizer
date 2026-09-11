@@ -7,6 +7,7 @@ from nicegui import ui
 from callbacks import Callbacks
 from gui.components.consumption_card import ConsumptionCard
 from gui.components.history_table_card import HistoryTableCard
+from gui.components.time_machine_card import TimeMachineCard
 from gui.theme import BADGE_ERROR, BADGE_SUCCESS, BADGE_WARNING
 
 
@@ -17,6 +18,7 @@ class MeterPage:
         self.callbacks = callbacks
         self.consumption_card = ConsumptionCard(self.callbacks)
         self.history_card = HistoryTableCard(self.callbacks)
+        self.time_machine_card = TimeMachineCard(self.callbacks)
         self.spinner: ui.spinner | None = None
 
     async def show(self) -> None:
@@ -377,6 +379,7 @@ class MeterPage:
             .props("align=left active-color=cyan") as tabs
         ):
             values = ui.tab("Values", icon="speed")
+            time_machine = ui.tab("Time Machine", icon="history_toggle_off")
             statistics = ui.tab("Statistics", icon="bar_chart")
             history = ui.tab("History", icon="table_view")
 
@@ -385,6 +388,9 @@ class MeterPage:
         ):
             with ui.tab_panel(values).classes("p-0"):
                 value_container = ui.column().classes("w-full")
+            with ui.tab_panel(time_machine).classes("p-0"):
+                tm_container = ui.column().classes("w-full")
+                self.time_machine_card.render(tm_container)
             with ui.tab_panel(statistics).classes("p-0"):
                 stats_container = ui.column().classes("w-full")
                 self.consumption_card.render(stats_container)

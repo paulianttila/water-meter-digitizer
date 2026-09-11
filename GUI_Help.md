@@ -38,15 +38,33 @@ The interface is divided into a collapsible left sidebar and the main workspace:
 
 ---
 
-## Meter Page (Live Readouts)
+## Meter Page (Live Readouts, History & Time Machine)
 
 ![Meter Live Readouts](docs/images/meter_page.png)
 
-The **Meter** tab provides an operational overview of the digitizer:
+The **Meter** tab provides three integrated operational views:
+
+### 1. Live Readouts
 - **Trigger Readout**: Click the refresh button to capture a frame and perform immediate inference.
 - **Save Intermediate Images**: Checkbox to save rotated, aligned, and cropped ROI images to `/image/{name}` for diagnostics.
-- **Meter Cards**: Displays current readings with units (e.g. `0300.957 m³`), timestamp, and processing duration.
+- **Meter Cards**: Displays current readings with units (e.g. `0300.957 m³`), timestamp, processing duration, and flow status.
 - **Sub-digit Readouts**: Inspect the individual classification confidence and predictions for each digital drum digit and analog needle dial.
+
+### 2. Consumption History
+- **Interval Breakdown**: Visual bar charts showing consumption aggregated by `Hourly`, `Daily`, and `Weekly` buckets.
+- **Cumulative Mode**: Toggle running total curves to track total volume consumed over selected time windows.
+- **Summary Metrics**: Highlighting total consumed volume, average rate, peak consumption periods, and baseline references.
+
+### 3. Time Machine & Frame Inspector
+The **Time Machine** provides an interactive chronological frame scrubber and visual comparison inspector:
+- **Chronological Scrubber**: Drag or play across recorded historical snapshot frames. The timeline is oriented from left (Oldest / Past) to right (Latest / Live) with explicit timestamp labels.
+- **Side-by-Side Comparison**: Displays the selected **Historical Frame** on the left alongside the **Latest Live Frame** on the right in standardized viewports, with formatted UTC timestamps directly beneath both frames.
+- **Historical ROI Breakdown**: Integrated detection cards for **Digital Drums** and **Analog Dials** display the exact digit predictions and confidence percentages for the active Historical Frame.
+- **Time-lapse Playback**: Auto-advance through historical frames with a live countdown timer badge (`⏱️ Next: X.Xs`) and selectable playback speeds (`10s`, `5s`, `3s`, `2s`, `1s`, `0.5s`).
+- **Filters & Storage Management**:
+  - **Frames Only**: Switch between all recorded database records and snapshot-bearing frames.
+  - **Anomalies Only**: Filter specifically for frames where recognition errors or low-confidence readings occurred.
+  - **Prune Tool**: 1-click button to reclaim disk space within configured storage budgets.
 
 ---
 
@@ -132,6 +150,12 @@ The top toolbar of the Setup Wizard includes quick recovery tools:
 - **Scheduled Background Poller**: Enable the internal async scheduler to trigger periodic readouts automatically (`IntervalSeconds`, `RunOnStartup`, `SaveImages`, `RetryIntervalSeconds`).
 - **MQTT & Home Assistant Discovery**: Configure MQTT broker connection (`Broker`, `Port`, `Username`, `Password`, `ClientID`, `TopicPrefix`, `TLS`, `Retain`) and automatic Home Assistant entity discovery (`HomeAssistantDiscovery`, `DiscoveryPrefix`, `DeviceName`, `DeviceID`).
 - **History Storage & Retention**: Select SQLite database or in-memory backend, data directory, retention days, and max records pruning.
+- **Snapshots & Time Machine Archival**: Configure historical frame capture strategies and compression:
+  - `Mode`: Storage policy (`smart_tiered`, `change_only`, `roi_strips_only`, `full_frames`, `disabled`).
+  - `Format` & `Quality`: Output compression (`webp` or `jpeg`, quality factor 1–100).
+  - `MaxDiskMB`: Maximum disk space ceiling in MB allocated for snapshot archives before automated pruning.
+  - `IdleHeartbeatMinutes`: Max interval between snapshot captures during long zero-flow periods.
+  - `AlwaysSaveOnAnomaly`: Ensures full frames are archived whenever recognition errors or low confidence occurs.
 - **Zero-Flow Tracking & Leak Monitor**: Automatically detect continuous non-zero water usage sustained over time without quiet periods:
   - `ContinuousFlowHours`: Continuous flow duration threshold before triggering alert (e.g. `2.0` hours).
   - `MinLeakVolume`: Minimum cumulative volume required to flag leak (filters optical digit jitter).

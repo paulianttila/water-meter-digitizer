@@ -36,6 +36,14 @@ def test_services_step_load_and_apply():
     step.history_auto_vacuum = MagicMock(value=True)
     step.history_prune_interval = MagicMock(value=50)
 
+    step.snapshot_mode = MagicMock(value="smart_tiered")
+    step.snapshot_format = MagicMock(value="webp")
+    step.snapshot_quality = MagicMock(value=75)
+    step.snapshot_max_disk_mb = MagicMock(value=500.0)
+    step.snapshot_heartbeat = MagicMock(value=15)
+    step.snapshot_save_anomaly = MagicMock(value=True)
+    step.snapshot_storage_dir = MagicMock(value="/data/snapshots")
+
     step.data_dir = MagicMock(value="/data")
     step.min_confidence_threshold = MagicMock(value=50.0)
 
