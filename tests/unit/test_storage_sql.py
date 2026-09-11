@@ -1,5 +1,5 @@
 import threading
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta
 from pathlib import Path
 
 from processor.digitizer import MeterResult, MeterValue
@@ -16,7 +16,8 @@ def test_sqlite_file_storage_basic(tmp_path: Path):
     )
     assert db_path.exists()
 
-    now = datetime(2026, 9, 6, 12, 0, 0, tzinfo=UTC)
+    local_tz = datetime.now().astimezone().tzinfo
+    now = datetime(2026, 9, 6, 12, 0, 0, tzinfo=local_tz)
     storage.record_reading(
         timestamp=now,
         meters={
@@ -49,7 +50,7 @@ def test_sqlite_time_retention_pruning():
         max_records=1000,
         prune_interval=1,
     )
-    now = datetime.now(UTC)
+    now = datetime.now().astimezone()
 
     # Record 1: 10 days ago (should be pruned)
     storage.record_reading(
@@ -81,7 +82,8 @@ def test_sqlite_max_records_fifo_pruning():
         retention_days=0,
         prune_interval=1,
     )
-    base_time = datetime(2026, 9, 1, 0, 0, 0, tzinfo=UTC)
+    local_tz = datetime.now().astimezone().tzinfo
+    base_time = datetime(2026, 9, 1, 0, 0, 0, tzinfo=local_tz)
 
     for i in range(12):
         storage.record_reading(
@@ -98,7 +100,8 @@ def test_sqlite_max_records_fifo_pruning():
 
 def test_sqlite_filtering_options():
     storage = SQLAlchemyStorageBackend(db_url="sqlite:///:memory:")
-    base = datetime(2026, 9, 1, 0, 0, 0, tzinfo=UTC)
+    local_tz = datetime.now().astimezone().tzinfo
+    base = datetime(2026, 9, 1, 0, 0, 0, tzinfo=local_tz)
 
     for i in range(10):
         storage.record_reading(
@@ -130,10 +133,11 @@ def test_sqlite_consumption_intervals():
     storage = SQLAlchemyStorageBackend(db_url="sqlite:///:memory:")
 
     # Hourly test
-    t1 = datetime(2026, 9, 1, 10, 5, tzinfo=UTC)
-    t2 = datetime(2026, 9, 1, 10, 45, tzinfo=UTC)
-    t3 = datetime(2026, 9, 1, 11, 10, tzinfo=UTC)
-    t4 = datetime(2026, 9, 1, 11, 50, tzinfo=UTC)
+    local_tz = datetime.now().astimezone().tzinfo
+    t1 = datetime(2026, 9, 1, 10, 5, tzinfo=local_tz)
+    t2 = datetime(2026, 9, 1, 10, 45, tzinfo=local_tz)
+    t3 = datetime(2026, 9, 1, 11, 10, tzinfo=local_tz)
+    t4 = datetime(2026, 9, 1, 11, 50, tzinfo=local_tz)
 
     storage.record_reading(t1, {"main": MeterReading(value=100.0)})
     storage.record_reading(t2, {"main": MeterReading(value=100.5)})
@@ -156,7 +160,8 @@ def test_sqlite_consumption_intervals():
 
 def test_sqlite_concurrent_writes_and_reads():
     storage = SQLAlchemyStorageBackend(db_url="sqlite:///:memory:", max_records=200)
-    base_time = datetime(2026, 9, 1, 0, 0, 0, tzinfo=UTC)
+    local_tz = datetime.now().astimezone().tzinfo
+    base_time = datetime(2026, 9, 1, 0, 0, 0, tzinfo=local_tz)
 
     def worker(worker_id: int):
         for i in range(20):

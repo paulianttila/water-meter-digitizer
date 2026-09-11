@@ -1,7 +1,7 @@
 """Meter readout, ROI visualization, baseline setting, and image caching endpoints."""
 
 import logging
-from datetime import UTC, datetime
+from datetime import datetime
 from typing import Any
 
 from fastapi import APIRouter, HTTPException, Request, Response
@@ -396,7 +396,7 @@ def get_meter_data(
 
             if target_val is not None:
                 zero_status = zero_flow_tracker.evaluate_reading(
-                    timestamp=datetime.now(UTC),
+                    timestamp=datetime.now().astimezone(),
                     meter_value=target_val,
                     confidence=target_conf,
                     quality=target_qual,

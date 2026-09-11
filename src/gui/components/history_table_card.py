@@ -1,6 +1,6 @@
 """Historical Meter Readings Table Component for NiceGUI."""
 
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta
 from typing import Any
 
 from nicegui import ui
@@ -37,7 +37,7 @@ class HistoryTableCard:
                 self.current_meter = tracked_meters[0]
 
             start_time = (
-                datetime.now(UTC) - timedelta(days=self.time_range_days)
+                datetime.now().astimezone() - timedelta(days=self.time_range_days)
                 if self.time_range_days > 0
                 else None
             )
@@ -158,10 +158,9 @@ class HistoryTableCard:
                         ).props("unelevated color=primary size=sm")
                     return
 
-                # Build Table Rows & Columns
                 rows = []
                 for idx, r in enumerate(readings):
-                    time_str = r.timestamp.strftime("%Y-%m-%d %H:%M:%S")
+                    time_str = r.timestamp.astimezone().strftime("%Y-%m-%d %H:%M:%S")
 
                     # Primary reading summary
                     meter_display_parts = []
@@ -228,7 +227,7 @@ class HistoryTableCard:
                 columns: list[dict[str, Any]] = [
                     {
                         "name": "timestamp",
-                        "label": "Timestamp (UTC)",
+                        "label": "Timestamp",
                         "field": "timestamp",
                         "required": True,
                         "align": "left",

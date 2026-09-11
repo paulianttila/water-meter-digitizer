@@ -1,7 +1,7 @@
 import logging
 import threading
 from collections import deque
-from datetime import UTC, datetime
+from datetime import datetime
 from typing import Any
 
 from .models import LeakEvent, LeakState, ZeroFlowStatus
@@ -61,7 +61,9 @@ class ZeroFlowTracker:
                 return self._build_status(enabled=True)
 
             if timestamp.tzinfo is None:
-                timestamp = timestamp.replace(tzinfo=UTC)
+                timestamp = timestamp.astimezone()
+            else:
+                timestamp = timestamp.astimezone()
 
             # First reading initialization
             if self._last_reading_value is None or self._last_reading_time is None:
@@ -213,7 +215,7 @@ class ZeroFlowTracker:
     def reset(self) -> ZeroFlowStatus:
         """Manually reset and acknowledge any active leak alert."""
         with self._lock:
-            now = datetime.now(UTC)
+            now = datetime.now().astimezone()
             if self._active_event is not None:
                 self._resolve_active_event(now, "manual_reset")
             self._last_zero_flow_time = now

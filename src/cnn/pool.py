@@ -5,7 +5,7 @@ import threading
 from collections.abc import Generator
 from contextlib import contextmanager
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import datetime
 from typing import Any
 
 try:
@@ -154,7 +154,7 @@ class InterpreterPool:
             if self._max_inference_ms is None or duration_ms > self._max_inference_ms:
                 self._max_inference_ms = round(duration_ms, 2)
             self._last_inference_ms = round(duration_ms, 2)
-            self._last_inference_at = datetime.now(UTC).isoformat()
+            self._last_inference_at = datetime.now().astimezone().isoformat()
 
     def get_stats(self) -> dict[str, Any]:
         """Return runtime performance and pool metrics."""

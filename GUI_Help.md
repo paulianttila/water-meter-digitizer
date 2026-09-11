@@ -58,7 +58,7 @@ The **Meter** tab provides three integrated operational views:
 ### 3. Time Machine & Frame Inspector
 The **Time Machine** provides an interactive chronological frame scrubber and visual comparison inspector:
 - **Chronological Scrubber**: Drag or play across recorded historical snapshot frames. The timeline is oriented from left (Oldest / Past) to right (Latest / Live) with explicit timestamp labels.
-- **Side-by-Side Comparison**: Displays the selected **Historical Frame** on the left alongside the **Latest Live Frame** on the right in standardized viewports, with formatted UTC timestamps directly beneath both frames.
+- **Side-by-Side Comparison**: Displays the selected **Historical Frame** on the left alongside the **Latest Live Frame** on the right in standardized viewports, with formatted local timestamps directly beneath both frames.
 - **Historical ROI Breakdown**: Integrated detection cards for **Digital Drums** and **Analog Dials** display the exact digit predictions and confidence percentages for the active Historical Frame.
 - **Time-lapse Playback**: Auto-advance through historical frames with a live countdown timer badge (`⏱️ Next: X.Xs`) and selectable playback speeds (`10s`, `5s`, `3s`, `2s`, `1s`, `0.5s`).
 - **Filters & Storage Management**:

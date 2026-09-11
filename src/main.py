@@ -8,7 +8,7 @@ import sys
 import threading
 import time
 from contextlib import asynccontextmanager
-from datetime import UTC, datetime
+from datetime import datetime
 from pathlib import Path
 from typing import Any
 
@@ -115,7 +115,7 @@ app.state.image_cache = ImageCache(max_size=50, ttl_seconds=300.0)
 app.state.storage = get_storage_backend(config)
 app.state.zero_flow_tracker = ZeroFlowTracker(config.zero_flow_monitor)
 app.state.start_time = time.time()
-app.state.started_at = datetime.now(UTC).isoformat()
+app.state.started_at = datetime.now().astimezone().isoformat()
 app.state.mqtt_service = MQTTService(
     config=config.mqtt,
     meter_configs=config.meter_configs,

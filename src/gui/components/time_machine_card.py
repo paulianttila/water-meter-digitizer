@@ -380,8 +380,8 @@ class TimeMachineCard:
                     with metadata_container:
                         ts_str = cur_rec.get("timestamp", "")
                         try:
-                            dt = datetime.fromisoformat(ts_str)
-                            ts_formatted = dt.strftime("%Y-%m-%d %H:%M:%S UTC")
+                            dt = datetime.fromisoformat(ts_str).astimezone()
+                            ts_formatted = dt.strftime("%Y-%m-%d %H:%M:%S")
                         except Exception:
                             ts_formatted = ts_str
 
@@ -442,8 +442,8 @@ class TimeMachineCard:
                         # Formatted timestamps for both frames
                         hist_ts_raw = cur_rec.get("timestamp", "")
                         try:
-                            dt_hist = datetime.fromisoformat(hist_ts_raw)
-                            hist_ts_str = dt_hist.strftime("%Y-%m-%d %H:%M:%S UTC")
+                            dt_hist = datetime.fromisoformat(hist_ts_raw).astimezone()
+                            hist_ts_str = dt_hist.strftime("%Y-%m-%d %H:%M:%S")
                         except Exception:
                             hist_ts_str = hist_ts_raw
 
@@ -454,8 +454,8 @@ class TimeMachineCard:
                         )
                         live_ts_raw = live_rec.get("timestamp", "")
                         try:
-                            dt_live = datetime.fromisoformat(live_ts_raw)
-                            live_ts_str = dt_live.strftime("%Y-%m-%d %H:%M:%S UTC")
+                            dt_live = datetime.fromisoformat(live_ts_raw).astimezone()
+                            live_ts_str = dt_live.strftime("%Y-%m-%d %H:%M:%S")
                         except Exception:
                             live_ts_str = live_ts_raw
 
@@ -693,7 +693,7 @@ class TimeMachineCard:
                             try:
                                 dt0 = datetime.fromisoformat(
                                     self.timeline_records[0].get("timestamp", "")
-                                )
+                                ).astimezone()
                                 oldest_ts = dt0.strftime("%Y-%m-%d %H:%M:%S")
                             except Exception:
                                 oldest_ts = self.timeline_records[0].get(
@@ -703,7 +703,7 @@ class TimeMachineCard:
                             try:
                                 dt_last = datetime.fromisoformat(
                                     self.timeline_records[-1].get("timestamp", "")
-                                )
+                                ).astimezone()
                                 latest_ts = dt_last.strftime("%Y-%m-%d %H:%M:%S")
                             except Exception:
                                 latest_ts = self.timeline_records[-1].get(

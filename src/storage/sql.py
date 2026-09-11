@@ -4,7 +4,7 @@ import os
 import re
 import threading
 from collections import OrderedDict, defaultdict
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta
 from pathlib import Path
 from typing import Any, Literal
 
@@ -228,9 +228,9 @@ class SQLAlchemyStorageBackend(StorageBackend):
         confidence_scores: dict[str, float] | None = None,
     ) -> int | None:
         if timestamp.tzinfo is None:
-            timestamp = timestamp.replace(tzinfo=UTC)
+            timestamp = timestamp.astimezone()
         else:
-            timestamp = timestamp.astimezone(UTC)
+            timestamp = timestamp.astimezone()
 
         meters_dict = {k: v.model_dump() for k, v in meters.items()}
         meters_json = json.dumps(meters_dict)
@@ -295,7 +295,7 @@ class SQLAlchemyStorageBackend(StorageBackend):
         image: Any | None = None,
         config: Any | None = None,
     ) -> int | None:
-        ts = timestamp or datetime.now(UTC)
+        ts = timestamp if timestamp is not None else datetime.now().astimezone()
         meters: dict[str, MeterReading] = {}
         flow_detected = False
         confidence_scores: dict[str, float] = {}
@@ -411,7 +411,7 @@ class SQLAlchemyStorageBackend(StorageBackend):
 
     def _prune_and_vacuum(self, session: Any) -> None:
         """Enforce time-based retention, max records limits, and snapshot storage caps."""
-        now = datetime.now(UTC)
+        now = datetime.now().astimezone()
 
         # 1. Time-based retention pruning
         if self.retention_days > 0:
@@ -516,19 +516,19 @@ class SQLAlchemyStorageBackend(StorageBackend):
         with self._lock, self.Session() as session:
             query = select(ReadingModel)
             if start is not None:
-                s_utc = (
-                    start.replace(tzinfo=UTC)
-                    if start.tzinfo is None
-                    else start.astimezone(UTC)
+                s_loc = (
+                    start.astimezone()
+                    if start.tzinfo is not None
+                    else start.replace(tzinfo=datetime.now().astimezone().tzinfo)
                 )
-                query = query.where(ReadingModel.timestamp >= s_utc)
+                query = query.where(ReadingModel.timestamp >= s_loc)
             if end is not None:
-                e_utc = (
-                    end.replace(tzinfo=UTC)
-                    if end.tzinfo is None
-                    else end.astimezone(UTC)
+                e_loc = (
+                    end.astimezone()
+                    if end.tzinfo is not None
+                    else end.replace(tzinfo=datetime.now().astimezone().tzinfo)
                 )
-                query = query.where(ReadingModel.timestamp <= e_utc)
+                query = query.where(ReadingModel.timestamp <= e_loc)
 
             if limit is not None and limit > 0:
                 query = query.order_by(ReadingModel.timestamp.desc()).limit(limit)
@@ -564,9 +564,9 @@ class SQLAlchemyStorageBackend(StorageBackend):
             rec = ReadingRecord(
                 id=r.id,
                 timestamp=(
-                    r.timestamp.replace(tzinfo=UTC)
-                    if r.timestamp.tzinfo is None
-                    else r.timestamp
+                    r.timestamp.astimezone()
+                    if r.timestamp.tzinfo is not None
+                    else r.timestamp.replace(tzinfo=datetime.now().astimezone().tzinfo)
                 ),
                 meters=parsed_meters,
                 digital_results=json.loads(r.digital_json) if r.digital_json else {},
@@ -593,19 +593,19 @@ class SQLAlchemyStorageBackend(StorageBackend):
         with self._lock, self.Session() as session:
             query = select(ReadingModel)
             if start is not None:
-                s_utc = (
-                    start.replace(tzinfo=UTC)
-                    if start.tzinfo is None
-                    else start.astimezone(UTC)
+                s_loc = (
+                    start.astimezone()
+                    if start.tzinfo is not None
+                    else start.replace(tzinfo=datetime.now().astimezone().tzinfo)
                 )
-                query = query.where(ReadingModel.timestamp >= s_utc)
+                query = query.where(ReadingModel.timestamp >= s_loc)
             if end is not None:
-                e_utc = (
-                    end.replace(tzinfo=UTC)
-                    if end.tzinfo is None
-                    else end.astimezone(UTC)
+                e_loc = (
+                    end.astimezone()
+                    if end.tzinfo is not None
+                    else end.replace(tzinfo=datetime.now().astimezone().tzinfo)
                 )
-                query = query.where(ReadingModel.timestamp <= e_utc)
+                query = query.where(ReadingModel.timestamp <= e_loc)
 
             if anomalies_only:
                 query = query.where(ReadingModel.error != "")
@@ -651,9 +651,11 @@ class SQLAlchemyStorageBackend(StorageBackend):
                 ReadingRecord(
                     id=r.id,
                     timestamp=(
-                        r.timestamp.replace(tzinfo=UTC)
-                        if r.timestamp.tzinfo is None
-                        else r.timestamp
+                        r.timestamp.astimezone()
+                        if r.timestamp.tzinfo is not None
+                        else r.timestamp.replace(
+                            tzinfo=datetime.now().astimezone().tzinfo
+                        )
                     ),
                     meters=parsed_meters,
                     digital_results=(
@@ -1006,14 +1008,22 @@ class SQLAlchemyStorageBackend(StorageBackend):
             memory_usage_bytes=mem_bytes,
             max_memory_bytes=self.max_records * 300,
             oldest_timestamp=(
-                min_ts.replace(tzinfo=UTC)
-                if min_ts and min_ts.tzinfo is None
-                else min_ts
+                min_ts.astimezone()
+                if min_ts and min_ts.tzinfo is not None
+                else (
+                    min_ts.replace(tzinfo=datetime.now().astimezone().tzinfo)
+                    if min_ts
+                    else None
+                )
             ),
             newest_timestamp=(
-                max_ts.replace(tzinfo=UTC)
-                if max_ts and max_ts.tzinfo is None
-                else max_ts
+                max_ts.astimezone()
+                if max_ts and max_ts.tzinfo is not None
+                else (
+                    max_ts.replace(tzinfo=datetime.now().astimezone().tzinfo)
+                    if max_ts
+                    else None
+                )
             ),
             meters_tracked=sorted(list(meters_tracked)),
             total_snapshots=total_snaps + len(self._memory_frames),

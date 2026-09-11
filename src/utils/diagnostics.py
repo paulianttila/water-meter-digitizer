@@ -234,14 +234,14 @@ def get_system_info(version: str) -> dict[str, Any]:
 
 def collect_health_status(app_state: Any, config: Any, version: str) -> dict[str, Any]:
     """Collect comprehensive system health and diagnostic telemetry."""
-    from datetime import UTC, datetime
+    from datetime import datetime
 
     now = time.time()
     start_time = getattr(app_state, "start_time", now) if app_state else now
     started_at = (
-        getattr(app_state, "started_at", datetime.now(UTC).isoformat())
+        getattr(app_state, "started_at", datetime.now().astimezone().isoformat())
         if app_state
-        else datetime.now(UTC).isoformat()
+        else datetime.now().astimezone().isoformat()
     )
     uptime_seconds = round(now - start_time, 2)
     uptime_human = format_uptime(uptime_seconds)

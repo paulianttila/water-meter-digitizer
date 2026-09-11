@@ -1,7 +1,7 @@
 import json
 import logging
 import ssl
-from datetime import UTC, datetime
+from datetime import datetime
 from typing import Any
 
 import paho.mqtt.client as mqtt
@@ -206,7 +206,7 @@ class MQTTService:
 
         prefix = self.config.topic_prefix
         retain = self.config.retain
-        now_iso = datetime.now(UTC).isoformat()
+        now_iso = datetime.now().astimezone().isoformat()
 
         topics_published: dict[str, str] = {}
 

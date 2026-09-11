@@ -2,7 +2,7 @@ import asyncio
 import logging
 import time
 from collections.abc import Callable
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta
 from typing import Any
 
 from configuration import Poller
@@ -75,7 +75,7 @@ class BackgroundPoller:
 
         while self._running:
             interval = max(5, self.config.interval_seconds)
-            self.next_run = datetime.now(UTC) + timedelta(seconds=interval)
+            self.next_run = datetime.now().astimezone() + timedelta(seconds=interval)
 
             try:
                 # Wait for interval or immediate trigger
@@ -100,7 +100,7 @@ class BackgroundPoller:
 
         self._is_polling = True
         start_time = time.time()
-        self.last_run = datetime.now(UTC)
+        self.last_run = datetime.now().astimezone()
         self.total_runs += 1
 
         try:

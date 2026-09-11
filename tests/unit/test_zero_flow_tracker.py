@@ -1,6 +1,6 @@
 """Unit tests for zero-flow tracking and continuous leak detection subsystem."""
 
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta
 
 from configuration import ZeroFlowMonitor
 from leak.models import LeakState
@@ -25,7 +25,8 @@ def test_tracker_initial_state():
 def test_tracker_disabled():
     config = ZeroFlowMonitor(enabled=False)
     tracker = ZeroFlowTracker(config)
-    now = datetime(2026, 9, 7, 10, 0, 0, tzinfo=UTC)
+    local_tz = datetime.now().astimezone().tzinfo
+    now = datetime(2026, 9, 7, 10, 0, 0, tzinfo=local_tz)
     status = tracker.evaluate_reading(now, 100.0)
     assert status.state == LeakState.OK
     status2 = tracker.evaluate_reading(now + timedelta(hours=3), 105.0)
@@ -40,7 +41,8 @@ def test_tracker_normal_intermittent_usage():
         resolve_debounce_count=2,
     )
     tracker = ZeroFlowTracker(config)
-    t0 = datetime(2026, 9, 7, 10, 0, 0, tzinfo=UTC)
+    local_tz = datetime.now().astimezone().tzinfo
+    t0 = datetime(2026, 9, 7, 10, 0, 0, tzinfo=local_tz)
 
     # Initial baseline reading
     s0 = tracker.evaluate_reading(t0, 100.000)
@@ -74,7 +76,8 @@ def test_tracker_leak_detection_and_debounced_resolution():
         max_history_events=5,
     )
     tracker = ZeroFlowTracker(config)
-    start_time = datetime(2026, 9, 7, 0, 0, 0, tzinfo=UTC)
+    local_tz = datetime.now().astimezone().tzinfo
+    start_time = datetime(2026, 9, 7, 0, 0, 0, tzinfo=local_tz)
 
     # Establish baseline
     tracker.evaluate_reading(start_time, 100.000)
@@ -137,7 +140,8 @@ def test_tracker_jitter_filtering():
         resolve_debounce_count=2,
     )
     tracker = ZeroFlowTracker(config)
-    t0 = datetime(2026, 9, 7, 0, 0, 0, tzinfo=UTC)
+    local_tz = datetime.now().astimezone().tzinfo
+    t0 = datetime(2026, 9, 7, 0, 0, 0, tzinfo=local_tz)
     tracker.evaluate_reading(t0, 100.0000)
 
     # Jitter of 0.0001 every 30 mins for 3 hours (total 0.0006 < 0.010)
@@ -160,7 +164,8 @@ def test_tracker_outage_gap_reset():
         min_leak_volume=0.010,
     )
     tracker = ZeroFlowTracker(config)
-    t0 = datetime(2026, 9, 7, 0, 0, 0, tzinfo=UTC)
+    local_tz = datetime.now().astimezone().tzinfo
+    t0 = datetime(2026, 9, 7, 0, 0, 0, tzinfo=local_tz)
     tracker.evaluate_reading(t0, 100.000)
 
     # 1 hour of flow
@@ -182,7 +187,8 @@ def test_tracker_manual_reset():
         min_leak_volume=0.005,
     )
     tracker = ZeroFlowTracker(config)
-    t0 = datetime(2026, 9, 7, 0, 0, 0, tzinfo=UTC)
+    local_tz = datetime.now().astimezone().tzinfo
+    t0 = datetime(2026, 9, 7, 0, 0, 0, tzinfo=local_tz)
     tracker.evaluate_reading(t0, 100.000)
 
     t1 = t0 + timedelta(hours=1, minutes=30)
@@ -197,7 +203,8 @@ def test_tracker_manual_reset():
 def test_tracker_invalid_and_negative_readings():
     config = ZeroFlowMonitor(enabled=True)
     tracker = ZeroFlowTracker(config)
-    t0 = datetime(2026, 9, 7, 0, 0, 0, tzinfo=UTC)
+    local_tz = datetime.now().astimezone().tzinfo
+    t0 = datetime(2026, 9, 7, 0, 0, 0, tzinfo=local_tz)
     tracker.evaluate_reading(t0, 100.0)
 
     # Negative delta
@@ -224,7 +231,8 @@ def test_tracker_invalid_and_negative_readings():
 def test_zero_flow_status_dict():
     config = ZeroFlowMonitor(enabled=True)
     tracker = ZeroFlowTracker(config)
-    t0 = datetime(2026, 9, 7, 0, 0, 0, tzinfo=UTC)
+    local_tz = datetime.now().astimezone().tzinfo
+    t0 = datetime(2026, 9, 7, 0, 0, 0, tzinfo=local_tz)
     status = tracker.evaluate_reading(t0, 100.0)
     d = status.to_dict()
     assert d["enabled"] is True

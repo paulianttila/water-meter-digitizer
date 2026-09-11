@@ -1,6 +1,6 @@
 """Historical Consumption Analytics Component for NiceGUI."""
 
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta
 
 from nicegui import ui
 
@@ -38,7 +38,7 @@ class ConsumptionCard:
                 self.current_meter = tracked_meters[0]
 
             start_time = (
-                datetime.now(UTC) - timedelta(days=self.current_days)
+                datetime.now().astimezone() - timedelta(days=self.current_days)
                 if self.current_days > 0
                 else None
             )

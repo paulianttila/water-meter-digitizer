@@ -1,7 +1,7 @@
 """Historical meter reading and consumption endpoints."""
 
 import json
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta
 
 import cv2
 import numpy as np
@@ -31,7 +31,7 @@ def get_history_consumption(
     if storage is None:
         return Response(json.dumps([]), media_type="application/json")
 
-    start = datetime.now(UTC) - timedelta(days=days) if days > 0 else None
+    start = datetime.now().astimezone() - timedelta(days=days) if days > 0 else None
     valid_intervals = {"hourly", "daily", "weekly"}
     use_interval = interval if interval in valid_intervals else "daily"
 

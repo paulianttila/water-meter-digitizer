@@ -1,6 +1,6 @@
 """Unit tests for snapshot frame archival, time machine timeline, and pruning in storage backends."""
 
-from datetime import UTC, datetime, timedelta
+from datetime import datetime, timedelta
 
 import numpy as np
 import pytest
@@ -34,7 +34,7 @@ def test_sql_storage_snapshots_record_and_get_frame(tmp_path, temp_snapshots_dir
     frame_bytes = compress_image_to_bytes(test_img, "webp", 80)
 
     reading_id = storage.record_reading(
-        timestamp=datetime.now(UTC),
+        timestamp=datetime.now().astimezone(),
         meters={"total": MeterReading(value=100.5, raw_value="100.5", unit="m3")},
         frame_bytes=frame_bytes,
         frame_type="full",
@@ -66,7 +66,7 @@ def test_memory_storage_snapshots(tmp_path):
     frame_bytes = compress_image_to_bytes(test_img, "webp", 75)
 
     reading_id = storage.record_reading(
-        timestamp=datetime.now(UTC),
+        timestamp=datetime.now().astimezone(),
         meters={"total": MeterReading(value=50.0, raw_value="50.0", unit="m3")},
         frame_bytes=frame_bytes,
         frame_type="full",
@@ -130,9 +130,10 @@ def test_prune_snapshots(tmp_path, temp_snapshots_dir):
     frame_bytes = compress_image_to_bytes(test_img, "webp", 80)
 
     # Record 5 readings with snapshots
+    now = datetime.now().astimezone()
     for i in range(5):
         storage.record_reading(
-            timestamp=datetime.now(UTC) + timedelta(seconds=i),
+            timestamp=now + timedelta(seconds=i),
             meters={"total": MeterReading(value=float(i), raw_value=str(i), unit="m3")},
             frame_bytes=frame_bytes,
             frame_type="full",
@@ -157,7 +158,7 @@ def test_sql_storage_snapshots_fallback_search(tmp_path, temp_snapshots_dir):
     frame_bytes = compress_image_to_bytes(test_img, "webp", 80)
 
     reading_id = storage.record_reading(
-        timestamp=datetime.now(UTC),
+        timestamp=datetime.now().astimezone(),
         meters={"total": MeterReading(value=200.0, raw_value="200.0", unit="m3")},
         frame_bytes=frame_bytes,
         frame_type="full",
@@ -195,15 +196,16 @@ def test_sql_storage_timeline_frames_only_filter(tmp_path, temp_snapshots_dir):
     test_img = np.zeros((40, 40, 3), dtype=np.uint8)
     frame_bytes = compress_image_to_bytes(test_img, "webp", 80)
 
+    now = datetime.now().astimezone()
     # Record 1 reading without frame
     storage.record_reading(
-        timestamp=datetime.now(UTC),
+        timestamp=now,
         meters={"total": MeterReading(value=1.0, raw_value="1.0", unit="m3")},
     )
 
     # Record 1 reading with frame
     id2 = storage.record_reading(
-        timestamp=datetime.now(UTC) + timedelta(seconds=1),
+        timestamp=now + timedelta(seconds=1),
         meters={"total": MeterReading(value=2.0, raw_value="2.0", unit="m3")},
         frame_bytes=frame_bytes,
         frame_type="full",
