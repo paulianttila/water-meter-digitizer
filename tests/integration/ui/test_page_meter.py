@@ -71,11 +71,21 @@ def test_meter_tabs_values_statistics_and_history(page: Page, live_server_url: s
 
     # 3. Switch to History tab and check table columns
     history_tab.click()
-    expect(page.get_by_text("Timestamp", exact=True)).to_be_visible(timeout=5000)
-    expect(page.get_by_text("Meter Readout")).to_be_visible(timeout=5000)
-    expect(page.get_by_text("Digital Digits")).to_be_visible(timeout=5000)
-    expect(page.get_by_text("Analog Dials")).to_be_visible(timeout=5000)
-    expect(page.get_by_text("Quality / Status")).to_be_visible(timeout=5000)
+    expect(page.get_by_role("columnheader", name="Timestamp")).to_be_visible(
+        timeout=5000
+    )
+    expect(page.get_by_role("columnheader", name="Meter Readout")).to_be_visible(
+        timeout=5000
+    )
+    expect(page.get_by_role("columnheader", name="Digital Digits")).to_be_visible(
+        timeout=5000
+    )
+    expect(page.get_by_role("columnheader", name="Analog Dials")).to_be_visible(
+        timeout=5000
+    )
+    expect(page.get_by_role("columnheader", name="Quality / Status")).to_be_visible(
+        timeout=5000
+    )
 
     # 4. Switch back to Values tab
     page.get_by_role("tab", name="Values").click()
