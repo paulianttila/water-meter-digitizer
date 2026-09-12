@@ -1,13 +1,33 @@
-FROM python:3.11-slim
+# ==========================================
+# Stage 1: Build & dependency resolution
+# ==========================================
+FROM python:3.11-slim AS builder
 
-# Install uv for fast, reproducible dependency resolution
+# Install uv for fast dependency resolution
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
-# Minimal runtime shared library required by Pillow/GLib decoders
+# Install binutils for stripping .so binaries
 RUN apt-get update -y && \
-    apt-get install -qq --no-install-recommends \
-      libglib2.0-0 && \
-    rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*
+    apt-get install -qq --no-install-recommends binutils && \
+    rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Install only production dependencies into virtual environment
+COPY pyproject.toml uv.lock ./
+RUN uv sync --frozen --no-dev --no-install-project
+
+# Strip debug symbols from C-extensions and remove bytecode/tests from site-packages
+RUN find /app/.venv -name '*.so*' -exec strip --strip-unneeded {} + 2>/dev/null || true && \
+    find /app/.venv -type d -name '__pycache__' -exec rm -rf {} + 2>/dev/null || true && \
+    find /app/.venv -type d -name 'tests' -exec rm -rf {} + 2>/dev/null || true && \
+    find /app/.venv -type d -name 'testing' -exec rm -rf {} + 2>/dev/null || true && \
+    find /app/.venv -name '*.pyi' -delete 2>/dev/null || true
+
+# ==========================================
+# Stage 2: Clean, minimal runtime image
+# ==========================================
+FROM python:3.11-slim AS runtime
 
 # Create non-root user and group
 RUN groupadd -g 1000 appuser && \
@@ -16,15 +36,13 @@ RUN groupadd -g 1000 appuser && \
 ENV PYTHONUNBUFFERED=1 \
     CONFIG_FILE=/config/config.ini \
     METER_CONFIG_DIR=/config \
-    METER_DATA_DIR=/data
+    METER_DATA_DIR=/data \
+    PATH="/app/.venv/bin:$PATH"
 
 WORKDIR /app
 
-# Install Python dependencies with layer caching directly from uv.lock
-COPY pyproject.toml uv.lock ./
-RUN uv export --frozen --no-dev --format requirements-txt | \
-    uv pip install --system --no-cache -r - && \
-    find /usr/local/lib/python3.11 -name '__pycache__' -exec rm -r {} + 2>/dev/null || true
+# Copy stripped virtualenv from builder stage
+COPY --from=builder --chown=appuser:appuser /app/.venv /app/.venv
 
 # Create application directories, populate seed config template, and set ownership
 RUN mkdir -p /config /data /app /app/default_config

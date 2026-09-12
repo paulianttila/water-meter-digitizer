@@ -4,6 +4,10 @@
 .gitattributes
 .github
 
+# Documentation
+docs/
+*.md
+
 # Python bytecode & environments
 __pycache__/
 *.py[cod]
@@ -15,12 +19,11 @@ venv/
 # Testing & QA
 .pytest_cache/
 .ruff_cache/
+.mypy_cache/
 .coverage
 htmlcov/
 tests/
-test_config/
-test_config2/
-test_config3/
+test_config*/
 run_tests.sh
 
 # IDE & OS files
@@ -33,3 +36,4 @@ run_tests.sh
 image_tmp/
 data/
 *.log
+*.bak
