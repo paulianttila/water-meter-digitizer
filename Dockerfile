@@ -3,15 +3,11 @@ FROM python:3.11-slim
 # Install uv for fast, reproducible dependency resolution
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
 
-# Install minimal runtime shared libraries required by OpenCV/Pillow
+# Minimal runtime shared library required by Pillow/GLib decoders
 RUN apt-get update -y && \
     apt-get install -qq --no-install-recommends \
-      libglib2.0-0 \
-      libsm6 \
-      libxext6 \
-      libxrender1 \
-      libgl1 && \
-    rm -rf /var/lib/apt/lists/*
+      libglib2.0-0 && \
+    rm -rf /var/lib/apt/lists/* /var/cache/apt/archives/*
 
 # Create non-root user and group
 RUN groupadd -g 1000 appuser && \
@@ -26,7 +22,9 @@ WORKDIR /app
 
 # Install Python dependencies with layer caching directly from uv.lock
 COPY pyproject.toml uv.lock ./
-RUN uv export --frozen --no-dev --format requirements-txt | uv pip install --system --no-cache -r -
+RUN uv export --frozen --no-dev --format requirements-txt | \
+    uv pip install --system --no-cache -r - && \
+    find /usr/local/lib/python3.11 -name '__pycache__' -exec rm -r {} + 2>/dev/null || true
 
 # Create application directories, populate seed config template, and set ownership
 RUN mkdir -p /config /data /app /app/default_config
