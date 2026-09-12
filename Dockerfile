@@ -41,15 +41,15 @@ ENV PYTHONUNBUFFERED=1 \
 
 WORKDIR /app
 
-# Copy stripped virtualenv from builder stage
+# Create application directories and set ownership before copying virtualenv
+RUN mkdir -p /config /data /app /app/default_config && \
+    chown -R appuser:appuser /config /data /app
+
+# Copy stripped virtualenv directly with appuser ownership (avoids duplicate layer)
 COPY --from=builder --chown=appuser:appuser /app/.venv /app/.venv
 
-# Create application directories, populate seed config template, and set ownership
-RUN mkdir -p /config /data /app /app/default_config
-COPY ./config/ /app/default_config/
-RUN chown -R appuser:appuser /config /data /app
-
-# Copy application source code
+# Copy default config template and source code with appuser ownership
+COPY --chown=appuser:appuser ./config/ /app/default_config/
 COPY --chown=appuser:appuser ./src/ /app/
 
 # Switch to non-root user
