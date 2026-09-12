@@ -29,6 +29,7 @@ class MQTTService:
         self.meter_configs = meter_configs or []
         self.version = version
         self.is_connected = False
+        self._connect_failed_logged = False
         self._client: mqtt.Client | None = None
         self.last_published_topics: dict[str, str] = {}
         self.last_published_readout: dict[str, Any] | None = None
@@ -70,6 +71,18 @@ class MQTTService:
 
         self._client.on_connect = self._on_connect
         self._client.on_disconnect = self._on_disconnect
+        if hasattr(self._client, "on_connect_fail"):
+            self._client.on_connect_fail = self._on_connect_fail
+
+    def _on_connect_fail(self, client: Any, userdata: Any) -> None:
+        self.is_connected = False
+        if not self._connect_failed_logged:
+            logger.warning(
+                "Failed to connect to MQTT broker %s:%d (connection refused / unreachable). Retrying in background...",
+                self.config.broker,
+                self.config.port,
+            )
+            self._connect_failed_logged = True
 
     def _on_connect(
         self, client: Any, userdata: Any, flags: Any, rc: Any, *args: Any
@@ -78,6 +91,7 @@ class MQTTService:
         rc_code = getattr(rc, "value", rc)
         if rc_code == 0:
             self.is_connected = True
+            self._connect_failed_logged = False
             logger.info(
                 "Connected to MQTT broker %s:%d",
                 self.config.broker,
@@ -136,6 +150,7 @@ class MQTTService:
         if not self.config.enabled or self._client is None:
             return
 
+        self._connect_failed_logged = False
         try:
             logger.info(
                 "Starting MQTT client connecting to %s:%d...",

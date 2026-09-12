@@ -114,3 +114,19 @@ def test_mqtt_service_status():
     assert status["enabled"] is True
     assert status["broker"] == "mqtt.home"
     assert status["connected"] is False
+
+
+def test_mqtt_on_connect_fail():
+    mqtt_cfg = MQTT(enabled=True, broker="nonexistent.host", port=1883)
+    service = MQTTService(config=mqtt_cfg)
+    assert service.is_connected is False
+    assert service._connect_failed_logged is False
+
+    service._on_connect_fail(None, None)
+    assert service.is_connected is False
+    assert service._connect_failed_logged is True
+
+    # Reconnect success resets flag
+    service._on_connect(None, None, None, 0)
+    assert service.is_connected is True
+    assert service._connect_failed_logged is False
