@@ -1,121 +1,37 @@
-# Water Meter Digitizer
+# 💧 Water Meter Digitizer
 
-Automatically read analog and digital utility meters using a camera, image processing, and neural network inference. The system captures an image from a configured camera URL, aligns it against reference markers, crops the individual digit/needle ROIs, runs them through CNN models via Google LiteRT runtime, and returns the final meter readings via a REST API and a modern web dashboard.
+[![CI](https://github.com/paulianttila/water-meter-digitizer/actions/workflows/ci.yml/badge.svg)](https://github.com/paulianttila/water-meter-digitizer/actions/workflows/ci.yml)
+[![Python 3.11](https://img.shields.io/badge/python-3.11-blue.svg)](https://www.python.org/downloads/release/python-3110/)
+[![Docker Multi-Arch](https://img.shields.io/badge/docker-amd64%20%7C%20arm64-blue)](https://hub.docker.com/r/paulianttila/water-meter-digitizer)
+[![Test Coverage](https://img.shields.io/badge/coverage-82%25-brightgreen.svg)](https://github.com/paulianttila/water-meter-digitizer)
+[![License: GPL-3.0](https://img.shields.io/badge/License-GPLv3-blue.svg)](LICENSE.md)
 
-> This is a completely rewritten, modernized fork of the original [jomjol](https://github.com/jomjol) version (archived 2021).
+Automatically read analog needle dials and mechanical odometer digits from utility meters using a camera, lightweight computer vision, and Google LiteRT (TensorFlow Lite) neural network inference on edge devices.
 
----
-
-## Features
-
-### 💧 Universal Meter Reading
-- **Mixed Meter Support** — Simultaneously reads mechanical odometer rolling digits, digital LCD counters, and circular analog needle dials in a single frame.
-- **Intelligent Digit Correction** — Automatically fixes ambiguous, half-turned numbers at roll-over boundaries using adjacent dial positions.
-- **High-Precision Resolution** — Optional fractional sub-digit decimal calculation for fine-grained flow and leak detection.
-- **Automatic Image Alignment** — Corrects camera tilt, vibration, and rotation shifts against visual reference markers.
-- **Data Integrity & Fallbacks** — Rejects impossible rate spikes, guards against negative flow, and safely falls back to cached baseline readings when digits are obscured.
-
-### 🏡 Smart Home & Cloud Connectivity
-- **Native Home Assistant Integration** — Instant zero-configuration sensor discovery over MQTT with native energy/water dashboard compatibility.
-- **Automated Background Poller** — Built-in scheduler periodically captures and publishes readings without external cron scripts.
-- **Open Standards & REST API** — Clean structured JSON endpoints for easy integration with openHAB, Node-RED, Prometheus, Grafana, or custom automations.
-
-### 📊 Modern Web Dashboard & Setup
-- **Interactive Visual Setup Wizard (`/gui`)** — Intuitive 9-step alignment tool to easily define reference markers and digit bounding boxes, with instant Reset and Restore Backup tools.
-- **Time Machine & Visual Frame Inspector** — Interactive historical timeline scrubber with side-by-side comparison of historical and live frames, live countdown timer, and ROI confidence score breakdowns.
-- **Config Editor & History Management** — Raw INI editor with syntax verification, 1-click Undo, automatic safety backups (`/config/backups/`), manual checkpoint snapshots, and inline color-coded line-by-line diff inspection.
-- **Glassmorphic Web Dashboard (`/`)** — Live meter status, real-time telemetry, model confidence indicators, and one-click API explorer.
-- **Interactive Consumption Charts** — Visual breakdown of hourly, daily, and weekly water usage with customizable time ranges.
-- **Diagnostics & Telemetry** — Real-time camera latency, system uptime, and memory utilization monitors.
-
-
-### 🚀 Edge & Container Ready
-- **Lightweight & Fast** — High-performance on-device neural network inference optimized for low-power edge devices (e.g., Raspberry Pi).
-- **Docker Ready** — Official multi-architecture (x86_64, ARM64) container images with integrated health check probes.
-- **Resilient Storage** — Dual-mode persistence with automatic in-memory failover for read-only or immutable container environments.
-
-> 💡 *For architectural diagrams, neural network specifications, and comprehensive guides, visit the **[Project Wiki](docs/wiki/Home.md)** or see **[DEVELOPER.md](DEVELOPER.md)** for the local developer quick start.*
+> A modernized, completely rewritten, high-performance fork of the original [jomjol](https://github.com/jomjol) digitizer project.
 
 ---
 
-## Quick Start
+## 🌟 Highlights
 
-### Docker Compose
-
-```yaml
-services:
-  watermeter-digitizer:
-    container_name: ${NAME:-water-meter-digitizer}
-    image: ${IMAGE:-paulianttila/water-meter-digitizer:latest}
-    restart: unless-stopped
-    security_opt:
-      - no-new-privileges:true
-    environment:
-      - TZ=Europe/Helsinki
-      - METER_LOG_LEVEL=INFO
-    volumes:
-      - ${DIR_DATA:-.}/config:/config
-      - ${DIR_DATA:-.}/data:/data
-    ports:
-      - 3000:3000
-    healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:3000/healthcheck')"]
-      interval: 30s
-      timeout: 5s
-      retries: 3
-      start_period: 10s
-    logging:
-      driver: "json-file"
-      options:
-        max-size: "2m"
-        max-file: "2"
-```
-
-```bash
-docker compose up -d
-```
-
-The web dashboard is available at **http://localhost:3000**.
-
-#### Supported Container Architectures
-
-Official multi-architecture container images are automatically built and published for:
-
-| Architecture | Device Target | Support Status | Notes |
-|---|---|---|---|
-| **`linux/amd64`** | x86-64 PCs, Intel/AMD Servers, Proxmox, NAS | ✅ Supported | Native 64-bit x86 |
-| **`linux/arm64`** | Raspberry Pi 3/4/5, Zero 2 W, Apple Silicon | ✅ Supported | Requires 64-bit OS |
-| **`linux/arm/v7`** | Legacy 32-bit Raspberry Pi 1/2 | ❌ Not Supported | Upstream LiteRT requires 64-bit |
+- **Mixed Meter Support** — Simultaneously reads mechanical odometer rolling drums, digital LCD counters, and circular analog needle dials in a single frame.
+- **Predecessor Roll-Over Correction** — Automatically fixes ambiguous, half-turned numbers at roll-over boundaries using adjacent dial positions.
+- **Zero-Flow Continuous Leak Monitor** — Automatically detects continuous non-stopping water consumption and triggers alarms.
+- **Home Assistant & openHAB Ready** — Native MQTT Auto-Discovery, Energy & Water Dashboard integration, and MQTT bindings.
+- **Time Machine Visual Scrubber** — Interactive historical frame playback with side-by-side comparison and difference heatmaps.
+- **Edge & Docker Optimized** — High-performance inference with LiteRT worker pools on Raspberry Pi (ARM64) and x86_64 servers.
 
 ---
 
-## Run Locally (development with `uv`)
-
-```bash
-# Install dependencies
-uv sync
-
-# Point to configuration and run
-export CONFIG_FILE=$(pwd)/config/config.ini
-uv run python src/main.py
-```
-
----
-
-## Web Interfaces
+## 📸 Screenshots & Web Dashboard
 
 <p align="center">
   <img src="docs/images/web_dashboard.png" alt="Water Meter Web Dashboard" width="850">
 </p>
 
-- **`/` (and `/gui`) — NiceGUI Web Dashboard & Administration**:
-  - **Meter Dashboard**: Live readings, primary metrics, confidence badges, cropped dial previews, color-coded ROI inspector, and consumption charts.
-  - **Time Machine**: Interactive historical frame scrubber, side-by-side Historical vs. Live frame comparison with timestamps, and ROI confidence breakdown.
-  - **Services & Diagnostics**: Real-time camera latency, system uptime, memory usage, neural network inference telemetry, and continuous zero-flow leak tracking.
-  - **Setup Wizard**: 9-step guided calibration flow with live canvas, alignment markers, and backup restoration.
-  - **Config Editor & Snapshots**: Visual and raw INI configuration editor with schema validation, 1-click Undo, automated safety backups (`/config/backups/`), and inline diffs.
-  - **Baselines Manager**: View and manage persistent meter baseline values in a structured table.
-  - **API Console**: Full-page interactive REST API explorer with syntax highlighting and raw payload inspector.
+- **`/` (Web Dashboard)**: Live readings, primary metrics, confidence badges, cropped dial previews, and consumption charts.
+- **Time Machine**: Interactive historical frame scrubber with side-by-side Historical vs. Live comparison and SSIM metrics.
+- **Setup Wizard (`/setup`)**: 9-step guided visual calibration flow with live canvas, alignment markers, and backup restoration.
 
 <p align="center">
   <img src="docs/images/setup_wizard.png" alt="Setup Wizard & Canvas" width="850">
@@ -123,748 +39,80 @@ uv run python src/main.py
 
 ---
 
-## REST API
+## ⚡ Quick Start
 
-All endpoints are served on port `3000`.
+### Docker Compose (Recommended)
 
-| Method | Endpoint | Description |
-|---|---|---|
-| `GET` | `/` | NiceGUI Web Dashboard, Setup Wizard & API Console |
-| `GET` | `/gui` | Backward-compatible redirect to `/` |
-| `GET` | `/meter` | Trigger a readout, return structured JSON result (supports `?format=value` or `?format=json`) |
-| `GET` | `/meter?url=<cam_url>` | Override the camera URL for a single readout |
-| `GET` | `/meter?saveimages=true` | Cache intermediate pipeline images for inspection |
-| `GET` | `/roi` | Stream composite ROI overlay JPEG image (`image/jpeg`) |
-| `GET` | `/image/{image}` | Stream an image from in-memory cache (`original.jpg`, `aligned.jpg`, `final.jpg`, `roi.jpg`, etc.) |
-| `GET` | `/set_previous_value?name=<n>&value=<v>` | Manually set the stored baseline reading for a meter |
-| `GET` | `/get_previous_values` | Retrieve all stored baseline values and properties of tracked meters |
-| `GET`, `POST` | `/reload` | Hot-reload configuration from disk and reinitialize services (JSON response) |
-| `GET` | `/version` | Return app version information as JSON |
-| `GET` | `/health` | Rich JSON diagnostics: camera latency, memory, cache hit ratio, models, uptime |
-| `GET` | `/healthcheck` | Liveness check, returns `Health - OK` |
-| `GET` | `/leak/status` | Current zero-flow tracking state (`OK`, `FLOW_ACTIVE`, `LEAK_DETECTED`) and duration metrics |
-| `POST` | `/leak/reset` | Acknowledge/reset active leak detection state and counter |
-| `GET` | `/poller/status` | Current background poller status, last run, and next run schedule |
-| `POST` | `/poller/trigger` | Trigger an immediate background readout cycle |
-| `GET` | `/mqtt/status` | MQTT connection status, broker details, and topic prefix |
-| `GET` | `/history/consumption?meter=<m>&interval=<i>&days=<d>&cumulative=<b>` | Aggregated consumption buckets (`hourly`, `daily`, `weekly`), with optional cumulative running total |
-| `GET` | `/history/readings?meter=<m>&limit=<n>` | Recent raw meter readings history |
-| `GET` | `/history/stats` | Storage backend health, memory usage, snapshot count, and tracked meter statistics |
-| `POST` | `/history/snapshots/prune` | Prune older historical snapshots based on retention and disk quota limits |
-| `POST` | `/history/seed?days=<d>&meter=<m>&base_val=<b>` | Seed synthetic readings history for testing |
-| `POST` | `/history/clear` | Clear all stored history readings |
-
-### Example JSON Responses
-
-#### Health & Diagnostics (`/health`)
-
-```json
-{
-  "status": "healthy",
-  "uptime": {
-    "uptime_seconds": 1245.8,
-    "uptime_human": "20m 45s",
-    "started_at": "2026-09-05T15:10:00.000000+00:00"
-  },
-  "camera": {
-    "url": "http://192.168.1.100/capture",
-    "reachable": true,
-    "latency_ms": 14.2,
-    "status_code": 200,
-    "error": null
-  },
-  "memory": {
-    "rss_mb": 68.4,
-    "peak_rss_mb": 74.2,
-    "platform": "darwin"
-  },
-  "cache": {
-    "hits": 45,
-    "misses": 3,
-    "total_requests": 48,
-    "hit_ratio_percent": 93.75,
-    "current_size": 12,
-    "max_size": 50,
-    "ttl_seconds": 300.0,
-    "cached_keys": ["original", "aligned", "digit1", "digit2", "analog1"]
-  },
-  "models": {
-    "digital": {
-      "enabled": true,
-      "path": "/config/neuralnets/digital/class100/dig-class100_0168_s2_q.tflite",
-      "exists": true,
-      "size_bytes": 172832,
-      "metrics": {
-        "inferences": 24,
-        "avg_inference_ms": 14.5,
-        "min_inference_ms": 11.2,
-        "max_inference_ms": 22.8,
-        "last_inference_ms": 13.9,
-        "last_inference_at": "2026-09-07T18:30:15.123456+00:00",
-        "pool_size": 4,
-        "created_instances": 2,
-        "available_instances": 2,
-        "active_inferences": 0,
-        "input_shape": [1, 32, 20, 3],
-        "output_shape": [1, 100],
-        "quantized": true
-      }
-    },
-    "analog": {
-      "enabled": true,
-      "path": "/config/neuralnets/analog/continuous/ana-cont_1209_s2.tflite",
-      "exists": true,
-      "size_bytes": 145920,
-      "metrics": {
-        "inferences": 24,
-        "avg_inference_ms": 15.8,
-        "min_inference_ms": 12.1,
-        "max_inference_ms": 25.4,
-        "last_inference_ms": 15.1,
-        "last_inference_at": "2026-09-07T18:30:15.234567+00:00",
-        "pool_size": 4,
-        "created_instances": 2,
-        "available_instances": 2,
-        "active_inferences": 0,
-        "input_shape": [1, 32, 32, 3],
-        "output_shape": [1, 2],
-        "quantized": false
-      }
-    },
-    "total_inferences": 48,
-    "avg_inference_ms": 15.15
-  },
-  "system": {
-    "version": "1.0.0",
-    "python_version": "3.11.13",
-    "platform": "Darwin-24.0.0"
-  }
-}
+```yaml
+services:
+  watermeter-digitizer:
+    container_name: water-meter-digitizer
+    image: paulianttila/water-meter-digitizer:latest
+    restart: unless-stopped
+    environment:
+      - TZ=Europe/Helsinki
+      - METER_LOG_LEVEL=INFO
+    volumes:
+      - ./config:/config
+      - ./data:/data
+    ports:
+      - 3000:3000
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:3000/healthcheck')"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
 ```
 
-#### Meter Readout (`/meter?format=json`)
-
-```json
-{
-  "meters": [
-    {
-      "name": "main",
-      "value": "00452.91241",
-      "unit": "m³",
-      "quality": "good",
-      "confidence": 96.2
-    }
-  ],
-  "digital_results": {
-    "digit1": "0.0",
-    "digit2": "0.0",
-    "digit3": "4.0",
-    "digit4": "4.9",
-    "digit5": "2.6"
-  },
-  "analog_results": {
-    "analog1": "0.00",
-    "analog2": "0.90",
-    "analog3": "2.50",
-    "analog4": "4.10"
-  },
-  "confidence_scores": {
-    "digit1": 85.2,
-    "digit2": 91.3,
-    "digit3": 99.9,
-    "digit4": 90.9,
-    "digit5": 100.0,
-    "analog1": 99.2,
-    "analog2": 98.9,
-    "analog3": 100.0,
-    "analog4": 100.0
-  },
-  "error": ""
-}
+```bash
+docker compose up -d
 ```
+Open **`http://localhost:3000`** in your browser to access the dashboard and setup wizard!
 
 ---
 
-## Configuration
+## 📚 Documentation Hub (Project Wiki)
 
-The system is configured via an INI file format (default `/config/config.ini`), which can also be overridden using environment variables via Pydantic Settings.
+Detailed guides, API specifications, and calibration tutorials are available in the **[Project Wiki](docs/wiki/Home.md)**:
 
-Every time the configuration is saved from the Web GUI or Setup Wizard, an automatic timestamped backup is preserved in the `/config/backups/` subfolder (e.g. `config.ini_20260908_120000.bak`). Historical snapshots can be compared with line-by-line unified diffs and rolled back with 1-click Undo or the History dialog.
-
-
-### Environment Variables
-
-Settings can be specified through the `config.ini` file or configured dynamically via environment variables.
-
-#### 1. Core System & Container Variables
-
-| Variable | Default | Description |
-|---|---|---|
-| `CONFIG_FILE` | `/config/config.ini` | Path to the active configuration INI file. |
-| `CONFIG_DIR` | `/config` | Override directory path for `${ConfigDir}` variable substitution in `config.ini`. |
-| `DEFAULT_CONFIG_DIR` | `/app/default_config` | Seed directory containing fallback default configuration and asset templates. |
-| `TZ` | `UTC` | Container and log timestamp timezone (e.g. `Europe/Helsinki`, `America/New_York`). |
-
-#### 2. Configuration Overrides (`METER_*`)
-
-Any configuration parameter can be set or overridden via environment variables using the `METER_` prefix (with double underscores `__` for nested section keys):
-
-| Environment Variable | Type | Default | Description |
-|---|---|---|---|
-| **General / System** | | | |
-| `METER_LOG_LEVEL` | string | `INFO` | Global logging verbosity (`DEBUG`, `INFO`, `WARNING`, `ERROR`). |
-| `METER_CONFIG_DIR` | string | `/config` | Directory containing configuration files, reference images, and models. |
-| `METER_DATA_DIR` | string | `/data` | Dedicated persistent directory for SQLite database storage (`history.db`). |
-| `METER_PREVIOUS_VALUE_FILE` | string | `/config/prevalue.ini` | File path used to persist last valid meter readings across runs. |
-| `METER_DIGITAL_MODELS_DIR` | string | `/config/neuralnets/digital` | Directory containing LiteRT/TFLite models for digital counter digits. |
-| `METER_ANALOG_MODELS_DIR` | string | `/config/neuralnets/analog` | Directory containing LiteRT/TFLite models for analog dials. |
-| `METER_MIN_CONFIDENCE_THRESHOLD` | float | `60.0` | Minimum confidence score percentage required before flagging reading as `N` (NaN). |
-| **Image Source** | | | |
-| `METER_IMAGE_SOURCE__URL` | string | `""` | Source camera capture URL (`http://`, `https://`, or secure `file://`). |
-| `METER_IMAGE_SOURCE__TIMEOUT` | integer | `30` | Image download network timeout in seconds. |
-| `METER_IMAGE_SOURCE__MIN_SIZE` | integer | `10000` | Minimum byte size threshold to filter out corrupted or truncated camera frames. |
-| **Crop & Resize** | | | |
-| `METER_CROP__ENABLED` | boolean | `False` | Enable pre-cropping before alignment. |
-| `METER_CROP__X` / `Y` / `W` / `H` | integer | `0` | Pre-crop area coordinates and dimensions. |
-| `METER_RESIZE__ENABLED` | boolean | `False` | Enable image resizing. |
-| `METER_RESIZE__W` / `H` | integer | `0` | Target resize dimensions in pixels. |
-| **Image Processing & Enhancements** | | | |
-| `METER_IMAGE_PROCESSING__ENABLED` | boolean | `False` | Enable image adjustment pipeline. |
-| `METER_IMAGE_PROCESSING__CONTRAST` | float | `1.0` | Contrast enhancement multiplier. |
-| `METER_IMAGE_PROCESSING__BRIGHTNESS` | float | `1.0` | Brightness adjustment multiplier. |
-| `METER_IMAGE_PROCESSING__COLOR` | float | `1.0` | Color saturation adjustment multiplier. |
-| `METER_IMAGE_PROCESSING__SHARPNESS` | float | `1.0` | Sharpness filter multiplier. |
-| `METER_IMAGE_PROCESSING__GRAYSCALE` | boolean | `False` | Convert capture to grayscale before processing. |
-| `METER_IMAGE_PROCESSING__AUTOCONTRAST__ENABLED` | boolean | `False` | Enable histogram auto-contrast stretching. |
-| `METER_IMAGE_PROCESSING__AUTOCONTRAST__CUTOFF_LOW` | float | `2.0` | Low percentile cutoff for auto-contrast. |
-| `METER_IMAGE_PROCESSING__AUTOCONTRAST__CUTOFF_HIGH` | float | `45.0` | High percentile cutoff for auto-contrast. |
-| **Glare & Reflection Suppression** | | | |
-| `METER_IMAGE_PROCESSING__GLARE_SUPPRESSION__ENABLED` | boolean | `False` | Enable glare and specular reflection reduction. |
-| `METER_IMAGE_PROCESSING__GLARE_SUPPRESSION__MODE` | string | `clahe` | Algorithm mode (`clahe`, `inpaint`, `illumination_normalize`, `combined`). |
-| `METER_IMAGE_PROCESSING__GLARE_SUPPRESSION__INPAINT_THRESHOLD` | integer | `230` | Brightness threshold (0–255) for specular highlight mask. |
-| `METER_IMAGE_PROCESSING__GLARE_SUPPRESSION__INPAINT_RADIUS` | integer | `3` | Inpainting neighborhood radius in pixels. |
-| `METER_IMAGE_PROCESSING__GLARE_SUPPRESSION__CLAHE_CLIP_LIMIT` | float | `2.0` | CLAHE local contrast limiting threshold. |
-| `METER_IMAGE_PROCESSING__GLARE_SUPPRESSION__CLAHE_GRID_SIZE` | integer | `8` | CLAHE tile grid dimensions (e.g. `8` for 8x8 grid). |
-| `METER_IMAGE_PROCESSING__GLARE_SUPPRESSION__APPLY_TO_CUT_IMAGES` | boolean | `False` | Apply glare reduction directly to cropped sub-ROIs. |
-| **Alignment** | | | |
-| `METER_ALIGNMENT__ROTATE_ANGLE` | float | `0.0` | Initial coarse image rotation in degrees (e.g. `0`, `90`, `180`, `270`). |
-| `METER_ALIGNMENT__POST_ROTATE_ANGLE` | float | `0.0` | Fine-tune post-alignment rotation in degrees. |
-| **Neural Network Models (Digits & Analog)** | | | |
-| `METER_DIGITAL_READOUT__ENABLED` | boolean | `False` | Enable digit counter recognition. |
-| `METER_DIGITAL_READOUT__MODEL_FILE` | string | `""` | File path to digital recognition LiteRT/TFLite model. |
-| `METER_DIGITAL_READOUT__MODEL` | string | `""` | Model architecture mode (`auto`, `digital`, `digital100`). |
-| `METER_ANALOG_READOUT__ENABLED` | boolean | `False` | Enable analog dial needle recognition. |
-| `METER_ANALOG_READOUT__MODEL_FILE` | string | `""` | File path to analog needle LiteRT/TFLite model. |
-| `METER_ANALOG_READOUT__MODEL` | string | `""` | Model architecture mode (`auto`, `analog`, `analog100`). |
-| **Consumption History & Storage** | | | |
-| `METER_HISTORY__ENABLED` | boolean | `False` | Enable long-term consumption metrics storage. |
-| `METER_HISTORY__BACKEND` | string | `sqlite` | Storage engine (`sqlite` or `memory`). |
-| `METER_HISTORY__DB_URL` | string | `""` | SQLite database URI (default: `sqlite:////data/history.db`). |
-| `METER_HISTORY__MAX_MEMORY_MB` | integer | `32` | In-memory cache budget before pruning. |
-| `METER_HISTORY__MAX_RECORDS` | integer | `50000` | Maximum number of stored readings before FIFO eviction. |
-| `METER_HISTORY__RETENTION_DAYS` | integer | `30` | Time-to-live retention window in days for historical data. |
-| `METER_HISTORY__AUTO_VACUUM` | boolean | `True` | Run SQLite incremental vacuum on startup. |
-| `METER_HISTORY__PRUNE_INTERVAL` | integer | `50` | Number of writes between background pruning passes. |
-| **Background Poller Scheduler** | | | |
-| `METER_POLLER__ENABLED` | boolean | `False` | Enable periodic background readout scheduler. |
-| `METER_POLLER__INTERVAL_SECONDS` | integer | `300` | Polling cycle interval in seconds. |
-| `METER_POLLER__RUN_ON_STARTUP` | boolean | `True` | Trigger an immediate reading cycle on application startup. |
-| `METER_POLLER__SAVE_IMAGES` | boolean | `False` | Cache intermediate pipeline images for diagnostics. |
-| `METER_POLLER__RETRY_INTERVAL_SECONDS` | integer | `30` | Retry delay in seconds after a transient camera failure. |
-| **MQTT & Home Assistant Discovery** | | | |
-| `METER_MQTT__ENABLED` | boolean | `False` | Enable MQTT telemetry publishing. |
-| `METER_MQTT__BROKER` | string | `localhost` | MQTT broker hostname or IP address. |
-| `METER_MQTT__PORT` | integer | `1883` | MQTT broker port (`1883` standard, `8883` TLS). |
-| `METER_MQTT__USERNAME` | string | `""` | Optional MQTT broker username. |
-| `METER_MQTT__PASSWORD` | string | `""` | Optional MQTT broker password. |
-| `METER_MQTT__CLIENT_ID` | string | `water-meter-digitizer` | MQTT client identifier string. |
-| `METER_MQTT__TOPIC_PREFIX` | string | `watermeter` | Base MQTT topic prefix. |
-| `METER_MQTT__KEEPALIVE` | integer | `60` | MQTT keepalive ping interval in seconds. |
-| `METER_MQTT__TLS` | boolean | `False` | Enable TLS encryption for broker connection. |
-| `METER_MQTT__RETAIN` | boolean | `True` | Publish meter readings with MQTT retain flag set. |
-| `METER_MQTT__HOMEASSISTANT_DISCOVERY` | boolean | `True` | Automatically broadcast Home Assistant MQTT Auto-Discovery payloads. |
-| `METER_MQTT__DISCOVERY_PREFIX` | string | `homeassistant` | Home Assistant MQTT discovery prefix. |
-| `METER_MQTT__DEVICE_NAME` | string | `Water Meter Digitizer` | Friendly device name in Home Assistant registry. |
-| `METER_MQTT__DEVICE_ID` | string | `water_meter_digitizer` | Unique device entity identifier in Home Assistant. |
-| **Zero-Flow Continuous Leak Monitor** | | | |
-| `METER_ZERO_FLOW_MONITOR__ENABLED` | boolean | `False` | Enable continuous flow leak monitoring. |
-| `METER_ZERO_FLOW_MONITOR__METER_NAME` | string | `total` | Logical meter name to track for continuous flow. |
-| `METER_ZERO_FLOW_MONITOR__CONTINUOUS_FLOW_HOURS` | float | `2.0` | Hours of uninterrupted non-zero consumption before triggering leak alarm. |
-| `METER_ZERO_FLOW_MONITOR__MIN_LEAK_VOLUME` | float | `0.010` | Minimum volume consumed during active window (filters optical noise). |
-| `METER_ZERO_FLOW_MONITOR__FLOW_THRESHOLD` | float | `0.001` | Minimum change between readings to classify as active flow. |
-| `METER_ZERO_FLOW_MONITOR__RESOLVE_DEBOUNCE_COUNT` | integer | `2` | Consecutive zero-flow readings required to auto-resolve alarm. |
-| `METER_ZERO_FLOW_MONITOR__MAX_HISTORY_EVENTS` | integer | `50` | Maximum completed leak event logs retained in memory. |
+| Guide | Description |
+| :--- | :--- |
+| 🚀 **[Installation & Deployment](docs/wiki/Installation-&-Deployment.md)** | Docker Compose, Raspberry Pi / ARM64, and bare-metal `uv` setups. |
+| 📷 **[Hardware & Camera Setup](docs/wiki/Hardware-&-Camera-Setup.md)** | ESP32-CAM, network cameras, lighting, and glare suppression. |
+| 🧭 **[Web Dashboard Tour](docs/wiki/Web-Dashboard-Tour.md)** | Live readouts, consumption graphs, and Time Machine scrubber. |
+| 🪜 **[Setup Wizard Manual](docs/wiki/Setup-Wizard-Guide.md)** | Step-by-step 9-step calibration workflow. |
+| 💧 **[Zero-Flow Leak Detection](docs/wiki/Zero-Flow-Leak-Detection.md)** | Continuous leak monitoring, quiet windows, and reset triggers. |
+| 🏡 **[Smart Home Integrations](docs/wiki/Smart-Home-Integrations.md)** | Home Assistant MQTT Discovery, Energy Dashboard, and openHAB. |
+| 📡 **[MQTT Topic Reference](docs/wiki/MQTT-Topic-&-Payload-Reference.md)** | Topic schemas, JSON payloads, and retain flags. |
+| 🔌 **[REST API Reference](docs/wiki/REST-API-Reference.md)** | Endpoints, query parameters, curl examples, and Swagger UI. |
+| ⚙️ **[Configuration Reference](docs/wiki/Configuration-Reference.md)** | Full `config.ini` manual, `METER_*` environment overrides, and sample file. |
+| 🛡️ **[Config Backups & History](docs/wiki/Config-Backups-&-Version-Control.md)** | Automatic safety backups, 1-click Undo, snapshots, and diffs. |
+| 💾 **[Storage & Snapshot Pruning](docs/wiki/Storage-&-Snapshot-Pruning.md)** | SQLite database, WebP compression, and disk quota pruning. |
+| 🔬 **[Architecture & Pipeline](docs/wiki/Architecture-&-Pipeline.md)** | Component decoupling and execution flow. |
+| 🧠 **[Neural Network Models](docs/wiki/Neural-Network-Models.md)** | CNN architectures, LiteRT runtime, and thread pooling. |
+| 🧮 **[Digit Roll-Over Math](docs/wiki/Digit-Roll-Over-&-Extended-Resolution.md)** | Predecessor consistency algorithms and fractional decimal math. |
+| 🧪 **[Development & Testing](docs/wiki/Development-&-Testing.md)** | Local environment setup, test suites (`./run_tests.sh`), and code quality. |
+| ❓ **[Troubleshooting & FAQ](docs/wiki/Troubleshooting-&-FAQ.md)** | Diagnostics matrix and frequently asked questions. |
 
 ---
 
-### `[DEFAULT]`
-Global application paths and logging configuration.
+## 🛠️ Developer Quick Start
 
-| Parameter | Type | Default | Description |
-|---|---|---|---|
-| `LogLevel` | string | `INFO` | Logging level (`DEBUG`, `INFO`, `WARNING`, `ERROR`). |
-| `ConfigDir` | string | `/config` | Directory containing configuration files and reference images. |
-| `DataDir` | string | `/data` | Dedicated directory containing persistent runtime database files (`history.db`). |
-| `DigitalModelsDir` | string | `${ConfigDir}/neuralnets/digital` | Directory containing TFLite models for digital digits. |
-| `AnalogModelsDir` | string | `${ConfigDir}/neuralnets/analog` | Directory containing TFLite models for analog needles. |
-| `PreviousValueFile` | string | `${ConfigDir}/prevalue.ini` | File used to persist previous meter values across readouts. |
-| `MinConfidenceThreshold` | float | `50.0` | Minimum confidence percentage (0.0–100.0) required to accept digit/needle reading before invalidating (`N`). |
+For local development and running test suites:
 
----
+```bash
+# Install dependencies & run tests
+uv sync
+./run_tests.sh -a
 
-### `[ImageSource]`
-Settings for capturing or loading the source image.
-
-| Parameter | Type | Default | Description |
-|---|---|---|---|
-| `URL` | string | `""` | Camera URL (e.g. `http://192.168.1.100/capture` or `file://${ConfigDir}/original.jpg`). Local `file://` paths are restricted to configured asset directories (`ConfigDir`, `DataDir`, and workspace root) for security. |
-| `Timeout` | integer | `30` | Network request timeout in seconds. |
-| `MinSize` | integer | `10000` | Minimum image size in bytes to discard corrupted/partial frames. |
-
----
-
-### `[Crop]` & `[Resize]`
-Optional pre-processing to crop and resize the raw image before alignment.
-
-**`[Crop]`**
-| Parameter | Type | Default | Description |
-|---|---|---|---|
-| `Enabled` | boolean | `False` | Enable or disable cropping. |
-| `x` | integer | `0` | Top-left X coordinate of the crop area. |
-| `y` | integer | `0` | Top-left Y coordinate of the crop area. |
-| `w` | integer | `0` | Width of the crop area. |
-| `h` | integer | `0` | Height of the crop area. |
-
-**`[Resize]`**
-| Parameter | Type | Default | Description |
-|---|---|---|---|
-| `Enabled` | boolean | `False` | Enable or disable resizing. |
-| `w` | integer | `0` | Target resized width in pixels. |
-| `h` | integer | `0` | Target resized height in pixels. |
-
----
-
-### `[ImageProcessing]`
-Color, contrast, brightness, and autocontrast enhancements.
-
-| Parameter | Type | Default | Description |
-|---|---|---|---|
-| `Enabled` | boolean | `False` | Enable image filter adjustments. |
-| `Contrast` | float | `1.0` | Contrast multiplier (`1.0` = unchanged). |
-| `Brightness` | float | `1.0` | Brightness multiplier (`1.0` = unchanged). |
-| `Color` | float | `1.0` | Color saturation multiplier (`1.0` = unchanged). |
-| `Sharpness` | float | `1.0` | Sharpness multiplier (`1.0` = unchanged). |
-| `GrayScale` | boolean | `False` | Convert image to grayscale. |
-| `AutoContrast` | boolean | `False` | Apply histogram autocontrast to the full image. |
-| `AutoContrastCutoffLow` | float | `2` | Lower percentile cutoff for full-image autocontrast. |
-| `AutoContrastCutoffHigh` | float | `45` | Upper percentile cutoff for full-image autocontrast. |
-| `AutoContrastIgnore` | int/None | `None` | Pixel intensity to ignore during full-image autocontrast. |
-| `AutoContrastCutImages` | boolean | `False` | Apply autocontrast to individual ROI cropped images before inference. |
-| `AutoContrastCutImagesCutoffLow` | float | `2` | Lower percentile cutoff for cropped ROI autocontrast. |
-| `AutoContrastCutImagesCutoffHigh` | float | `45` | Upper percentile cutoff for cropped ROI autocontrast. |
-| `AutoContrastCutImagesIgnore` | int/None | `None` | Pixel intensity to ignore for cropped ROI autocontrast. |
-| `GlareSuppressionEnabled` | boolean | `False` | Enable specular glare and reflection suppression on glossy meter glass. |
-| `GlareSuppressionMode` | string | `clahe` | Glare filtering mode: `clahe` (local contrast), `inpaint` (specular mask fill), `illumination_normalize` (division filter), or `combined`. |
-| `GlareInpaintThreshold` | int | `230` | Luminance threshold (0–255) for detecting specular flash hotspots. |
-| `GlareInpaintRadius` | int | `3` | Neighborhood radius in pixels for Fast Marching (Telea) inpainting. |
-| `GlareClaheClipLimit` | float | `2.0` | Contrast limiting threshold factor for CLAHE. |
-| `GlareClaheGridSize` | int | `8` | Tile grid size for CLAHE (e.g. `8` for 8x8 grid). |
-| `GlareApplyToCutImages` | boolean | `False` | Apply glare suppression individually to cropped digit/pointer ROI images. |
-
-
----
-
-### `[Alignment]`
-Affine transformation using reference markers to correct rotation and perspective shifts.
-
-| Parameter | Type | Default | Description |
-|---|---|---|---|
-| `RotationAngle` | float | `0.0` | Coarse rotation in degrees (`0`, `90`, `180`, `270`). |
-| `Refs` | string | `""` | Comma-separated list of reference image section names (e.g. `ref0, ref1, ref2`). |
-| `PostRotationAngle` | float | `0.0` | Fine-tuning post-rotation angle in degrees (e.g. `0.5`). |
-
-**`[Alignment.<ref_name>]`** (For each reference in `Refs`):
-| Parameter | Type | Description |
-|---|---|---|
-| `image` | string | Path to the reference marker image file (e.g. `${ConfigDir}/Ref_ZR_x99_y219.jpg`). |
-| `x` | integer | Target upper-left X coordinate of the marker in aligned space. |
-| `y` | integer | Target upper-left Y coordinate of the marker in aligned space. |
-| `w` | integer | Width of the reference image (optional; 0 reads actual image dimensions). |
-| `h` | integer | Height of the reference image (optional; 0 reads actual image dimensions). |
-
----
-
-### `[Digits]` (Digital Counter)
-Settings for digital odometer drum or LCD digit recognition.
-
-| Parameter | Type | Default | Description |
-|---|---|---|---|
-| `Enabled` | boolean | `False` | Enable digital digit recognition. |
-| `names` | string | `""` | Comma-separated list of digit ROI names (e.g. `digit1, digit2, digit3`). |
-| `Modelfile` | string | `""` | Path to the TensorFlow Lite model file (`.tflite`). |
-| `Model` | string | `auto` | Model type: `auto`, `digital` (0–9 + invalid), or `digital100` (continuous 0–99). |
-
-**`[Digits.<digit_name>]`** (For each digit in `names`):
-| Parameter | Type | Description |
-|---|---|---|
-| `x` | integer | Upper-left X coordinate of the digit ROI. |
-| `y` | integer | Upper-left Y coordinate of the digit ROI. |
-| `w` | integer | Width of the digit ROI. |
-| `h` | integer | Height of the digit ROI. |
-
----
-
-### `[Analog]` (Analog Needles)
-Settings for circular analog needle / dial recognition.
-
-| Parameter | Type | Default | Description |
-|---|---|---|---|
-| `Enabled` | boolean | `False` | Enable analog needle recognition. |
-| `names` | string | `""` | Comma-separated list of needle ROI names (e.g. `analog1, analog2, analog3`). |
-| `Modelfile` | string | `""` | Path to the TensorFlow Lite model file (`.tflite`). |
-| `Model` | string | `auto` | Model type: `auto`, `analog` (continuous 0–10), or `analog100` (high-res 0–9.99). |
-
-**`[Analog.<analog_name>]`** (For each analog dial in `names`):
-| Parameter | Type | Description |
-|---|---|---|
-| `x` | integer | Upper-left X coordinate of the needle ROI. |
-| `y` | integer | Upper-left Y coordinate of the needle ROI. |
-| `w` | integer | Width of the needle ROI. |
-| `h` | integer | Height of the needle ROI. |
-
----
-
-### `[Meters]`
-Defines output meters, value formatting, consistency checks, and units.
-
-| Parameter | Type | Default | Description |
-|---|---|---|---|
-| `Names` | string | `""` | Comma-separated list of meter definition names (e.g. `digital, analog, total`). |
-
-**`[Meter.<meter_name>]`** (For each meter in `Names`):
-| Parameter | Type | Default | Description |
-|---|---|---|---|
-| `Value` | string | `""` | Template string referencing digit/analog names (e.g. `{digit1}{digit2}.{analog1}`). Supports interpolation (e.g. `${Meter.digital:Value}.${Meter.analog:Value}`). |
-| `ConsistencyEnabled` | boolean | `False` | Enable rate validation against the previous stored reading. |
-| `AllowNegativeRates` | boolean | `False` | If `False`, decreasing counter readings are rejected. |
-| `MaxRateValue` | float | `0.0` | Maximum allowed change since the last valid reading. |
-| `UsePreviousValue` | boolean | `False` | Replace unreadable digits (`N`) with the last known good value (`UsePreviuosValue` is also supported for backward compatibility). |
-| `PreValueFromFileMaxAge` | integer | `0` | Maximum age of persisted previous value in minutes (`0` = no limit). |
-| `UseExtendedResolution` | boolean | `False` | Append fractional sub-digit decimal from the last analog needle. |
-| `Unit` | string | `""` | Measurement unit displayed in API and GUI (e.g. `m³`, `kWh`). |
-
----
-
-### `[History]`
-Settings for SQLAlchemy-backed historical reading retention, SQLite database storage, and consumption aggregation.
-
-| Parameter | Type | Default | Description |
-|---|---|---|---|
-| `Enabled` | boolean | `True` | Enable recording historical meter readings. |
-| `Backend` | string | `sqlite` | Storage backend (`sqlite`, `memory`, or custom SQLAlchemy backend). |
-| `DBUrl` | string | `""` | Optional SQLAlchemy database connection string (e.g. `sqlite:////data/history.db`, `postgresql://user:pass@host/db`). When blank, uses SQLite in `DataDir`. |
-| `RetentionDays` | integer | `30` | Number of days to retain historical readings before automated time-based pruning (`0` to disable). |
-| `MaxRecords` | integer | `50000` | Maximum number of readings retained before oldest-first FIFO row pruning (`0` to disable). |
-| `AutoVacuum` | boolean | `True` | Automatically execute SQLite incremental vacuuming after deletions to recover disk space. |
-| `PruneInterval` | integer | `50` | Number of recorded readings between automated background pruning cycles. |
-| `MaxMemoryMB` | float | `20.0` | In-memory cache memory limit threshold (for in-memory mode). |
-
----
-
-### `[Snapshots]`
-Settings for compressed historical image archival and Time Machine timeline storage.
-
-| Parameter | Type | Default | Description |
-|---|---|---|---|
-| `Enabled` | boolean | `True` | Enable historical frame archival for the Time Machine visual inspector. |
-| `Mode` | string | `smart_tiered` | Archival strategy: `smart_tiered` (recent full frames + long-term ROI strips), `change_only`, `roi_strips_only`, `full_frames`, or `disabled`. |
-| `Format` | string | `webp` | Image compression format for archived snapshots (`webp` or `jpeg`). |
-| `Quality` | integer | `75` | Compression quality factor (1–100). |
-| `MaxDiskMB` | float | `500.0` | Disk space budget in MB for snapshot storage before automatic pruning. |
-| `RecentFullFrameDays` | integer | `2` | Number of days to retain high-resolution full frames before down-tiering. |
-| `RoiStripRetentionDays` | integer | `14` | Number of days to retain composite ROI strip crops. |
-| `IdleHeartbeatMinutes` | integer | `15` | Maximum interval in minutes between snapshot captures during periods of zero flow. |
-| `AlwaysSaveOnAnomaly` | boolean | `True` | Always archive a full camera frame whenever recognition errors or low confidence occurs. |
-| `StorageDir` | string | `/data/snapshots` | Filesystem directory for compressed snapshot storage. |
-
----
-
-### `[Poller]`
-Internal background scheduler for periodic meter readouts.
-
-| Parameter | Type | Default | Description |
-|---|---|---|---|
-| `Enabled` | boolean | `False` | Enable internal background poller task. |
-| `IntervalSeconds` | integer | `300` | Time interval between automatic readouts in seconds (e.g. `300` = 5 minutes). |
-| `RunOnStartup` | boolean | `True` | Execute an immediate readout cycle when the application starts. |
-| `SaveImages` | boolean | `False` | Save intermediate debug images to in-memory cache during background poll. |
-| `RetryIntervalSeconds` | integer | `30` | Delay before retrying after a camera capture or processing failure. |
-
----
-
-### `[MQTT]`
-MQTT publisher with native Home Assistant Auto-Discovery and openHAB support.
-
-| Parameter | Type | Default | Description |
-|---|---|---|---|
-| `Enabled` | boolean | `False` | Enable MQTT publishing. |
-| `Broker` | string | `localhost` | MQTT broker hostname or IP address. |
-| `Port` | integer | `1883` | MQTT broker port (`1883` standard, `8883` TLS). |
-| `Username` | string | `""` | Optional username for MQTT broker authentication. |
-| `Password` | string | `""` | Optional password for MQTT broker authentication. |
-| `ClientID` | string | `water-meter-digitizer` | MQTT client identifier. |
-| `TopicPrefix` | string | `watermeter` | Base MQTT topic prefix (e.g. `watermeter/main/value`, `watermeter/status`). |
-| `KeepAlive` | integer | `60` | MQTT keepalive interval in seconds. |
-| `TLS` | boolean | `False` | Enable TLS encryption. |
-| `Retain` | boolean | `True` | Publish meter readings with MQTT retain flag. |
-| `HomeAssistantDiscovery` | boolean | `True` | Automatically publish Home Assistant MQTT Auto-Discovery payloads. |
-| `DiscoveryPrefix` | string | `homeassistant` | Home Assistant MQTT discovery topic prefix. |
-| `DeviceName` | string | `Water Meter Digitizer` | Device name displayed in Home Assistant device registry. |
-| `DeviceID` | string | `water_meter_digitizer` | Unique device identifier for Home Assistant entity mapping. |
-
----
-
-### `[ZeroFlowMonitor]`
-Continuous flow monitoring & automated leak detection with auto-resolution.
-
-| Parameter | Type | Default | Description |
-|---|---|---|---|
-| `Enabled` | boolean | `False` | Enable continuous flow leak monitoring. |
-| `MeterName` | string | `total` | Name of the logical meter to track for continuous flow. |
-| `ContinuousFlowHours` | float | `2.0` | Hours of uninterrupted non-zero flow required before flagging a leak. |
-| `MinLeakVolume` | float | `0.010` | Minimum volume consumed during continuous flow window (filters optical jitter). |
-| `FlowThreshold` | float | `0.001` | Minimum change between readings (in meter units) to count as active flow. |
-| `ResolveDebounceCount` | integer | `2` | Number of consecutive zero readings required to auto-resolve active alert. |
-| `MaxHistoryEvents` | integer | `50` | Maximum completed leak event logs retained in memory. |
-
-
----
-
-### Complete Example `config.ini`
-
-```ini
-[DEFAULT]
-LogLevel=INFO
-ConfigDir=/config
-DataDir=/data
-DigitalModelsDir=${ConfigDir}/neuralnets/digital
-AnalogModelsDir=${ConfigDir}/neuralnets/analog
-PreviousValueFile=${ConfigDir}/prevalue.ini
-MinConfidenceThreshold=50.0
-
-[ImageSource]
-URL=http://192.168.1.100/capture_with_flashlight
-Timeout=15
-MinSize=20000
-
-[Crop]
-Enabled=False
-x=0
-y=0
-w=640
-h=480
-
-[Resize]
-Enabled=False
-w=640
-h=480
-
-[ImageProcessing]
-Enabled=False
-Contrast=1.0
-Brightness=1.0
-Color=1.0
-Sharpness=1.0
-GrayScale=False
-AutoContrast=False
-AutoContrastCutoffLow=2
-AutoContrastCutoffHigh=45
-AutoContrastIgnore=None
-AutoContrastCutImages=True
-AutoContrastCutImagesCutoffLow=2
-AutoContrastCutImagesCutoffHigh=45
-AutoContrastCutImagesIgnore=None
-
-[Alignment]
-RotationAngle=180
-Refs=ref0, ref1, ref2
-PostRotationAngle=0.0
-
-[Alignment.ref0]
-Image=${ConfigDir}/Ref_ZR_x99_y219.jpg
-x=99
-y=219
-
-[Alignment.ref1]
-Image=${ConfigDir}/Ref_m3_x512_y117.jpg
-x=512
-y=117
-
-[Alignment.ref2]
-Image=${ConfigDir}/Ref_x0_x301_y386.jpg
-x=301
-y=386
-
-[Digits]
-Enabled=True
-Names=digit1, digit2, digit3, digit4, digit5
-Modelfile=${DigitalModelsDir}/class100/dig-class100_0168_s2_q.tflite
-Model=auto
-
-[Digits.digit1]
-x=215
-y=97
-w=42
-h=75
-
-[Digits.digit2]
-x=273
-y=97
-w=42
-h=75
-
-[Digits.digit3]
-x=332
-y=97
-w=42
-h=75
-
-[Digits.digit4]
-x=390
-y=97
-w=42
-h=75
-
-[Digits.digit5]
-x=446
-y=97
-w=42
-h=75
-
-[Analog]
-Enabled=True
-Names=analog1, analog2, analog3, analog4
-Modelfile=${AnalogModelsDir}/continuous/ana-cont_1209_s2.tflite
-Model=auto
-
-[Analog.analog1]
-x=491
-y=307
-w=115
-h=115
-
-[Analog.analog2]
-x=417
-y=395
-w=115
-h=115
-
-[Analog.analog3]
-x=303
-y=424
-w=115
-h=115
-
-[Analog.analog4]
-x=163
-y=358
-w=115
-h=115
-
-[Meters]
-Names=digital, analog, total
-
-[Meter.digital]
-Value={digit1}{digit2}{digit3}{digit4}{digit5}
-ConsistencyEnabled=False
-
-[Meter.analog]
-Value={analog1}{analog2}{analog3}{analog4}
-UseExtendedResolution=False
-ConsistencyEnabled=False
-
-[Meter.total]
-Value=${Meter.digital:Value}.${Meter.analog:Value}
-UsePreviousValue=True
-UseExtendedResolution=True
-ConsistencyEnabled=True
-AllowNegativeRates=False
-MaxRateValue=0.2
-Unit=m³
-
-[History]
-Enabled=True
-Backend=sqlite
-RetentionDays=30
-MaxRecords=50000
-AutoVacuum=True
-PruneInterval=50
-
-[Poller]
-Enabled=True
-IntervalSeconds=300
-RunOnStartup=True
-SaveImages=False
-RetryIntervalSeconds=30
-
-[MQTT]
-Enabled=True
-Broker=localhost
-Port=1883
-Username=
-Password=
-ClientID=water-meter-digitizer
-TopicPrefix=watermeter
-KeepAlive=60
-TLS=False
-Retain=True
-HomeAssistantDiscovery=True
-DiscoveryPrefix=homeassistant
-DeviceName=Water Meter Digitizer
-DeviceID=water_meter_digitizer
+# Start local server
+export CONFIG_FILE=$(pwd)/config/config.ini
+uv run python src/main.py
 ```
+See **[DEVELOPER.md](DEVELOPER.md)** for more developer shortcuts.
 
 ---
 
-## CNN Models
+## 📄 License
 
-Four model types are supported. The active type is selected via the `Modelfile` setting or detected automatically from the model's output shape:
-
-| Model type | Outputs | Description |
-|------------|---------|-------------|
-| `analog` | 2 | Analog needle, continuous 0–10 output |
-| `analog100` | 100 | Analog needle, higher-resolution 0–9.99 output |
-| `digital` | 11 | Digital digit, 0–9 + invalid |
-| `digital100` | 100 | Digital digit, continuous 0–99 |
-
-Models are executed using Google LiteRT (`ai-edge-litert`), providing high-performance quantized and floating-point inference across CPU, GPU, and NPU delegates.
-
----
-
-## Architecture
-
-```
-Camera URL
-    │
-    ▼
-ImageProcessor          ← download, rotate, align, crop ROIs
-    │
-    ├─ analog images ──► InterpreterPool ──► AnalogNeedleCNN   (LiteRT) ─┐
-    └─ digital images ─► InterpreterPool ──► DigitalCounterCNN (LiteRT) ┘
-                                                                         │
-                                                                         ▼
-                                                                 DigitizerProcessor
-                                                                   • predecessor correction
-                                                                   • extended resolution
-                                                                   • consistency check
-                                                                   • previous value fill-in
-                                                                         │
-                                                                         ▼
-                                                                    MeterResult  ──► REST API / NiceGUI Dashboard
-```
-
----
-
-## License
-
-See [LICENSE.md](LICENSE.md).
+Distributed under the [GNU General Public License v3.0 (GPL-3.0)](LICENSE.md).
