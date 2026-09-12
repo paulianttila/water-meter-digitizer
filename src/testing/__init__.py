@@ -1,5 +1,5 @@
 """Water meter generator and testing simulation package."""
 
-from testing.meter_generator import MeterImageGenerator
+from .meter_generator import MeterImageGenerator, SyntheticWaterMeterGenerator
 
-__all__ = ["MeterImageGenerator"]
+__all__ = ["MeterImageGenerator", "SyntheticWaterMeterGenerator"]

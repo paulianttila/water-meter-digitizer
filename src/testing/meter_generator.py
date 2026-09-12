@@ -358,7 +358,7 @@ class MeterImageGenerator:
                 digit=val,
                 active_color=active_col,
                 ghost_color=ghost_col,
-                slant=2,
+                slant=0,
             )
 
     def _draw_7segment_digit(
@@ -371,11 +371,11 @@ class MeterImageGenerator:
         digit: int,
         active_color: tuple[int, int, int],
         ghost_color: tuple[int, int, int],
-        slant: int = 2,
+        slant: int = 0,
     ) -> None:
-        """Draw an authentic 7-segment LCD digit with polygonal segment geometry."""
-        sw = max(3, int(w * 0.16))  # Segment stroke thickness
-        gap = max(1, int(sw * 0.22))
+        """Draw an authentic 7-segment LCD digit with tight, polygonal segment geometry."""
+        sw = max(4, int(w * 0.17))  # Segment stroke thickness (~6-7px)
+        gap = 1  # Tight 1px separation between segments
         half_h = h // 2
 
         # 7 segment state flags: (a, b, c, d, e, f, g)
@@ -384,13 +384,13 @@ class MeterImageGenerator:
         def color_for(seg_idx: int) -> tuple[int, int, int]:
             return active_color if seg_active[seg_idx] else ghost_color
 
-        # Segment A (Top horizontal)
+        # Segment A (Top horizontal trapezoid)
         draw.polygon(
             [
-                (x + sw + gap + slant, y),
-                (x + w - sw - gap + slant, y),
-                (x + w - sw * 2 - gap + slant, y + sw),
-                (x + sw * 2 + gap + slant, y + sw),
+                (x + sw * 0.6 + gap + slant, y),
+                (x + w - sw * 0.6 - gap + slant, y),
+                (x + w - sw - gap + slant, y + sw),
+                (x + sw + gap + slant, y + sw),
             ],
             fill=color_for(0),
         )
@@ -398,9 +398,9 @@ class MeterImageGenerator:
         # Segment B (Top-Right vertical)
         draw.polygon(
             [
-                (x + w + slant, y + gap),
-                (x + w + slant - (slant // 2), y + half_h - gap),
-                (x + w - sw + slant - (slant // 2), y + half_h - sw - gap),
+                (x + w + slant, y + sw * 0.6 + gap),
+                (x + w + (slant // 2), y + half_h - gap),
+                (x + w - sw + (slant // 2), y + half_h - sw // 2 - gap),
                 (x + w - sw + slant, y + sw + gap),
             ],
             fill=color_for(1),
@@ -410,20 +410,20 @@ class MeterImageGenerator:
         draw.polygon(
             [
                 (x + w + (slant // 2), y + half_h + gap),
-                (x + w, y + h - gap),
+                (x + w, y + h - sw * 0.6 - gap),
                 (x + w - sw, y + h - sw - gap),
-                (x + w - sw + (slant // 2), y + half_h + sw + gap),
+                (x + w - sw + (slant // 2), y + half_h + sw // 2 + gap),
             ],
             fill=color_for(2),
         )
 
-        # Segment D (Bottom horizontal)
+        # Segment D (Bottom horizontal trapezoid)
         draw.polygon(
             [
-                (x + sw * 2 + gap, y + h - sw),
-                (x + w - sw * 2 - gap, y + h - sw),
-                (x + w - sw - gap, y + h),
-                (x + sw + gap, y + h),
+                (x + sw + gap, y + h - sw),
+                (x + w - sw - gap, y + h - sw),
+                (x + w - sw * 0.6 - gap, y + h),
+                (x + sw * 0.6 + gap, y + h),
             ],
             fill=color_for(3),
         )
@@ -432,9 +432,9 @@ class MeterImageGenerator:
         draw.polygon(
             [
                 (x + (slant // 2), y + half_h + gap),
-                (x + sw + (slant // 2), y + half_h + sw + gap),
+                (x + sw + (slant // 2), y + half_h + sw // 2 + gap),
                 (x + sw, y + h - sw - gap),
-                (x, y + h - gap),
+                (x, y + h - sw * 0.6 - gap),
             ],
             fill=color_for(4),
         )
@@ -442,21 +442,23 @@ class MeterImageGenerator:
         # Segment F (Top-Left vertical)
         draw.polygon(
             [
-                (x + slant, y + gap),
+                (x + slant, y + sw * 0.6 + gap),
                 (x + sw + slant, y + sw + gap),
-                (x + sw + (slant // 2), y + half_h - sw - gap),
+                (x + sw + (slant // 2), y + half_h - sw // 2 - gap),
                 (x + (slant // 2), y + half_h - gap),
             ],
             fill=color_for(5),
         )
 
-        # Segment G (Middle horizontal)
+        # Segment G (Middle horizontal pointed hexagon)
         draw.polygon(
             [
+                (x + sw * 0.7 + gap + (slant // 2), y + half_h),
                 (x + sw + gap + (slant // 2), y + half_h - sw // 2),
                 (x + w - sw - gap + (slant // 2), y + half_h - sw // 2),
-                (x + w - sw * 2 - gap + (slant // 2), y + half_h + sw // 2),
-                (x + sw * 2 + gap + (slant // 2), y + half_h + sw // 2),
+                (x + w - sw * 0.7 - gap + (slant // 2), y + half_h),
+                (x + w - sw - gap + (slant // 2), y + half_h + sw // 2),
+                (x + sw + gap + (slant // 2), y + half_h + sw // 2),
             ],
             fill=color_for(6),
         )
@@ -720,3 +722,7 @@ class MeterImageGenerator:
         )
 
         return img, cfg
+
+
+# Alias for backward compatibility and semantic clarity
+SyntheticWaterMeterGenerator = MeterImageGenerator
