@@ -111,6 +111,7 @@ set_app_ref(app)
 app.state.version = VERSION
 app.state.config_file = config_file
 app.state.config = config
+app.state.config_version = 1
 app.state.image_cache = ImageCache(max_size=50, ttl_seconds=300.0)
 app.state.storage = get_storage_backend(config)
 app.state.zero_flow_tracker = ZeroFlowTracker(config.zero_flow_monitor)
@@ -319,6 +320,7 @@ def init_gui(app_instance: FastAPI) -> None:
         get_mqtt_status_fn=_get_mqtt_status,
         get_previous_values_fn=_get_previous_values,
         set_previous_value_fn=_set_previous_value,
+        get_config_version_fn=lambda: getattr(app_instance.state, "config_version", 1),
     )
     frontend.init(app_instance, callbacks)
 
@@ -332,6 +334,7 @@ def init_config() -> None:
         config = new_config
         app.state.config = new_config
         app.state.config_file = config_file
+        app.state.config_version = getattr(app.state, "config_version", 0) + 1
         target_log_level = getattr(logging, str(config.log_level).upper(), logging.INFO)
         logging.getLogger().setLevel(target_log_level)
         logger.setLevel(target_log_level)

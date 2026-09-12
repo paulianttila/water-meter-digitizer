@@ -191,6 +191,127 @@ def test_save():
             os.remove(TEMPFILENAME)
 
 
+def test_config_save_preserves_title_case():
+    config = Config().load_from_file("tests/unit/resource/config-for-save-test.ini")
+    saved_str = config.save_to_string()
+
+    # Ensure sections and keys are serialized with TitleCase/PascalCase
+    assert "LogLevel=" in saved_str
+    assert "ConfigDir=" in saved_str
+    assert "DigitalModelsDir=" in saved_str
+    assert "AnalogModelsDir=" in saved_str
+    assert "PreviousValueFile=" in saved_str
+    assert "PostRotationAngle=" in saved_str
+    assert "RotationAngle=" in saved_str
+    assert "AutoContrastCutoffLow=" in saved_str
+    assert "AutoContrastCutoffHigh=" in saved_str
+    assert "UsePreviousValue=" in saved_str
+    assert "PreValueFromFileMaxAge=" in saved_str
+    assert "HomeAssistantDiscovery=" in saved_str
+    assert "DiscoveryPrefix=" in saved_str
+    assert "ContinuousFlowHours=" in saved_str
+    assert "MinLeakVolume=" in saved_str
+    assert "ResolveDebounceCount=" in saved_str
+
+
+def test_config_save_uses_variable_interpolation():
+    config = Config().load_from_file("config/config.ini")
+    saved_str = config.save_to_string()
+
+    # Verify interpolation variables are used in saved output
+    assert "DigitalModelsDir=${ConfigDir}/neuralnets/digital" in saved_str
+    assert "AnalogModelsDir=${ConfigDir}/neuralnets/analog" in saved_str
+    assert "PreviousValueFile=${ConfigDir}/prevalue.ini" in saved_str
+    assert "URL=file://${ConfigDir}/original.jpg" in saved_str
+    assert "Image=${ConfigDir}/Ref_ZR_x99_y219.jpg" in saved_str
+    assert (
+        "ModelFile=${DigitalModelsDir}/class100/dig-class100_0168_s2_q.tflite"
+        in saved_str
+    )
+    assert (
+        "ModelFile=${AnalogModelsDir}/continuous/ana-cont_1209_s2.tflite" in saved_str
+    )
+    assert "DBUrl=sqlite:///${DataDir}/history.db" in saved_str
+    assert "StorageDir=${DataDir}/snapshots" in saved_str
+
+    # Verify round-trip parsing expands variables seamlessly
+    reloaded = Config().load_from_string(saved_str)
+    assert reloaded.digital_models_dir == config.digital_models_dir
+    assert reloaded.analog_models_dir == config.analog_models_dir
+    assert reloaded.previous_value_file == config.previous_value_file
+    assert reloaded.image_source.url == config.image_source.url
+    assert (
+        reloaded.alignment.ref_images[0].file_name
+        == config.alignment.ref_images[0].file_name
+    )
+    assert reloaded.digital_readout.model_file == config.digital_readout.model_file
+    assert reloaded.analog_readout.model_file == config.analog_readout.model_file
+    assert reloaded.history.db_url == config.history.db_url
+    assert reloaded.snapshots.storage_dir == config.snapshots.storage_dir
+
+
+def test_config_save_preserves_external_paths():
+    config = Config().load_from_file("config/config.ini")
+    # Point some paths to custom / external locations
+    config.image_source.url = "http://192.168.1.100/cam.jpg"
+    config.digital_readout.model_file = "/opt/models/my_custom_digit_model.tflite"
+    config.history.db_url = "sqlite:///:memory:"
+    config.snapshots.storage_dir = "/mnt/nas/snapshots"
+
+    saved_str = config.save_to_string()
+    assert "URL=http://192.168.1.100/cam.jpg" in saved_str
+    assert "ModelFile=/opt/models/my_custom_digit_model.tflite" in saved_str
+    assert "DBUrl=sqlite:///:memory:" in saved_str
+    assert "StorageDir=/mnt/nas/snapshots" in saved_str
+
+    reloaded = Config().load_from_string(saved_str)
+    assert reloaded.image_source.url == "http://192.168.1.100/cam.jpg"
+    assert (
+        reloaded.digital_readout.model_file
+        == "/opt/models/my_custom_digit_model.tflite"
+    )
+    assert reloaded.history.db_url == "sqlite:///:memory:"
+    assert reloaded.snapshots.storage_dir == "/mnt/nas/snapshots"
+
+
+def test_config_save_with_nested_data_dir():
+    config = Config().load_from_file("config/config.ini")
+    # Simulate setup where data_dir is inside config_dir
+    config.config_dir = "/Users/pali/test_config3"
+    config.data_dir = "/Users/pali/test_config3/data"
+    config.digital_models_dir = "/Users/pali/test_config3/neuralnets/digital"
+    config.analog_models_dir = "/Users/pali/test_config3/neuralnets/analog"
+    config.previous_value_file = "/Users/pali/test_config3/prevalue.ini"
+    config.digital_readout.model_file = (
+        "/Users/pali/test_config3/neuralnets/digital/dig-class11_1701_s2.tflite"
+    )
+    config.history.db_url = "sqlite:////Users/pali/test_config3/data/history.db"
+    config.snapshots.storage_dir = "/Users/pali/test_config3/data/snapshots"
+
+    saved_str = config.save_to_string()
+    assert "ConfigDir=/Users/pali/test_config3" in saved_str
+    assert "DataDir=${ConfigDir}/data" in saved_str
+    assert "DigitalModelsDir=${ConfigDir}/neuralnets/digital" in saved_str
+    assert "AnalogModelsDir=${ConfigDir}/neuralnets/analog" in saved_str
+    assert "PreviousValueFile=${ConfigDir}/prevalue.ini" in saved_str
+    assert "ModelFile=${DigitalModelsDir}/dig-class11_1701_s2.tflite" in saved_str
+    assert "DBUrl=sqlite:///${DataDir}/history.db" in saved_str
+    assert "StorageDir=${DataDir}/snapshots" in saved_str
+
+    reloaded = Config().load_from_string(saved_str)
+    assert reloaded.config_dir == "/Users/pali/test_config3"
+    assert reloaded.data_dir == "/Users/pali/test_config3/data"
+    assert reloaded.digital_models_dir == "/Users/pali/test_config3/neuralnets/digital"
+    assert (
+        reloaded.digital_readout.model_file
+        == "/Users/pali/test_config3/neuralnets/digital/dig-class11_1701_s2.tflite"
+    )
+    assert (
+        reloaded.history.db_url == "sqlite:////Users/pali/test_config3/data/history.db"
+    )
+    assert reloaded.snapshots.storage_dir == "/Users/pali/test_config3/data/snapshots"
+
+
 def test_config_env_override(monkeypatch):
     monkeypatch.setenv("METER_LOG_LEVEL", "DEBUG")
     monkeypatch.setenv("METER_CONFIG_DIR", "/custom/config")

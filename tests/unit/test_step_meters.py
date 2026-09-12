@@ -97,3 +97,41 @@ def test_step_meters_load_and_add_remove():
         step._delete_meter(step.meters[0])
         assert len(step.meters) == 0
         assert len(step.meter_params) == 0
+
+
+def test_meter_update_digit_names_options():
+    m = Meter(["digit1"], "total")
+    m.digits = MagicMock(value=["digit1", "."], options=["digit1", "."])
+    m.preview_label = MagicMock()
+    m.meter.unit = "m3"
+
+    m.update_digit_names(["digit1", "digit2", "digit3", "analog1"])
+    assert m.digits.options == ["digit1", "digit2", "digit3", "analog1", "."]
+    m.digits.update.assert_called_once()
+
+
+def test_meter_step_refresh_digit_names():
+    digit_names_store = ["digit1", "digit2"]
+    step = MeterStep(
+        name="Meters",
+        set_image_callback=MagicMock(),
+        get_digit_names_func=lambda: list(digit_names_store),
+    )
+
+    m1 = Meter(list(digit_names_store), "total")
+    m1.digits = MagicMock(value=["digit1"], options=["digit1", "digit2", "."])
+    m1.preview_label = MagicMock()
+    step.meters.append(m1)
+
+    # Simulate user adding new digital and analog ROIs in previous steps
+    digit_names_store.extend(["digit3", "analog1", "analog2"])
+
+    step.refresh_digit_names()
+    assert m1.digits.options == [
+        "digit1",
+        "digit2",
+        "digit3",
+        "analog1",
+        "analog2",
+        ".",
+    ]

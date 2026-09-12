@@ -114,6 +114,13 @@ def align(image: Image, reference_images: Sequence[RefImage]) -> Image:
     if not reference_images:
         return image
 
+    if len(reference_images) != 3:
+        logger.warning(
+            "Image alignment requires exactly 3 reference markers, found %d. Skipping alignment.",
+            len(reference_images),
+        )
+        return image
+
     data = convert_image_to_np_array(image)
     w, h = image.size
 
@@ -121,10 +128,12 @@ def align(image: Image, reference_images: Sequence[RefImage]) -> Image:
     for ref in reference_images:
         template = cv2.imread(ref.file_name)
         if template is None:
-            raise FileNotFoundError(
-                f"Alignment reference image file '{ref.file_name}' "
-                f"for marker '{ref.name}' could not be loaded"
+            logger.warning(
+                "Alignment reference image file '%s' for marker '%s' could not be loaded. Skipping alignment.",
+                ref.file_name,
+                ref.name,
             )
+            return image
         ref_image_coordinates.append(_get_ref_coordinate(data, template))
 
     alignment_ref_pos = [
@@ -134,11 +143,15 @@ def align(image: Image, reference_images: Sequence[RefImage]) -> Image:
         )
         for i in range(len(reference_images))
     ]
-    pts1 = np.float32(ref_image_coordinates)  # type: ignore
-    pts2 = np.float32(alignment_ref_pos)  # type: ignore
-    M = cv2.getAffineTransform(pts1, pts2)  # type: ignore
-    img = cv2.warpAffine(data, M, (w, h))
-    return convert_np_array_to_image(img)
+    try:
+        pts1 = np.float32(ref_image_coordinates)  # type: ignore
+        pts2 = np.float32(alignment_ref_pos)  # type: ignore
+        M = cv2.getAffineTransform(pts1, pts2)  # type: ignore
+        img = cv2.warpAffine(data, M, (w, h))
+        return convert_np_array_to_image(img)
+    except Exception as e:
+        logger.error("Failed to perform affine alignment: %s", e)
+        return image
 
 
 def _get_ref_coordinate(image: np.ndarray, template: np.ndarray) -> tuple[int, int]:

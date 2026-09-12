@@ -37,13 +37,17 @@ class InitialRotateStep(BaseStep):
 
     def update_image(self, image: str) -> None:
         self.org_image = image
-        self.image = self._rotate_image(image, self.angle)
+        if not image:
+            self.image = ""
+            return
+        self.image = self._rotate_image(image, self.angle) if self.angle != 0 else image
 
     def _reset_image(self) -> None:
         if self.org_image != "":
             self.image = self.org_image
             self.angle = 0
-            self.angle_label.set_text(f"Rotate: {self.angle}°")
+            if hasattr(self, "angle_label") and self.angle_label is not None:
+                self.angle_label.set_text(f"Rotate: {self.angle}°")
         if self.set_image_callback is not None:
             self.set_image_callback(self.image)
 
@@ -51,11 +55,16 @@ class InitialRotateStep(BaseStep):
         self._reset_image()
         self.image = self._rotate_image(self.image, angle)
         self.angle = angle
-        self.angle_label.set_text(f"Rotate: {self.angle}°")
+        if hasattr(self, "angle_label") and self.angle_label is not None:
+            self.angle_label.set_text(f"Rotate: {self.angle}°")
         if self.set_image_callback is not None:
             self.set_image_callback(self.image)
 
     def _rotate_image(self, image: str, angle: float) -> str:
+        if not image:
+            return ""
+        if angle == 0:
+            return image
         return (
             ImageProcessor()
             .set_image_from_base64_str(image)

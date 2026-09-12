@@ -57,13 +57,16 @@ def test_full_9_step_wizard_traversal(page: Page, live_server_url: str):
 
     # Step 9: Final / Apply & Finish
     expect(page.get_by_text("Step 9 of 9: Final")).to_be_visible(timeout=5000)
-    expect(page.get_by_role("button", name="Save Config").first).to_be_visible()
+    expect(page.get_by_text("Configuration not yet saved")).to_be_visible(timeout=5000)
+    expect(page.get_by_role("button", name="Save Config")).to_be_visible()
+    expect(continue_btn).not_to_be_visible()
 
     # Test backward traversal
     back_btn.click()
     expect(page.get_by_text("Step 8 of 9: Services & Integrations")).to_be_visible(
         timeout=5000
     )
+    expect(continue_btn).to_be_visible()
 
 
 @pytest.mark.ui
@@ -80,6 +83,7 @@ def test_setup_wizard_reset_dialog(page: Page, live_server_url: str):
     cancel_btn = page.get_by_role("button", name="Cancel")
     expect(cancel_btn).to_be_visible()
     cancel_btn.click()
+    expect(cancel_btn).not_to_be_visible(timeout=5000)
 
 
 @pytest.mark.ui
@@ -133,3 +137,21 @@ def test_setup_wizard_adjust_step_side_by_side_preview(
     expect(page.get_by_text("Step 3 of 9: Draw reference points")).to_be_visible(
         timeout=5000
     )
+
+
+@pytest.mark.ui
+def test_setup_wizard_start_clean_dialog(page: Page, live_server_url: str):
+    """Verify start clean configuration dialog and action."""
+    page.goto(f"{live_server_url}/gui", wait_until="domcontentloaded")
+    page.get_by_role("tab", name="Setup").click()
+
+    clean_btn = page.get_by_role("button", name="Start Clean")
+    expect(clean_btn).to_be_visible(timeout=10000)
+    clean_btn.click()
+
+    expect(page.get_by_text("Start Clean Configuration?")).to_be_visible(timeout=5000)
+    expect(page.get_by_text("Create safety backup before clearing")).to_be_visible()
+
+    cancel_btn = page.get_by_role("button", name="Cancel")
+    expect(cancel_btn).to_be_visible()
+    cancel_btn.click()

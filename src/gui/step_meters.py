@@ -55,6 +55,15 @@ class Meter:
             unit_str = f" {self.meter.unit}" if self.meter.unit else ""
             self.preview_label.text = f"{self.meter.value or '—'}{unit_str}"
 
+    def update_digit_names(self, digit_names: list[str]) -> None:
+        self.digit_names = list(digit_names)
+        if hasattr(self, "digits") and self.digits is not None:
+            current_values = self.digits.value if self.digits.value else []
+            combined = list(dict.fromkeys([*self.digit_names, *current_values, "."]))
+            self.digits.options = combined
+            self.digits.update()
+            self.update_vals()
+
     def show_new(self) -> MeterParams:
         self.value_container = ui.card().classes(
             "w-full bg-slate-900/60 border border-white/10 rounded-xl "
@@ -91,7 +100,7 @@ class Meter:
                 )
                 self.digits = (
                     ui.select(
-                        [*self.digit_names, "."],
+                        list(dict.fromkeys([*self.digit_names, "."])),
                         multiple=True,
                         label="Ordered Digits & Analogs",
                         on_change=self.update_vals,
@@ -179,15 +188,38 @@ class MeterStep(BaseStep):
                 self.meter_params.pop(idx)
             meter_obj.remove()
 
+    def refresh_digit_names(self) -> None:
+        current_names = (
+            self.get_digit_names_func() if self.get_digit_names_func is not None else []
+        )
+        for meter in self.meters:
+            meter.update_digit_names(current_names)
+
     def load_from_config(self, meter_configs: list[MeterConfig]) -> None:
         self.meters.clear()
         self.meter_params.clear()
         if hasattr(self, "values_container") and self.values_container is not None:
             self.values_container.clear()
+            current_digit_names = (
+                self.get_digit_names_func()
+                if self.get_digit_names_func is not None
+                else []
+            )
             for m in meter_configs:
                 with self.values_container:
+                    tokens = (
+                        [
+                            t.strip("{}") if t.startswith("{") else t
+                            for t in re.findall(r"\{[^{}]+\}|\.", m.format)
+                        ]
+                        if m.format
+                        else m.value_names
+                    )
+                    available_names = list(
+                        dict.fromkeys([*current_digit_names, *(tokens or [])])
+                    )
                     meter_container = Meter(
-                        self.get_digit_names_func(),
+                        available_names,
                         m.name,
                         on_delete=self._delete_meter,
                     )
@@ -204,15 +236,6 @@ class MeterStep(BaseStep):
                         m.pre_value_from_file_max_age
                     )
                     meter_param.unit = m.unit
-                    # Parse {digit1}{digit2}... into select list values
-                    tokens = (
-                        [
-                            t.strip("{}") if t.startswith("{") else t
-                            for t in re.findall(r"\{[^{}]+\}|\.", m.format)
-                        ]
-                        if m.format
-                        else m.value_names
-                    )
                     meter_container.digits.value = tokens if tokens else m.value_names
                     meter_container.update_vals()
                     self.meter_params.append(meter_param)
@@ -220,8 +243,13 @@ class MeterStep(BaseStep):
     def _add_meter(self) -> None:
         with self.values_container:
             name = f"Meter{len(self.meters) + 1}"
+            current_digit_names = (
+                self.get_digit_names_func()
+                if self.get_digit_names_func is not None
+                else []
+            )
             meter_container = Meter(
-                self.get_digit_names_func(),
+                current_digit_names,
                 name,
                 on_delete=self._delete_meter,
             )

@@ -30,6 +30,10 @@ class Callbacks(Protocol):
         """Take configuration file in use"""
         ...
 
+    def get_config_version(self) -> int:
+        """Get active configuration version counter (increments on reload)."""
+        ...
+
     def get_storage(self) -> Any:
         """Get history storage backend"""
         ...

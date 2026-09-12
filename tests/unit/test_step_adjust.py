@@ -328,3 +328,59 @@ def test_adjust_step_show():
         assert step.live_preview is not None
         assert step.crop_enabled is not None
         assert step.adjust_enabled is not None
+
+
+def test_adjust_step_do_adjust_with_missing_ref_files(
+    sample_pil_image: Image.Image,
+) -> None:
+    """Verify _do_adjust does not fail if ref_images point to non-existent files."""
+    from data_classes import RefImage
+
+    cb = MagicMock()
+    step = AdjustStep(name="Adjust", set_image_callback=cb)
+    step.ref_images = [
+        RefImage(
+            name="Ref0", x=10, y=10, w=20, h=20, file_name="/nonexistent/ref0.jpg"
+        ),
+        RefImage(
+            name="Ref1", x=50, y=10, w=20, h=20, file_name="/nonexistent/ref1.jpg"
+        ),
+        RefImage(
+            name="Ref2", x=30, y=60, w=20, h=20, file_name="/nonexistent/ref2.jpg"
+        ),
+    ]
+
+    step.crop_enabled = MagicMock(value=False)
+    step.resize_enabled = MagicMock(value=False)
+    step.rotate_enabled = MagicMock(value=False)
+    step.rotate_angle = MagicMock(value=0.0)
+    step.adjust_enabled = MagicMock(value=True)
+    step.adjust_contrast = MagicMock(value=1.5)
+    step.adjust_brightness = MagicMock(value=1.0)
+    step.adjust_sharpness = MagicMock(value=1.0)
+    step.adjust_color = MagicMock(value=1.0)
+    step.grayscale_enabled = MagicMock(value=False)
+    step.autocontrast_enabled = MagicMock(value=False)
+    step.glare_enabled = MagicMock(value=False)
+
+    b64_orig = img_utils.convert_image_base64str(sample_pil_image)
+    step.org_image = b64_orig
+
+    # Should not raise FileNotFoundError, should successfully apply contrast
+    result_b64 = step._do_adjust(b64_orig)
+    assert isinstance(result_b64, str)
+    assert len(result_b64) > 0
+
+
+def test_adjust_step_preview_error_fallback(sample_pil_image: Image.Image) -> None:
+    """Verify _update_preview_canvas falls back to original image on error."""
+    cb = MagicMock()
+    step = AdjustStep(name="Adjust", set_image_callback=cb)
+    b64_orig = img_utils.convert_image_base64str(sample_pil_image)
+    step.org_image = b64_orig
+    step.compare_mode = MagicMock(value="Single")
+
+    with patch.object(step, "_do_adjust", side_effect=RuntimeError("Test error")):
+        step._update_preview_canvas()
+        cb.assert_called_with(b64_orig)
+        assert step.image == b64_orig

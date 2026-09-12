@@ -1,5 +1,6 @@
 import base64
 import logging
+import os
 from hashlib import sha256
 
 from nicegui import events, ui
@@ -82,7 +83,7 @@ class SetupPage:
         self.comparison_container: ui.element
         self.comparison_image: ui.image
 
-        self.previous_step: str = ""
+        self.previous_step: str = NAME_DOWNLOAD_IMAGE
 
         self.config: Config
         self.image: str = ""  # base64 str
@@ -353,13 +354,21 @@ class SetupPage:
 
         def save_refs() -> None:
             config_dir = self.callbacks.get_config().config_dir
-            image = ImageUtils.convert_base64_str_to_image(self.image)
+            ref_source_b64 = (
+                self.draw_refs_step.get_image()
+                or self.initial_rotate_step.get_image()
+                or self.image
+            )
+            if not ref_source_b64:
+                return
+            image = ImageUtils.convert_base64_str_to_image(ref_source_b64)
             for roi in self.draw_refs_step.rois:
                 ref_img = ImageUtils.cut_image(
-                    image, ImagePosition(roi.name, roi.x, roi.y, roi.w, roi.h)
+                    image,
+                    ImagePosition(name=roi.name, x=roi.x, y=roi.y, w=roi.w, h=roi.h),
                 )
                 ImageUtils.save_image(
-                    ref_img, f"{config_dir}/{roi.name}_x{roi.x}_y{roi.y}.jpg"
+                    ref_img, f"{config_dir}/ref_{roi.name}_x{roi.x}_y{roi.y}.jpg"
                 )
 
         def get_digit_names() -> list[str]:
@@ -391,7 +400,21 @@ class SetupPage:
                 return self.final_step.get_image()
             return ""
 
+        def get_source_image_for_step(step_name: str) -> str:
+            raw_img = self.download_image_step.get_image() or self.image
+            if step_name in (NAME_DOWNLOAD_IMAGE, NAME_INITIAL_ROTATE):
+                return raw_img
+
+            rotated_img = self.initial_rotate_step.get_image() or raw_img
+            if step_name in (NAME_DRAW_REFS, NAME_ADJUST):
+                return rotated_img
+
+            adjusted_img = self.adjust_step.get_image() or rotated_img
+            return adjusted_img
+
         def set_image_by_step_name(name: str, image: str) -> None:
+            if not image:
+                return
             if name == NAME_INITIAL_ROTATE:
                 self.initial_rotate_step.update_image(image)
             elif name == NAME_DRAW_REFS:
@@ -454,45 +477,16 @@ class SetupPage:
                 self.final_step.update_image(image)
 
         def is_step_forward(new_step: str, previous_step: str) -> bool:
-            if previous_step == "":
+            if previous_step == "" or previous_step not in steps_order:
                 return True
+            if new_step not in steps_order:
+                return False
             return steps_order.index(new_step) > steps_order.index(previous_step)
 
         def handle_stepper_change(step: str) -> None:
             logger.debug(f"Step: {self.previous_step} -> {step}")
 
-            img = get_image_by_step_name(step)
-            print_image_hash(f"step {step}", img)
-            step_forward = is_step_forward(step, self.previous_step)
-            if step_forward:
-                logger.debug("Step forward")
-                if self.previous_step == NAME_DRAW_REFS or step == NAME_ADJUST:
-                    config_refs = self.callbacks.get_config().alignment.ref_images
-                    ref_images = []
-                    for roi in self.draw_refs_step.rois:
-                        matching_ref = next(
-                            (r for r in config_refs if r.name == roi.name),
-                            None,
-                        )
-                        file_name = matching_ref.file_name if matching_ref else ""
-                        ref_images.append(
-                            RefImage(
-                                name=roi.name,
-                                x=roi.x,
-                                y=roi.y,
-                                w=roi.w,
-                                h=roi.h,
-                                file_name=file_name,
-                            )
-                        )
-                    self.adjust_step.ref_images = ref_images
-                previous_img = get_image_by_step_name(self.previous_step)
-                set_image_by_step_name(step, previous_img)
-                img = get_image_by_step_name(step)
-                print_image_hash(f"step {self.previous_step}", previous_img)
-            else:
-                logger.debug("Step backward")
-
+            # Update ROI overlay visibility flags before updating any step images
             self.refs_enabled_in_image = step == NAME_DRAW_REFS
             self.digital_rois_enabled_in_image = step == NAME_DRAW_DIGITAL_ROIS
             self.analog_rois_enabled_in_image = step == NAME_DRAW_ANALOG_ROIS
@@ -502,11 +496,37 @@ class SetupPage:
             if step == NAME_FINAL:
                 self.refs_enabled_in_image = True
 
+            # Sync reference rois to adjust step
+            if step == NAME_ADJUST:
+                config_dir = self.callbacks.get_config().config_dir
+                ref_images = []
+                for roi in self.draw_refs_step.rois:
+                    ref_path = f"{config_dir}/ref_{roi.name}_x{roi.x}_y{roi.y}.jpg"
+                    ref_images.append(
+                        RefImage(
+                            name=roi.name,
+                            x=roi.x,
+                            y=roi.y,
+                            w=roi.w,
+                            h=roi.h,
+                            file_name=ref_path if os.path.exists(ref_path) else "",
+                        )
+                    )
+                self.adjust_step.ref_images = ref_images
+
+            # Update step's image from its pipeline predecessor
+            src_img = get_source_image_for_step(step)
+            set_image_by_step_name(step, src_img)
+
             if step == NAME_ADJUST:
                 self.adjust_step._update_preview_canvas()
             else:
-                set_image(img)
+                current_img = get_image_by_step_name(step) or src_img
+                set_image(current_img)
                 set_comparison_image("")
+
+            if step == NAME_METERS:
+                self.meters_step.refresh_digit_names()
 
             if step == NAME_FINAL:
                 gather_config()
@@ -559,19 +579,11 @@ class SetupPage:
             # Update Step Badge
             self.wizard_step_badge.text = f"Step {idx + 1} of {total}: {current_step}"
 
-            # Update Next button label & styling
+            # Update Next button visibility & styling
             if idx == total - 1:
-                self.wizard_next_btn.text = "Save Config"
-                self.wizard_next_btn.props("icon-right=save")
-                self.wizard_next_btn.classes(
-                    "px-5 py-2 rounded-xl text-sm font-semibold bg-gradient-to-r "
-                    "from-emerald-600 to-teal-600 hover:from-emerald-500 "
-                    "hover:to-teal-500 text-white shadow-lg "
-                    "shadow-emerald-950/40 transition-all",
-                    remove="from-blue-600 to-cyan-600 hover:from-blue-500 "
-                    "hover:to-cyan-500 shadow-cyan-950/40",
-                )
+                self.wizard_next_btn.set_visibility(False)
             else:
+                self.wizard_next_btn.set_visibility(True)
                 self.wizard_next_btn.text = "Continue"
                 self.wizard_next_btn.props("icon-right=arrow_forward")
                 self.wizard_next_btn.classes(
@@ -584,30 +596,33 @@ class SetupPage:
                 )
 
         async def on_wizard_next() -> None:
-            curr = getattr(self.stepper, "value", steps_order[0])
-            idx = steps_order.index(curr) if curr in steps_order else 0
-            if idx == len(steps_order) - 1:
-                self.final_step._save_config()
-            else:
-                self.stepper.next()
+            self.stepper.next()
 
         def show_offline_placeholder(
             message: str = "Camera Offline",
             subtext: str = "Check camera URL and click Download to retry",
+            is_error: bool = True,
         ) -> None:
+            stroke_color = "#ef4444" if is_error else "#6366f1"
+            circle_color = "#334155" if is_error else "#1e1b4b"
+            strike_line = (
+                '<line x1="280" y1="160" x2="360" y2="220" '
+                'stroke="#ef4444" stroke-width="3" stroke-linecap="round"/>'
+                if is_error
+                else ""
+            )
             svg = (
                 '<svg width="640" height="480" viewBox="0 0 640 480" '
                 'xmlns="http://www.w3.org/2000/svg">'
                 '<rect width="100%" height="100%" fill="#1e293b"/>'
-                '<circle cx="320" cy="190" r="48" fill="#334155"/>'
+                f'<circle cx="320" cy="190" r="48" fill="{circle_color}"/>'
                 '<path d="M 296 214 L 344 166 M 304 174 L 320 174 L 326 166 '
                 "L 338 166 L 344 174 L 352 174 C 356 174 360 178 360 182 "
                 "L 360 206 C 360 210 356 214 352 214 L 288 214 C 284 214 "
                 '280 210 280 206 L 280 182 C 280 178 284 174 288 174 Z" '
-                'stroke="#ef4444" stroke-width="3" fill="none" '
+                f'stroke="{stroke_color}" stroke-width="3" fill="none" '
                 'stroke-linecap="round" stroke-linejoin="round"/>'
-                '<line x1="280" y1="160" x2="360" y2="220" '
-                'stroke="#ef4444" stroke-width="3" stroke-linecap="round"/>'
+                f"{strike_line}"
                 f'<text x="320" y="275" text-anchor="middle" fill="#f8fafc" '
                 'font-family="system-ui, -apple-system, sans-serif" '
                 f'font-size="20" font-weight="600">{message}</text>'
@@ -626,7 +641,138 @@ class SetupPage:
             show_offline_placeholder(
                 message="Camera Offline / Unreachable",
                 subtext="Check camera URL and click Download to retry",
+                is_error=True,
             )
+
+        async def start_clean_config(create_backup: bool = True) -> None:
+            try:
+                if create_backup:
+                    try:
+                        curr_cfg = self.callbacks.get_config()
+                        curr_cfg.create_backup(
+                            ini_file=f"{curr_cfg.config_dir}/config.ini",
+                            tag="Pre-Clean Reset",
+                        )
+                    except Exception as b_err:
+                        logger.warning(
+                            f"Could not create pre-clean safety backup: {b_err}"
+                        )
+
+                curr_cfg = self.callbacks.get_config()
+                clean_config = Config.create_clean_default(
+                    config_dir=curr_cfg.config_dir,
+                    data_dir=curr_cfg.data_dir,
+                )
+
+                self.download_image_step.load_from_config(clean_config.image_source)
+                self.initial_rotate_step.load_from_config(clean_config.alignment)
+                self.draw_refs_step.load_from_config(clean_config.alignment.ref_images)
+                self.adjust_step.load_from_config(clean_config)
+                self.draw_digital_rois_step.load_from_config(
+                    clean_config.digital_readout
+                )
+                self.draw_analog_rois_step.load_from_config(clean_config.analog_readout)
+                self.meters_step.load_from_config(clean_config.meter_configs)
+                self.services_step.load_from_config(clean_config)
+
+                # Reset all step image state
+                self.image = ""
+                self.processed_image = ""
+                self.download_image_step.image = ""
+                self.initial_rotate_step.image = ""
+                self.initial_rotate_step.org_image = ""
+                self.draw_refs_step.image = ""
+                self.adjust_step.image = ""
+                self.adjust_step.org_image = ""
+                self.adjust_step.ref_images = []
+                self.draw_digital_rois_step.image = ""
+                self.draw_analog_rois_step.image = ""
+                self.meters_step.image = ""
+                self.services_step.image = ""
+                self.final_step.image = ""
+
+                # Reset ROI svg strings and visibility
+                self.refs = ""
+                self.digital_rois = ""
+                self.analog_rois = ""
+                self.refs_enabled_in_image = False
+                self.digital_rois_enabled_in_image = False
+                self.analog_rois_enabled_in_image = False
+
+                self.previous_step = NAME_DOWNLOAD_IMAGE
+                self.interactive_image.content = ""
+                show_offline_placeholder(
+                    message="Ready for New Setup",
+                    subtext="Enter camera URL and click Download to start",
+                    is_error=False,
+                )
+                if (
+                    hasattr(self, "comparison_container")
+                    and self.comparison_container is not None
+                ):
+                    self.comparison_container.set_visibility(False)
+
+                if hasattr(self, "stepper") and self.stepper is not None:
+                    self.stepper.value = NAME_DOWNLOAD_IMAGE
+                    update_wizard_nav(NAME_DOWNLOAD_IMAGE)
+
+                ui.notify("Wizard reset to clean configuration", type="positive")
+            except Exception as e:
+                logger.error(f"Failed to reset wizard to clean config: {e}")
+                ui.notify(f"Clean reset failed: {e}", type="negative")
+
+        def open_clean_config_dialog() -> None:
+            with (
+                ui.dialog() as clean_dialog,
+                ui.card().classes(
+                    "bg-slate-900 border border-white/10 rounded-2xl p-5 "
+                    "max-w-md w-full gap-4"
+                ),
+            ):
+                with ui.row().classes("items-center gap-3"):
+                    with ui.element("div").classes(
+                        "w-10 h-10 rounded-xl bg-rose-500/20 "
+                        "border border-rose-500/30 flex items-center "
+                        "justify-center text-rose-400"
+                    ):
+                        ui.icon("cleaning_services", size="md")
+                    with ui.column().classes("gap-0"):
+                        ui.label("Start Clean Configuration?").classes(
+                            "text-base font-bold text-slate-100"
+                        )
+                        ui.label("Reset all steps to blank defaults").classes(
+                            "text-xs text-slate-400"
+                        )
+                ui.label(
+                    "All drawn reference markers, digital/analog ROIs, custom meters, "
+                    "and image adjustments will be cleared. You can start calibrating "
+                    "your meter from scratch."
+                ).classes("text-sm text-slate-300 leading-relaxed")
+
+                backup_checkbox = ui.checkbox(
+                    "Create safety backup before clearing",
+                    value=True,
+                ).classes("text-xs text-slate-300")
+
+                with ui.row().classes("w-full justify-end items-center gap-2 mt-2"):
+                    ui.button("Cancel", on_click=clean_dialog.close).props(
+                        "flat dense"
+                    ).classes("text-slate-300 px-3")
+
+                    async def on_confirm():
+                        clean_dialog.close()
+                        await start_clean_config(create_backup=backup_checkbox.value)
+
+                    ui.button(
+                        "Start Clean",
+                        icon="cleaning_services",
+                        on_click=on_confirm,
+                    ).props("unelevated dense").classes(
+                        "bg-gradient-to-r from-rose-600 to-amber-600 "
+                        "hover:from-rose-500 hover:to-amber-500 text-white "
+                        "font-medium px-4 shadow-md"
+                    )
+            clean_dialog.open()
 
         async def reset_from_config_file() -> None:
             try:
@@ -649,7 +795,7 @@ class SetupPage:
                 self.meters_step.load_from_config(fresh_config.meter_configs)
                 self.services_step.load_from_config(fresh_config)
 
-                self.previous_step = ""
+                self.previous_step = NAME_DOWNLOAD_IMAGE
                 if hasattr(self, "stepper") and self.stepper is not None:
                     self.stepper.value = NAME_DOWNLOAD_IMAGE
 
@@ -831,6 +977,17 @@ class SetupPage:
                 self.spinner = ui.spinner("dots", size="md", color="indigo")
                 self.spinner.visible = False
             with ui.row().classes("items-center gap-2"):
+                ui.button(
+                    "Start Clean",
+                    icon="cleaning_services",
+                    on_click=open_clean_config_dialog,
+                ).props("outline dense").classes(
+                    "border-white/20 text-slate-300 hover:bg-white/10 text-xs "
+                    "font-medium px-3 py-1"
+                ).tooltip(
+                    "Clear all ROIs and settings to start a new setup from scratch"
+                )
+
                 ui.button(
                     "Restore Backup",
                     icon="history",

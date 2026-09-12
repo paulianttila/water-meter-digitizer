@@ -17,25 +17,46 @@ def sample_pil_image() -> Image.Image:
     return Image.fromarray(arr)
 
 
-def test_align_missing_reference_file_raises_filenotfound(
+def test_align_missing_reference_file_returns_original(
     sample_pil_image: Image.Image,
 ) -> None:
-    """Verify that align raises FileNotFoundError when template is missing."""
+    """Verify that align returns original image when a template file is missing."""
     refs = [
         RefImage(
-            name="ref0",
-            x=10,
-            y=10,
+            name=f"ref{i}",
+            x=10 * i,
+            y=10 * i,
             w=20,
             h=20,
-            file_name="/non/existent/path/ref0.jpg",
+            file_name=f"/non/existent/path/ref{i}.jpg",
         )
+        for i in range(3)
     ]
-    with pytest.raises(
-        FileNotFoundError,
-        match=r"Alignment reference image file .* could not be loaded",
-    ):
-        img_utils.align(sample_pil_image, refs)
+    result = img_utils.align(sample_pil_image, refs)
+    assert result == sample_pil_image
+
+
+def test_align_non_three_refs_returns_original(sample_pil_image: Image.Image) -> None:
+    """Verify align returns original image if number of reference markers is not exactly 3."""
+    # 1 marker
+    refs1 = [RefImage(name="ref1", x=10, y=10, w=20, h=20, file_name="ref1.jpg")]
+    assert img_utils.align(sample_pil_image, refs1) == sample_pil_image
+
+    # 2 markers
+    refs2 = [
+        RefImage(name="ref1", x=10, y=10, w=20, h=20, file_name="ref1.jpg"),
+        RefImage(name="ref2", x=30, y=30, w=20, h=20, file_name="ref2.jpg"),
+    ]
+    assert img_utils.align(sample_pil_image, refs2) == sample_pil_image
+
+    # 4 markers
+    refs4 = [
+        RefImage(
+            name=f"ref{i}", x=10 * i, y=10 * i, w=20, h=20, file_name=f"ref{i}.jpg"
+        )
+        for i in range(4)
+    ]
+    assert img_utils.align(sample_pil_image, refs4) == sample_pil_image
 
 
 def test_align_empty_refs_returns_original(sample_pil_image: Image.Image) -> None:

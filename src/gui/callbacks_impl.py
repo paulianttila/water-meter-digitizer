@@ -35,6 +35,7 @@ class CallbacksImpl(Callbacks):
         get_mqtt_status_fn: Callable[[], dict[str, Any]] | None = None,
         get_previous_values_fn: Callable[[], dict[str, dict[str, str]]] | None = None,
         set_previous_value_fn: Callable[[str, str], dict[str, Any]] | None = None,
+        get_config_version_fn: Callable[[], int] | None = None,
     ) -> None:
         self._get_meter_data = get_meter_data_fn
         self._get_image_base64 = get_image_base64_fn
@@ -42,6 +43,7 @@ class CallbacksImpl(Callbacks):
         self._load_config_file = load_config_file_fn
         self._save_config_file = save_config_file_fn
         self._use_config = use_config_fn
+        self._get_config_version = get_config_version_fn
         self._get_storage = get_storage_fn
         self._list_backups = list_backups_fn
         self._restore_backup = restore_backup_fn
@@ -79,6 +81,11 @@ class CallbacksImpl(Callbacks):
 
     def use_config(self) -> None:
         return self._use_config()
+
+    def get_config_version(self) -> int:
+        if self._get_config_version is not None:
+            return self._get_config_version()
+        return 1
 
     def get_storage(self) -> Any:
         return self._get_storage()

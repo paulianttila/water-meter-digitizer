@@ -97,6 +97,7 @@ def test_callbacks_impl_methods():
         "meter": "total",
         "value": "120.0",
     }
+    assert callbacks.get_config_version() == 1
 
 
 def test_callbacks_impl_fallbacks():
@@ -127,6 +128,7 @@ def test_callbacks_impl_fallbacks():
     assert callbacks.get_mqtt_status() == {"enabled": False, "connected": False}
     assert callbacks.get_previous_values() == {}
     assert callbacks.set_previous_value("total", "10.0")["status"] == "error"
+    assert callbacks.get_config_version() == 1
 
 
 def test_callbacks_impl_frame_data_uris():

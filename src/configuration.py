@@ -208,6 +208,66 @@ class ZeroFlowMonitor(BaseModel):
     max_history_events: int = 50
 
 
+def _format_config_path(
+    path: str,
+    config_dir: str = "",
+    data_dir: str = "",
+    digital_models_dir: str = "",
+    analog_models_dir: str = "",
+) -> str:
+    """Relativize a path to use ${ConfigDir}, ${DataDir}, ${DigitalModelsDir}, or ${AnalogModelsDir}."""
+    if not path or not isinstance(path, str):
+        return path
+
+    if path.startswith("sqlite:///"):
+        sub_path = path[len("sqlite:///") :]
+        rel = _format_config_path(
+            sub_path,
+            config_dir=config_dir,
+            data_dir=data_dir,
+            digital_models_dir=digital_models_dir,
+            analog_models_dir=analog_models_dir,
+        )
+        return f"sqlite:///{rel}"
+
+    if path.startswith("file://"):
+        sub_path = path[len("file://") :]
+        rel = _format_config_path(
+            sub_path,
+            config_dir=config_dir,
+            data_dir=data_dir,
+            digital_models_dir=digital_models_dir,
+            analog_models_dir=analog_models_dir,
+        )
+        return f"file://{rel}"
+
+    if path.startswith("${"):
+        return path
+
+    norm_path = os.path.normpath(path)
+
+    candidates: list[tuple[str, str]] = []
+    if digital_models_dir:
+        candidates.append((os.path.normpath(digital_models_dir), "DigitalModelsDir"))
+    if analog_models_dir:
+        candidates.append((os.path.normpath(analog_models_dir), "AnalogModelsDir"))
+    if data_dir:
+        candidates.append((os.path.normpath(data_dir), "DataDir"))
+    if config_dir:
+        candidates.append((os.path.normpath(config_dir), "ConfigDir"))
+
+    for base, var_name in candidates:
+        if not base or base == ".":
+            continue
+        if norm_path == base:
+            return f"${{{var_name}}}"
+        if norm_path.startswith(base + os.sep) or norm_path.startswith(base + "/"):
+            rel_part = norm_path[len(base) :].lstrip("/\\").replace("\\", "/")
+            return f"${{{var_name}}}/{rel_part}"
+
+    return path
+
+
 class Config(BaseSettings):
     model_config = SettingsConfigDict(
         env_prefix="METER_",
@@ -235,6 +295,139 @@ class Config(BaseSettings):
     poller: Poller = Field(default_factory=Poller)
     mqtt: MQTT = Field(default_factory=MQTT)
     zero_flow_monitor: ZeroFlowMonitor = Field(default_factory=ZeroFlowMonitor)
+
+    @classmethod
+    def create_clean_default(
+        cls,
+        config_dir: str = "/config",
+        data_dir: str = "/data",
+    ) -> "Config":
+        """Construct a pristine default configuration with clean boilerplate values."""
+        return cls(
+            log_level="INFO",
+            config_dir=config_dir,
+            data_dir=data_dir,
+            digital_models_dir=f"{config_dir}/neuralnets/digital",
+            analog_models_dir=f"{config_dir}/neuralnets/analog",
+            previous_value_file=f"{config_dir}/prevalue.ini",
+            min_confidence_threshold=60.0,
+            image_source=ImageSource(url="", timeout=30, min_size=10000),
+            crop=Crop(enabled=False, x=0, y=0, w=0, h=0),
+            resize=Resize(enabled=False, w=0, h=0),
+            image_processing=ImageProcessing(
+                enabled=False,
+                contrast=1.0,
+                brightness=1.0,
+                color=1.0,
+                sharpness=1.0,
+                grayscale=False,
+                autocontrast=AutoContrast(
+                    enabled=False,
+                    cutoff_low=2.0,
+                    cutoff_high=45.0,
+                    ignore=None,
+                ),
+                autocontrast_cut_images=AutoContrast(
+                    enabled=False,
+                    cutoff_low=2.0,
+                    cutoff_high=45.0,
+                    ignore=None,
+                ),
+                glare_suppression=GlareSuppression(
+                    enabled=False,
+                    mode="clahe",
+                    inpaint_threshold=230,
+                    inpaint_radius=3,
+                    clahe_clip_limit=2.0,
+                    clahe_grid_size=8,
+                    apply_to_cut_images=False,
+                ),
+            ),
+            alignment=Alignment(
+                rotate_angle=0.0,
+                ref_images=[],
+                post_rotate_angle=0.0,
+            ),
+            meter_configs=[
+                MeterConfig(
+                    name="total",
+                    format="",
+                    consistency_enabled=False,
+                    allow_negative_rates=False,
+                    max_rate_value=0.0,
+                    use_previous_value=False,
+                    pre_value_from_file_max_age=0,
+                    use_extended_resolution=False,
+                    unit="",
+                )
+            ],
+            digital_readout=CNNParams(
+                enabled=False,
+                model_file=f"{config_dir}/neuralnets/digital/class100/dig-class100_0168_s2_q.tflite",
+                model="auto",
+                cut_images=[],
+            ),
+            analog_readout=CNNParams(
+                enabled=False,
+                model_file=f"{config_dir}/neuralnets/analog/continuous/ana-cont_1209_s2.tflite",
+                model="auto",
+                cut_images=[],
+            ),
+            poller=Poller(
+                enabled=False,
+                interval_seconds=300,
+                run_on_startup=True,
+                save_images=False,
+                retry_interval_seconds=30,
+            ),
+            mqtt=MQTT(
+                enabled=False,
+                broker="localhost",
+                port=1883,
+                username="",
+                password="",  # nosec B106
+                client_id="water-meter-digitizer",
+                topic_prefix="watermeter",
+                keepalive=60,
+                tls=False,
+                retain=True,
+                homeassistant_discovery=True,
+                discovery_prefix="homeassistant",
+                device_name="Water Meter Digitizer",
+                device_id="water_meter_digitizer",
+            ),
+            zero_flow_monitor=ZeroFlowMonitor(
+                enabled=False,
+                meter_name="total",
+                continuous_flow_hours=2.0,
+                min_leak_volume=0.010,
+                flow_threshold=0.001,
+                resolve_debounce_count=2,
+                max_history_events=50,
+            ),
+            history=History(
+                enabled=True,
+                backend="sqlite",
+                db_url=f"sqlite:///{data_dir}/history.db",
+                max_memory_mb=20.0,
+                max_records=50000,
+                retention_days=30,
+                auto_vacuum=True,
+                prune_interval=50,
+            ),
+            snapshots=Snapshots(
+                enabled=True,
+                mode="smart_tiered",
+                format="webp",
+                quality=75,
+                max_disk_mb=500.0,
+                recent_full_frame_days=2,
+                roi_strip_retention_days=14,
+                idle_heartbeat_minutes=15,
+                always_save_on_anomaly=True,
+                storage_dir=f"{data_dir}/snapshots",
+            ),
+        )
 
     def load_from_string(self, config_string: str) -> "Config":
         config = configparser.ConfigParser(
@@ -300,18 +493,35 @@ class Config(BaseSettings):
 
     def _save_to_io(self, fp) -> "Config":
         config = configparser.ConfigParser()
+        config.optionxform = str  # type: ignore[method-assign,assignment]
         config["DEFAULT"] = {
             "LogLevel": self.log_level,
             "ConfigDir": self.config_dir,
-            "DataDir": self.data_dir,
-            "DigitalModelsDir": self.digital_models_dir,
-            "AnalogModelsDir": self.analog_models_dir,
-            "PreviousValueFile": self.previous_value_file,
+            "DataDir": _format_config_path(self.data_dir, config_dir=self.config_dir),
+            "DigitalModelsDir": _format_config_path(
+                self.digital_models_dir,
+                config_dir=self.config_dir,
+                data_dir=self.data_dir,
+            ),
+            "AnalogModelsDir": _format_config_path(
+                self.analog_models_dir,
+                config_dir=self.config_dir,
+                data_dir=self.data_dir,
+            ),
+            "PreviousValueFile": _format_config_path(
+                self.previous_value_file,
+                config_dir=self.config_dir,
+                data_dir=self.data_dir,
+            ),
             "MinConfidenceThreshold": str(self.min_confidence_threshold),
         }
 
         config["ImageSource"] = {
-            "URL": self.image_source.url,
+            "URL": _format_config_path(
+                self.image_source.url,
+                config_dir=self.config_dir,
+                data_dir=self.data_dir,
+            ),
             "Timeout": str(self.image_source.timeout),
             "MinSize": str(self.image_source.min_size),
         }
@@ -384,7 +594,11 @@ class Config(BaseSettings):
 
         for ref in self.alignment.ref_images:
             config[f"Alignment.{ref.name}"] = {
-                "image": ref.file_name,
+                "Image": _format_config_path(
+                    ref.file_name,
+                    config_dir=self.config_dir,
+                    data_dir=self.data_dir,
+                ),
                 "x": str(ref.x),
                 "y": str(ref.y),
                 "w": str(ref.w),
@@ -401,15 +615,22 @@ class Config(BaseSettings):
                 "ConsistencyEnabled": str(meter.consistency_enabled),
                 "AllowNegativeRates": str(meter.allow_negative_rates),
                 "MaxRateValue": str(meter.max_rate_value),
-                "UsePreviuosValue": str(meter.use_previous_value),
+                "UsePreviousValue": str(meter.use_previous_value),
                 "PreValueFromFileMaxAge": str(meter.pre_value_from_file_max_age),
                 "UseExtendedResolution": str(meter.use_extended_resolution),
                 "Unit": meter.unit if meter.unit is not None else "",
             }
 
         config["Digits"] = {
-            "Enabled": str(self.digital_readout.enabled),
-            "ModelFile": self.digital_readout.model_file,
+            "Enabled": str(
+                bool(self.digital_readout.enabled and self.digital_readout.cut_images)
+            ),
+            "ModelFile": _format_config_path(
+                self.digital_readout.model_file,
+                config_dir=self.config_dir,
+                data_dir=self.data_dir,
+                digital_models_dir=self.digital_models_dir,
+            ),
             "Model": self.digital_readout.model,
             "Names": ", ".join(
                 [image.name for image in self.digital_readout.cut_images]
@@ -417,8 +638,15 @@ class Config(BaseSettings):
         }
 
         config["Analog"] = {
-            "Enabled": str(self.analog_readout.enabled),
-            "ModelFile": self.analog_readout.model_file,
+            "Enabled": str(
+                bool(self.analog_readout.enabled and self.analog_readout.cut_images)
+            ),
+            "ModelFile": _format_config_path(
+                self.analog_readout.model_file,
+                config_dir=self.config_dir,
+                data_dir=self.data_dir,
+                analog_models_dir=self.analog_models_dir,
+            ),
             "Model": self.analog_readout.model,
             "Names": ", ".join(
                 [image.name for image in self.analog_readout.cut_images]
@@ -444,7 +672,11 @@ class Config(BaseSettings):
         config["History"] = {
             "Enabled": str(self.history.enabled),
             "Backend": self.history.backend,
-            "DBUrl": self.history.db_url,
+            "DBUrl": _format_config_path(
+                self.history.db_url,
+                config_dir=self.config_dir,
+                data_dir=self.data_dir,
+            ),
             "MaxMemoryMB": str(self.history.max_memory_mb),
             "MaxRecords": str(self.history.max_records),
             "RetentionDays": str(self.history.retention_days),
@@ -497,7 +729,11 @@ class Config(BaseSettings):
             "RoiStripRetentionDays": str(self.snapshots.roi_strip_retention_days),
             "IdleHeartbeatMinutes": str(self.snapshots.idle_heartbeat_minutes),
             "AlwaysSaveOnAnomaly": str(self.snapshots.always_save_on_anomaly),
-            "StorageDir": self.snapshots.storage_dir,
+            "StorageDir": _format_config_path(
+                self.snapshots.storage_dir,
+                config_dir=self.config_dir,
+                data_dir=self.data_dir,
+            ),
         }
 
         config.write(fp, space_around_delimiters=False)

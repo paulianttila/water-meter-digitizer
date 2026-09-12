@@ -61,3 +61,23 @@ def test_config_history_dialog(page: Page, live_server_url: str):
 
     # 3. Close dialog
     page.keyboard.press("Escape")
+
+
+@pytest.mark.ui
+def test_config_hot_reload_shows_refresh_warning(page: Page, live_server_url: str):
+    """Verify hot-reload triggers warning banner with Refresh Page action."""
+    page.goto(f"{live_server_url}/gui", wait_until="domcontentloaded")
+    page.get_by_role("tab", name="Config").click()
+
+    # 1. Trigger hot-reload from toolbar
+    hot_reload_btn = page.get_by_role("button", name="Hot-Reload")
+    expect(hot_reload_btn).to_be_visible(timeout=10000)
+    hot_reload_btn.click()
+
+    # 2. Wait for reload banner to appear
+    banner = page.locator("#reload-warning-banner")
+    expect(banner).to_be_visible(timeout=10000)
+    expect(
+        page.get_by_text("Configuration has been hot-reloaded into runtime")
+    ).to_be_visible()
+    expect(page.get_by_role("button", name="Refresh Page")).to_be_visible()

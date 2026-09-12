@@ -1,3 +1,4 @@
+import contextlib
 import logging
 import random
 import string
@@ -333,6 +334,8 @@ def init(fastapi_app: FastAPI, callbacks: Callbacks) -> None:
                 ):
                     ui.label(f"v{VERSION}")
 
+        client_config_version = _callbacks.get_config_version()
+
         with ui.splitter(value=7, limits=(6, 8)).classes(
             "w-full flex-1 min-h-0"
         ) as splitter:
@@ -350,38 +353,87 @@ def init(fastapi_app: FastAPI, callbacks: Callbacks) -> None:
                 about = ui.tab("About", icon="info")
             with (
                 splitter.after,
-                ui.tab_panels(tabs, value=main).classes(
-                    "w-full h-full p-4 overflow-hidden"
+                ui.column().classes(
+                    "w-full h-full p-0 overflow-hidden flex flex-col relative"
                 ),
             ):
-                with ui.tab_panel(main).classes("w-full h-full p-0 overflow-y-auto"):
-                    await meter_page.show()
-                with ui.tab_panel(services).classes(
-                    "w-full h-full p-0 overflow-y-auto"
+                with (
+                    ui.row()
+                    .classes(
+                        "w-full px-4 py-2.5 bg-amber-500/15 border-b border-amber-500/30 "
+                        "backdrop-blur-md items-center justify-between text-amber-200 text-xs shrink-0 z-50 transition-all"
+                    )
+                    .props('id="reload-warning-banner"') as reload_banner
                 ):
-                    await services_page.show()
-                with ui.tab_panel(setup).classes(
-                    "w-full h-full p-0 overflow-hidden flex flex-col"
+                    reload_banner.visible = False
+                    with ui.row().classes("items-center gap-2 flex-1 min-w-0"):
+                        ui.icon("warning", color="amber").classes("text-lg shrink-0")
+                        ui.label(
+                            "Configuration has been hot-reloaded into runtime. Refresh page to update interface views and definitions."
+                        ).classes("font-medium text-amber-100 truncate")
+                    with ui.row().classes("items-center gap-2 shrink-0"):
+                        ui.button(
+                            "Refresh Page",
+                            icon="refresh",
+                            on_click=lambda: ui.run_javascript(
+                                "window.location.reload()"
+                            ),
+                        ).props(
+                            "dense unelevated size=sm color=amber text-color=dark"
+                        ).classes(
+                            "font-bold"
+                        )
+                        ui.button(
+                            icon="close",
+                            on_click=lambda: reload_banner.set_visibility(False),
+                        ).props(
+                            "dense flat round size=sm text-color=amber-200"
+                        ).tooltip(
+                            "Dismiss warning"
+                        )
+
+                def check_config_reload() -> None:
+                    with contextlib.suppress(Exception):
+                        if _callbacks.get_config_version() > client_config_version:
+                            reload_banner.visible = True
+
+                ui.timer(2.0, check_config_reload)
+
+                with ui.tab_panels(tabs, value=main).classes(
+                    "w-full flex-1 p-4 overflow-hidden"
                 ):
-                    await setup_page.show()
-                with ui.tab_panel(config).classes(
-                    "w-full h-full p-0 overflow-hidden flex flex-col"
-                ):
-                    config_page.show()
-                with ui.tab_panel(baselines).classes(
-                    "w-full h-full p-0 overflow-y-auto"
-                ):
-                    previous_values_page.show()
-                with ui.tab_panel(api_console).classes(
-                    "w-full h-full p-0 overflow-hidden flex flex-col"
-                ):
-                    api_console_page.show()
-                with ui.tab_panel(help_tab).classes(
-                    "w-full h-full p-0 overflow-y-auto"
-                ):
-                    help_page.show()
-                with ui.tab_panel(about).classes("w-full h-full p-0 overflow-y-auto"):
-                    about_page.show()
+                    with ui.tab_panel(main).classes(
+                        "w-full h-full p-0 overflow-y-auto"
+                    ):
+                        await meter_page.show()
+                    with ui.tab_panel(services).classes(
+                        "w-full h-full p-0 overflow-y-auto"
+                    ):
+                        await services_page.show()
+                    with ui.tab_panel(setup).classes(
+                        "w-full h-full p-0 overflow-hidden flex flex-col"
+                    ):
+                        await setup_page.show()
+                    with ui.tab_panel(config).classes(
+                        "w-full h-full p-0 overflow-hidden flex flex-col"
+                    ):
+                        config_page.show()
+                    with ui.tab_panel(baselines).classes(
+                        "w-full h-full p-0 overflow-y-auto"
+                    ):
+                        previous_values_page.show()
+                    with ui.tab_panel(api_console).classes(
+                        "w-full h-full p-0 overflow-hidden flex flex-col"
+                    ):
+                        api_console_page.show()
+                    with ui.tab_panel(help_tab).classes(
+                        "w-full h-full p-0 overflow-y-auto"
+                    ):
+                        help_page.show()
+                    with ui.tab_panel(about).classes(
+                        "w-full h-full p-0 overflow-y-auto"
+                    ):
+                        about_page.show()
 
     # Nothing special is stored in the cookie, so it's fine to use random secret
     secret = "".join(

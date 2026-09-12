@@ -108,3 +108,29 @@ def test_final_step_save_and_use_config():
         step._use_config()
         callbacks.use_config.assert_called_once()
         assert step.new_config_saved is False
+
+
+def test_final_step_prompt_hot_reload():
+    callbacks = MagicMock()
+    save_refs_func = MagicMock()
+    step = FinalStep(
+        name="Final",
+        callbacks=callbacks,
+        set_image_callback=MagicMock(),
+        save_refs_func=save_refs_func,
+    )
+    with (
+        patch("gui.step_final.ui.dialog") as mock_dialog,
+        patch("gui.step_final.ui.card"),
+        patch("gui.step_final.ui.row"),
+        patch("gui.step_final.ui.element"),
+        patch("gui.step_final.ui.icon"),
+        patch("gui.step_final.ui.column"),
+        patch("gui.step_final.ui.label"),
+        patch("gui.step_final.ui.button"),
+    ):
+        dialog_inst = MagicMock()
+        mock_dialog.return_value.__enter__.return_value = dialog_inst
+
+        step._prompt_hot_reload()
+        assert dialog_inst.open.called

@@ -1,5 +1,6 @@
 import asyncio
 import logging
+import os
 from collections.abc import Callable
 
 from nicegui import ui
@@ -20,8 +21,9 @@ HELP_TEXT = (
     "before/after comparison.\n"
     "- **Fine Rotation**: Correct fractional angles (e.g. `0.5°`).\n"
     "- **Crop & Resize**: Optionally crop and resize frame before alignment.\n"
-    "- **Image Filters**: Tune contrast, brightness, sharpness, grayscale, and "
-    "autocontrast.\n"
+    "- **Image Processing**: Master toggle to enable/disable all image processing enhancements.\n"
+    "- **Image Filters**: Tune contrast, brightness, sharpness, color saturation, and grayscale.\n"
+    "- **Histogram & AutoContrast**: Optimize histogram contrast stretching for full frame or ROIs.\n"
     "- **Glare Suppression**: Eliminate glass reflections using CLAHE, inpainting, "
     "or combined mode."
 )
@@ -86,6 +88,10 @@ class AdjustStep(BaseStep):
         self.glare_clahe_clip_limit: ui.slider
         self.glare_clahe_grid_size: ui.slider
 
+    @property
+    def image_processing_enabled(self) -> ui.checkbox:
+        return self.adjust_enabled
+
     def update_image(self, image: str) -> None:
         self.org_image = image
         self._update_preview_canvas()
@@ -99,59 +105,59 @@ class AdjustStep(BaseStep):
             self.set_comparison_callback("")
 
     def _on_param_change(self) -> None:
-        """Debounced live preview update triggered by any slider or control."""
         if not getattr(self, "live_preview", None) or not self.live_preview.value:
             return
 
-        if self._debounce_task is not None and not self._debounce_task.done():
+        if self._debounce_task and not self._debounce_task.done():
             self._debounce_task.cancel()
 
-        async def debounced_update() -> None:
+        async def debounced_update():
             try:
-                await asyncio.sleep(0.12)
+                await asyncio.sleep(0.1)
                 self._update_preview_canvas()
             except asyncio.CancelledError:
                 pass
-            except Exception as err:
-                logger.debug(f"Live preview update error: {err}")
 
         self._debounce_task = asyncio.create_task(debounced_update())
 
     def _get_base_aligned_image(self, image: str) -> str:
         ref_images = [
-            r for r in getattr(self, "ref_images", []) if getattr(r, "file_name", "")
+            r
+            for r in getattr(self, "ref_images", [])
+            if getattr(r, "file_name", "") and os.path.exists(r.file_name)
         ]
-        return (
-            ImageProcessor()
-            .set_image_from_base64_str(image)
-            .if_(len(ref_images) > 0)
-            .align_image(ref_images)
-            .endif_()
-            .get_image_as_base64_str()
-        )
+        proc = ImageProcessor().set_image_from_base64_str(image)
+        if len(ref_images) == 3:
+            try:
+                proc.align_image(ref_images)
+            except Exception as e:
+                logger.debug(f"Alignment skipped in base image helper: {e}")
+        return proc.get_image_as_base64_str()
 
     def _update_preview_canvas(self) -> None:
         if not self.org_image:
             return
 
-        adjusted_b64 = self._do_adjust(self.org_image)
+        try:
+            adjusted_b64 = self._do_adjust(self.org_image)
+        except Exception as e:
+            logger.warning(f"Error adjusting image preview: {e}")
+            adjusted_b64 = self.org_image
+
         self.image = adjusted_b64
 
-        compare = getattr(self, "compare_mode", None)
-        mode_val = compare.value if compare else "Single"
-
-        if mode_val in ("Side-by-Side", "Compare") and self.org_image:
-            # Display original image on top interactive canvas
+        # Compare mode logic
+        compare = self.compare_mode.value if hasattr(self, "compare_mode") else "Single"
+        if compare == "Side-by-Side":
             if self.set_image_callback is not None:
                 self.set_image_callback(self.org_image)
-            # Display adjusted image below status bar
             if self.set_comparison_callback is not None:
                 self.set_comparison_callback(adjusted_b64)
         else:
+            if self.set_image_callback is not None:
+                self.set_image_callback(self.image)
             if self.set_comparison_callback is not None:
                 self.set_comparison_callback("")
-            if self.set_image_callback is not None:
-                self.set_image_callback(adjusted_b64)
 
     @BaseStep.decorator_spinner
     @BaseStep.decorator_catch_err
@@ -224,60 +230,102 @@ class AdjustStep(BaseStep):
         self.rotate_enabled.value = config.alignment.post_rotate_angle != 0
 
     def _do_adjust(self, image: str) -> str:
+        if not image:
+            return ""
+
         ref_images = [
-            r for r in getattr(self, "ref_images", []) if getattr(r, "file_name", "")
+            r
+            for r in getattr(self, "ref_images", [])
+            if getattr(r, "file_name", "") and os.path.exists(r.file_name)
         ]
-        return (
-            ImageProcessor()
-            .set_image_from_base64_str(image)
-            .if_(len(ref_images) > 0)
-            .align_image(ref_images)
-            .endif_()
-            .if_(self.rotate_enabled.value)
-            .rotate_image(float(self.rotate_angle.value or 0.0))
-            .endif_()
-            .if_(self.crop_enabled.value)
-            .crop_image(
-                x=int(self.crop_x.value or 0),
-                y=int(self.crop_y.value or 0),
-                w=int(self.crop_w.value or 0),
-                h=int(self.crop_h.value or 0),
-            )
-            .endif_()
-            .if_(self.resize_enabled.value)
-            .resize_image(
-                width=int(self.resize_w.value or 0),
-                height=int(self.resize_h.value or 0),
-            )
-            .endif_()
-            .if_(self.adjust_enabled.value)
-            .adjust_image(
-                contrast=float(self.adjust_contrast.value or 1.0),
-                brightness=float(self.adjust_brightness.value or 1.0),
-                sharpness=float(self.adjust_sharpness.value or 1.0),
-                color=float(self.adjust_color.value or 1.0),
-            )
-            .endif_()
-            .if_(self.grayscale_enabled.value)
-            .to_gray_scale()
-            .endif_()
-            .if_(self.autocontrast_enabled.value)
-            .autocontrast_image(
-                cutoff_low=float(self.autocontrast_cutoff_low.value or 0.0),
-                cutoff_high=float(self.autocontrast_cutoff_high.value or 0.0),
-            )
-            .endif_()
-            .if_(self.glare_enabled.value)
-            .suppress_glare(
-                mode=str(self.glare_mode.value or "clahe"),
-                inpaint_threshold=int(self.glare_inpaint_threshold.value or 230),
-                inpaint_radius=int(self.glare_inpaint_radius.value or 3),
-                clahe_clip_limit=float(self.glare_clahe_clip_limit.value or 2.0),
-                clahe_grid_size=int(self.glare_clahe_grid_size.value or 8),
-            )
-            .endif_()
-            .get_image_as_base64_str()
-        )
+        proc = ImageProcessor().set_image_from_base64_str(image)
+
+        if len(ref_images) == 3:
+            try:
+                proc.align_image(ref_images)
+            except Exception as e:
+                logger.debug(
+                    f"Reference alignment skipped during adjustment preview: {e}"
+                )
+
+        try:
+            if getattr(self, "rotate_enabled", None) and self.rotate_enabled.value:
+                angle = float(self.rotate_angle.value or 0.0)
+                if angle != 0.0:
+                    proc.rotate_image(angle)
+        except Exception as e:
+            logger.debug(f"Rotation adjustment skipped: {e}")
+
+        try:
+            if getattr(self, "crop_enabled", None) and self.crop_enabled.value:
+                cx = int(self.crop_x.value or 0)
+                cy = int(self.crop_y.value or 0)
+                cw = int(self.crop_w.value or 0)
+                ch = int(self.crop_h.value or 0)
+                if cw > 0 and ch > 0:
+                    proc.crop_image(x=cx, y=cy, w=cw, h=ch)
+        except Exception as e:
+            logger.debug(f"Crop adjustment skipped: {e}")
+
+        try:
+            if getattr(self, "resize_enabled", None) and self.resize_enabled.value:
+                rw = int(self.resize_w.value or 0)
+                rh = int(self.resize_h.value or 0)
+                if rw > 0 and rh > 0:
+                    proc.resize_image(width=rw, height=rh)
+        except Exception as e:
+            logger.debug(f"Resize adjustment skipped: {e}")
+
+        # Image processing enhancements (gated by master ImageProcessing.enabled)
+        if getattr(self, "adjust_enabled", None) and self.adjust_enabled.value:
+            try:
+                proc.adjust_image(
+                    contrast=float(self.adjust_contrast.value or 1.0),
+                    brightness=float(self.adjust_brightness.value or 1.0),
+                    sharpness=float(self.adjust_sharpness.value or 1.0),
+                    color=float(self.adjust_color.value or 1.0),
+                )
+            except Exception as e:
+                logger.debug(f"Filters adjustment skipped: {e}")
+
+            try:
+                if (
+                    getattr(self, "grayscale_enabled", None)
+                    and self.grayscale_enabled.value
+                ):
+                    proc.to_gray_scale()
+            except Exception as e:
+                logger.debug(f"Grayscale conversion skipped: {e}")
+
+            try:
+                if (
+                    getattr(self, "autocontrast_enabled", None)
+                    and self.autocontrast_enabled.value
+                ):
+                    proc.autocontrast_image(
+                        cutoff_low=float(self.autocontrast_cutoff_low.value or 0.0),
+                        cutoff_high=float(self.autocontrast_cutoff_high.value or 0.0),
+                    )
+            except Exception as e:
+                logger.debug(f"AutoContrast adjustment skipped: {e}")
+
+            try:
+                if getattr(self, "glare_enabled", None) and self.glare_enabled.value:
+                    proc.suppress_glare(
+                        mode=str(self.glare_mode.value or "clahe"),
+                        inpaint_threshold=int(
+                            self.glare_inpaint_threshold.value or 230
+                        ),
+                        inpaint_radius=int(self.glare_inpaint_radius.value or 3),
+                        clahe_clip_limit=float(
+                            self.glare_clahe_clip_limit.value or 2.0
+                        ),
+                        clahe_grid_size=int(self.glare_clahe_grid_size.value or 8),
+                    )
+            except Exception as e:
+                logger.debug(f"Glare suppression adjustment skipped: {e}")
+
+        return proc.get_image_as_base64_str()
 
     async def show(self, stepper, first_step=False, last_step=False) -> None:
         with ui.step(self.name):
@@ -327,6 +375,32 @@ class AdjustStep(BaseStep):
                     )
 
             with ui.column().classes("w-full gap-3 my-2"):
+                # Image Processing Master Card
+                with ui.row().classes(
+                    "w-full items-center justify-between p-3 rounded-xl "
+                    "bg-slate-900/80 border border-white/10 shadow-md gap-3"
+                ):
+                    with ui.row().classes("items-center gap-3"):
+                        ui.icon("tune", size="22px").classes("text-cyan-400 shrink-0")
+                        with ui.column().classes("gap-0"):
+                            ui.label("Image Processing").classes(
+                                "text-sm font-bold text-white"
+                            )
+                            ui.label(
+                                "Master toggle for filters, grayscale, autocontrast, and glare suppression"
+                            ).classes("text-xs text-gray-400")
+                    self.adjust_enabled = (
+                        ui.checkbox(
+                            "Enable Image Processing",
+                            value=False,
+                            on_change=self._on_param_change,
+                        )
+                        .props("color=cyan")
+                        .tooltip(
+                            "Enable or disable all image processing enhancements ([ImageProcessing] section)"
+                        )
+                    )
+
                 # Geometry & Cropping Expansion
                 with (
                     ui.expansion(
@@ -453,14 +527,6 @@ class AdjustStep(BaseStep):
                     ui.column().classes("w-full gap-3 p-3"),
                 ):
                     with ui.row().classes("w-full items-center gap-4 flex-wrap"):
-                        self.adjust_enabled = ui.checkbox(
-                            "Enable Filters",
-                            value=False,
-                            on_change=self._on_param_change,
-                        ).tooltip(
-                            "Enable color, brightness, contrast, and "
-                            "sharpness adjustments"
-                        )
                         self.grayscale_enabled = ui.checkbox(
                             "Grayscale",
                             value=False,

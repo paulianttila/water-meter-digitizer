@@ -92,6 +92,10 @@ class DrawRoisBaseStep(BaseStep):
         self._show_rois()
         self._sync_select_all_checkbox()
 
+    def _on_rois_changed(self) -> None:
+        """Hook called whenever the list of ROIs is updated (added, removed, deleted, loaded)."""
+        pass
+
     def load_rois(self, items: list[ImagePosition | RefImage]) -> None:
         self.rois.clear()
         if hasattr(self, "container") and self.container is not None:
@@ -110,6 +114,7 @@ class DrawRoisBaseStep(BaseStep):
             self._add_roi_ui(roi)
         self._show_rois()
         self._sync_select_all_checkbox()
+        self._on_rois_changed()
 
     def _show_rois(self) -> None:
         content = "".join(
@@ -161,6 +166,7 @@ class DrawRoisBaseStep(BaseStep):
                 self.container.remove(last)
             self._show_rois()
             self._sync_select_all_checkbox()
+            self._on_rois_changed()
 
     def _delete_roi(self, roi: Roi, row_elem) -> None:
         if roi in self.rois:
@@ -173,6 +179,7 @@ class DrawRoisBaseStep(BaseStep):
             self.container.remove(row_elem)
         self._show_rois()
         self._sync_select_all_checkbox()
+        self._on_rois_changed()
 
     def _align_top(self) -> None:
         y = None
@@ -408,6 +415,7 @@ class DrawRoisBaseStep(BaseStep):
         self._add_roi_ui(roi)
         self._show_rois()
         self._sync_select_all_checkbox()
+        self._on_rois_changed()
 
     def _add_roi_ui(self, roi: Roi) -> None:
         if self.container is None:
