@@ -34,7 +34,7 @@ Automatically read analog and digital utility meters using a camera, image proce
 - **Docker Ready** — Official multi-architecture (x86_64, ARM64) container images with integrated health check probes.
 - **Resilient Storage** — Dual-mode persistence with automatic in-memory failover for read-only or immutable container environments.
 
-> 💡 *For architectural diagrams, neural network specifications, and developer documentation, see [DEVELOPER.md](DEVELOPER.md). For a step-by-step visual calibration walkthrough, see [GUI_Help.md](GUI_Help.md).*
+> 💡 *For architectural diagrams, neural network specifications, and comprehensive guides, visit the **[Project Wiki](docs/wiki/Home.md)** or see **[DEVELOPER.md](DEVELOPER.md)** for the local developer quick start.*
 
 ---
 

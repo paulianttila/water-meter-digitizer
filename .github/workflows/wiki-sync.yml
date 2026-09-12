@@ -1,0 +1,56 @@
+name: Sync Wiki
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "docs/wiki/**"
+  workflow_dispatch:
+
+concurrency:
+  group: wiki-sync
+  cancel-in-progress: true
+
+jobs:
+  sync-wiki:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout Repository
+        uses: actions/checkout@v4
+        with:
+          path: repo
+
+      - name: Checkout Wiki
+        uses: actions/checkout@v4
+        with:
+          repository: ${{ github.repository }}.wiki
+          token: ${{ secrets.GITHUB_TOKEN }}
+          path: wiki
+        continue-on-error: true
+
+      - name: Push Wiki Content
+        run: |
+          mkdir -p wiki
+          cd wiki
+          if [ ! -d .git ]; then
+            git init
+            git config user.name "github-actions[bot]"
+            git config user.email "github-actions[bot]@users.noreply.github.com"
+            git remote add origin "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.wiki.git"
+            git checkout -b master || git checkout -b main
+          fi
+          
+          # Copy markdown files and navigation from docs/wiki
+          cp -R ../repo/docs/wiki/* .
+          
+          git add .
+          if git status --porcelain | grep -q .; then
+            git commit -m "docs: sync wiki from docs/wiki (${{ github.sha }})"
+            git push -u origin HEAD:master || git push -u origin HEAD:main
+            echo "Successfully synced wiki documentation."
+          else
+            echo "No changes detected in wiki content."
+          fi
