@@ -156,7 +156,7 @@ class SQLAlchemyStorageBackend(StorageBackend):
 
         try:
             Base.metadata.create_all(self.engine)
-        except (OSError, PermissionError) as e:
+        except Exception as e:
             logger.warning(
                 "Failed to initialize database tables on %s (%s). "
                 "Falling back to in-memory DB.",
