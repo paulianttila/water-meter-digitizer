@@ -95,3 +95,64 @@ def check_mqtt_meter_data(response: requests.Response):
     assert total_meter["confidence"] == 96.2
     assert readout["confidence_scores"]["digit1"] == 85.2
     assert readout["confidence_scores"]["analog1"] == 99.2
+
+
+class MQTTTestReceiver:
+    """Helper client to capture live MQTT messages published during integration tests."""
+
+    def __init__(self, host: str = "127.0.0.1", port: int = 1883) -> None:
+        import queue
+        import paho.mqtt.client as paho
+
+        self.host = host
+        self.port = port
+        self.messages: queue.Queue = queue.Queue()
+        try:
+            from paho.mqtt.enums import CallbackAPIVersion
+
+            self.client = paho.Client(
+                CallbackAPIVersion.VERSION2, client_id="test-receiver"
+            )
+        except Exception:
+            self.client = paho.Client(client_id="test-receiver")
+        self.client.on_message = self._on_msg
+
+    def _on_msg(self, client, userdata, message):
+        self.messages.put(
+            {
+                "topic": message.topic,
+                "payload": message.payload.decode("utf-8", errors="ignore"),
+                "retain": message.retain,
+            }
+        )
+
+    def start(self, topics: list[str] | None = None) -> None:
+        self.client.connect(self.host, self.port, 60)
+        for t in topics or ["#"]:
+            self.client.subscribe(t)
+        self.client.loop_start()
+
+    def stop(self) -> None:
+        self.client.loop_stop()
+        self.client.disconnect()
+
+    def wait_for_message(
+        self, topic_suffix: str = "", timeout: float = 5.0
+    ) -> dict | None:
+        import queue
+        import time
+
+        deadline = time.time() + timeout
+        while time.time() < deadline:
+            try:
+                msg = self.messages.get(timeout=0.2)
+                if (
+                    not topic_suffix
+                    or msg["topic"].endswith(topic_suffix)
+                    or topic_suffix in msg["topic"]
+                ):
+                    return msg
+            except queue.Empty:
+                continue
+        return None
+
