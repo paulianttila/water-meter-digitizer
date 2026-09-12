@@ -233,19 +233,25 @@ class MeterImageGenerator:
             fill=(250, 252, 255),
         )
 
-        # Text labels and water meter rating
-        font = PIL.ImageFont.load_default()
+        # Text labels and water meter rating with custom font sizes
+        font_title = PIL.ImageFont.load_default(size=20)
+        font_sub = PIL.ImageFont.load_default(size=16)
+        font = PIL.ImageFont.load_default(size=14)
+        font_small = PIL.ImageFont.load_default(size=10)
+
         draw.text(
-            (center_x - 52, center_y - 148),
+            (center_x, center_y - 148),
             "AQUA-DIGITIZER",
             fill=(45, 50, 60),
-            font=font,
+            font=font_title,
+            anchor="mm",
         )
         draw.text(
-            (center_x - 30, center_y - 132),
-            "m³  Qn 1.5",
+            (center_x, center_y - 130),
+            "m3  Qn 1.5",
             fill=(75, 85, 95),
-            font=font,
+            font=font_sub,
+            anchor="mm",
         )
 
         # 1. LCD Counter Bezel & Window (Enlarged with increased spacing)
@@ -276,20 +282,25 @@ class MeterImageGenerator:
         draw.text((118, 239), "AQ-20", fill=(30, 35, 45), font=font)
 
         # Ref1: m³ Volume unit & pressure rating (Top-Right, shifted 50px down to y=170)
-        draw.text((475, 173), "m³", fill=(25, 30, 40), font=font)
-        draw.text((472, 186), "PN16", fill=(65, 70, 80), font=font)
+        draw.text((475, 173), "m3", fill=(25, 30, 40), font=font_title)
+        draw.text((472, 200), "PN16", fill=(65, 70, 80), font=font)
 
         # Ref2: Serial Number & Barcode (Bottom-Center, shifted 10px up to y=410)
         for bx in range(280, 298, 3):
             draw.line((bx, 414, bx, 434), fill=(35, 40, 50), width=2)
         draw.text((303, 417), "SN:89421", fill=(25, 30, 40), font=font)
 
-        # 3. 4 Analog Dial Faces with 0-9 Graduations
-        dial_centers = [(430, 300), (360, 365), (280, 365), (210, 300)]
+        # 3. 4 Analog Dial Faces with 0-9 Graduations and Multiplier Markers
+        dial_configs = [
+            (430, 300, "x0.1"),
+            (360, 365, "x0.01"),
+            (280, 365, "x0.001"),
+            (210, 300, "x0.0001"),
+        ]
         dial_size = 76
         dial_r = dial_size // 2 - 2
 
-        for cx, cy in dial_centers:
+        for cx, cy, mult in dial_configs:
             ax, ay = cx - dial_size // 2, cy - dial_size // 2
             draw.ellipse(
                 (ax, ay, ax + dial_size, ay + dial_size),
@@ -297,6 +308,16 @@ class MeterImageGenerator:
                 outline=(115, 120, 130),
                 width=2,
             )
+
+            # Dial Multiplier Marker (e.g. x0.1, x0.01, x0.001, x0.0001)
+            tw = len(mult) * 6
+            draw.text(
+                (cx - tw // 2, ay - 12),
+                mult,
+                fill=(180, 30, 30),
+                font=font_small,
+            )
+
             for t in range(10):
                 angle_rad = math.radians(t * 36 - 90)
                 tx1 = cx + int((dial_r - 5) * math.cos(angle_rad))
