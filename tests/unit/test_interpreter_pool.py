@@ -154,3 +154,26 @@ async def test_async_model_readouts():
     assert isinstance(val_ana, (int, float))
     assert 0.0 <= conf_dig <= 100.0
     assert 0.0 <= conf_ana <= 100.0
+
+
+def test_cnn_base_properties_and_fallbacks():
+    from cnn.base import CNNBase
+
+    # Non-tflite model error
+    base_invalid = CNNBase("invalid_model.h5", dx=20, dy=20)
+    assert base_invalid.pool is None
+    assert base_invalid.interpreter is None
+    assert base_invalid.input_details == []
+    assert base_invalid.output_details == []
+    assert base_invalid.get_model_details().xsize == 20
+
+    # Valid model properties
+    base_valid = CNNBase(DIGITAL_MODEL, dx=32, dy=20)
+    assert base_valid.interpreter is not None
+    assert len(base_valid.input_details) > 0
+    assert len(base_valid.output_details) > 0
+
+    # Readout without loaded pool raises RuntimeError
+    base_invalid.pool = None
+    with pytest.raises(RuntimeError, match="not loaded"):
+        base_invalid._readout(Image.new("RGB", (20, 20)))

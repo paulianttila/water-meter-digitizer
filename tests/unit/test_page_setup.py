@@ -1,3 +1,4 @@
+import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
 
 from configuration import Config
@@ -106,3 +107,57 @@ def test_wizard_navigation_flow():
     page.wizard_prev_btn.set_visibility.assert_called_with(True)
     assert "Step 9 of 9" in page.wizard_step_badge.text
     assert page.wizard_next_btn.text == "Save Config"
+
+
+def test_setup_page_show():
+    callbacks = MagicMock()
+    config = Config()
+    callbacks.get_config.return_value = config
+    callbacks.load_config_file.return_value = config.save_to_string()
+
+    page = SetupPage(callbacks=callbacks)
+
+    with (
+        patch("gui.page_setup.ui") as mock_ui,
+        patch("gui.step_base.ui"),
+        patch("gui.step_download.DownloadImageStep.show", new_callable=AsyncMock),
+        patch("gui.step_initial_rotate.InitialRotateStep.show", new_callable=AsyncMock),
+        patch("gui.step_draw_refs.DrawRefsStep.show", new_callable=AsyncMock),
+        patch("gui.step_adjust.AdjustStep.show", new_callable=AsyncMock),
+        patch(
+            "gui.step_draw_digital_rois.DrawDigitalRoisStep.show",
+            new_callable=AsyncMock,
+        ),
+        patch(
+            "gui.step_draw_analog_rois.DrawAnalogRoisStep.show", new_callable=AsyncMock
+        ),
+        patch("gui.step_meters.MeterStep.show", new_callable=AsyncMock),
+        patch("gui.step_services.ServicesStep.show", new_callable=AsyncMock),
+        patch("gui.step_final.FinalStep.show", new_callable=AsyncMock),
+        patch("gui.step_download.DownloadImageStep.load_from_config"),
+        patch("gui.step_initial_rotate.InitialRotateStep.load_from_config"),
+        patch("gui.step_draw_refs.DrawRefsStep.load_from_config"),
+        patch("gui.step_adjust.AdjustStep.load_from_config"),
+        patch("gui.step_draw_digital_rois.DrawDigitalRoisStep.load_from_config"),
+        patch("gui.step_draw_analog_rois.DrawAnalogRoisStep.load_from_config"),
+        patch("gui.step_meters.MeterStep.load_from_config"),
+        patch("gui.step_services.ServicesStep.load_from_config"),
+    ):
+        mock_ui.splitter.return_value.__enter__ = MagicMock()
+        mock_ui.splitter.return_value.__exit__ = MagicMock()
+        mock_ui.card.return_value.__enter__ = MagicMock()
+        mock_ui.card.return_value.__exit__ = MagicMock()
+        mock_ui.column.return_value.__enter__ = MagicMock()
+        mock_ui.column.return_value.__exit__ = MagicMock()
+        mock_ui.row.return_value.__enter__ = MagicMock()
+        mock_ui.row.return_value.__exit__ = MagicMock()
+        mock_ui.stepper.return_value.__enter__ = MagicMock()
+        mock_ui.stepper.return_value.__exit__ = MagicMock()
+        mock_ui.element.return_value.__enter__ = MagicMock()
+        mock_ui.element.return_value.__exit__ = MagicMock()
+        mock_ui.interactive_image.return_value = MagicMock()
+
+        asyncio.run(page.show())
+        assert page.download_image_step is not None
+        assert page.adjust_step is not None
+        assert page.final_step is not None

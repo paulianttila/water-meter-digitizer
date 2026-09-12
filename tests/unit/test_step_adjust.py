@@ -1,7 +1,7 @@
 """Unit tests for AdjustStep and side-by-side comparison."""
 
 import asyncio
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import numpy as np
 import pytest
@@ -293,3 +293,38 @@ def test_adjust_step_comparison_callback_single_clears(
         comp_cb.assert_called_with("")
 
     asyncio.run(run_test())
+
+
+def test_adjust_step_show():
+    cb = MagicMock()
+    comp_cb = MagicMock()
+    step = AdjustStep(
+        name="Adjust",
+        set_image_callback=cb,
+        set_comparison_callback=comp_cb,
+    )
+
+    with (
+        patch("gui.step_adjust.ui") as mock_ui,
+        patch("gui.step_base.ui") as mock_base_ui,
+    ):
+        mock_ui.step.return_value.__enter__ = MagicMock()
+        mock_ui.step.return_value.__exit__ = MagicMock()
+        mock_ui.row.return_value.__enter__ = MagicMock()
+        mock_ui.row.return_value.__exit__ = MagicMock()
+        mock_ui.column.return_value.__enter__ = MagicMock()
+        mock_ui.column.return_value.__exit__ = MagicMock()
+        mock_ui.grid.return_value.__enter__ = MagicMock()
+        mock_ui.grid.return_value.__exit__ = MagicMock()
+        mock_ui.expansion.return_value.__enter__ = MagicMock()
+        mock_ui.expansion.return_value.__exit__ = MagicMock()
+        mock_base_ui.expansion.return_value.__enter__ = MagicMock()
+        mock_base_ui.expansion.return_value.__exit__ = MagicMock()
+        mock_base_ui.column.return_value.__enter__ = MagicMock()
+        mock_base_ui.column.return_value.__exit__ = MagicMock()
+
+        stepper = MagicMock()
+        asyncio.run(step.show(stepper))
+        assert step.live_preview is not None
+        assert step.crop_enabled is not None
+        assert step.adjust_enabled is not None

@@ -60,96 +60,98 @@ def test_sqlite_time_retention_pruning():
     # Record 2: 5 days ago (should remain)
     storage.record_reading(
         timestamp=now - timedelta(days=5),
-        meters={"main": MeterReading(value=105.0)},
+        meters={"main": MeterReading(value=101.0)},
     )
-    # Record 3: 1 day ago (should remain)
+    # Record 3: Trigger pruning
     storage.record_reading(
-        timestamp=now - timedelta(days=1),
-        meters={"main": MeterReading(value=110.0)},
+        timestamp=now,
+        meters={"main": MeterReading(value=102.0)},
     )
 
-    storage.prune()
     readings = storage.get_readings()
     assert len(readings) == 2
-    assert readings[0].meters["main"].value == 105.0
-    assert readings[1].meters["main"].value == 110.0
+    assert readings[0].meters["main"].value == 101.0
+    assert readings[1].meters["main"].value == 102.0
 
 
 def test_sqlite_max_records_fifo_pruning():
     storage = SQLAlchemyStorageBackend(
         db_url="sqlite:///:memory:",
         max_records=5,
-        retention_days=0,
         prune_interval=1,
     )
-    local_tz = datetime.now().astimezone().tzinfo
-    base_time = datetime(2026, 9, 1, 0, 0, 0, tzinfo=local_tz)
+    now = datetime.now().astimezone()
 
-    for i in range(12):
+    for i in range(10):
         storage.record_reading(
-            timestamp=base_time + timedelta(hours=i),
+            timestamp=now + timedelta(minutes=i),
             meters={"main": MeterReading(value=float(i))},
         )
 
     readings = storage.get_readings()
     assert len(readings) == 5
-    # The oldest 7 were pruned, remaining values: 7, 8, 9, 10, 11
-    assert readings[0].meters["main"].value == 7.0
-    assert readings[-1].meters["main"].value == 11.0
+    # The oldest (0..4) should be pruned, leaving (5..9)
+    values = [r.meters["main"].value for r in readings]
+    assert values == [5.0, 6.0, 7.0, 8.0, 9.0]
 
 
 def test_sqlite_filtering_options():
     storage = SQLAlchemyStorageBackend(db_url="sqlite:///:memory:")
     local_tz = datetime.now().astimezone().tzinfo
-    base = datetime(2026, 9, 1, 0, 0, 0, tzinfo=local_tz)
+    t1 = datetime(2026, 9, 1, 10, 0, 0, tzinfo=local_tz)
+    t2 = datetime(2026, 9, 1, 11, 0, 0, tzinfo=local_tz)
+    t3 = datetime(2026, 9, 1, 12, 0, 0, tzinfo=local_tz)
 
-    for i in range(10):
-        storage.record_reading(
-            timestamp=base + timedelta(hours=i),
-            meters={
-                "meterA": MeterReading(value=float(i)),
-                "meterB": MeterReading(value=float(i * 2)),
-            },
-        )
-
-    # Filter by start & end
-    filtered = storage.get_readings(
-        start=base + timedelta(hours=2),
-        end=base + timedelta(hours=5),
+    storage.record_reading(timestamp=t1, meters={"m1": MeterReading(value=1.0)})
+    storage.record_reading(
+        timestamp=t2, meters={"m1": MeterReading(value=2.0)}, error="OCR Failed"
     )
-    assert len(filtered) == 4
-    assert filtered[0].timestamp == base + timedelta(hours=2)
-    assert filtered[-1].timestamp == base + timedelta(hours=5)
+    storage.record_reading(timestamp=t3, meters={"m2": MeterReading(value=3.0)})
 
-    # Filter with limit
-    limited = storage.get_readings(limit=3)
-    assert len(limited) == 3
-    # Returns the 3 newest in chronological order
-    assert limited[-1].timestamp == base + timedelta(hours=9)
-    assert limited[0].timestamp == base + timedelta(hours=7)
+    # Filter by meter name
+    m1_readings = storage.get_readings(meter_name="m1")
+    assert len(m1_readings) == 2
+
+    # Filter by time range
+    time_filtered = storage.get_readings(
+        start=t1 + timedelta(minutes=30), end=t3 - timedelta(minutes=30)
+    )
+    assert len(time_filtered) == 1
+    assert time_filtered[0].meters["m1"].value == 2.0
+
+    # Limit
+    limited = storage.get_readings(limit=1)
+    assert len(limited) == 1
+    assert "m2" in limited[0].meters
 
 
 def test_sqlite_consumption_intervals():
     storage = SQLAlchemyStorageBackend(db_url="sqlite:///:memory:")
-
-    # Hourly test
     local_tz = datetime.now().astimezone().tzinfo
-    t1 = datetime(2026, 9, 1, 10, 5, tzinfo=local_tz)
-    t2 = datetime(2026, 9, 1, 10, 45, tzinfo=local_tz)
-    t3 = datetime(2026, 9, 1, 11, 10, tzinfo=local_tz)
-    t4 = datetime(2026, 9, 1, 11, 50, tzinfo=local_tz)
 
-    storage.record_reading(t1, {"main": MeterReading(value=100.0)})
-    storage.record_reading(t2, {"main": MeterReading(value=100.5)})
-    storage.record_reading(t3, {"main": MeterReading(value=101.2)})
-    storage.record_reading(t4, {"main": MeterReading(value=102.0)})
+    # Record readings across hours
+    storage.record_reading(
+        timestamp=datetime(2026, 9, 1, 10, 0, 0, tzinfo=local_tz),
+        meters={"main": MeterReading(value=100.0)},
+    )
+    storage.record_reading(
+        timestamp=datetime(2026, 9, 1, 10, 30, 0, tzinfo=local_tz),
+        meters={"main": MeterReading(value=100.5)},
+    )
+    storage.record_reading(
+        timestamp=datetime(2026, 9, 1, 11, 15, 0, tzinfo=local_tz),
+        meters={"main": MeterReading(value=101.2)},
+    )
+    storage.record_reading(
+        timestamp=datetime(2026, 9, 1, 11, 45, 0, tzinfo=local_tz),
+        meters={"main": MeterReading(value=102.0)},
+    )
 
     hourly = storage.get_consumption("main", interval="hourly")
     assert len(hourly) == 2
     assert hourly[0].bucket == "2026-09-01 10:00"
     assert round(hourly[0].consumption, 2) == 0.50
     assert hourly[1].bucket == "2026-09-01 11:00"
-    # Includes cross-bucket jump 100.5 -> 101.2 (0.7) + 101.2 -> 102.0 (0.8) = 1.50
     assert round(hourly[1].consumption, 2) == 1.50
 
     daily = storage.get_consumption("main", interval="daily")
@@ -205,3 +207,73 @@ def test_sqlite_record_meter_result():
     assert len(readings) == 1
     assert readings[0].meters["main"].value == 543.21
     assert readings[0].meters["main"].confidence == 98.5
+
+
+def test_sqlite_timeline_queries_and_filters():
+    storage = SQLAlchemyStorageBackend(db_url="sqlite:///:memory:")
+    now = datetime.now().astimezone()
+
+    storage.record_reading(
+        timestamp=now - timedelta(hours=2),
+        meters={"total": MeterReading(value=10.0)},
+        error="",
+    )
+    storage.record_reading(
+        timestamp=now - timedelta(hours=1),
+        meters={"total": MeterReading(value=11.0)},
+        error="Anomaly error",
+        frame_bytes=b"RIFFtestwebp",
+        frame_type="full",
+    )
+    storage.record_reading(
+        timestamp=now,
+        meters={"total": MeterReading(value=12.0)},
+        confidence_scores={"d1": 99.0},
+    )
+
+    # 1. Anomalies only
+    anomalies = storage.get_timeline(anomalies_only=True)
+    assert len(anomalies) == 1
+    assert anomalies[0].error == "Anomaly error"
+
+    # 2. Frames only
+    frames = storage.get_timeline(frames_only=True)
+    assert len(frames) == 1
+    assert frames[0].frame_type == "full"
+
+    # 3. Start & End filter
+    time_bounded = storage.get_timeline(
+        start=now - timedelta(minutes=30), end=now + timedelta(minutes=30)
+    )
+    assert len(time_bounded) == 1
+    assert time_bounded[0].meters["total"].value == 12.0
+
+
+def test_sqlite_memory_frame_and_mime_types(tmp_path: Path):
+    storage = SQLAlchemyStorageBackend(
+        db_url="sqlite:///:memory:",
+        snapshots_dir=str(tmp_path / "snaps"),
+    )
+    now = datetime.now().astimezone()
+
+    # WebP buffer
+    rid1 = storage.record_reading(
+        timestamp=now,
+        meters={"total": MeterReading(value=1.0)},
+        frame_bytes=b"RIFFsome_webp_data",
+        frame_type="full",
+    )
+    assert rid1 is not None
+    _data, mime = storage.get_frame_bytes(rid1)
+    assert mime == "image/webp"
+
+    # JPEG buffer
+    rid2 = storage.record_reading(
+        timestamp=now + timedelta(minutes=1),
+        meters={"total": MeterReading(value=2.0)},
+        frame_bytes=b"\xff\xd8\xffsome_jpeg_data",
+        frame_type="full",
+    )
+    assert rid2 is not None
+    _data, mime = storage.get_frame_bytes(rid2)
+    assert mime == "image/jpeg"

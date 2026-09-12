@@ -1,9 +1,9 @@
 """End-to-End integration test: Continuous zero-flow leak detection, REST status, and MQTT alerting."""
 
 import time
-import requests
-import pytest
 
+import pytest
+import requests
 from testing_utils import MQTTTestReceiver
 
 

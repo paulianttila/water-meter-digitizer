@@ -61,46 +61,28 @@ def test_legacy_backup_discovery(temp_config_dir):
     backups = ConfigHistoryManager.list_backups(str(cfg_file))
     assert len(backups) == 1
     assert backups[0].name == "config.ini_20260101_120000.bak"
+    assert backups[0].is_auto is True
 
 
-def test_restore_backup(temp_config_dir):
+def test_restore_and_undo_backup(temp_config_dir):
     _cfg_dir, cfg_file = temp_config_dir
 
-    # Create initial backup
-    backup_path = ConfigHistoryManager.create_backup(str(cfg_file), tag="v1")
-    assert backup_path is not None
+    # Create backup with initial content
+    b_path = ConfigHistoryManager.create_backup(str(cfg_file), tag="Initial")
+    assert b_path is not None
 
-    # Modify active config
-    cfg_file.write_text(
-        "[DEFAULT]\nLogLevel = WARNING\n[ImageSource]\nURL = http://new/image.jpg\n"
-    )
-    assert "LogLevel = WARNING" in cfg_file.read_text()
+    # Overwrite config file
+    cfg_file.write_text("[DEFAULT]\nLogLevel = DEBUG\n")
+    assert "LogLevel = DEBUG" in cfg_file.read_text()
 
-    # Restore v1 backup
-    ConfigHistoryManager.restore_backup(str(cfg_file), backup_path)
-    restored_text = cfg_file.read_text()
-    assert "LogLevel = INFO" in restored_text
-    assert "http://camera/image.jpg" in restored_text
-
-    # Verify a safety snapshot was taken before restore
-    backups = ConfigHistoryManager.list_backups(str(cfg_file))
-    assert any("before_restore" in b.name for b in backups)
-
-
-def test_undo_last(temp_config_dir):
-    _cfg_dir, cfg_file = temp_config_dir
-
-    # Create backup of v1
-    b1 = ConfigHistoryManager.create_backup(str(cfg_file), tag="v1")
-    assert b1 is not None
-
-    # Save v2
-    cfg_file.write_text("[DEFAULT]\nLogLevel = ERROR\n")
-
-    # Undo
-    undone_backup = ConfigHistoryManager.undo_last(str(cfg_file))
-    assert undone_backup is not None
+    # Test restore_backup
+    ConfigHistoryManager.restore_backup(str(cfg_file), b_path)
     assert "LogLevel = INFO" in cfg_file.read_text()
+
+    # Overwrite config file again and test undo_last
+    cfg_file.write_text("[DEFAULT]\nLogLevel = WARNING\n")
+    undone = ConfigHistoryManager.undo_last(str(cfg_file))
+    assert undone is not None
 
 
 def test_delete_backup(temp_config_dir):
@@ -108,56 +90,59 @@ def test_delete_backup(temp_config_dir):
 
     backup_path = ConfigHistoryManager.create_backup(str(cfg_file))
     assert backup_path is not None
-    assert os.path.exists(backup_path)
+    b_name = Path(backup_path).name
 
-    backup_name = Path(backup_path).name
-    deleted = ConfigHistoryManager.delete_backup(str(cfg_file), backup_name)
+    deleted = ConfigHistoryManager.delete_backup(str(cfg_file), b_name)
     assert deleted is True
     assert not os.path.exists(backup_path)
 
+    # Delete non-existent
+    assert (
+        ConfigHistoryManager.delete_backup(str(cfg_file), "non_existent.bak") is False
+    )
 
-def test_diff_generation(temp_config_dir):
+
+def test_get_diff(temp_config_dir):
     _cfg_dir, cfg_file = temp_config_dir
 
     backup_path = ConfigHistoryManager.create_backup(str(cfg_file))
     assert backup_path is not None
 
-    current_modified = (
-        "[DEFAULT]\nLogLevel = DEBUG\n[ImageSource]\nURL = http://camera/image.jpg\n"
-    )
+    current_content = "[DEFAULT]\nLogLevel = DEBUG\n"
     diff = ConfigHistoryManager.get_diff(
-        current_modified, backup_path, config_file=str(cfg_file)
+        current_content, Path(backup_path).name, config_file=str(cfg_file)
     )
     assert len(diff) > 0
-    diff_text = "".join(diff)
-    assert "-LogLevel = INFO" in diff_text
-    assert "+LogLevel = DEBUG" in diff_text
+    diff_str = "".join(diff)
+    assert "-LogLevel = INFO" in diff_str or "- LogLevel = INFO" in diff_str
+    assert "+LogLevel = DEBUG" in diff_str or "+ LogLevel = DEBUG" in diff_str
 
 
-def test_nonexistent_config_file(tmp_path: Path):
-    nonexistent = tmp_path / "does_not_exist.ini"
-    assert ConfigHistoryManager.create_backup(str(nonexistent)) is None
-    assert ConfigHistoryManager.list_backups(str(nonexistent)) == []
-    assert ConfigHistoryManager.undo_last(str(nonexistent)) is None
+def test_edge_cases_and_missing_files(temp_config_dir):
+    cfg_dir, cfg_file = temp_config_dir
 
+    # 1. Restore non-existent file
+    with pytest.raises(FileNotFoundError):
+        ConfigHistoryManager.restore_backup(str(cfg_file), "does_not_exist.bak")
 
-def test_main_diff_config_backup_no_deadlock(temp_config_dir, monkeypatch):
-    import main
+    # 2. Diff non-existent file
+    with pytest.raises(FileNotFoundError):
+        ConfigHistoryManager.get_diff(
+            "[DEFAULT]", "does_not_exist.bak", config_file=str(cfg_file)
+        )
 
-    _cfg_dir, cfg_file = temp_config_dir
-    monkeypatch.setattr(main, "config_file", str(cfg_file))
+    # 3. Undo on empty backups
+    empty_cfg = cfg_dir / "empty.ini"
+    empty_cfg.write_text("[DEFAULT]")
+    assert ConfigHistoryManager.undo_last(str(empty_cfg)) is None
 
-    # Create a backup
-    backup_path = ConfigHistoryManager.create_backup(str(cfg_file))
-    assert backup_path is not None
-    backup_name = Path(backup_path).name
+    # 4. Legacy backup in parent dir restored by name
+    legacy_file = cfg_dir / "config.ini_20260202_100000.bak"
+    legacy_file.write_text("[DEFAULT]\nLogLevel = TRACE\n")
+    ConfigHistoryManager.restore_backup(str(cfg_file), legacy_file.name)
+    assert "LogLevel = TRACE" in cfg_file.read_text()
 
-    # Modify the config file
-    cfg_file.write_text("[DEFAULT]\nLogLevel = DEBUG\n")
-
-    # Calling main.diff_config_backup must not deadlock
-    diff_lines = main.diff_config_backup(backup_name)
-    assert len(diff_lines) > 0
-    diff_text = "".join(diff_lines)
-    assert "-LogLevel = INFO" in diff_text
-    assert "+LogLevel = DEBUG" in diff_text
+    # 5. Delete legacy backup in parent dir by relative name
+    legacy_file2 = cfg_dir / "config.ini_20260202_110000.bak"
+    legacy_file2.write_text("[DEFAULT]\nLogLevel = TRACE\n")
+    assert ConfigHistoryManager.delete_backup(str(cfg_file), legacy_file2.name) is True

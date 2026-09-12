@@ -102,6 +102,7 @@ class MQTTTestReceiver:
 
     def __init__(self, host: str = "127.0.0.1", port: int = 1883) -> None:
         import queue
+
         import paho.mqtt.client as paho
 
         self.host = host
@@ -155,4 +156,3 @@ class MQTTTestReceiver:
             except queue.Empty:
                 continue
         return None
-

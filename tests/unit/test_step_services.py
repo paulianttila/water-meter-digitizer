@@ -1,4 +1,7 @@
-from unittest.mock import MagicMock
+"""Unit tests for ServicesStep in Setup Wizard."""
+
+import asyncio
+from unittest.mock import MagicMock, patch
 
 from configuration import Config
 from gui.step_services import ServicesStep
@@ -103,3 +106,32 @@ def test_services_step_load_and_apply():
     assert new_config.zero_flow_monitor.enabled is True
     assert new_config.zero_flow_monitor.continuous_flow_hours == 4.0
     assert new_config.zero_flow_monitor.min_leak_volume == 0.020
+
+
+def test_services_step_show():
+    step = ServicesStep(name="Services", set_image_callback=MagicMock())
+
+    with (
+        patch("gui.step_services.ui") as mock_ui,
+        patch("gui.step_base.ui") as mock_base_ui,
+    ):
+        mock_ui.step.return_value.__enter__ = MagicMock()
+        mock_ui.step.return_value.__exit__ = MagicMock()
+        mock_ui.column.return_value.__enter__ = MagicMock()
+        mock_ui.column.return_value.__exit__ = MagicMock()
+        mock_ui.card.return_value.__enter__ = MagicMock()
+        mock_ui.card.return_value.__exit__ = MagicMock()
+        mock_ui.row.return_value.__enter__ = MagicMock()
+        mock_ui.row.return_value.__exit__ = MagicMock()
+        mock_ui.grid.return_value.__enter__ = MagicMock()
+        mock_ui.grid.return_value.__exit__ = MagicMock()
+        mock_base_ui.expansion.return_value.__enter__ = MagicMock()
+        mock_base_ui.expansion.return_value.__exit__ = MagicMock()
+        mock_base_ui.column.return_value.__enter__ = MagicMock()
+        mock_base_ui.column.return_value.__exit__ = MagicMock()
+
+        stepper = MagicMock()
+        asyncio.run(step.show(stepper))
+        assert step.poller_enabled is not None
+        assert step.mqtt_enabled is not None
+        assert step.history_enabled is not None

@@ -1,9 +1,7 @@
 """End-to-End integration test: MQTT broker connectivity, status telemetry, and resilient publishing."""
 
-import time
-import requests
 import pytest
-
+import requests
 from testing_utils import MQTTTestReceiver
 
 

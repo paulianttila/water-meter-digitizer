@@ -661,3 +661,20 @@ def test_evaluate_cnn_results_missing_digit() -> None:
         "digital1": 1,
         "digital3": 3,
     }
+
+
+def test_process_async():
+    import asyncio
+
+    processor = DigitizerProcessor()
+    with patch.object(processor, "process") as mock_proc:
+        mock_proc.return_value = MagicMock()
+        res = asyncio.run(processor.process_async([], [], []))
+        assert res is not None
+        mock_proc.assert_called_once_with([], [], [], None)
+
+
+def test_execute_analog_cnn_uninitialized():
+    processor = DigitizerProcessor()
+    with pytest.raises(ValueError, match="No CNN reader initialized"):
+        processor.execute_analog_cnn([])

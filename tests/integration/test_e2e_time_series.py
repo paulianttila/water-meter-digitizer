@@ -1,9 +1,9 @@
 """End-to-End integration test: Multi-frame time-series consumption and timeline tracking."""
 
 import time
-import requests
-import pytest
 
+import pytest
+import requests
 from testing_utils import MQTTTestReceiver
 
 
@@ -26,7 +26,7 @@ def test_e2e_time_series_progression():
         requests.post(f"{base_url}/history/clear", timeout=5)
 
         # 2. Trigger 3 successive meter readouts synchronously
-        for i in range(3):
+        for _i in range(3):
             resp_r = requests.get(
                 f"{base_url}/meter?format=json&saveimages=true", timeout=10
             )
@@ -42,9 +42,7 @@ def test_e2e_time_series_progression():
         assert stats["total_records"] >= 3
 
         # 4. Verify readings endpoint returns chronologically indexed records
-        resp_readings = requests.get(
-            f"{base_url}/history/readings?limit=10", timeout=5
-        )
+        resp_readings = requests.get(f"{base_url}/history/readings?limit=10", timeout=5)
         assert resp_readings.status_code == 200
         readings = resp_readings.json()
         assert len(readings) >= 3
@@ -54,9 +52,7 @@ def test_e2e_time_series_progression():
         assert "timestamp" in readings[0]
 
         # 5. Verify timeline endpoint contains snapshots
-        resp_timeline = requests.get(
-            f"{base_url}/history/timeline?limit=10", timeout=5
-        )
+        resp_timeline = requests.get(f"{base_url}/history/timeline?limit=10", timeout=5)
         assert resp_timeline.status_code == 200
         timeline = resp_timeline.json()
         assert len(timeline) >= 3
