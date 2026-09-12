@@ -9,7 +9,8 @@ services:
       - TZ=Europe/Helsinki
     volumes:
       - ${DIR_DATA:-.}/config:/config
-      - ${DIR_DATA:-.}/data:/data
+      #- ${DIR_DATA:-.}/data:/data
+      - watermeter-data:/data
     ports:
       - "3000:3000"
     healthcheck:
@@ -23,3 +24,6 @@ services:
       options:
         max-size: "2m"
         max-file: "2"
+
+volumes:
+  watermeter-data:
