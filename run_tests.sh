@@ -161,7 +161,8 @@ run_static_analysis() {
 
 run_coverage() {
   echo -e "${BLUE}Running tests with code coverage...${NC}"
-  ${PYTHON} -m pytest --cov=src --cov-report=term-missing tests/unit
+  ${PYTHON} -m coverage run --source=src -m pytest tests/unit
+  ${PYTHON} -m coverage report -m
 }
 
 print_help() {
