@@ -55,3 +55,29 @@ Triggers capture from configured camera URL, runs neural inference, updates stor
 - **`GET /healthcheck`**: Lightweight Docker/Kubernetes readiness probe returning `Health - OK`.
 - **`GET /mqtt/status`**: Active MQTT broker connection status and last published topic table.
 - **`POST /poller/trigger`**: Force an immediate execution of the background poller cycle.
+
+---
+
+### 5. Mock Camera Service (`/api/mock_camera`, `/mock_camera`)
+
+Procedurally generates synthetic water meter image frames on-demand for automated testing, simulation, and camera-free development.
+
+- **URL**: `GET /api/mock_camera` or `GET /mock_camera`
+- **Query Parameters**:
+  - `value`: Reading value in format `DDDDD.AAAA` (e.g. `00789.1234`).
+  - `mode`: `static` (default), `flow` (continuous simulated consumption), `noise`, `glare`, `blur`.
+  - `rate`: Simulated consumption rate in $\text{m}^3/\text{min}$ when `mode=flow` (default: `0.05`).
+  - `lcd_color`: 7-segment digit color (`black`, `green`, `amber`, `white`, `red`, `blue`).
+  - `lcd_bg`: LCD background tint (`grey`, `green`, `amber`, `dark`, `blue`).
+  - `needle_color`: Pointer color for 4 analog dials (`red`, `black`).
+  - `rotate`: Rotational tilt in degrees (e.g. `2.5`, `-5.0`).
+  - `glare`: Add specular glare reflection (`true`/`false`).
+  - `noise`: Add Gaussian noise percentage ($0.0 - 50.0$).
+  - `blur`: Add Gaussian blur radius ($0.0 - 10.0$).
+  - `digit1`..`digit5`: Direct override for individual LCD digits.
+  - `analog1`..`analog4`: Direct override for individual analog needles.
+- **Example**:
+  ```bash
+  curl "http://localhost:3000/api/mock_camera?value=00789.1234&mode=flow&lcd_color=green&lcd_bg=dark" -o frame.jpg
+  ```
+- **See also**: [Mock Camera & Meter Generator Wiki](Mock-Camera-&-Meter-Generator.md)

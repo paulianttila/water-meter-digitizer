@@ -91,6 +91,7 @@ Detailed guides, API specifications, and calibration tutorials are available in 
 | 🔬 **[Architecture & Pipeline](docs/wiki/Architecture-&-Pipeline.md)** | Component decoupling and execution flow. |
 | 🧠 **[Neural Network Models](docs/wiki/Neural-Network-Models.md)** | CNN architectures, LiteRT runtime, and thread pooling. |
 | 🧮 **[Digit Roll-Over Math](docs/wiki/Digit-Roll-Over-&-Extended-Resolution.md)** | Predecessor consistency algorithms and fractional decimal math. |
+| 📸 **[Mock Camera & Generator](docs/wiki/Mock-Camera-&-Meter-Generator.md)** | Procedural synthetic meter generator and HTTP mock camera API. |
 | 🧪 **[Development & Testing](docs/wiki/Development-&-Testing.md)** | Local environment setup, test suites (`./run_tests.sh`), and code quality. |
 | ❓ **[Troubleshooting & FAQ](docs/wiki/Troubleshooting-&-FAQ.md)** | Diagnostics matrix and frequently asked questions. |
 

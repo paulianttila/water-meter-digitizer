@@ -49,3 +49,22 @@ uv run ruff check --fix .
 # Verify complete suite
 ./run_tests.sh -a
 ```
+
+---
+
+## 📸 Synthetic Meter Generator & Mock Camera
+
+The project includes an autonomous procedural water meter generator and CLI (`meter-generator`) for local development without physical cameras:
+
+```bash
+# Generate a static test image
+uv run python -m src.testing.cli --value 00789.1234 --output test_meter.jpg
+
+# Generate a continuous water flow sequence
+uv run python -m src.testing.cli --mode flow --frames 15 --interval 0.5 --output-dir ./test_frames/
+
+# Stress test image with glare, noise, and tilt
+uv run python -m src.testing.cli --value 00452.9124 --glare --noise 5.0 --rotate 3.0 --output stress.jpg
+```
+
+See the full [Mock Camera & Meter Generator Wiki](Mock-Camera-&-Meter-Generator.md) for full REST parameters and details.

@@ -67,4 +67,5 @@ Explore detailed documentation in the project Wiki:
 | **Storage & Snapshot Retention** | [Storage & Snapshot Pruning](docs/wiki/Storage-&-Snapshot-Pruning.md) |
 | **Smart Home Integrations (HA/openHAB)**| [Smart Home Integrations](docs/wiki/Smart-Home-Integrations.md) |
 | **REST API Reference** | [REST API Reference](docs/wiki/REST-API-Reference.md) |
+| **Mock Camera & Meter Generator** | [Mock Camera & Meter Generator](docs/wiki/Mock-Camera-&-Meter-Generator.md) |
 | **Development & Test Guidelines** | [Development & Testing Guide](docs/wiki/Development-&-Testing.md) |

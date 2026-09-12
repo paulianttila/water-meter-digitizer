@@ -21,6 +21,7 @@ from api.routes_health import router as health_router
 from api.routes_history import router as history_router
 from api.routes_meter import get_meter_data, set_app_ref
 from api.routes_meter import router as meter_router
+from api.routes_mock_camera import router as mock_camera_router
 from api.routes_services import router as services_router
 from api.routes_system import router as system_router
 from configuration import Config, ensure_config_initialized
@@ -140,6 +141,7 @@ app.include_router(health_router)
 app.include_router(meter_router)
 app.include_router(history_router)
 app.include_router(services_router)
+app.include_router(mock_camera_router)
 
 
 # --- Helper Functions for NiceGUI Bridge ---

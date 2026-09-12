@@ -29,6 +29,7 @@ The **Water Meter Digitizer** is an edge-optimized AI vision system that reads a
 - **[[Architecture-&-Pipeline]]**: High-level component architecture and end-to-end dataflow pipeline.
 - **[[Neural-Network-Models]]**: CNN model types, LiteRT inference pooling (`InterpreterPool`), and benchmarks.
 - **[[Digit-Roll-Over-&-Extended-Resolution]]**: Predecessor consistency math, roll-over boundary correction, and fractional sub-digit calculation.
+- **[[Mock-Camera-&-Meter-Generator]]**: Autonomous procedural water meter generator, 7-segment LCD rendering engine, and HTTP mock camera service.
 - **[[Development-&-Testing]]**: Setting up local development with `uv`, executing unit, Playwright UI, and Tavern integration test suites.
 
 ### ❓ Troubleshooting & Support
