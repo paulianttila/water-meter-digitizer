@@ -18,6 +18,11 @@ jobs:
       contents: write
 
     steps:
+      - name: Configure Git Author
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+
       - name: Checkout Repository
         uses: actions/checkout@v4
         with:
@@ -37,10 +42,10 @@ jobs:
           cd wiki
           if [ ! -d .git ]; then
             git init
-            git config user.name "github-actions[bot]"
-            git config user.email "github-actions[bot]@users.noreply.github.com"
             git remote add origin "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.wiki.git"
             git checkout -b master || git checkout -b main
+          else
+            git remote set-url origin "https://x-access-token:${{ secrets.GITHUB_TOKEN }}@github.com/${{ github.repository }}.wiki.git"
           fi
           
           # Copy markdown files and navigation from docs/wiki
@@ -49,7 +54,7 @@ jobs:
           git add .
           if git status --porcelain | grep -q .; then
             git commit -m "docs: sync wiki from docs/wiki (${{ github.sha }})"
-            git push -u origin HEAD:master || git push -u origin HEAD:main
+            git push origin HEAD:master || git push origin HEAD:main
             echo "Successfully synced wiki documentation."
           else
             echo "No changes detected in wiki content."
