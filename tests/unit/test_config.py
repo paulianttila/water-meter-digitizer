@@ -239,3 +239,23 @@ def test_ensure_config_initialized_missing_seed(tmp_path):
     result = ensure_config_initialized(str(target_config), seed_dir=str(missing_seed))
     assert result is False
     assert not target_config.exists()
+
+
+def test_init_config_logging_level(monkeypatch, tmp_path):
+    import logging
+
+    import main
+
+    test_ini = tmp_path / "config.ini"
+    test_ini.write_text("[DEFAULT]\nLogLevel=WARNING\n")
+
+    monkeypatch.setattr(main, "config_file", str(test_ini))
+    main.init_config()
+
+    assert logging.getLogger().level == logging.WARNING
+    assert main.logger.level == logging.WARNING
+
+    # Reset back to INFO for subsequent tests
+    test_ini.write_text("[DEFAULT]\nLogLevel=INFO\n")
+    main.init_config()
+    assert logging.getLogger().level == logging.INFO

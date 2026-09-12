@@ -50,13 +50,13 @@ if os.path.exists(config_file):
 
 _config_lock = threading.RLock()
 
+init_log_level = getattr(logging, config.log_level.upper(), logging.INFO)
 logging.basicConfig(
     stream=sys.stdout,
-    level=logging.DEBUG,
+    level=init_log_level,
     format="%(asctime)s - %(levelname)s - %(name)s - %(message)s",
 )
 logger = logging.getLogger(__name__)
-logger.setLevel(logging.INFO)
 
 BASE_DIR = Path(__file__).resolve().parent
 
@@ -332,21 +332,15 @@ def init_config() -> None:
         config = new_config
         app.state.config = new_config
         app.state.config_file = config_file
-        logger.setLevel(config.log_level)
+        target_log_level = getattr(logging, str(config.log_level).upper(), logging.INFO)
+        logging.getLogger().setLevel(target_log_level)
+        logger.setLevel(target_log_level)
         app.state.storage = get_storage_backend(config)
         start_services()
 
-        logging.getLogger("CNN.CNNBase").setLevel(logger.level)
-    logging.getLogger("CNN.AnalogNeedleCNN").setLevel(logger.level)
-    logging.getLogger("CNN.DigitalCounterCNN").setLevel(logger.level)
-    logging.getLogger("Utils.DownloadUtils").setLevel(logger.level)
-    logging.getLogger("Config").setLevel(logger.level)
-    logging.getLogger("decorators.decorators").setLevel(logger.level)
-    logging.getLogger("Processor").setLevel(logger.level)
-    logging.getLogger("PreviousValueFile").setLevel(logger.level)
-    logging.getLogger("urllib3").setLevel(logging.WARNING)
-    logging.getLogger("asyncio").setLevel(logging.WARNING)
-    logging.getLogger("PIL").setLevel(logging.WARNING)
+        logging.getLogger("urllib3").setLevel(logging.WARNING)
+        logging.getLogger("asyncio").setLevel(logging.WARNING)
+        logging.getLogger("PIL").setLevel(logging.WARNING)
 
 
 if __name__ == "__main__":
