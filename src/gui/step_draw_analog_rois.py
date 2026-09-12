@@ -1,5 +1,6 @@
 import time
 from collections.abc import Callable
+from pathlib import Path
 
 from nicegui import ui
 
@@ -56,14 +57,24 @@ class DrawAnalogRoisStep(DrawRoisBaseStep):
             and self.cnn_file is not None
             and isinstance(self.cnn_file.options, dict)
         ):
+            clean_target = analog_readout.model_file.replace(" ", "")
+            target_filename = Path(clean_target).name if clean_target else ""
+            matched_key = None
             for key, val in self.cnn_file.options.items():
+                clean_val = val.replace(" ", "")
+                clean_key = key.replace(" ", "")
                 if (
-                    val in analog_readout.model_file
-                    or key in analog_readout.model_file
-                    or key == analog_readout.model_file
+                    (clean_val and clean_val in clean_target)
+                    or (clean_key and clean_key in clean_target)
+                    or clean_key == clean_target
+                    or (target_filename and Path(key).name == target_filename)
                 ):
-                    self.cnn_file.value = key
+                    matched_key = key
                     break
+            if matched_key:
+                self.cnn_file.value = matched_key
+            elif analog_readout.model_file:
+                self.cnn_file.value = analog_readout.model_file
         self.load_rois(analog_readout.cut_images)
 
     def _draw_roi_func(

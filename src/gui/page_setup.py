@@ -2,6 +2,7 @@ import base64
 import logging
 import os
 from hashlib import sha256
+from pathlib import Path
 
 from nicegui import events, ui
 
@@ -267,15 +268,39 @@ class SetupPage:
                         file_name=f"{config_dir}/ref_{roi.name}_x{roi.x}_y{roi.y}.jpg",
                     )
                 )
-            model_file = ""
-            if (
-                self.draw_digital_rois_step.cnn_file is not None
-                and self.draw_digital_rois_step.cnn_file.value is not None
-            ) and isinstance(self.draw_digital_rois_step.cnn_file.options, dict):
-                model_file = self.draw_digital_rois_step.cnn_file.options[
-                    self.draw_digital_rois_step.cnn_file.value
-                ]
-            model_dir = "${DigitalModelsDir}"
+
+            def _resolve_model_path(
+                cnn_select: ui.select | None,
+                models_dir: str,
+                placeholder_var: str,
+            ) -> str:
+                if cnn_select is None or not cnn_select.value:
+                    return ""
+                val = str(cnn_select.value).strip()
+                if val.startswith("${"):
+                    parts = [p.strip() for p in val.split("/")]
+                    return "/".join(parts)
+                try:
+                    p = Path(val)
+                    if models_dir:
+                        md = Path(models_dir)
+                        if p.is_relative_to(md):
+                            rel = p.relative_to(md).as_posix()
+                            return f"{placeholder_var}/{rel}"
+                        if p.resolve().is_relative_to(md.resolve()):
+                            rel = p.resolve().relative_to(md.resolve()).as_posix()
+                            return f"{placeholder_var}/{rel}"
+                except Exception:
+                    pass
+                parts = [part.strip() for part in val.split("/") if part.strip()]
+                clean_rel = "/".join(parts)
+                return f"{placeholder_var}/{clean_rel}" if clean_rel else ""
+
+            digital_model_file = _resolve_model_path(
+                self.draw_digital_rois_step.cnn_file,
+                self.draw_digital_rois_step.digital_models_dir,
+                "${DigitalModelsDir}",
+            )
             digital_cut_images = []
             for roi in self.draw_digital_rois_step.rois:
                 digital_cut_images.append(
@@ -295,19 +320,15 @@ class SetupPage:
             config.digital_readout = CNNParams(
                 enabled=len(digital_cut_images) > 0,
                 model=digital_model_val,
-                model_file=f"{model_dir}/{model_file}" if model_file else "",
+                model_file=digital_model_file,
                 cut_images=digital_cut_images,
             )
 
-            model_file = ""
-            if (
-                self.draw_analog_rois_step.cnn_file is not None
-                and self.draw_analog_rois_step.cnn_file.value is not None
-            ) and isinstance(self.draw_analog_rois_step.cnn_file.options, dict):
-                model_file = self.draw_analog_rois_step.cnn_file.options[
-                    self.draw_analog_rois_step.cnn_file.value
-                ]
-            model_dir = "${AnalogModelsDir}"
+            analog_model_file = _resolve_model_path(
+                self.draw_analog_rois_step.cnn_file,
+                self.draw_analog_rois_step.analog_models_dir,
+                "${AnalogModelsDir}",
+            )
             analog_cut_images = []
             for roi in self.draw_analog_rois_step.rois:
                 analog_cut_images.append(
@@ -327,7 +348,7 @@ class SetupPage:
             config.analog_readout = CNNParams(
                 enabled=len(analog_cut_images) > 0,
                 model=analog_model_val,
-                model_file=f"{model_dir}/{model_file}" if model_file else "",
+                model_file=analog_model_file,
                 cut_images=analog_cut_images,
             )
             meters = []

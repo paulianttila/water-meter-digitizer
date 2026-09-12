@@ -119,3 +119,62 @@ def test_digital_and_analog_step_classes_inherit_select_all_sync():
     refs_step.select_all.value = False
     refs_step.load_from_config([RefImage(name="r1", x=10, y=10, w=20, h=30)])
     assert refs_step.select_all.value is True
+
+
+def test_draw_digital_and_analog_rois_load_model_with_spaces():
+    from configuration import CNNParams
+
+    # Test digital model with spaces around slashes
+    digital_step = DrawDigitalRoisStep(
+        name="Digital",
+        name_template="digit",
+        set_image_callback=MagicMock(),
+        set_rois_to_svg_func=MagicMock(),
+        show_temp_draw_in_svg_func=MagicMock(),
+        digital_models_dir="/config/neuralnets/digital",
+    )
+    digital_step.cnn_file = MagicMock()
+    digital_step.cnn_file.options = {
+        "/config/neuralnets/digital/class11/dig-class11_1600_s2.tflite": "class11 / dig-class11_1600_s2.tflite",
+        "/config/neuralnets/digital/class100/dig-class100_0168_s2_q.tflite": "class100 / dig-class100_0168_s2_q.tflite",
+    }
+    digital_step.cnn_type = MagicMock()
+
+    params = CNNParams(
+        enabled=True,
+        model="auto",
+        model_file="${DigitalModelsDir}/class11 / dig-class11_1600_s2.tflite",
+        cut_images=[],
+    )
+    digital_step.load_from_config(params)
+    assert (
+        digital_step.cnn_file.value
+        == "/config/neuralnets/digital/class11/dig-class11_1600_s2.tflite"
+    )
+
+    # Test analog model with spaces around slashes
+    analog_step = DrawAnalogRoisStep(
+        name="Analog",
+        name_template="analog",
+        set_image_callback=MagicMock(),
+        set_rois_to_svg_func=MagicMock(),
+        show_temp_draw_in_svg_func=MagicMock(),
+        analog_models_dir="/config/neuralnets/analog",
+    )
+    analog_step.cnn_file = MagicMock()
+    analog_step.cnn_file.options = {
+        "/config/neuralnets/analog/continuous/ana-cont_1209_s2.tflite": "continuous / ana-cont_1209_s2.tflite"
+    }
+    analog_step.cnn_type = MagicMock()
+
+    params_analog = CNNParams(
+        enabled=True,
+        model="auto",
+        model_file="${AnalogModelsDir}/continuous / ana-cont_1209_s2.tflite",
+        cut_images=[],
+    )
+    analog_step.load_from_config(params_analog)
+    assert (
+        analog_step.cnn_file.value
+        == "/config/neuralnets/analog/continuous/ana-cont_1209_s2.tflite"
+    )

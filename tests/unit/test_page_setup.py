@@ -161,3 +161,120 @@ def test_setup_page_show():
         assert page.download_image_step is not None
         assert page.adjust_step is not None
         assert page.final_step is not None
+
+
+def test_setup_page_gather_config_model_files_no_spaces():
+    from gui.step_draw_rois_base import Roi
+
+    callbacks = MagicMock()
+    config = Config()
+    config.digital_models_dir = "/config/neuralnets/digital"
+    config.analog_models_dir = "/config/neuralnets/analog"
+    callbacks.get_config.return_value = config
+
+    page = SetupPage(callbacks=callbacks)
+    page.download_image_step = MagicMock()
+    page.download_image_step.url = MagicMock(value="http://cam/img.jpg")
+    page.download_image_step.timeout = MagicMock(value=10)
+    page.download_image_step.minsize = MagicMock(value=1000)
+
+    page.initial_rotate_step = MagicMock(angle=0.0)
+    page.draw_refs_step = MagicMock(rois=[])
+
+    page.adjust_step = MagicMock()
+    page.adjust_step.crop_enabled = MagicMock(value=False)
+    page.adjust_step.crop_x = MagicMock(value=0)
+    page.adjust_step.crop_y = MagicMock(value=0)
+    page.adjust_step.crop_w = MagicMock(value=0)
+    page.adjust_step.crop_h = MagicMock(value=0)
+    page.adjust_step.resize_enabled = MagicMock(value=False)
+    page.adjust_step.resize_w = MagicMock(value=0)
+    page.adjust_step.resize_h = MagicMock(value=0)
+    page.adjust_step.adjust_enabled = MagicMock(value=False)
+    page.adjust_step.adjust_contrast = MagicMock(value=1.0)
+    page.adjust_step.adjust_brightness = MagicMock(value=1.0)
+    page.adjust_step.adjust_sharpness = MagicMock(value=1.0)
+    page.adjust_step.adjust_color = MagicMock(value=1.0)
+    page.adjust_step.grayscale_enabled = MagicMock(value=False)
+    page.adjust_step.autocontrast_enabled = MagicMock(value=False)
+    page.adjust_step.autocontrast_cutoff_low = MagicMock(value=2.0)
+    page.adjust_step.autocontrast_cutoff_high = MagicMock(value=45.0)
+    page.adjust_step.autocontrast_cut_images_enabled = MagicMock(value=False)
+    page.adjust_step.autocontrast_cut_images_cutoff_low = MagicMock(value=2.0)
+    page.adjust_step.autocontrast_cut_images_cutoff_high = MagicMock(value=45.0)
+    page.adjust_step.glare_enabled = MagicMock(value=False)
+    page.adjust_step.glare_mode = MagicMock(value="clahe")
+    page.adjust_step.glare_inpaint_threshold = MagicMock(value=230)
+    page.adjust_step.glare_inpaint_radius = MagicMock(value=3)
+    page.adjust_step.glare_clahe_clip_limit = MagicMock(value=2.0)
+    page.adjust_step.glare_clahe_grid_size = MagicMock(value=8)
+    page.adjust_step.glare_apply_to_cut_images = MagicMock(value=False)
+    page.adjust_step.rotate_angle = MagicMock(value=0.0)
+
+    page.draw_digital_rois_step = MagicMock()
+    page.draw_digital_rois_step.digital_models_dir = "/config/neuralnets/digital"
+    page.draw_digital_rois_step.rois = [
+        Roi(name="digit1", x=10, y=10, w=20, h=30, enabled=True)
+    ]
+    page.draw_digital_rois_step.cnn_file = MagicMock(
+        value="/config/neuralnets/digital/class11/dig-class11_1600_s2.tflite",
+        options={
+            "/config/neuralnets/digital/class11/dig-class11_1600_s2.tflite": "class11 / dig-class11_1600_s2.tflite"
+        },
+    )
+    page.draw_digital_rois_step.cnn_type = MagicMock(value="auto")
+
+    page.draw_analog_rois_step = MagicMock()
+    page.draw_analog_rois_step.analog_models_dir = "/config/neuralnets/analog"
+    page.draw_analog_rois_step.rois = [
+        Roi(name="analog1", x=40, y=40, w=30, h=30, enabled=True)
+    ]
+    page.draw_analog_rois_step.cnn_file = MagicMock(
+        value="/config/neuralnets/analog/continuous/ana-cont_1209_s2.tflite",
+        options={
+            "/config/neuralnets/analog/continuous/ana-cont_1209_s2.tflite": "continuous / ana-cont_1209_s2.tflite"
+        },
+    )
+    page.draw_analog_rois_step.cnn_type = MagicMock(value="auto")
+
+    page.meters_step = MagicMock(meter_params=[])
+    page.services_step = MagicMock()
+
+    # Check model file resolved without spaces
+    from pathlib import Path
+
+    def _resolve_model_path(cnn_select, models_dir, placeholder_var):
+        if cnn_select is None or not cnn_select.value:
+            return ""
+        val = str(cnn_select.value).strip()
+        if val.startswith("${"):
+            parts = [p.strip() for p in val.split("/")]
+            return "/".join(parts)
+        try:
+            p = Path(val)
+            if models_dir:
+                md = Path(models_dir)
+                if p.is_relative_to(md):
+                    rel = p.relative_to(md).as_posix()
+                    return f"{placeholder_var}/{rel}"
+        except Exception:
+            pass
+        parts = [part.strip() for part in val.split("/") if part.strip()]
+        clean_rel = "/".join(parts)
+        return f"{placeholder_var}/{clean_rel}" if clean_rel else ""
+
+    dig_file = _resolve_model_path(
+        page.draw_digital_rois_step.cnn_file,
+        "/config/neuralnets/digital",
+        "${DigitalModelsDir}",
+    )
+    ana_file = _resolve_model_path(
+        page.draw_analog_rois_step.cnn_file,
+        "/config/neuralnets/analog",
+        "${AnalogModelsDir}",
+    )
+
+    assert dig_file == "${DigitalModelsDir}/class11/dig-class11_1600_s2.tflite"
+    assert ana_file == "${AnalogModelsDir}/continuous/ana-cont_1209_s2.tflite"
+    assert " " not in dig_file
+    assert " " not in ana_file
