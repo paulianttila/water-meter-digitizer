@@ -2,15 +2,17 @@ services:
   watermeter-digitizer:
     container_name: ${NAME:-water-meter-digitizer}
     image: ${IMAGE:-paulianttila/water-meter-digitizer:latest}
+    build:
+      context: .
+      dockerfile: Dockerfile
     restart: unless-stopped
     security_opt:
       - no-new-privileges:true
     environment:
       - TZ=Europe/Helsinki
     volumes:
-      - ${DIR_DATA:-.}/config:/config
-      #- ${DIR_DATA:-.}/data:/data
-      - watermeter-data:/data
+      - ${DIR_CONFIG:-./config}:/config
+      - ${DIR_DATA:-watermeter-data}:/data
     ports:
       - "3000:3000"
     healthcheck:
