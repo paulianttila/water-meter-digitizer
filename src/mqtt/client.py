@@ -189,7 +189,7 @@ class MQTTService:
 
     def publish_discovery(self) -> None:
         """Publish Home Assistant Auto-Discovery payloads."""
-        if not self.config.enabled or self._client is None:
+        if not self.config.enabled or not self.is_connected or self._client is None:
             return
 
         payloads = build_homeassistant_discovery_payloads(
@@ -216,7 +216,7 @@ class MQTTService:
         processing_time_sec: float = 0.0,
     ) -> None:
         """Publish meter readout results to configured MQTT topics."""
-        if not self.config.enabled or self._client is None:
+        if not self.config.enabled or not self.is_connected or self._client is None:
             return
 
         prefix = self.config.topic_prefix
@@ -319,7 +319,7 @@ class MQTTService:
 
     def publish_error(self, error_msg: str) -> None:
         """Publish an error message to the MQTT error topic."""
-        if not self.config.enabled or self._client is None:
+        if not self.config.enabled or not self.is_connected or self._client is None:
             return
 
         try:
