@@ -2,9 +2,6 @@ services:
   watermeter-digitizer:
     container_name: ${NAME:-water-meter-digitizer}
     image: ${IMAGE:-paulianttila/water-meter-digitizer:latest}
-    build:
-      context: .
-      dockerfile: Dockerfile
     restart: unless-stopped
     security_opt:
       - no-new-privileges:true
