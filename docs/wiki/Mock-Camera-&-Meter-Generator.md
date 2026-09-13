@@ -97,6 +97,26 @@ curl "http://localhost:3000/api/mock_camera?value=00120.5500&rotate=3.5" -o rota
 
 ---
 
+## 🖥️ Web UI Mock Camera Studio
+
+The **API Console** in the Web Dashboard contains a dedicated **Mock Camera Studio** tab:
+
+1. **Interactive Controls**:
+   - **Mode & Value**: Choose from `fixed`, `ticker`, `random`, or `flow` with configurable ticker rates and a 1-click **Reset Ticker** button.
+   - **Optical Effects**: Fine-tune rotation angle ($-180^\circ$ to $+180^\circ$), toggle specular glare hotspots with custom position and intensity, adjust Gaussian sensor noise, blur radius, brightness, and contrast.
+   - **Themes & Sizing**: Choose 7-segment LCD text colors (`black`, `blue`), background glass tints (`grey`, `green`), needle colors (`red`, `black`), and custom frame resolutions.
+   - **Direct Digit/Dial Overrides**: Directly set individual digit wheels or needle dial values for edge-case testing.
+
+2. **Live Rendered Preview & Telemetry**:
+   - See the generated frame rendered in real time with automatic live refresh on change.
+   - Inspect response headers (`X-Mock-Meter-Value`, `X-Mock-Digital-Value`, `X-Mock-Analog-Value`) and payload size.
+
+3. **1-Click Integration**:
+   - **"Copy URL"**: Copy the dynamically constructed `/api/mock_camera?...` path to clipboard.
+   - **"Set as [ImageSource] URL"**: Automatically update and apply the active configuration's camera source to this mock feed.
+
+---
+
 ## 💻 CLI Tool (`meter-generator`)
 
 The procedural generator includes a rich Command Line Interface for generating static test assets or bootstrapping new configuration templates.

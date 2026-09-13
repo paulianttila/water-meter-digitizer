@@ -54,7 +54,7 @@ def test_app_shell_header_and_tabs_navigation(page: Page, live_server_url: str):
 
     # 6. Navigate to API Console tab
     api_tab.click()
-    expect(page.get_by_text("REST API Console & Explorer")).to_be_visible(timeout=5000)
+    expect(page.get_by_text("REST API Console & Studio")).to_be_visible(timeout=5000)
     expect(page.get_by_role("button", name="Execute")).to_be_visible()
 
     # 7. Navigate to About tab

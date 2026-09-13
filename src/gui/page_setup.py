@@ -1,4 +1,5 @@
 import base64
+import contextlib
 import logging
 import os
 from hashlib import sha256
@@ -280,7 +281,7 @@ class SetupPage:
                 if val.startswith("${"):
                     parts = [p.strip() for p in val.split("/")]
                     return "/".join(parts)
-                try:
+                with contextlib.suppress(Exception):
                     p = Path(val)
                     if models_dir:
                         md = Path(models_dir)
@@ -290,8 +291,6 @@ class SetupPage:
                         if p.resolve().is_relative_to(md.resolve()):
                             rel = p.resolve().relative_to(md.resolve()).as_posix()
                             return f"{placeholder_var}/{rel}"
-                except Exception:
-                    pass
                 parts = [part.strip() for part in val.split("/") if part.strip()]
                 clean_rel = "/".join(parts)
                 return f"{placeholder_var}/{clean_rel}" if clean_rel else ""

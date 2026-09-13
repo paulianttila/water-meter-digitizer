@@ -15,8 +15,26 @@ The top navigation bar provides instant access to all functional areas:
 | **Setup** | `settings` | 9-step interactive visual wizard for camera calibration, marker alignment, and ROI definition. |
 | **Config** | `manufacturing` | Raw INI configuration editor with syntax validation, 1-click Undo, snapshots, and color diffs. |
 | **Baselines** | `history` | Previous meter baseline editor with fallback value management. |
-| **API Console** | `code` | Live interactive Swagger/OpenAPI documentation and REST request tester. |
+| **API Console** | `code` | Interactive REST endpoint debugger and dedicated procedural Mock Camera Studio. |
 | **Help / About** | `help` | Interactive keyboard/mouse guide and single-source-of-truth versioning telemetry. |
+
+---
+
+## ⚡ 6. API Console & Mock Camera Studio
+
+The **API Console** tab is divided into two specialized workspaces:
+
+### REST Endpoints Explorer
+- Interactively execute and inspect all backend REST API routes (`/health`, `/version`, `/meter`, `/leak/status`, `/history/consumption`, etc.).
+- Inspect response latency, HTTP status codes, formatted JSON payloads, HTML, and image streams.
+- 1-click clipboard copy for responses.
+
+### Mock Camera Studio
+- Procedural water meter generation studio with live visual preview.
+- **Simulation Parameters**: Mode (`fixed`, `ticker`, `random`, `flow`), target meter value, ticker increment rate, rotation skew, specular glare hotspot, Gaussian sensor noise, optical blur, brightness, contrast, LCD colors, and per-digit/per-dial overrides.
+- **Live Generated Picture**: Real-time canvas rendering with metadata header inspection (`X-Mock-Meter-Value`, `X-Mock-Digital-Value`, `X-Mock-Analog-Value`).
+- **One-Click Actions**: "Copy Mock URL", "Reset Ticker", and "Set as [ImageSource] URL" to immediately feed simulated data to the digitizer engine.
+
 
 ---
 
