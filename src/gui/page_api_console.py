@@ -88,6 +88,14 @@ ENDPOINTS = [
     },
 ]
 
+STANDARD_RESOLUTIONS = {
+    "640x480": "640x480 (VGA Default)",
+    "800x600": "800x600 (SVGA)",
+    "1024x768": "1024x768 (XGA)",
+    "1600x1200": "1600x1200 (UXGA)",
+    "custom": "Custom Resolution",
+}
+
 
 class ApiConsolePage:
     """Page allowing users to interactively test REST endpoints and studio mock camera feeds."""
@@ -123,6 +131,7 @@ class ApiConsolePage:
         self.mock_needle_color = "red"
         self.mock_width = 640
         self.mock_height = 480
+        self.mock_res_preset = "640x480"
         self.mock_digit_overrides: list[str] = ["", "", "", "", ""]
         self.mock_analog_overrides: list[str] = ["", "", "", ""]
         self.mock_auto_refresh = True
@@ -153,6 +162,7 @@ class ApiConsolePage:
         self.mock_lcd_color_select: ui.select | None = None
         self.mock_lcd_bg_select: ui.select | None = None
         self.mock_needle_color_select: ui.select | None = None
+        self.mock_res_select: ui.select | None = None
         self.mock_width_input: ui.number | None = None
         self.mock_height_input: ui.number | None = None
         self.mock_digit_inputs: list[ui.input] = []
@@ -568,6 +578,12 @@ class ApiConsolePage:
                     self.mock_height = int(qs["height"][0])
                     if self.mock_height_input:
                         self.mock_height_input.value = self.mock_height
+            res_key = f"{self.mock_width}x{self.mock_height}"
+            self.mock_res_preset = (
+                res_key if res_key in STANDARD_RESOLUTIONS else "custom"
+            )
+            if self.mock_res_select:
+                self.mock_res_select.value = self.mock_res_preset
             for i in range(5):
                 key = f"digit{i+1}"
                 if qs.get(key):
@@ -621,21 +637,21 @@ class ApiConsolePage:
         self.mock_needle_color = "red"
         self.mock_width = 640
         self.mock_height = 480
+        self.mock_res_preset = "640x480"
         self.mock_digit_overrides = ["", "", "", "", ""]
         self.mock_analog_overrides = ["", "", "", ""]
+        self.mock_auto_refresh = True
 
         if self.mock_mode_select:
             self.mock_mode_select.value = "fixed"
         if self.mock_value_input:
             self.mock_value_input.value = "00452.91241"
-            self.mock_value_input.enabled = True
         if self.mock_rate_input:
             self.mock_rate_input.value = 0.005
-            self.mock_rate_input.enabled = False
         if self.mock_rot_slider:
             self.mock_rot_slider.value = 0.0
         if self.mock_rot_badge:
-            self.mock_rot_badge.text = "0°"
+            self.mock_rot_badge.text = "0.0°"
         if self.mock_glare_switch:
             self.mock_glare_switch.value = False
         if self.mock_glare_pos_input:
@@ -654,6 +670,8 @@ class ApiConsolePage:
             self.mock_lcd_bg_select.value = "grey"
         if self.mock_needle_color_select:
             self.mock_needle_color_select.value = "red"
+        if self.mock_res_select:
+            self.mock_res_select.value = "640x480"
         if self.mock_width_input:
             self.mock_width_input.value = 640
         if self.mock_height_input:
@@ -1236,12 +1254,50 @@ class ApiConsolePage:
                                         .classes("text-xs")
                                     )
 
-                                with ui.grid(columns=2).classes("w-full gap-2 p-1"):
+                                with ui.grid(columns=3).classes("w-full gap-2 p-1"):
+
+                                    async def _on_res_change(e: Any) -> None:
+                                        preset = e.value
+                                        self.mock_res_preset = preset
+                                        if preset != "custom":
+                                            w_str, h_str = preset.split("x")
+                                            self.mock_width = int(w_str)
+                                            self.mock_height = int(h_str)
+                                            if self.mock_width_input:
+                                                self.mock_width_input.value = (
+                                                    self.mock_width
+                                                )
+                                            if self.mock_height_input:
+                                                self.mock_height_input.value = (
+                                                    self.mock_height
+                                                )
+                                        await self._on_mock_param_change()
+
+                                    self.mock_res_select = (
+                                        ui.select(
+                                            options=STANDARD_RESOLUTIONS,
+                                            value=self.mock_res_preset,
+                                            on_change=_on_res_change,
+                                            label="Resolution Preset",
+                                        )
+                                        .props("outlined dense options-dense")
+                                        .classes("text-xs")
+                                    )
 
                                     async def _on_w(e: Any) -> None:
                                         self.mock_width = (
                                             int(e.value) if e.value else 640
                                         )
+                                        key = f"{self.mock_width}x{self.mock_height}"
+                                        self.mock_res_preset = (
+                                            key
+                                            if key in STANDARD_RESOLUTIONS
+                                            else "custom"
+                                        )
+                                        if self.mock_res_select:
+                                            self.mock_res_select.value = (
+                                                self.mock_res_preset
+                                            )
                                         await self._on_mock_param_change()
 
                                     self.mock_width_input = (
@@ -1259,6 +1315,16 @@ class ApiConsolePage:
                                         self.mock_height = (
                                             int(e.value) if e.value else 480
                                         )
+                                        key = f"{self.mock_width}x{self.mock_height}"
+                                        self.mock_res_preset = (
+                                            key
+                                            if key in STANDARD_RESOLUTIONS
+                                            else "custom"
+                                        )
+                                        if self.mock_res_select:
+                                            self.mock_res_select.value = (
+                                                self.mock_res_preset
+                                            )
                                         await self._on_mock_param_change()
 
                                     self.mock_height_input = (

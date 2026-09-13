@@ -104,7 +104,12 @@ The **API Console** in the Web Dashboard contains a dedicated **Mock Camera Stud
 1. **Interactive Controls**:
    - **Mode & Value**: Choose from `fixed`, `ticker`, `random`, or `flow` with configurable ticker rates and a 1-click **Reset Ticker** button.
    - **Optical Effects**: Fine-tune rotation angle ($-180^\circ$ to $+180^\circ$), toggle specular glare hotspots with custom position and intensity, adjust Gaussian sensor noise, blur radius, brightness, and contrast.
-   - **Themes & Sizing**: Choose 7-segment LCD text colors (`black`, `blue`), background glass tints (`grey`, `green`), needle colors (`red`, `black`), and custom frame resolutions.
+   - **Themes & Sizing**: Choose 7-segment LCD text colors (`black`, `blue`), background glass tints (`grey`, `green`), needle colors (`red`, `black`), and standard camera resolution presets:
+     - `640 × 480` (VGA — Default)
+     - `800 × 600` (SVGA)
+     - `1024 × 768` (XGA)
+     - `1600 × 1200` (UXGA)
+     - `Custom` (Custom Width & Height) with proportional Lanczos resampling ensuring pixel-accurate LCD, dial, needle, and marker alignment across all sizes.
    - **Direct Digit/Dial Overrides**: Directly set individual digit wheels or needle dial values for edge-case testing.
 
 2. **Live Rendered Preview & Telemetry**:

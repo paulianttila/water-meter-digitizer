@@ -86,11 +86,12 @@ class MeterImageGenerator:
             value, custom_digital_values, custom_analog_values
         )
 
-        # 2. Build Base Rounded Water Meter Canvas
+        # 2. Build Base Rounded Water Meter Canvas on Canonical 640x480 Frame
+        base_w, base_h = 640, 480
         canvas = (
             base_image.copy().convert("RGB")
             if base_image is not None
-            else self._draw_meter_base(width, height, lcd_bg=lcd_bg)
+            else self._draw_meter_base(base_w, base_h, lcd_bg=lcd_bg)
         )
 
         # 3. Draw 5 LCD Digital Counter Drums
@@ -101,12 +102,26 @@ class MeterImageGenerator:
         # 4. Draw 4 Analog Dial Needles
         self._overlay_analog_needles(canvas, dial_states, needle_color=needle_color)
 
-        # 5. Apply Optical Perturbations
+        # 5. Scale to Target Resolution (if different from canonical 640x480)
+        target_w = max(32, int(width))
+        target_h = max(32, int(height))
+        scaled_glare_pos = glare_pos
+        if canvas.size != (target_w, target_h):
+            canvas = canvas.resize(
+                (target_w, target_h), resample=PIL.Image.Resampling.LANCZOS
+            )
+            if glare_pos is not None:
+                scaled_glare_pos = (
+                    glare_pos[0] * (target_w / float(base_w)),
+                    glare_pos[1] * (target_h / float(base_h)),
+                )
+
+        # 6. Apply Optical Perturbations at Target Resolution
         canvas = self.apply_perturbations(
             canvas,
             rotate=rotate,
             glare=glare,
-            glare_pos=glare_pos,
+            glare_pos=scaled_glare_pos,
             glare_intensity=glare_intensity,
             noise=noise,
             brightness=brightness,
@@ -687,52 +702,57 @@ class MeterImageGenerator:
         gen = cls(config=config)
         img = gen.generate(value="00000.0000", width=width, height=height)
 
-        center_x = width // 2
-        center_y = height // 2
-        win_w = 264
-        win_x = center_x - win_w // 2
-        win_y = center_y - 100
-        dw, dh = 39, 66
-        gap = 10
-        start_dx = win_x + 14
-        dy = win_y + 10
+        scale_x = width / 640.0
+        scale_y = height / 480.0
 
-        cut_digits = [
-            ImagePosition(
-                name=f"digit{i+1}", x=start_dx + i * (dw + gap), y=dy, w=dw, h=dh
+        def _scale_pos(
+            x: int | float, y: int | float, w: int | float, h: int | float
+        ) -> tuple[int, int, int, int]:
+            return (
+                round(x * scale_x),
+                round(y * scale_y),
+                round(w * scale_x),
+                round(h * scale_y),
             )
-            for i in range(5)
-        ]
 
-        dial_size = 76
+        base_win_w = 264
+        base_win_x = 320 - base_win_w // 2
+        base_win_y = 240 - 100
+        base_dw, base_dh = 39, 66
+        base_gap = 10
+        base_start_dx = base_win_x + 14
+        base_dy = base_win_y + 10
+
+        cut_digits = []
+        for i in range(5):
+            bx = base_start_dx + i * (base_dw + base_gap)
+            by = base_dy
+            sx, sy, sw, sh = _scale_pos(bx, by, base_dw, base_dh)
+            cut_digits.append(ImagePosition(name=f"digit{i+1}", x=sx, y=sy, w=sw, h=sh))
+
+        base_dial_size = 76
         dial_centers = [
             ("analog1", 430, 300),
             ("analog2", 360, 365),
             ("analog3", 280, 365),
             ("analog4", 210, 300),
         ]
-        cut_analogs = [
-            ImagePosition(
-                name=name,
-                x=cx - dial_size // 2,
-                y=cy - dial_size // 2,
-                w=dial_size,
-                h=dial_size,
-            )
-            for name, cx, cy in dial_centers
-        ]
+        cut_analogs = []
+        for name, cx, cy in dial_centers:
+            bx = cx - base_dial_size // 2
+            by = cy - base_dial_size // 2
+            sx, sy, sw, sh = _scale_pos(bx, by, base_dial_size, base_dial_size)
+            cut_analogs.append(ImagePosition(name=name, x=sx, y=sy, w=sw, h=sh))
 
-        ref_images = [
-            RefImage(
-                name="ref0", x=115, y=225, w=40, h=30, file_name="/config/ref0.jpg"
-            ),
-            RefImage(
-                name="ref1", x=468, y=170, w=36, h=30, file_name="/config/ref1.jpg"
-            ),
-            RefImage(
-                name="ref2", x=275, y=410, w=90, h=28, file_name="/config/ref2.jpg"
-            ),
+        base_refs = [
+            ("ref0", 115, 225, 40, 30, "/config/ref0.jpg"),
+            ("ref1", 468, 170, 36, 30, "/config/ref1.jpg"),
+            ("ref2", 275, 410, 90, 28, "/config/ref2.jpg"),
         ]
+        ref_images = []
+        for name, rx, ry, rw, rh, fn in base_refs:
+            sx, sy, sw, sh = _scale_pos(rx, ry, rw, rh)
+            ref_images.append(RefImage(name=name, x=sx, y=sy, w=sw, h=sh, file_name=fn))
 
         cfg = Config(
             digital_readout=Config().digital_readout.model_copy(

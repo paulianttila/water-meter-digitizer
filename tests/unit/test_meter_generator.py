@@ -154,3 +154,51 @@ def test_mock_camera_endpoint():
         "/api/mock_camera?value=00123.4567&lcd_color=amber&lcd_bg=dark&needle_color=black&digit1=5&analog1=9"
     )
     assert resp_custom.status_code == 200
+
+
+def test_generator_standard_resolutions():
+    generator = MeterImageGenerator()
+    standard_sizes = [
+        (640, 480),
+        (800, 600),
+        (1024, 768),
+        (1600, 1200),
+    ]
+    for w, h in standard_sizes:
+        img = generator.generate(
+            value="00452.91241",
+            width=w,
+            height=h,
+            glare=True,
+            glare_pos=(320, 240),
+            noise=5.0,
+        )
+        assert isinstance(img, Image.Image)
+        assert img.size == (w, h)
+
+
+def test_create_synthetic_template_scaling():
+    # 640x480 base
+    img_base, cfg_base = MeterImageGenerator.create_synthetic_template(640, 480)
+    assert img_base.size == (640, 480)
+
+    # 1600x1200 scaled
+    img_scaled, cfg_scaled = MeterImageGenerator.create_synthetic_template(1600, 1200)
+    assert img_scaled.size == (1600, 1200)
+
+    # Ratio should be 2.5x (1600/640)
+    ratio_x = 1600 / 640.0
+    ratio_y = 1200 / 480.0
+
+    assert cfg_scaled.digital_readout.cut_images[0].x == round(
+        cfg_base.digital_readout.cut_images[0].x * ratio_x
+    )
+    assert cfg_scaled.digital_readout.cut_images[0].w == round(
+        cfg_base.digital_readout.cut_images[0].w * ratio_x
+    )
+    assert cfg_scaled.analog_readout.cut_images[0].y == round(
+        cfg_base.analog_readout.cut_images[0].y * ratio_y
+    )
+    assert cfg_scaled.alignment.ref_images[0].x == round(
+        cfg_base.alignment.ref_images[0].x * ratio_x
+    )

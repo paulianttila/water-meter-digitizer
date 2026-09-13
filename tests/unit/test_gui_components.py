@@ -337,6 +337,7 @@ def test_api_console_page_sync_state_from_url():
     assert page.mock_needle_color == "white"
     assert page.mock_width == 800
     assert page.mock_height == 600
+    assert page.mock_res_preset == "800x600"
     assert page.mock_digit_overrides[0] == "1"
     assert page.mock_analog_overrides[0] == "2.5"
 
@@ -364,6 +365,9 @@ def test_api_console_page_reset_to_defaults():
     page.mock_rotate = 90.0
     page.mock_glare = True
     page.mock_noise = 25.0
+    page.mock_width = 1600
+    page.mock_height = 1200
+    page.mock_res_preset = "1600x1200"
     page.mock_digit_overrides = ["1", "2", "3", "4", "5"]
     page.mock_img_elem = MagicMock()
 
@@ -374,6 +378,9 @@ def test_api_console_page_reset_to_defaults():
         assert page.mock_rotate == 0.0
         assert page.mock_glare is False
         assert page.mock_noise == 0.0
+        assert page.mock_width == 640
+        assert page.mock_height == 480
+        assert page.mock_res_preset == "640x480"
         assert page.mock_digit_overrides == ["", "", "", "", ""]
         mock_notify.assert_called_with(
             "Mock camera parameters reset to default values", type="positive"
