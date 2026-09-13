@@ -8,6 +8,7 @@ from pydantic import BaseModel, Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from data_classes import ImagePosition, MeterConfig, RefImage
+from leak.models import ValueType
 
 logger = logging.getLogger(__name__)
 
@@ -201,6 +202,7 @@ class MQTT(BaseModel):
 class ZeroFlowMonitor(BaseModel):
     enabled: bool = False
     meter_name: str = "total"
+    value_type: ValueType = ValueType.CUMULATIVE
     continuous_flow_hours: float = 2.0
     min_leak_volume: float = 0.010
     flow_threshold: float = 0.001
@@ -399,6 +401,7 @@ class Config(BaseSettings):
             zero_flow_monitor=ZeroFlowMonitor(
                 enabled=False,
                 meter_name="total",
+                value_type=ValueType.CUMULATIVE,
                 continuous_flow_hours=2.0,
                 min_leak_volume=0.010,
                 flow_threshold=0.001,
@@ -712,6 +715,11 @@ class Config(BaseSettings):
         config["ZeroFlowMonitor"] = {
             "Enabled": str(self.zero_flow_monitor.enabled),
             "MeterName": self.zero_flow_monitor.meter_name,
+            "ValueType": (
+                self.zero_flow_monitor.value_type.value
+                if isinstance(self.zero_flow_monitor.value_type, ValueType)
+                else str(self.zero_flow_monitor.value_type)
+            ),
             "ContinuousFlowHours": str(self.zero_flow_monitor.continuous_flow_hours),
             "MinLeakVolume": str(self.zero_flow_monitor.min_leak_volume),
             "FlowThreshold": str(self.zero_flow_monitor.flow_threshold),
@@ -1020,9 +1028,19 @@ class Config(BaseSettings):
         )
 
         ################## Zero-Flow & Leak Monitor Parameters #########################
+        raw_val_type = config.get(
+            "ZeroFlowMonitor", "ValueType", fallback="cumulative"
+        ).lower()
+        val_type = (
+            ValueType.FLOW_RATE
+            if raw_val_type in ("flow_rate", "flow", "rate")
+            else ValueType.CUMULATIVE
+        )
+
         self.zero_flow_monitor = ZeroFlowMonitor(
             enabled=config.getboolean("ZeroFlowMonitor", "Enabled", fallback=False),
             meter_name=config.get("ZeroFlowMonitor", "MeterName", fallback="total"),
+            value_type=val_type,
             continuous_flow_hours=config.getfloat(
                 "ZeroFlowMonitor", "ContinuousFlowHours", fallback=2.0
             ),

@@ -11,6 +11,11 @@ class LeakState(StrEnum):
     LEAK_DETECTED = "LEAK_DETECTED"
 
 
+class ValueType(StrEnum):
+    CUMULATIVE = "cumulative"
+    FLOW_RATE = "flow_rate"
+
+
 class LeakEvent(BaseModel):
     event_id: str
     meter_name: str
@@ -32,6 +37,7 @@ class LeakEvent(BaseModel):
 class ZeroFlowStatus(BaseModel):
     enabled: bool
     meter_name: str
+    value_type: ValueType = ValueType.CUMULATIVE
     state: LeakState
     last_zero_flow_time: datetime | None = None
     last_reading_time: datetime | None = None
@@ -46,6 +52,11 @@ class ZeroFlowStatus(BaseModel):
         return {
             "enabled": self.enabled,
             "meter_name": self.meter_name,
+            "value_type": (
+                self.value_type.value
+                if isinstance(self.value_type, ValueType)
+                else self.value_type
+            ),
             "state": (
                 self.state.value if isinstance(self.state, LeakState) else self.state
             ),

@@ -6,6 +6,7 @@ import requests
 from testing_utils import MQTTTestReceiver
 
 from configuration import ZeroFlowMonitor
+from leak import ValueType
 from leak.tracker import LeakState, ZeroFlowTracker
 
 
@@ -86,3 +87,48 @@ def test_e2e_zero_flow_tracker_continuous_flow_simulation():
         timestamp=now + timedelta(seconds=3), meter_value=100.050
     )
     assert st3.state == LeakState.OK
+
+
+def test_e2e_zero_flow_tracker_flow_rate_simulation():
+    """Simulate direct flow rate readings vs zero flow using simulated meter readings."""
+    cfg = ZeroFlowMonitor(
+        enabled=True,
+        meter_name="flow",
+        value_type=ValueType.FLOW_RATE,
+        continuous_flow_hours=0.001,  # 3.6s
+        min_leak_volume=0.0001,
+        flow_threshold=0.001,
+        resolve_debounce_count=2,
+    )
+    tracker = ZeroFlowTracker(cfg)
+
+    now = datetime.now()
+    # 1. Zero flow baseline
+    st1 = tracker.evaluate_reading(timestamp=now, meter_value=0.000)
+    assert st1.state == LeakState.OK
+    assert st1.value_type == ValueType.FLOW_RATE
+
+    # 2. Flow rate active (e.g. 0.500 m3/h)
+    st2 = tracker.evaluate_reading(
+        timestamp=now + timedelta(seconds=2), meter_value=0.500
+    )
+    assert st2.current_flow_rate == 0.500
+    assert st2.current_flow_volume > 0
+
+    # 3. Exceed duration -> leak state
+    st3 = tracker.evaluate_reading(
+        timestamp=now + timedelta(seconds=5), meter_value=0.500
+    )
+    assert st3.state == LeakState.LEAK_DETECTED
+    assert st3.active_event is not None
+
+    # 4. Zero flow -> resolves after debounce count
+    st4 = tracker.evaluate_reading(
+        timestamp=now + timedelta(seconds=6), meter_value=0.000
+    )
+    assert st4.state == LeakState.LEAK_DETECTED
+    st5 = tracker.evaluate_reading(
+        timestamp=now + timedelta(seconds=7), meter_value=0.000
+    )
+    assert st5.state == LeakState.OK
+    assert len(tracker.get_status().recent_events) == 1

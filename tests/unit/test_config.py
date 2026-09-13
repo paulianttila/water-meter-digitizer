@@ -2,6 +2,7 @@ import os
 
 from configuration import Config, ConfigurationMissing
 from data_classes import ImagePosition, MeterConfig, RefImage
+from leak import ValueType
 
 
 def test_config():
@@ -160,6 +161,7 @@ def test_config():
 
     assert config.zero_flow_monitor.enabled is False
     assert config.zero_flow_monitor.meter_name == "total"
+    assert config.zero_flow_monitor.value_type == ValueType.CUMULATIVE
     assert config.zero_flow_monitor.continuous_flow_hours == 2.0
     assert config.zero_flow_monitor.min_leak_volume == 0.010
     assert config.zero_flow_monitor.flow_threshold == 0.001
@@ -210,6 +212,7 @@ def test_config_save_preserves_title_case():
     assert "HomeAssistantDiscovery=" in saved_str
     assert "DiscoveryPrefix=" in saved_str
     assert "ContinuousFlowHours=" in saved_str
+    assert "ValueType=" in saved_str
     assert "MinLeakVolume=" in saved_str
     assert "ResolveDebounceCount=" in saved_str
 

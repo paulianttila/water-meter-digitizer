@@ -52,6 +52,7 @@ def test_services_step_load_and_apply():
 
     step.zero_flow_enabled = MagicMock(value=False)
     step.zero_flow_meter_name = MagicMock(value="total")
+    step.zero_flow_value_type = MagicMock(value="cumulative")
     step.zero_flow_hours = MagicMock(value=2.0)
     step.zero_flow_min_volume = MagicMock(value=0.010)
     step.zero_flow_threshold = MagicMock(value=0.001)
@@ -68,6 +69,7 @@ def test_services_step_load_and_apply():
     config.min_confidence_threshold = 75.0
     config.zero_flow_monitor.enabled = True
     config.zero_flow_monitor.continuous_flow_hours = 3.5
+    config.zero_flow_monitor.value_type = "flow_rate"
 
     step.load_from_config(config)
 
@@ -79,6 +81,7 @@ def test_services_step_load_and_apply():
     assert step.min_confidence_threshold.value == 75.0
     assert step.zero_flow_enabled.value is True
     assert step.zero_flow_hours.value == 3.5
+    assert step.zero_flow_value_type.value == "flow_rate"
 
     # Test apply to config
     new_config = Config()
@@ -93,6 +96,7 @@ def test_services_step_load_and_apply():
     step.zero_flow_enabled.value = True
     step.zero_flow_hours.value = 4.0
     step.zero_flow_min_volume.value = 0.020
+    step.zero_flow_value_type.value = "flow_rate"
 
     step.apply_to_config(new_config)
 
@@ -106,6 +110,7 @@ def test_services_step_load_and_apply():
     assert new_config.zero_flow_monitor.enabled is True
     assert new_config.zero_flow_monitor.continuous_flow_hours == 4.0
     assert new_config.zero_flow_monitor.min_leak_volume == 0.020
+    assert new_config.zero_flow_monitor.value_type == "flow_rate"
 
 
 def test_services_step_show():

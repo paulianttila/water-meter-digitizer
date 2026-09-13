@@ -3,6 +3,7 @@ from collections.abc import Callable
 from nicegui import ui
 
 from configuration import Config
+from leak.models import ValueType
 
 from .step_base import BaseStep
 
@@ -91,7 +92,22 @@ class ServicesStep(BaseStep):
 
         # Zero-Flow & Leak Monitor
         self.zero_flow_enabled.value = config.zero_flow_monitor.enabled
+        meter_options = [m.name for m in config.meter_configs] or ["total"]
+        if (
+            config.zero_flow_monitor.meter_name
+            and config.zero_flow_monitor.meter_name not in meter_options
+        ):
+            meter_options.append(config.zero_flow_monitor.meter_name)
+        if hasattr(self.zero_flow_meter_name, "set_options"):
+            self.zero_flow_meter_name.set_options(meter_options)
         self.zero_flow_meter_name.value = config.zero_flow_monitor.meter_name
+
+        val_type_val = (
+            config.zero_flow_monitor.value_type.value
+            if hasattr(config.zero_flow_monitor.value_type, "value")
+            else str(config.zero_flow_monitor.value_type)
+        )
+        self.zero_flow_value_type.value = val_type_val
         self.zero_flow_hours.value = config.zero_flow_monitor.continuous_flow_hours
         self.zero_flow_min_volume.value = config.zero_flow_monitor.min_leak_volume
         self.zero_flow_threshold.value = config.zero_flow_monitor.flow_threshold
@@ -167,6 +183,10 @@ class ServicesStep(BaseStep):
         config.zero_flow_monitor.enabled = bool(self.zero_flow_enabled.value)
         config.zero_flow_monitor.meter_name = str(
             self.zero_flow_meter_name.value or "total"
+        )
+        val_type_str = str(self.zero_flow_value_type.value or "cumulative").lower()
+        config.zero_flow_monitor.value_type = (
+            ValueType.FLOW_RATE if "flow" in val_type_str else ValueType.CUMULATIVE
         )
         config.zero_flow_monitor.continuous_flow_hours = float(
             self.zero_flow_hours.value or 2.0
@@ -454,9 +474,25 @@ class ServicesStep(BaseStep):
                     with ui.grid(
                         columns="repeat(auto-fit, minmax(170px, 1fr))"
                     ).classes("w-full gap-3"):
-                        self.zero_flow_meter_name = ui.input(
-                            "Target Meter Name", value="total"
-                        ).tooltip("Meter name to monitor for continuous flow")
+                        self.zero_flow_meter_name = ui.select(
+                            ["total"],
+                            label="Target Meter",
+                            value="total",
+                            new_value_mode="add-unique",
+                        ).tooltip(
+                            "Select configured meter to monitor for continuous flow"
+                        )
+                        self.zero_flow_value_type = ui.select(
+                            {
+                                "cumulative": "Cumulative Volume (Calculates flow)",
+                                "flow_rate": "Instantaneous Flow Rate (Direct flow)",
+                            },
+                            label="Value Type",
+                            value="cumulative",
+                        ).tooltip(
+                            "Cumulative: app derives flow from volume changes\n"
+                            "Flow Rate: meter reading directly represents flow rate"
+                        )
                         self.zero_flow_hours = ui.number(
                             "Continuous Flow Alert (Hours)",
                             value=2.0,
@@ -478,7 +514,7 @@ class ServicesStep(BaseStep):
                         self.zero_flow_threshold = ui.number(
                             "Flow Threshold", value=0.001, min=0.0001, step=0.0005
                         ).tooltip(
-                            "Minimum delta between readings to count as active flow"
+                            "Minimum delta (cumulative) or flow rate (m³/h) to count as active flow"
                         )
                         self.zero_flow_debounce_count = ui.number(
                             "Resolve Debounce Count", value=2, min=1, step=1

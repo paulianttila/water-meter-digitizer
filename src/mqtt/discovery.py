@@ -35,8 +35,12 @@ def build_homeassistant_discovery_payloads(
         meter_slug = meter.name.lower().replace(" ", "_")
         unit = meter.unit if meter.unit else "m³"
 
-        # Determine device class based on unit or meter name
+        # Determine device class and state class based on unit or meter name
         unit_lower = unit.lower()
+        is_flow_rate = any(
+            rate_mark in unit_lower
+            for rate_mark in ("/h", "/m", "/s", "gpm", "lpm", "flow")
+        )
         if (
             "gal" in unit_lower
             or "m3" in unit_lower
@@ -44,8 +48,8 @@ def build_homeassistant_discovery_payloads(
             or "l" in unit_lower
             or "water" in meter_slug
         ):
-            device_class = "water"
-            icon = "mdi:water"
+            device_class = "volume_flow_rate" if is_flow_rate else "water"
+            icon = "mdi:water-pump" if is_flow_rate else "mdi:water"
         elif "gas" in meter_slug or "gas" in unit_lower:
             device_class = "gas"
             icon = "mdi:fire"
@@ -53,8 +57,10 @@ def build_homeassistant_discovery_payloads(
             device_class = "energy"
             icon = "mdi:lightning-bolt"
         else:
-            device_class = "water"
+            device_class = "volume_flow_rate" if is_flow_rate else "water"
             icon = "mdi:gauge"
+
+        state_class = "measurement" if is_flow_rate else "total_increasing"
 
         # 1. Main Reading Value Sensor
         value_topic = f"{disc_prefix}/sensor/{device_id}/{meter_slug}_value/config"
@@ -68,7 +74,7 @@ def build_homeassistant_discovery_payloads(
             "payload_not_available": "offline",
             "unit_of_measurement": unit,
             "device_class": device_class,
-            "state_class": "total_increasing",
+            "state_class": state_class,
             "icon": icon,
             "device": device_block,
         }

@@ -4,7 +4,7 @@ from collections import deque
 from datetime import datetime
 from typing import Any
 
-from .models import LeakEvent, LeakState, ZeroFlowStatus
+from .models import LeakEvent, LeakState, ValueType, ZeroFlowStatus
 
 logger = logging.getLogger(__name__)
 
@@ -100,29 +100,62 @@ class ZeroFlowTracker:
                 self._consecutive_zero_count = 0
                 self._state = LeakState.OK
 
-            # Consumption delta
-            dv = meter_value - self._last_reading_value
-
-            # Monotonicity check / negative delta handling
-            if dv < 0:
-                logger.warning(
-                    "Negative meter delta detected in ZeroFlowTracker: dv=%.6f; "
-                    "ignoring sample for volume accumulation",
-                    dv,
+            val_type = getattr(self.config, "value_type", ValueType.CUMULATIVE)
+            if isinstance(val_type, str):
+                val_type = (
+                    ValueType(val_type)
+                    if val_type in ValueType._value2member_map_
+                    else ValueType.CUMULATIVE
                 )
-                self._last_reading_time = timestamp
-                self._last_reading_value = meter_value
-                self._current_flow_rate = 0.0
-                return self._build_status(enabled=True)
-
-            # Flow rate per hour
-            flow_rate_per_hour = (dv / dt_seconds) * 3600.0
-            self._current_flow_rate = flow_rate_per_hour
 
             flow_threshold = getattr(self.config, "flow_threshold", 0.001)
             debounce_limit = max(1, getattr(self.config, "resolve_debounce_count", 2))
 
-            if dv <= flow_threshold:
+            if val_type == ValueType.FLOW_RATE:
+                if meter_value < 0:
+                    logger.warning(
+                        "Negative flow rate detected in ZeroFlowTracker: value=%.6f; "
+                        "ignoring sample",
+                        meter_value,
+                    )
+                    self._last_reading_time = timestamp
+                    return self._build_status(enabled=True)
+
+                # Meter value directly represents instantaneous flow rate (m3/h)
+                flow_rate_per_hour = meter_value
+                self._current_flow_rate = flow_rate_per_hour
+
+                # Trapezoidal volume integration over time interval
+                prev_flow = (
+                    self._last_reading_value
+                    if self._last_reading_value is not None
+                    else flow_rate_per_hour
+                )
+                avg_flow = (flow_rate_per_hour + max(0.0, prev_flow)) / 2.0
+                dv = avg_flow * (dt_seconds / 3600.0)
+
+                is_zero_flow = flow_rate_per_hour <= flow_threshold
+            else:
+                # Meter value represents cumulative consumption volume (m3)
+                dv = meter_value - self._last_reading_value
+
+                # Monotonicity check / negative delta handling
+                if dv < 0:
+                    logger.warning(
+                        "Negative meter delta detected in ZeroFlowTracker: dv=%.6f; "
+                        "ignoring sample for volume accumulation",
+                        dv,
+                    )
+                    self._last_reading_time = timestamp
+                    self._last_reading_value = meter_value
+                    self._current_flow_rate = 0.0
+                    return self._build_status(enabled=True)
+
+                flow_rate_per_hour = (dv / dt_seconds) * 3600.0
+                self._current_flow_rate = flow_rate_per_hour
+                is_zero_flow = dv <= flow_threshold
+
+            if is_zero_flow:
                 # Zero / negligible flow observed
                 self._consecutive_zero_count += 1
                 if self._consecutive_zero_count >= debounce_limit:
@@ -179,9 +212,10 @@ class ZeroFlowTracker:
                             peak_flow_rate=self._peak_flow_rate,
                         )
                         logger.warning(
-                            "LEAK DETECTED on meter '%s': duration=%.1fh >= %.1fh, "
+                            "LEAK DETECTED on meter '%s' (mode=%s): duration=%.1fh >= %.1fh, "
                             "volume=%.4f >= %.4f",
                             getattr(self.config, "meter_name", "total"),
+                            val_type.value,
                             hours_elapsed,
                             continuous_hours_thresh,
                             self._continuous_flow_volume,
@@ -245,9 +279,18 @@ class ZeroFlowTracker:
                 (self._last_reading_time - self._last_zero_flow_time).total_seconds(),
             )
 
+        val_type = getattr(self.config, "value_type", ValueType.CUMULATIVE)
+        if isinstance(val_type, str):
+            val_type = (
+                ValueType(val_type)
+                if val_type in ValueType._value2member_map_
+                else ValueType.CUMULATIVE
+            )
+
         return ZeroFlowStatus(
             enabled=enabled,
             meter_name=getattr(self.config, "meter_name", "total"),
+            value_type=val_type,
             state=self._state if enabled else LeakState.OK,
             last_zero_flow_time=self._last_zero_flow_time,
             last_reading_time=self._last_reading_time,

@@ -172,16 +172,19 @@ MQTT publisher with native Home Assistant Auto-Discovery and openHAB support.
 
 ---
 
-### `[ZeroFlow]` (or `[ZeroFlowMonitor]`)
+### `[ZeroFlowMonitor]`
 Continuous flow monitoring & automated leak detection.
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
 | `Enabled` | boolean | `False` | Enable continuous flow leak monitoring. |
-| `MeterName` | string | `total` | Logical meter name to track for continuous flow. |
-| `ContinuousFlowMinutes` | integer | `120` | Minutes of uninterrupted non-zero flow before triggering leak alarm. |
-| `FlowThreshold` | float | `0.001` | Minimum change between readings to count as active flow. |
-| `ResolutionQuietMinutes` | integer | `15` | Quiet zero-flow duration required to auto-resolve active alert. |
+| `MeterName` | string | `total` | Logical meter name (from `[Meters]`) to track for continuous flow. |
+| `ValueType` | string | `cumulative` | Type of meter reading: `cumulative` (app computes flow from delta volume) or `flow_rate` (reading is direct flow rate, e.g. m³/h). |
+| `ContinuousFlowHours` | float | `2.0` | Hours of uninterrupted non-zero flow before triggering leak alarm. |
+| `MinLeakVolume` | float | `0.010` | Minimum cumulative or integrated flow volume in m³ required before alerting. |
+| `FlowThreshold` | float | `0.001` | Minimum change or flow rate to count as active flow. |
+| `ResolveDebounceCount` | integer | `2` | Consecutive zero-flow readings required to resolve an active leak alert. |
+| `MaxHistoryEvents` | integer | `50` | Maximum historical leak events retained in memory. |
 
 ---
 
@@ -199,8 +202,9 @@ Any parameter in `config.ini` can be overridden via environment variables using 
 | `METER_MQTT__ENABLED` | `[MQTT] Enabled` | `True` |
 | `METER_MQTT__BROKER` | `[MQTT] Broker` | `192.168.1.100` |
 | `METER_MQTT__HOMEASSISTANT_DISCOVERY` | `[MQTT] HomeAssistantDiscovery` | `True` |
-| `METER_ZERO_FLOW_MONITOR__ENABLED` | `[ZeroFlow] Enabled` | `True` |
-| `METER_ZERO_FLOW_MONITOR__CONTINUOUS_FLOW_HOURS` | `[ZeroFlow] ContinuousFlowMinutes` | `2.0` |
+| `METER_ZERO_FLOW_MONITOR__ENABLED` | `[ZeroFlowMonitor] Enabled` | `True` |
+| `METER_ZERO_FLOW_MONITOR__VALUE_TYPE` | `[ZeroFlowMonitor] ValueType` | `cumulative` |
+| `METER_ZERO_FLOW_MONITOR__CONTINUOUS_FLOW_HOURS` | `[ZeroFlowMonitor] ContinuousFlowHours` | `2.0` |
 
 ---
 
@@ -386,4 +390,14 @@ HomeAssistantDiscovery=True
 DiscoveryPrefix=homeassistant
 DeviceName=Water Meter Digitizer
 DeviceID=water_meter_digitizer
+
+[ZeroFlowMonitor]
+Enabled=True
+MeterName=total
+ValueType=cumulative
+ContinuousFlowHours=2.0
+MinLeakVolume=0.010
+FlowThreshold=0.001
+ResolveDebounceCount=2
+MaxHistoryEvents=50
 ```
