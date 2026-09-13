@@ -59,11 +59,17 @@ def test_config():
     assert config.resize.h == 480
 
     assert config.image_processing.enabled is False
+    assert config.image_processing.gamma == 1.0
     assert config.image_processing.contrast == 1.0
     assert config.image_processing.brightness == 1.0
     assert config.image_processing.sharpness == 1.0
     assert config.image_processing.color == 1.0
     assert config.image_processing.grayscale is False
+    assert config.image_processing.sharpness_mode == "standard"
+    assert config.image_processing.unsharp_radius == 1.0
+    assert config.image_processing.unsharp_amount == 1.5
+    assert config.image_processing.unsharp_threshold == 3
+    assert config.image_processing.auto_sharpen_cut_images is False
     assert config.image_processing.autocontrast.enabled is False
     assert config.image_processing.autocontrast.cutoff_low == 2.0
     assert config.image_processing.autocontrast.cutoff_high == 45

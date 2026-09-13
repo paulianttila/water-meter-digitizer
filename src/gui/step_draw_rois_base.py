@@ -348,6 +348,10 @@ class DrawRoisBaseStep(BaseStep):
         glare_inpaint_radius: int = 3,
         glare_clahe_clip_limit: float = 2.0,
         glare_clahe_grid_size: int = 8,
+        unsharp: bool = False,
+        unsharp_radius: float = 1.0,
+        unsharp_amount: float = 1.5,
+        unsharp_threshold: int = 3,
     ) -> None:
         self.image = image
         self.autocontrast = autocontrast
@@ -359,6 +363,10 @@ class DrawRoisBaseStep(BaseStep):
         self.glare_inpaint_radius = glare_inpaint_radius
         self.glare_clahe_clip_limit = glare_clahe_clip_limit
         self.glare_clahe_grid_size = glare_clahe_grid_size
+        self.unsharp = unsharp
+        self.unsharp_radius = unsharp_radius
+        self.unsharp_amount = unsharp_amount
+        self.unsharp_threshold = unsharp_threshold
 
     def _cut_images(self) -> list[CutImage]:
         positions = [
@@ -386,6 +394,10 @@ class DrawRoisBaseStep(BaseStep):
                 glare_inpaint_radius=getattr(self, "glare_inpaint_radius", 3),
                 glare_clahe_clip_limit=getattr(self, "glare_clahe_clip_limit", 2.0),
                 glare_clahe_grid_size=getattr(self, "glare_clahe_grid_size", 8),
+                unsharp=getattr(self, "unsharp", False),
+                unsharp_radius=getattr(self, "unsharp_radius", 1.0),
+                unsharp_amount=getattr(self, "unsharp_amount", 1.5),
+                unsharp_threshold=getattr(self, "unsharp_threshold", 3),
             )
             .stop_image_cutting()
             .save_cut_images()

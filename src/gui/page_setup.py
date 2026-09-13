@@ -197,6 +197,9 @@ class SetupPage:
             config.resize.w = int(self.adjust_step.resize_w.value or 0)
             config.resize.h = int(self.adjust_step.resize_h.value or 0)
             config.image_processing.enabled = self.adjust_step.adjust_enabled.value
+            config.image_processing.gamma = float(
+                self.adjust_step.adjust_gamma.value or 1.0
+            )
             config.image_processing.contrast = float(
                 self.adjust_step.adjust_contrast.value or 1.0
             )
@@ -210,6 +213,21 @@ class SetupPage:
                 self.adjust_step.adjust_color.value or 1.0
             )
             config.image_processing.grayscale = self.adjust_step.grayscale_enabled.value
+            config.image_processing.sharpness_mode = str(
+                self.adjust_step.sharpness_mode.value or "standard"
+            )
+            config.image_processing.unsharp_radius = float(
+                self.adjust_step.unsharp_radius.value or 1.0
+            )
+            config.image_processing.unsharp_amount = float(
+                self.adjust_step.unsharp_amount.value or 1.5
+            )
+            config.image_processing.unsharp_threshold = int(
+                self.adjust_step.unsharp_threshold.value or 3
+            )
+            config.image_processing.auto_sharpen_cut_images = (
+                self.adjust_step.auto_sharpen_cut_images.value
+            )
             config.image_processing.autocontrast.enabled = (
                 self.adjust_step.autocontrast_enabled.value
             )
@@ -471,6 +489,19 @@ class SetupPage:
                     glare_clahe_grid_size=int(
                         self.adjust_step.glare_clahe_grid_size.value or 8
                     ),
+                    unsharp=(
+                        self.adjust_step.adjust_enabled.value
+                        and self.adjust_step.auto_sharpen_cut_images.value
+                    ),
+                    unsharp_radius=float(
+                        self.adjust_step.unsharp_radius.value or 1.0
+                    ),
+                    unsharp_amount=float(
+                        self.adjust_step.unsharp_amount.value or 1.5
+                    ),
+                    unsharp_threshold=int(
+                        self.adjust_step.unsharp_threshold.value or 3
+                    ),
                 )
             elif name == NAME_DRAW_ANALOG_ROIS:
                 self.draw_analog_rois_step.update_image(
@@ -494,6 +525,19 @@ class SetupPage:
                     ),
                     glare_clahe_grid_size=int(
                         self.adjust_step.glare_clahe_grid_size.value or 8
+                    ),
+                    unsharp=(
+                        self.adjust_step.adjust_enabled.value
+                        and self.adjust_step.auto_sharpen_cut_images.value
+                    ),
+                    unsharp_radius=float(
+                        self.adjust_step.unsharp_radius.value or 1.0
+                    ),
+                    unsharp_amount=float(
+                        self.adjust_step.unsharp_amount.value or 1.5
+                    ),
+                    unsharp_threshold=int(
+                        self.adjust_step.unsharp_threshold.value or 3
                     ),
                 )
             elif name == NAME_METERS:

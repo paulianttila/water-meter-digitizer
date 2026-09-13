@@ -37,17 +37,24 @@ The **Setup Wizard** (`/gui` or the **Setup** tab) is an interactive 9-step cali
 ---
 
 ### Step 4: Image Adjustments & Alignment
-- Fine-tune Brightness, Contrast, Sharpness, and Color saturation.
-- Test software glare suppression (CLAHE or Inpainting) to eliminate LED reflections over digits.
-- Click **Test Alignment** to verify that the 3-point affine transformation locks onto the reference markers accurately.
+- **⚡ Auto Enhance**: One-click analysis calculating optimal gamma, contrast, brightness, and sharpness parameters based on scene lighting and blur.
+- **Environment Presets**: Quick profiles for common environments (*Crisp Text*, *Basement / Dim*, *Reflective Glass*, *Reset Defaults*).
+- **Tonal & Gamma Curves**: Non-linear gamma curve slider (`0.2`–`3.0`) for recovering shadow/midtone details without blowing out specular highlights.
+- **Luminance Unsharp Masking**: Advanced spatial edge sharpening in CIELAB color space ($L$ channel only) with noise coring threshold to eliminate color fringing and sensor noise.
+- **Live Rec.709 Histogram**: Real-time luminance distribution area chart with shadow and highlight clipping percentage monitors.
+- **Focus Metric**: Real-time dial focus clarity score derived from Laplacian variance.
+- **Glare Suppression**: CLAHE or inpainting to eliminate LED flash hot spots on glossy glass.
+- **Test Alignment**: Verify that the 3-point affine transformation locks onto reference markers accurately.
 
 ---
 
 ### Step 5: Digital Region of Interest (ROIs)
 - Draw bounding boxes over mechanical odometer digits or digital LCD segments (`digit1`, `digit2`, `digit3`, ...).
 - Order from left (Most Significant Digit) to right (Least Significant Digit).
-- Select the neural network model (e.g. `dig-class100_0168_s2_q.tflite`).
-- Use canvas tools: **Align Horizontal**, **Distribute Evenly**, and **Select All** for easy alignment.
+- **Negative Sign Detection**: Enable `DetectNegativeSign` to recognize minus signs (`-`) on digital water meters displaying reverse or negative flow.
+- **Sharpen Cut Images (ROIs)**: Optionally apply unsharp masking and autocontrast individually to cropped digit images before neural network inference.
+- Select the neural network model (e.g. `dig-class11_1701_s2.tflite` or `dig-class100_0168_s2_q.tflite`).
+- Use canvas alignment tools: **Align Top/Bottom/Left/Right**, **Distribute Evenly**, and **Select All**.
 
 ---
 

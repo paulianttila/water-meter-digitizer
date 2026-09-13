@@ -62,11 +62,17 @@ def test_adjust_step_load_from_config(sample_pil_image: Image.Image) -> None:
     step.resize_w = MagicMock()
     step.resize_h = MagicMock()
     step.adjust_enabled = MagicMock()
+    step.adjust_gamma = MagicMock()
     step.adjust_contrast = MagicMock()
     step.adjust_brightness = MagicMock()
     step.adjust_sharpness = MagicMock()
     step.adjust_color = MagicMock()
     step.grayscale_enabled = MagicMock()
+    step.sharpness_mode = MagicMock()
+    step.unsharp_radius = MagicMock()
+    step.unsharp_amount = MagicMock()
+    step.unsharp_threshold = MagicMock()
+    step.auto_sharpen_cut_images = MagicMock()
     step.autocontrast_enabled = MagicMock()
     step.autocontrast_cutoff_low = MagicMock()
     step.autocontrast_cutoff_high = MagicMock()
@@ -88,7 +94,10 @@ def test_adjust_step_load_from_config(sample_pil_image: Image.Image) -> None:
     config.crop.x = 10
     config.crop.y = 20
     config.image_processing.enabled = True
+    config.image_processing.gamma = 0.8
     config.image_processing.contrast = 1.5
+    config.image_processing.sharpness_mode = "unsharp_mask"
+    config.image_processing.unsharp_amount = 2.0
     config.image_processing.glare_suppression.enabled = True
     config.image_processing.glare_suppression.clahe_clip_limit = 3.5
 
@@ -97,7 +106,10 @@ def test_adjust_step_load_from_config(sample_pil_image: Image.Image) -> None:
     assert step.crop_enabled.value is True
     assert step.crop_x.value == 10
     assert step.crop_y.value == 20
+    assert step.adjust_gamma.value == 0.8
     assert step.adjust_contrast.value == 1.5
+    assert step.sharpness_mode.value == "unsharp_mask"
+    assert step.unsharp_amount.value == 2.0
     assert step.glare_clahe_clip_limit.value == 3.5
 
 
@@ -118,10 +130,15 @@ def test_adjust_step_do_adjust(sample_pil_image: Image.Image) -> None:
     step.rotate_enabled = MagicMock(value=False)
     step.rotate_angle = MagicMock(value=0.0)
     step.adjust_enabled = MagicMock(value=True)
+    step.adjust_gamma = MagicMock(value=0.9)
     step.adjust_contrast = MagicMock(value=1.2)
     step.adjust_brightness = MagicMock(value=1.1)
     step.adjust_sharpness = MagicMock(value=1.0)
     step.adjust_color = MagicMock(value=1.0)
+    step.sharpness_mode = MagicMock(value="unsharp_mask")
+    step.unsharp_radius = MagicMock(value=1.0)
+    step.unsharp_amount = MagicMock(value=1.5)
+    step.unsharp_threshold = MagicMock(value=3)
     step.grayscale_enabled = MagicMock(value=False)
     step.autocontrast_enabled = MagicMock(value=False)
     step.autocontrast_cutoff_low = MagicMock(value=0.0)
@@ -139,6 +156,36 @@ def test_adjust_step_do_adjust(sample_pil_image: Image.Image) -> None:
     result_b64 = step._do_adjust(b64_orig)
     assert isinstance(result_b64, str)
     assert len(result_b64) > 0
+
+
+def test_adjust_step_presets(sample_pil_image: Image.Image) -> None:
+    """Verify presets set appropriate parameters."""
+    cb = MagicMock()
+    step = AdjustStep(name="Adjust", set_image_callback=cb)
+    step.adjust_enabled = MagicMock()
+    step.adjust_gamma = MagicMock()
+    step.adjust_contrast = MagicMock()
+    step.adjust_brightness = MagicMock()
+    step.adjust_sharpness = MagicMock()
+    step.adjust_color = MagicMock()
+    step.sharpness_mode = MagicMock()
+    step.unsharp_radius = MagicMock()
+    step.unsharp_amount = MagicMock()
+    step.unsharp_threshold = MagicMock()
+    step.grayscale_enabled = MagicMock()
+    step.autocontrast_enabled = MagicMock()
+    step.glare_enabled = MagicMock()
+    step.glare_mode = MagicMock()
+    step.glare_clahe_clip_limit = MagicMock()
+
+    with patch("nicegui.ui.notify"):
+        step._apply_preset("crisp")
+        assert step.sharpness_mode.value == "unsharp_mask"
+        assert step.unsharp_amount.value == 1.6
+
+        step._apply_preset("basement")
+        assert step.adjust_gamma.value == 0.75
+        assert step.adjust_brightness.value == 1.15
 
 
 def test_adjust_step_debounced_on_param_change(

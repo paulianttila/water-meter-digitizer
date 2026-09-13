@@ -144,6 +144,12 @@ class ImageProcessing(BaseModel):
     color: float = 1.0
     sharpness: float = 1.0
     grayscale: bool = False
+    gamma: float = 1.0
+    sharpness_mode: str = "standard"  # "standard", "unsharp_mask", "auto"
+    unsharp_radius: float = 1.0
+    unsharp_amount: float = 1.5
+    unsharp_threshold: int = 3
+    auto_sharpen_cut_images: bool = False
     autocontrast: AutoContrast = Field(default_factory=AutoContrast)
     autocontrast_cut_images: AutoContrast = Field(default_factory=AutoContrast)
     glare_suppression: GlareSuppression = Field(default_factory=GlareSuppression)
@@ -551,6 +557,12 @@ class Config(BaseSettings):
             "Color": str(self.image_processing.color),
             "Sharpness": str(self.image_processing.sharpness),
             "GrayScale": str(self.image_processing.grayscale),
+            "Gamma": str(self.image_processing.gamma),
+            "SharpnessMode": self.image_processing.sharpness_mode,
+            "UnsharpRadius": str(self.image_processing.unsharp_radius),
+            "UnsharpAmount": str(self.image_processing.unsharp_amount),
+            "UnsharpThreshold": str(self.image_processing.unsharp_threshold),
+            "AutoSharpenCutImages": str(self.image_processing.auto_sharpen_cut_images),
             "AutoContrast": str(self.image_processing.autocontrast.enabled),
             "AutoContrastCutoffLow": str(self.image_processing.autocontrast.cutoff_low),
             "AutoContrastCutoffHigh": str(
@@ -898,6 +910,25 @@ class Config(BaseSettings):
             "ImageProcessing", "GlareApplyToCutImages", fallback=False
         )
 
+        image_processing_gamma = config.getfloat(
+            "ImageProcessing", "Gamma", fallback=1.0
+        )
+        image_processing_sharpness_mode = config.get(
+            "ImageProcessing", "SharpnessMode", fallback="standard"
+        ).lower()
+        image_processing_unsharp_radius = config.getfloat(
+            "ImageProcessing", "UnsharpRadius", fallback=1.0
+        )
+        image_processing_unsharp_amount = config.getfloat(
+            "ImageProcessing", "UnsharpAmount", fallback=1.5
+        )
+        image_processing_unsharp_threshold = config.getint(
+            "ImageProcessing", "UnsharpThreshold", fallback=3
+        )
+        image_processing_auto_sharpen_cut = config.getboolean(
+            "ImageProcessing", "AutoSharpenCutImages", fallback=False
+        )
+
         self.image_processing = ImageProcessing(
             enabled=image_processing_enabled,
             contrast=image_processing_contrast,
@@ -905,6 +936,12 @@ class Config(BaseSettings):
             color=image_processing_color,
             sharpness=image_processing_sharpness,
             grayscale=image_processing_grayscale,
+            gamma=image_processing_gamma,
+            sharpness_mode=image_processing_sharpness_mode,
+            unsharp_radius=image_processing_unsharp_radius,
+            unsharp_amount=image_processing_unsharp_amount,
+            unsharp_threshold=image_processing_unsharp_threshold,
+            auto_sharpen_cut_images=image_processing_auto_sharpen_cut,
             autocontrast=AutoContrast(
                 enabled=image_processing_autocontrast,
                 cutoff_low=image_processing_autocontrast_cutoff_low,

@@ -159,3 +159,86 @@ def test_drawing(sample_pil_image: Image.Image) -> None:
 
     text_drawn = img_utils.draw_text(sample_pil_image.copy(), "Test", 10, 10)
     assert isinstance(text_drawn, Image.Image)
+
+
+def test_adjust_gamma(sample_pil_image: Image.Image) -> None:
+    """Verify non-linear gamma curve adjustment via SIMD LUT."""
+    # Identity gamma
+    identity = img_utils.adjust_gamma(sample_pil_image, 1.0)
+    assert np.array_equal(
+        np.array(identity),
+        np.array(sample_pil_image),
+    )
+
+    # Darker gamma (> 1.0)
+    darker = img_utils.adjust_gamma(sample_pil_image, 2.0)
+    assert np.mean(np.array(darker)) <= np.mean(np.array(sample_pil_image))
+
+    # Brighter gamma (< 1.0)
+    brighter = img_utils.adjust_gamma(sample_pil_image, 0.5)
+    assert np.mean(np.array(brighter)) >= np.mean(np.array(sample_pil_image))
+
+    # Grayscale image
+    gray = sample_pil_image.convert("L")
+    gray_gamma = img_utils.adjust_gamma(gray, 1.5)
+    assert gray_gamma.size == gray.size
+
+
+def test_unsharp_mask(sample_pil_image: Image.Image) -> None:
+    """Verify LAB Lightness channel unsharp masking."""
+    # Zero amount (no change)
+    unsharpened_0 = img_utils.unsharp_mask(sample_pil_image, radius=1.0, amount=0.0)
+    assert np.array_equal(np.array(unsharpened_0), np.array(sample_pil_image))
+
+    # Standard sharpening
+    sharpened = img_utils.unsharp_mask(
+        sample_pil_image, radius=1.0, amount=1.5, threshold=3
+    )
+    assert isinstance(sharpened, Image.Image)
+    assert sharpened.size == sample_pil_image.size
+
+    # Grayscale unsharp mask
+    gray = sample_pil_image.convert("L")
+    gray_sharp = img_utils.unsharp_mask(gray, radius=1.0, amount=1.5, threshold=3)
+    assert gray_sharp.size == gray.size
+
+
+def test_calculate_focus_score(sample_pil_image: Image.Image) -> None:
+    """Verify Laplacian variance focus score estimation."""
+    score = img_utils.calculate_focus_score(sample_pil_image)
+    assert isinstance(score, float)
+    assert score >= 0.0
+
+    # Blurry image should have lower focus score than sharp edge image
+    from PIL import ImageFilter
+
+    blurry = sample_pil_image.filter(ImageFilter.GaussianBlur(radius=5))
+    blurry_score = img_utils.calculate_focus_score(blurry)
+    assert score > blurry_score
+
+
+def test_calculate_histogram(sample_pil_image: Image.Image) -> None:
+    """Verify 256-bin luminance and clipping analysis."""
+    hist = img_utils.calculate_histogram(sample_pil_image)
+    assert "luminance" in hist
+    assert len(hist["luminance"]) == 256
+    assert "shadow_clip_pct" in hist
+    assert "highlight_clip_pct" in hist
+    assert 0.0 <= hist["shadow_clip_pct"] <= 100.0
+    assert 0.0 <= hist["highlight_clip_pct"] <= 100.0
+
+
+def test_auto_tune_image(sample_pil_image: Image.Image) -> None:
+    """Verify rule-based automatic exposure and sharpness parameter tuning."""
+    params = img_utils.auto_tune_image(sample_pil_image)
+    assert "gamma" in params
+    assert "contrast" in params
+    assert "brightness" in params
+    assert "unsharp_amount" in params
+    assert "unsharp_radius" in params
+    assert "unsharp_threshold" in params
+    assert "focus_score" in params
+    assert 0.2 <= params["gamma"] <= 3.0
+    assert 0.5 <= params["contrast"] <= 2.5
+    assert 0.5 <= params["brightness"] <= 2.5
+

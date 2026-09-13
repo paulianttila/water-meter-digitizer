@@ -128,10 +128,11 @@ class ImageProcessor:
         brightness: float = 1.0,
         sharpness: float = 1.0,
         color: float = 1.0,
+        gamma: float = 1.0,
     ) -> "ImageProcessor":
         logger.debug(
             f"Adjust image contrast:{contrast}, brightness:{brightness}, "
-            f"sharpness:{sharpness}, color:{color}"
+            f"sharpness:{sharpness}, color:{color}, gamma:{gamma}"
         )
         self.image = utils.image.adjust_image(
             self.image,
@@ -139,6 +140,31 @@ class ImageProcessor:
             brightness=brightness,
             sharpness=sharpness,
             color=color,
+            gamma=gamma,
+        )
+        return self
+
+    @_conditional_func
+    def adjust_gamma(self, gamma: float = 1.0) -> "ImageProcessor":
+        logger.debug(f"Adjust gamma:{gamma}")
+        self.image = utils.image.adjust_gamma(self.image, gamma=gamma)
+        return self
+
+    @_conditional_func
+    def unsharp_mask(
+        self,
+        radius: float = 1.0,
+        amount: float = 1.5,
+        threshold: int = 3,
+    ) -> "ImageProcessor":
+        logger.debug(
+            f"Unsharp mask radius:{radius}, amount:{amount}, threshold:{threshold}"
+        )
+        self.image = utils.image.unsharp_mask(
+            self.image,
+            radius=radius,
+            amount=amount,
+            threshold=threshold,
         )
         return self
 
@@ -217,6 +243,10 @@ class ImageProcessor:
         glare_inpaint_radius: int = 3,
         glare_clahe_clip_limit: float = 2.0,
         glare_clahe_grid_size: int = 8,
+        unsharp: bool = False,
+        unsharp_radius: float = 1.0,
+        unsharp_amount: float = 1.5,
+        unsharp_threshold: int = 3,
     ) -> "ImageProcessor":
         image = utils.image.cut_image(self.image, position)
         if autocontrast:
@@ -231,6 +261,13 @@ class ImageProcessor:
                 inpaint_radius=glare_inpaint_radius,
                 clahe_clip_limit=glare_clahe_clip_limit,
                 clahe_grid_size=glare_clahe_grid_size,
+            )
+        if unsharp:
+            image = utils.image.unsharp_mask(
+                image,
+                radius=unsharp_radius,
+                amount=unsharp_amount,
+                threshold=unsharp_threshold,
             )
         self.cut_images_list.append(CutImage(name=position.name, image=image))
         return self
@@ -249,6 +286,10 @@ class ImageProcessor:
         glare_inpaint_radius: int = 3,
         glare_clahe_clip_limit: float = 2.0,
         glare_clahe_grid_size: int = 8,
+        unsharp: bool = False,
+        unsharp_radius: float = 1.0,
+        unsharp_amount: float = 1.5,
+        unsharp_threshold: int = 3,
     ) -> "ImageProcessor":
         for pos in positions:
             self.cut_image(
@@ -263,6 +304,10 @@ class ImageProcessor:
                 glare_inpaint_radius=glare_inpaint_radius,
                 glare_clahe_clip_limit=glare_clahe_clip_limit,
                 glare_clahe_grid_size=glare_clahe_grid_size,
+                unsharp=unsharp,
+                unsharp_radius=unsharp_radius,
+                unsharp_amount=unsharp_amount,
+                unsharp_threshold=unsharp_threshold,
             )
         return self
 

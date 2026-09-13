@@ -41,12 +41,19 @@ This document details the internal architecture, module decoupling, and end-to-e
 ## 🔄 End-to-End Processing Pipeline
 
 1. **Image Download**: `ImageProcessor.download_image` retrieves raw bytes from camera source URL.
-2. **Pre-processing**:
+2. **Pre-processing & Enhancement**:
    - Initial rotation applied (`ImageProcessor.rotate_image`).
-   - Image enhancement (contrast, brightness, sharpness, CLAHE glare suppression).
    - 3-point affine transformation matches visual reference markers (`ref0`, `ref1`, `ref2`).
-3. **ROI Segmentation**: Crops bounding boxes for individual digital counters and analog dials.
-4. **Neural Inference**: Submits normalized ROI tensor batches to `InterpreterPool` worker threads running Google LiteRT runtime.
+   - Glare suppression (CLAHE, Telea Inpainting, illumination normalization).
+   - Histogram AutoContrast full-frame stretching.
+   - LUT-accelerated non-linear Gamma tone curve and Tonal adjustments (contrast, brightness, saturation).
+   - CIELAB Luminance Unsharp Masking with noise threshold coring.
+3. **ROI Segmentation & Pre-Inference Enhancements**:
+   - Crops bounding boxes for individual digital counters and analog dials.
+   - Optionally applies individual ROI luminance unsharp masking and autocontrast.
+4. **Neural Inference & Negative Sign Detection**:
+   - Submits normalized ROI tensor batches to `InterpreterPool` worker threads running Google LiteRT runtime.
+   - If enabled (`DetectNegativeSign`), morphological and aspect-ratio analysis detects minus signs (`-`) on digital ROIs displaying negative flow.
 5. **Post-processing & Predecessor Correction**:
    - `DigitizerProcessor` resolves ambiguous half-turned digits using adjacent lower-order dials.
    - Calculates fractional extended resolution.

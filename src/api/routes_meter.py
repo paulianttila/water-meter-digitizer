@@ -273,6 +273,7 @@ def get_meter_data(
             contrast=config.image_processing.contrast,
             sharpness=config.image_processing.sharpness,
             color=config.image_processing.color,
+            gamma=config.image_processing.gamma,
         )
         .endif_()
         .if_(
@@ -299,6 +300,17 @@ def get_meter_data(
         )
         .save_image("glare_suppressed")
         .endif_()
+        .if_(
+            config.image_processing.enabled
+            and config.image_processing.sharpness_mode in ("unsharp_mask", "auto")
+        )
+        .unsharp_mask(
+            radius=config.image_processing.unsharp_radius,
+            amount=config.image_processing.unsharp_amount,
+            threshold=config.image_processing.unsharp_threshold,
+        )
+        .save_image("sharpened")
+        .endif_()
         .save_image("final", True)
     )
     autocontrast = (
@@ -309,6 +321,10 @@ def get_meter_data(
         config.image_processing.enabled
         and config.image_processing.glare_suppression.enabled
         and config.image_processing.glare_suppression.apply_to_cut_images
+    )
+    unsharp_cut = (
+        config.image_processing.enabled
+        and config.image_processing.auto_sharpen_cut_images
     )
 
     def _extract_rois(positions):
@@ -326,6 +342,10 @@ def get_meter_data(
                 glare_inpaint_radius=config.image_processing.glare_suppression.inpaint_radius,
                 glare_clahe_clip_limit=config.image_processing.glare_suppression.clahe_clip_limit,
                 glare_clahe_grid_size=config.image_processing.glare_suppression.clahe_grid_size,
+                unsharp=unsharp_cut,
+                unsharp_radius=config.image_processing.unsharp_radius,
+                unsharp_amount=config.image_processing.unsharp_amount,
+                unsharp_threshold=config.image_processing.unsharp_threshold,
             )
             .stop_image_cutting()
             .save_cut_images()

@@ -53,15 +53,21 @@ Optional pre-processing to crop and resize the raw image before alignment.
 ---
 
 ### `[ImageProcessing]`
-Color, contrast, brightness, and glare suppression adjustments.
+Color, gamma tone curves, contrast, brightness, spatial luminance unsharp masking, autocontrast, and glare suppression adjustments.
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
 | `Enabled` | boolean | `False` | Enable image filter adjustments. |
+| `Gamma` | float | `1.0` | Non-linear gamma curve adjustment (`< 1.0` brightens mid-tones, `> 1.0` darkens). |
 | `Contrast` | float | `1.0` | Contrast multiplier (`1.0` = unchanged). |
 | `Brightness` | float | `1.0` | Brightness multiplier (`1.0` = unchanged). |
 | `Color` | float | `1.0` | Color saturation multiplier (`1.0` = unchanged). |
-| `Sharpness` | float | `1.0` | Sharpness multiplier (`1.0` = unchanged). |
+| `Sharpness` | float | `1.0` | Standard sharpness multiplier (`1.0` = unchanged) when `SharpnessMode=standard`. |
+| `SharpnessMode` | string | `standard` | Sharpness algorithm: `standard` (Pillow), `unsharp_mask` (LAB Luminance Unsharp Mask), or `auto` (Adaptive auto-sharpen). |
+| `UnsharpRadius` | float | `1.0` | Gaussian blur standard deviation ($\sigma$) radius for unsharp masking. |
+| `UnsharpAmount` | float | `1.5` | Sharpening strength multiplier ($\alpha$) for high-frequency edge details. |
+| `UnsharpThreshold` | int | `3` | Noise coring threshold ($\Delta L$) to prevent amplifying sensor noise. |
+| `AutoSharpenCutImages` | boolean | `False` | Apply luminance unsharp masking individually to cropped digit/pointer ROI images before neural network inference. |
 | `GrayScale` | boolean | `False` | Convert image to grayscale. |
 | `AutoContrast` | boolean | `False` | Apply histogram autocontrast to the full image. |
 | `AutoContrastCutoffLow` | float | `2.0` | Lower percentile cutoff for full-image autocontrast. |
