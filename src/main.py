@@ -106,7 +106,54 @@ async def lifespan(app: FastAPI):
 
 
 # --- Application Bootstrap ---
-app = FastAPI(title="meter", lifespan=lifespan)
+OPENAPI_TAGS = [
+    {
+        "name": "system",
+        "description": "Core system endpoints: version, GUI redirect, and dynamic configuration reload.",
+    },
+    {
+        "name": "health",
+        "description": "Liveness and diagnostic health status reporting system diagnostics, memory, and camera reachability.",
+    },
+    {
+        "name": "meter",
+        "description": "Real-time water meter digitizer readout, ROI visualization, intermediate processing crops, and baseline management.",
+    },
+    {
+        "name": "history",
+        "description": "Historical meter reading queries, consumption aggregations, and snapshot Time Machine comparison metrics.",
+    },
+    {
+        "name": "services",
+        "description": "Telemetry and control for background poller, MQTT publisher, and zero-flow leak detector.",
+    },
+    {
+        "name": "simulation",
+        "description": "Procedural mock water meter image generation and automated test feeds.",
+    },
+]
+
+app = FastAPI(
+    title="Water Meter Digitizer API",
+    description=(
+        "High-performance edge AI digitizer for analog & digital water meters with "
+        "real-time neural network inference, MQTT publishing, background polling, "
+        "historical consumption analytics, and procedural mock camera simulation."
+    ),
+    version=VERSION,
+    docs_url="/docs",
+    redoc_url="/redoc",
+    openapi_url="/openapi.json",
+    openapi_tags=OPENAPI_TAGS,
+    swagger_ui_parameters={
+        "defaultModelsExpandDepth": -1,
+        "displayRequestDuration": True,
+        "filter": True,
+        "tryItOutEnabled": True,
+        "syntaxHighlight.theme": "monokai",
+    },
+    lifespan=lifespan,
+)
 set_app_ref(app)
 
 app.state.version = VERSION

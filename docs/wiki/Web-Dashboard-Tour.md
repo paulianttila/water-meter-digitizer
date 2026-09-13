@@ -20,9 +20,9 @@ The top navigation bar provides instant access to all functional areas:
 
 ---
 
-## ⚡ 6. API Console & Mock Camera Studio
-
-The **API Console** tab is divided into two specialized workspaces:
+## ⚡ 6. API Console & Studio
+ 
+The **API Console** tab is divided into three specialized workspaces:
 
 ### REST Endpoints Explorer
 - Interactively execute and inspect all backend REST API routes (`/health`, `/version`, `/meter`, `/leak/status`, `/history/consumption`, etc.).
@@ -33,7 +33,12 @@ The **API Console** tab is divided into two specialized workspaces:
 - Procedural water meter generation studio with live visual preview.
 - **Simulation Parameters**: Mode (`fixed`, `ticker`, `random`, `flow`), target meter value, ticker increment rate, rotation skew, specular glare hotspot, Gaussian sensor noise, optical blur, brightness, contrast, LCD colors, and per-digit/per-dial overrides.
 - **Live Generated Picture**: Real-time canvas rendering with metadata header inspection (`X-Mock-Meter-Value`, `X-Mock-Digital-Value`, `X-Mock-Analog-Value`).
-- **One-Click Actions**: "Copy Mock URL", "Reset Ticker", and "Set as [ImageSource] URL" to immediately feed simulated data to the digitizer engine.
+- **One-Click Actions**: "Copy Mock URL", "Reset Defaults", "Reset Ticker", and "Set as [ImageSource] URL" to immediately feed simulated data to the digitizer engine.
+
+### Swagger UI & OpenAPI Documentation
+- Embedded interactive Swagger UI interface rendering live OpenAPI documentation.
+- Try out any endpoint with interactive parameter inputs, sample payloads, and response header inspection.
+- Quick toolbar actions to open `/docs` or `/redoc` in a new browser tab and download the raw OpenAPI specification JSON (`/openapi.json`).
 
 
 ---

@@ -60,3 +60,16 @@ def test_api_console_and_mock_camera_studio_ui(page: Page, live_server_url: str)
     expect(page.get_by_text("Mock camera ticker reset to 100.0")).to_be_visible(
         timeout=5000
     )
+
+    # 9. Switch to Swagger UI sub-tab
+    swagger_subtab = page.get_by_role("tab", name="Swagger UI")
+    expect(swagger_subtab).to_be_visible()
+    swagger_subtab.click()
+
+    expect(page.get_by_text("Interactive OpenAPI Documentation")).to_be_visible(
+        timeout=5000
+    )
+    expect(page.get_by_role("button", name="Open /docs in New Tab")).to_be_visible()
+    expect(page.get_by_role("button", name="Open ReDoc")).to_be_visible()
+    expect(page.get_by_role("button", name="OpenAPI Spec (JSON)")).to_be_visible()
+    expect(page.locator('iframe[title="Swagger UI Documentation"]')).to_be_visible()

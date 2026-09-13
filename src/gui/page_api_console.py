@@ -743,6 +743,9 @@ class ApiConsolePage:
                 tab_mock = ui.tab("Mock Camera Studio", icon="photo_camera").classes(
                     "font-semibold text-sm"
                 )
+                tab_swagger = ui.tab("Swagger UI", icon="auto_stories").classes(
+                    "font-semibold text-sm"
+                )
 
             async def _on_tab_panel_change(e: Any) -> None:
                 if e.value == tab_mock:
@@ -1399,6 +1402,71 @@ class ApiConsolePage:
                                     self.mock_meta_ana_val = ui.label("9124").classes(
                                         "text-xs font-mono text-amber-300"
                                     )
+
+                # =========================================================================
+                # TAB 3: Interactive Swagger UI (OpenAPI)
+                # =========================================================================
+                with (
+                    ui.tab_panel(tab_swagger).classes(
+                        "w-full h-full flex flex-col p-0 gap-3 overflow-hidden"
+                    ),
+                    ui.card().classes(
+                        "w-full flex-1 min-h-0 flex flex-col p-4 bg-slate-900 border border-white/10 rounded-2xl gap-3 overflow-hidden"
+                    ),
+                ):
+                    # Toolbar
+                    with ui.row().classes(
+                        "w-full justify-between items-center px-1 pb-2 border-b border-white/10 shrink-0"
+                    ):
+                        with ui.row().classes("items-center gap-3"):
+                            with ui.element("div").classes(
+                                "w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/30 flex items-center justify-center"
+                            ):
+                                ui.icon("api", color="emerald").classes("text-lg")
+                            with ui.column().classes("gap-0"):
+                                ui.label("Interactive OpenAPI Documentation").classes(
+                                    "font-bold text-sm text-white leading-tight"
+                                )
+                                ui.label(
+                                    "Explore, test, and execute REST endpoints directly via interactive Swagger UI and ReDoc"
+                                ).classes("text-xs text-gray-400 leading-tight")
+
+                        with ui.row().classes("items-center gap-2"):
+                            ui.button(
+                                "Open /docs in New Tab",
+                                icon="open_in_new",
+                                on_click=lambda: ui.navigate.to("/docs", new_tab=True),
+                            ).props("flat dense color=primary").classes(
+                                "text-xs font-semibold"
+                            )
+
+                            ui.button(
+                                "Open ReDoc",
+                                icon="menu_book",
+                                on_click=lambda: ui.navigate.to("/redoc", new_tab=True),
+                            ).props("flat dense color=teal").classes(
+                                "text-xs font-semibold"
+                            )
+
+                            ui.button(
+                                "OpenAPI Spec (JSON)",
+                                icon="download",
+                                on_click=lambda: ui.navigate.to(
+                                    "/openapi.json", new_tab=True
+                                ),
+                            ).props("flat dense color=cyan").classes(
+                                "text-xs font-semibold"
+                            )
+
+                    # Embedded Swagger UI Frame
+                    with ui.element("div").classes(
+                        "w-full flex-1 min-h-0 bg-slate-950 rounded-xl border border-white/5 overflow-hidden relative"
+                    ):
+                        ui.element("iframe").props(
+                            'src="/docs" title="Swagger UI Documentation"'
+                        ).classes("w-full h-full border-0 rounded-xl").style(
+                            "width: 100%; height: 100%; min-height: 550px; background-color: #0f172a;"
+                        )
 
         # Stream timer (1 second interval when active)
         self.mock_stream_timer = ui.timer(
