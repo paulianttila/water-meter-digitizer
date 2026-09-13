@@ -74,6 +74,7 @@ def test_setup_wizard_reset_dialog(page: Page, live_server_url: str):
     """Verify reset confirmation dialog."""
     page.goto(f"{live_server_url}/gui", wait_until="domcontentloaded")
     page.get_by_role("tab", name="Setup").click()
+    expect(page.get_by_text("Step 1 of 9: Download image")).to_be_visible(timeout=10000)
 
     reset_btn = page.get_by_role("button", name="Reset to File")
     expect(reset_btn).to_be_visible(timeout=10000)
@@ -91,6 +92,7 @@ def test_setup_wizard_restore_backup_dialog(page: Page, live_server_url: str):
     """Verify restore from backup modal dialog."""
     page.goto(f"{live_server_url}/gui", wait_until="domcontentloaded")
     page.get_by_role("tab", name="Setup").click()
+    expect(page.get_by_text("Step 1 of 9: Download image")).to_be_visible(timeout=10000)
 
     restore_btn = page.get_by_role("button", name="Restore Backup")
     expect(restore_btn).to_be_visible(timeout=10000)
@@ -107,6 +109,7 @@ def test_setup_wizard_adjust_step_side_by_side_preview(
     """Test Step 4 Adjust image dual-card side-by-side comparison mode toggle."""
     page.goto(f"{live_server_url}/gui", wait_until="domcontentloaded")
     page.get_by_role("tab", name="Setup").click()
+    expect(page.get_by_text("Step 1 of 9: Download image")).to_be_visible(timeout=10000)
 
     continue_btn = page.get_by_role("button", name="Continue")
     expect(continue_btn).to_be_visible(timeout=10000)
@@ -144,6 +147,7 @@ def test_setup_wizard_start_clean_dialog(page: Page, live_server_url: str):
     """Verify start clean configuration dialog and action."""
     page.goto(f"{live_server_url}/gui", wait_until="domcontentloaded")
     page.get_by_role("tab", name="Setup").click()
+    expect(page.get_by_text("Step 1 of 9: Download image")).to_be_visible(timeout=10000)
 
     clean_btn = page.get_by_role("button", name="Start Clean")
     expect(clean_btn).to_be_visible(timeout=10000)

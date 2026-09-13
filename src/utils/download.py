@@ -68,6 +68,10 @@ def _read_file_from_url(
             )
         with open(file_path, "rb") as f:
             return f.read()
+    elif "mock_camera" in url or url.startswith("mock://"):
+        from api.routes_mock_camera import render_mock_camera_from_url
+
+        return render_mock_camera_from_url(url)
     else:
         data = requests.get(url, timeout=timeout)
         return data.content

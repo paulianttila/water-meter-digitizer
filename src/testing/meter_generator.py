@@ -363,19 +363,24 @@ class MeterImageGenerator:
         active_col = theme["active"]
         ghost_col = theme["ghost"]
 
+        pad_x = 4
+        pad_y = 5
+        inner_w = dw - pad_x * 2
+        inner_h = dh - pad_y * 2
+
         draw = PIL.ImageDraw.Draw(canvas)
 
         for i in range(5):
             digit_name = f"digit{i+1}"
             val = int(digit_states.get(digit_name, 0.0)) % 10
-            x = start_dx + i * (dw + gap)
-            y = dy
+            x = start_dx + i * (dw + gap) + pad_x
+            y = dy + pad_y
             self._draw_7segment_digit(
                 draw,
                 x=x,
                 y=y,
-                w=dw,
-                h=dh,
+                w=inner_w,
+                h=inner_h,
                 digit=val,
                 active_color=active_col,
                 ghost_color=ghost_col,
@@ -395,7 +400,9 @@ class MeterImageGenerator:
         slant: int = 0,
     ) -> None:
         """Draw an authentic 7-segment LCD digit with tight, polygonal segment geometry."""
-        sw = max(4, int(w * 0.17))  # Segment stroke thickness (~6-7px)
+        sw = max(
+            4, int(w * 0.22)
+        )  # Segment stroke thickness (~7px on 31px inner width)
         gap = 1  # Tight 1px separation between segments
         half_h = h // 2
 
@@ -575,12 +582,18 @@ class MeterImageGenerator:
 
     def _resolve_lcd_theme(self, lcd_color: str, lcd_bg: str) -> dict[str, Any]:
         key = lcd_color.lower()
-        if key in COLOR_THEMES:
-            theme = COLOR_THEMES[key].copy()
-            if lcd_bg:
-                theme["bg"] = self._resolve_lcd_bg_color(lcd_bg)
-            return theme
-        return COLOR_THEMES["black"]
+        theme = COLOR_THEMES.get(key, COLOR_THEMES["black"]).copy()
+        if lcd_bg:
+            theme["bg"] = self._resolve_lcd_bg_color(lcd_bg)
+        bg = theme["bg"]
+        act = theme["active"]
+        # Ghost segments: subtle 12% blend of active color onto background
+        theme["ghost"] = (
+            int(bg[0] * 0.88 + act[0] * 0.12),
+            int(bg[1] * 0.88 + act[1] * 0.12),
+            int(bg[2] * 0.88 + act[2] * 0.12),
+        )
+        return theme
 
     def _resolve_lcd_bg_color(self, lcd_bg: str) -> tuple[int, int, int]:
         bg_map = {

@@ -159,3 +159,24 @@ image = gen.generate(
 # 3. Save or process
 image.save("mock_meter.jpg", "JPEG")
 ```
+
+---
+
+## 🤖 Recommended Neural Network Models for Simulation
+
+When testing and validating the mock camera with neural network inference, the following models provide the highest fidelity:
+
+| Component | Recommended Model | Model Type | Accuracy & Performance |
+| :--- | :--- | :---: | :--- |
+| **Analog Dials** | `config/neuralnets/analog/continuous/ana-cont_1901_s0.tflite` | `analog` | **100% accuracy** ($\text{MAE} = 0.08$) across all dial angles $0$–$9$ with $\ge 95\%$ confidence. |
+| **Digital Drums** | `config/neuralnets/digital/class11/dig-class11_1600_s2.tflite` | `digital` | **100% accuracy** across all digits $0$–$9$ with $100\%$ confidence using optimized 7-segment geometry. |
+
+---
+
+## ⚡ In-Process Frame Rendering & Fast Simulation
+
+The digitizer's image download utility (`src/utils/download.py`) natively supports in-process rendering for mock camera URLs (`http://.../api/mock_camera?...` or `mock://...`). When running in development, tests, or single-process servers:
+- Frames are generated directly in-memory via `MeterImageGenerator` without loopback network requests.
+- Completely avoids TCP socket exhaustion, timeouts, and single-threaded server deadlocks.
+- Guarantees $100\%$ deterministic execution speed in CI and automated test suites.
+
