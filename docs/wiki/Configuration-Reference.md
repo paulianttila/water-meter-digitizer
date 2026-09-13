@@ -102,6 +102,7 @@ Settings for mechanical rolling odometer drums, digital LCD counters, and circul
 | `Names` | string | `""` | Comma-separated list of ROI names (e.g. `digit1, digit2` or `analog1, analog2`). |
 | `Modelfile` | string | `""` | Path to the LiteRT/TFLite model file. |
 | `Model` | string | `auto` | Model type (`auto`, `digital`, `digital100`, `analog`, `analog100`). |
+| `DetectNegativeSign` | boolean | `False` | (`[Digits]` only) Detect LCD minus sign (`-`) on digital ROIs displaying negative flow. |
 
 **`[Digits.<name>]`** / **`[Analog.<name>]`**:
 - `x`, `y`, `w`, `h`: Bounding box coordinates and dimensions for each ROI.

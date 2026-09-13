@@ -96,6 +96,7 @@ class CNNParams(BaseModel):
     enabled: bool = False
     model_file: str = ""
     model: str = ""
+    detect_negative_sign: bool = False
     cut_images: list[ImagePosition] = Field(default_factory=list)
 
 
@@ -622,6 +623,7 @@ class Config(BaseSettings):
                 "PreValueFromFileMaxAge": str(meter.pre_value_from_file_max_age),
                 "UseExtendedResolution": str(meter.use_extended_resolution),
                 "Unit": meter.unit if meter.unit is not None else "",
+                "DetectNegativeSign": str(meter.detect_negative_sign),
             }
 
         config["Digits"] = {
@@ -635,6 +637,7 @@ class Config(BaseSettings):
                 digital_models_dir=self.digital_models_dir,
             ),
             "Model": self.digital_readout.model,
+            "DetectNegativeSign": str(self.digital_readout.detect_negative_sign),
             "Names": ", ".join(
                 [image.name for image in self.digital_readout.cut_images]
             ),
@@ -949,6 +952,9 @@ class Config(BaseSettings):
                 f"Meter.{name}", "UseExtendedResolution", fallback=False
             )
             unit = config.get(f"Meter.{name}", "Unit", fallback=None)
+            detect_neg_meter = config.getboolean(
+                f"Meter.{name}", "DetectNegativeSign", fallback=False
+            )
 
             meter_configs.append(
                 MeterConfig(
@@ -961,6 +967,7 @@ class Config(BaseSettings):
                     pre_value_from_file_max_age=pre_value_from_file_max_age,
                     use_extended_resolution=use_extended_resolution,
                     unit=unit if unit is not None else "",
+                    detect_negative_sign=detect_neg_meter,
                 )
             )
         self.meter_configs = meter_configs
@@ -1091,6 +1098,9 @@ class Config(BaseSettings):
         readout_enabled = config.getboolean(section, "Enabled", fallback=False)
         model_file = config.get(section, "Modelfile", fallback="")
         model = config.get(section, "Model", fallback="auto").lower()
+        detect_negative_sign = config.getboolean(
+            section, "DetectNegativeSign", fallback=False
+        )
         images = []
         if readout_enabled:
             names = config.get(section, "names", fallback="")
@@ -1110,5 +1120,6 @@ class Config(BaseSettings):
             enabled=readout_enabled,
             model_file=model_file,
             model=model,
+            detect_negative_sign=detect_negative_sign,
             cut_images=images,
         )

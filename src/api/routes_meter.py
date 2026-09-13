@@ -344,9 +344,13 @@ def get_meter_data(
     if app and hasattr(app.state, "image_cache"):
         app.state.image_cache.set_many(image_processor.get_pictures())
 
+    detect_neg = config.digital_readout.detect_negative_sign or any(
+        m.detect_negative_sign for m in config.meter_configs
+    )
     meter_result = (
         DigitizerProcessor()
         .set_min_confidence_threshold(config.min_confidence_threshold)
+        .set_detect_negative_sign(detect_neg)
         .init_analog_model(
             config.analog_readout.model_file, config.analog_readout.model
         )
@@ -358,6 +362,7 @@ def get_meter_data(
             analog_images=analog_images,
             digital_images=digital_images,
             meter_configs=config.meter_configs,
+            detect_negative_sign=detect_neg,
         )
     )
 

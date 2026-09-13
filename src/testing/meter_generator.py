@@ -30,6 +30,7 @@ logger = logging.getLogger(__name__)
 
 # Segment mapping for 0-9 in standard 7-segment display (a, b, c, d, e, f, g)
 SEGMENTS_7 = {
+    -1: (False, False, False, False, False, False, True),  # Minus sign '-'
     0: (True, True, True, True, True, True, False),
     1: (False, True, True, False, False, False, False),
     2: (True, True, False, True, True, False, True),
@@ -160,16 +161,25 @@ class MeterImageGenerator:
     ) -> tuple[dict[str, float], dict[str, float]]:
         """Decompose meter reading into 5 digits and 4 dial values."""
         val_str = str(value).strip()
-        parts = val_str.split(".")
+        is_negative = val_str.startswith("-")
+        clean_val_str = val_str.lstrip("-") if is_negative else val_str
+        parts = clean_val_str.split(".")
         integer_part = parts[0]
         fractional_part = parts[1] if len(parts) > 1 else ""
 
         # 5 digital digits
         dig_names = ["digit1", "digit2", "digit3", "digit4", "digit5"]
-        pad_int = integer_part.zfill(5)[-5:]
         digit_states: dict[str, float] = {}
-        for i, name in enumerate(dig_names):
-            digit_states[name] = float(pad_int[i])
+        if is_negative:
+            # First digit is minus sign (-1.0), remaining 4 are padded from integer part
+            pad_int = integer_part.zfill(4)[-4:]
+            digit_states["digit1"] = -1.0
+            for i, name in enumerate(dig_names[1:]):
+                digit_states[name] = float(pad_int[i])
+        else:
+            pad_int = integer_part.zfill(5)[-5:]
+            for i, name in enumerate(dig_names):
+                digit_states[name] = float(pad_int[i])
 
         # 4 analog dials
         ana_names = ["analog1", "analog2", "analog3", "analog4"]
@@ -387,7 +397,8 @@ class MeterImageGenerator:
 
         for i in range(5):
             digit_name = f"digit{i+1}"
-            val = int(digit_states.get(digit_name, 0.0)) % 10
+            raw_val = int(digit_states.get(digit_name, 0.0))
+            val = -1 if raw_val == -1 else (raw_val % 10)
             x = start_dx + i * (dw + gap) + pad_x
             y = dy + pad_y
             self._draw_7segment_digit(

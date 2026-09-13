@@ -27,6 +27,7 @@ class MeterParams:
     allow_negative_rates: bool = False
     use_previous_value: bool = False
     use_extended_resolution: bool = False
+    detect_negative_sign: bool = False
     max_rate_value: float = 0.2
     prevalue_from_file_max_age: int = 0
     unit: str = "㎥"
@@ -140,6 +141,11 @@ class Meter:
                     "Append fractional decimal from lowest significant digit "
                     "or analog dial"
                 )
+                ui.checkbox("Detect negative sign (-)").bind_value(
+                    self.meter, "detect_negative_sign"
+                ).tooltip(
+                    "Detect '-' sign for negative flow on leading digital digits"
+                )
 
             with ui.row().classes("w-full items-center gap-4 flex-wrap"):
                 ui.number("Max Rate (/min)", value=0.2, min=0, step=0.01).bind_value(
@@ -231,6 +237,7 @@ class MeterStep(BaseStep):
                     meter_param.allow_negative_rates = m.allow_negative_rates
                     meter_param.use_previous_value = m.use_previous_value
                     meter_param.use_extended_resolution = m.use_extended_resolution
+                    meter_param.detect_negative_sign = m.detect_negative_sign
                     meter_param.max_rate_value = m.max_rate_value
                     meter_param.prevalue_from_file_max_age = (
                         m.pre_value_from_file_max_age

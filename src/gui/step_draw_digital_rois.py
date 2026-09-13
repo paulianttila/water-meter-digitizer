@@ -44,6 +44,7 @@ class DrawDigitalRoisStep(DrawRoisBaseStep):
         self.digital_models_dir = digital_models_dir
         self.cnn_file: ui.select | None = None
         self.cnn_type: ui.select | None = None
+        self.detect_negative_sign: ui.checkbox | None = None
 
     def load_from_config(self, digital_readout: CNNParams) -> None:
         if (
@@ -52,6 +53,11 @@ class DrawDigitalRoisStep(DrawRoisBaseStep):
             and digital_readout.model in ["auto", "digital", "digital100"]
         ):
             self.cnn_type.value = digital_readout.model
+        if (
+            hasattr(self, "detect_negative_sign")
+            and self.detect_negative_sign is not None
+        ):
+            self.detect_negative_sign.value = digital_readout.detect_negative_sign
         if (
             hasattr(self, "cnn_file")
             and self.cnn_file is not None
@@ -110,6 +116,11 @@ class DrawDigitalRoisStep(DrawRoisBaseStep):
         digitizerProcessor = (
             DigitizerProcessor()
             .init_digital_model(self.cnn_file.value, "auto")
+            .set_detect_negative_sign(
+                bool(self.detect_negative_sign.value)
+                if self.detect_negative_sign is not None
+                else False
+            )
             .execute_digital_cnn(digital_images)
             .evaluate_cnn_results()
         )
@@ -295,6 +306,16 @@ class DrawDigitalRoisStep(DrawRoisBaseStep):
                             "CNN architecture: auto (detect from output shape), "
                             "digital (discrete classes 0-9), or digital100 "
                             "(continuous 0.0-9.9)"
+                        )
+                    )
+                    self.detect_negative_sign = (
+                        ui.checkbox(
+                            "Detect negative sign (-)",
+                            value=False,
+                        )
+                        .classes("text-slate-300 text-sm")
+                        .tooltip(
+                            "Detect minus sign '-' on digital LCD displays showing negative flow"
                         )
                     )
 

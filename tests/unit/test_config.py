@@ -215,6 +215,7 @@ def test_config_save_preserves_title_case():
     assert "ValueType=" in saved_str
     assert "MinLeakVolume=" in saved_str
     assert "ResolveDebounceCount=" in saved_str
+    assert "DetectNegativeSign=" in saved_str
 
 
 def test_config_save_uses_variable_interpolation():

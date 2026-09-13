@@ -26,6 +26,7 @@ class MeterConfig(BaseModel):
     pre_value_from_file_max_age: int = 0
     use_extended_resolution: bool = False
     unit: str = ""
+    detect_negative_sign: bool = False
 
     @property
     def value_names(self) -> list[str]:

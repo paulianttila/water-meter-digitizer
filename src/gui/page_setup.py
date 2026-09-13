@@ -316,10 +316,16 @@ class SetupPage:
                 if self.draw_digital_rois_step.cnn_type is not None
                 else "auto"
             )
+            detect_neg = (
+                bool(self.draw_digital_rois_step.detect_negative_sign.value)
+                if self.draw_digital_rois_step.detect_negative_sign is not None
+                else False
+            )
             config.digital_readout = CNNParams(
                 enabled=len(digital_cut_images) > 0,
                 model=digital_model_val,
                 model_file=digital_model_file,
+                detect_negative_sign=detect_neg,
                 cut_images=digital_cut_images,
             )
 
@@ -363,6 +369,7 @@ class SetupPage:
                         pre_value_from_file_max_age=meter.prevalue_from_file_max_age,
                         use_extended_resolution=meter.use_extended_resolution,
                         unit=meter.unit,
+                        detect_negative_sign=meter.detect_negative_sign,
                     )
                 )
             config.meter_configs = meters

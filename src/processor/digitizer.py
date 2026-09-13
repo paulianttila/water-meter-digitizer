@@ -13,6 +13,7 @@ from previous_value import (
     load_previous_value_from_file,
     save_previous_value_to_file,
 )
+from processor.sign_detector import detect_minus_sign
 from utils.math import (
     fill_value_with_ending_zeros,
     fill_with_predecessor_digits,
@@ -37,7 +38,7 @@ DIGITAL_MODELS = {MODEL_DIGITAL, MODEL_DIGITAL100}
 
 class ReadoutResult(BaseModel):
     name: str
-    value: float
+    value: float | str
     model: str
     confidence: float = 100.0
 
@@ -84,12 +85,17 @@ class DigitizerProcessor:
         self.digital_model: str = ""
         self.previous_value_file: str | None = None
         self.min_confidence_threshold: float = DEFAULT_MIN_CONFIDENCE_THRESHOLD
+        self.detect_negative_sign: bool = False
         self.cnn_digital_results: list[ReadoutResult] = []
         self.cnn_analog_results: list[ReadoutResult] = []
         self.available_values: dict[str, int | str] = {}
 
     def set_min_confidence_threshold(self, threshold: float) -> "DigitizerProcessor":
         self.min_confidence_threshold = threshold
+        return self
+
+    def set_detect_negative_sign(self, detect: bool) -> "DigitizerProcessor":
+        self.detect_negative_sign = detect
         return self
 
     @log_execution_time
@@ -138,9 +144,14 @@ class DigitizerProcessor:
         digital_images: list[CutImage],
         meter_configs: list[MeterConfig],
         min_confidence_threshold: float | None = None,
+        detect_negative_sign: bool | None = None,
     ) -> MeterResult:
         if min_confidence_threshold is not None:
             self.min_confidence_threshold = min_confidence_threshold
+        if detect_negative_sign is not None:
+            self.detect_negative_sign = detect_negative_sign
+        elif any(getattr(m, "detect_negative_sign", False) for m in meter_configs):
+            self.detect_negative_sign = True
         self.execute_analog_cnn(analog_images)
         self.execute_digital_cnn(digital_images)
         self.evaluate_cnn_results()
@@ -210,6 +221,28 @@ class DigitizerProcessor:
                 else:
                     value = self.digital_counter_reader.readout(item.image)
                     conf = 100.0
+
+                if self.detect_negative_sign:
+                    is_unreadable = (
+                        isinstance(value, float) and math.isnan(value)
+                    ) or conf < self.min_confidence_threshold
+                    if is_unreadable:
+                        sign_thresh = (
+                            min(50.0, self.min_confidence_threshold)
+                            if self.min_confidence_threshold > 0
+                            else 50.0
+                        )
+                        is_minus, minus_conf = detect_minus_sign(
+                            item.image, min_confidence=sign_thresh
+                        )
+                        logger.info(
+                            f"Minus sign detector for ROI '{item.name}': "
+                            f"detected={is_minus}, confidence={minus_conf:.1f}%"
+                        )
+                        if is_minus:
+                            value = "-"
+                            conf = minus_conf
+
                 result.append(
                     ReadoutResult(
                         name=item.name,
@@ -241,10 +274,12 @@ class DigitizerProcessor:
         available_values: dict[str, int | str] = {}
 
         for result in self.cnn_analog_results + self.cnn_digital_results:
-            if result.confidence < self.min_confidence_threshold or math.isnan(
-                result.value
+            if result.value == "-":
+                digit: int | str = "-"
+            elif result.confidence < self.min_confidence_threshold or (
+                isinstance(result.value, float) and math.isnan(result.value)
             ):
-                digit: int | str = INVALID_DIGIT
+                digit = INVALID_DIGIT
             else:
                 digit = self._evaluate_counter(
                     name=result.name,
@@ -259,7 +294,7 @@ class DigitizerProcessor:
         return self
 
     def _evaluate_counters(self, values: list[ReadoutResult]) -> dict[str, str]:
-        predecessor_value: float | None = None
+        predecessor_value: float | str | None = None
         predecessor_model: str | None = None
         evaluated: dict[str, str] = {}
 
@@ -270,16 +305,23 @@ class DigitizerProcessor:
             if model != predecessor_model:
                 predecessor_value = None
 
-            if result.confidence < self.min_confidence_threshold or math.isnan(
-                result.value
+            if result.value == "-":
+                digit: int | str = "-"
+            elif result.confidence < self.min_confidence_threshold or (
+                isinstance(result.value, float) and math.isnan(result.value)
             ):
-                digit: int | str = INVALID_DIGIT
+                digit = INVALID_DIGIT
             else:
+                pred_val = (
+                    predecessor_value
+                    if isinstance(predecessor_value, (int, float))
+                    else None
+                )
                 digit = self._evaluate_counter(
                     name=result.name,
                     number=result.value,
                     predecessor_digit=None,
-                    predecessor_value=predecessor_value,
+                    predecessor_value=pred_val,
                     model=model,
                 )
 
@@ -293,18 +335,21 @@ class DigitizerProcessor:
     def _evaluate_counter(
         self,
         name: str,
-        number: float,
+        number: float | int | str,
         predecessor_digit: int | None,
         model: str,
         predecessor_value: float | None = None,
     ) -> int | str:
+
+        if number == "-":
+            return "-"
 
         model = model.lower()
         digit: int | str
         if model in ANALOG_MODELS:
             digit = self._evaluate_analog_counter(
                 name=name,
-                number=number,
+                number=float(number),
                 predecessor_digit=predecessor_digit,
                 predecessor_value=predecessor_value,
                 model=model,
@@ -344,21 +389,29 @@ class DigitizerProcessor:
     def _evaluate_digital_counter(
         self,
         name: str,
-        number: float | int,
+        number: float | int | str,
         predecessor_digit: int | None = None,
         predecessor_value: float | None = None,
         model: str = "",
     ) -> int | str:
 
+        if number == "-":
+            return "-"
+
         model = model.lower()
 
         if model == MODEL_DIGITAL:
-            if number < 0 or number >= 10:
+            if isinstance(number, (int, float)) and (number < 0 or number >= 10):
                 return INVALID_DIGIT
-            return int(number)
+            return int(number) if isinstance(number, (int, float)) else INVALID_DIGIT
 
         if model == MODEL_DIGITAL100:
-            if math.isnan(number) or number < 0 or number >= 100:
+            if (
+                not isinstance(number, (int, float))
+                or math.isnan(number)
+                or number < 0
+                or number >= 100
+            ):
                 return INVALID_DIGIT
             if predecessor_value is None:
                 return math.floor(number) % 10
@@ -503,7 +556,7 @@ class DigitizerProcessor:
     ) -> str:
 
         last_digit = cnn_results[meter.config.value_names[-1]]
-        if math.isnan(last_digit.value):
+        if isinstance(last_digit.value, str) or math.isnan(last_digit.value):
             return meter.value  # can't extend with invalid data
         decimal_digit = math.floor(last_digit.value * 10) % 10
         return f"{meter.value}{decimal_digit}"
@@ -542,7 +595,12 @@ class DigitizerProcessor:
         digital_results = {}
         if self.digital_counter_reader is not None:
             for item in self.cnn_digital_results:
-                val = INVALID_DIGIT if math.isnan(item.value) else str(item.value)
+                if item.value == "-":
+                    val = "-"
+                elif isinstance(item.value, float) and math.isnan(item.value):
+                    val = INVALID_DIGIT
+                else:
+                    val = str(item.value)
                 digital_results[item.name] = val
                 confidence_scores[item.name] = item.confidence
 

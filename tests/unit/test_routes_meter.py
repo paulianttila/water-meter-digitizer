@@ -282,6 +282,7 @@ def test_get_meter_data_pipeline(tmp_path):
 
         mock_dig = MagicMock()
         mock_dig.set_min_confidence_threshold.return_value = mock_dig
+        mock_dig.set_detect_negative_sign.return_value = mock_dig
         mock_dig.init_analog_model.return_value = mock_dig
         mock_dig.init_digital_model.return_value = mock_dig
         mock_dig.use_previous_value_file.return_value = mock_dig
