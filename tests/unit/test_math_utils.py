@@ -41,10 +41,10 @@ def test_fill_value_with_ending_zeros():
 
 def test_fill_with_predecessor_digits():
     # Test case 1: Value contains INVALID_DIGIT and predecessor has enough digits
-    assert fill_with_predecessor_digits("1N3N", "1234") == "1234"
+    assert fill_with_predecessor_digits("1?3?", "1234") == "1234"
 
     # Test case 2: Value contains INVALID_DIGIT and predecessor has fewer digits
-    assert fill_with_predecessor_digits("1N3N", "12") == "1N3N"
+    assert fill_with_predecessor_digits("1?3?", "12") == "1?3?"
 
     # Test case 3: Value does not contain INVALID_DIGIT
     assert fill_with_predecessor_digits("1234", "5678") == "1234"
@@ -53,4 +53,4 @@ def test_fill_with_predecessor_digits():
     assert fill_with_predecessor_digits("", "1234") == ""
 
     # Test case 5: Predecessor is empty
-    assert fill_with_predecessor_digits("1N3N", "") == "1N3N"
+    assert fill_with_predecessor_digits("1?3?", "") == "1?3?"

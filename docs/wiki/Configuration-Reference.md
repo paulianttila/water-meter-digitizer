@@ -20,7 +20,7 @@ Global application paths and logging configuration.
 | `DigitalModelsDir` | string | `${ConfigDir}/neuralnets/digital` | Directory containing LiteRT/TFLite models for digital digits. |
 | `AnalogModelsDir` | string | `${ConfigDir}/neuralnets/analog` | Directory containing LiteRT/TFLite models for analog needles. |
 | `PreviousValueFile` | string | `${ConfigDir}/prevalue.ini` | File used to persist previous meter values across readouts. |
-| `MinConfidenceThreshold` | float | `50.0` | Minimum confidence percentage (0.0–100.0) required to accept digit/needle reading before invalidating (`N`). |
+| `MinConfidenceThreshold` | float | `50.0` | Minimum confidence percentage (0.0–100.0) required to accept digit/needle reading before invalidating (`?`). |
 
 ---
 
@@ -122,7 +122,7 @@ Defines logical output meters, string formatting, rate validation, and units.
 | `ConsistencyEnabled` | boolean | `False` | Enable rate validation against the previous stored reading. |
 | `AllowNegativeRates` | boolean | `False` | If `False`, decreasing counter readings are rejected. |
 | `MaxRateValue` | float | `0.0` | Maximum allowed change since the last valid reading. |
-| `UsePreviousValue` | boolean | `False` | Replace unreadable digits (`N`) with the last known good value. |
+| `UsePreviousValue` | boolean | `False` | Replace unreadable digits (`?`) with the last known good value. |
 | `PreValueFromFileMaxAge` | integer | `0` | Maximum age of persisted previous value in minutes (`0` = no limit). |
 | `UseExtendedResolution` | boolean | `False` | Append fractional sub-digit decimal from the last analog needle. |
 | `Unit` | string | `""` | Measurement unit displayed in API and GUI (e.g. `m³`, `L`). |

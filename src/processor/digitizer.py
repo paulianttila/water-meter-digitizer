@@ -20,7 +20,7 @@ from utils.math import (
 
 logger = logging.getLogger(__name__)
 
-INVALID_DIGIT = "N"
+INVALID_DIGIT = "?"
 DEFAULT_MIN_CONFIDENCE_THRESHOLD = 60.0
 MIN_CONFIDENCE_THRESHOLD = DEFAULT_MIN_CONFIDENCE_THRESHOLD
 

@@ -131,7 +131,7 @@ class Meter:
                 ui.checkbox("Use previous value").bind_value(
                     self.meter, "use_previous_value"
                 ).tooltip(
-                    "Substitute unreadable digits ('N') with digits from the "
+                    "Substitute unreadable digits ('?') with digits from the "
                     "previous valid reading"
                 )
                 ui.checkbox("Extended resolution").bind_value(

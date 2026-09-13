@@ -1,4 +1,4 @@
-INVALID_DIGIT = "N"
+INVALID_DIGIT = "?"
 
 
 def fill_value_with_leading_zeros(length: int, value: str) -> str:
@@ -50,7 +50,7 @@ def fill_with_predecessor_digits(value: str, predecessor: str) -> str:
         str: The new value with filled digits.
 
     Example:
-        >>> fill_with_predecessor_digits("1N3N", "1234")
+        >>> fill_with_predecessor_digits("1?3?", "1234")
         '1234'
     """
     if len(value) != len(predecessor):
