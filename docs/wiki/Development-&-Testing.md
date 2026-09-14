@@ -82,3 +82,62 @@ The test suite leverages the mock camera for true full-system end-to-end integra
 
 See the full [Mock Camera & Meter Generator Wiki](Mock-Camera-&-Meter-Generator.md) for full REST parameters and details.
 
+---
+
+## 📦 Release Build & Publishing Workflow
+
+Follow these steps to produce and verify a production release:
+
+### 1. Version Bump
+Update the version string in `pyproject.toml`:
+```toml
+[project]
+version = "1.0.0"
+```
+*(The runtime `src/main.py:VERSION` dynamically loads this version).*
+
+### 2. Comprehensive Quality Audit
+Ensure the complete test suite, security audit, and static analysis checks pass:
+```bash
+./run_tests.sh -a
+```
+
+### 3. Local Docker Release Verification (optional)
+Test the multi-stage production Docker build locally:
+```bash
+# 1. Build local container
+docker build -t paulianttila/water-meter-digitizer:latest .
+
+# 2. Run container in daemon mode
+docker run -d --name watermeter-test \
+  -p 3000:3000 \
+  -v $(pwd)/config:/config \
+  -v $(pwd)/data:/data \
+  paulianttila/water-meter-digitizer:latest
+
+# 3. Verify healthcheck endpoint
+curl -f http://localhost:3000/healthcheck
+
+# 4. Cleanup
+docker stop watermeter-test && docker rm watermeter-test
+```
+
+### 4. Git Tag & Automated Multi-Arch Release
+Tagging a release triggers GitHub Actions (`.github/workflows/docker-image.yml`):
+
+```bash
+# Commit changes
+git commit -am "Release v1.0.0"
+git push origin main
+
+# Create and push annotated release tag
+git tag -a v1.0.0 -m "Release v1.0.0"
+git push origin v1.0.0
+```
+
+GitHub Actions will automatically:
+1. Build multi-arch container images (`linux/amd64`, `linux/arm64`) with QEMU and Buildx.
+2. Push tagged release images (`v1.0.0`, `v1.0`, `latest`) to Docker Hub.
+3. Synchronize markdown wiki pages (`docs/wiki/`) to the GitHub Wiki.
+
+
