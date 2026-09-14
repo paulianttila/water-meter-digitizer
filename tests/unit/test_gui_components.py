@@ -410,7 +410,7 @@ def test_consumption_card(mock_callbacks):
         card.render(container)
     mock_callbacks.get_storage.assert_called()
 
-    # Test with records in differential mode
+    # Test with records in differential mode (Liters and m3)
     mock_storage = mock_callbacks.get_storage()
     mock_storage.get_consumption.return_value = [
         ConsumptionRecord(
@@ -442,15 +442,30 @@ def test_consumption_card(mock_callbacks):
     ]
 
     card_diff = ConsumptionCard(mock_callbacks)
-    card_diff.cumulative = False
+    card_diff.view_mode = "differential"
+    card_diff.chart_style = "line"
+    card_diff.unit_mode = "m3"
     with ui.column() as c_diff:
         card_diff.render(c_diff)
 
     # Test with records in cumulative mode (meter index)
     card_cum = ConsumptionCard(mock_callbacks)
-    card_cum.cumulative = True
+    card_cum.view_mode = "cumulative"
     with ui.column() as c_cum:
         card_cum.render(c_cum)
+
+    # Test with records in combo mode with Liters (L) unit
+    card_combo = ConsumptionCard(mock_callbacks)
+    card_combo.view_mode = "combo"
+    card_combo.unit_mode = "L"
+    with ui.column() as c_combo:
+        card_combo.render(c_combo)
+
+    # Test when storage backend is disabled (None)
+    mock_callbacks.get_storage.return_value = None
+    card_disabled = ConsumptionCard(mock_callbacks)
+    with ui.column() as c_dis:
+        card_disabled.render(c_dis)
 
 
 def test_history_table_card(mock_callbacks):

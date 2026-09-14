@@ -57,11 +57,20 @@ The **Meter** page is divided into four functional sub-views:
 - **Side-by-Side Visual Diff**: Compare historical captures directly against the latest live frame with structural similarity metrics (SSIM).
 - **Difference Heatmap**: Displays an amplified visual diff highlighting what moved (e.g., fast spinning dial needles or transitioning drum wheels).
 
-### Consumption
-- Aggregates recorded consumption deltas into **Hourly**, **Daily**, **Weekly**, or **Monthly** time buckets.
-- Toggle between **Differential** (period usage deltas) and **Cumulative** (total meter reading index over time).
-- Custom time window filters (7 Days, 14 Days, 30 Days, 90 Days, All Time).
-- Chart style toggle between Bar and Line views with gradient area fill.
+### Consumption Analytics & Charts
+- **Interactive Multi-Axis Charting**:
+  - **Combo (Dual-Axis) Mode**: Displays periodic volume usage bars on the primary (left) axis along with cumulative meter index reading curve on the secondary (right) axis.
+  - **Differential Mode**: Focuses on periodic consumption spikes with bar or smooth spline line views.
+  - **Cumulative Mode**: Focuses on total meter index progression over time.
+- **Smart Unit Toggle**: Switch instantly between **Liters (`L`)** (scaled $\times 1000$ for human-relatable domestic volumes) and **Cubic Meters (`m³`)**.
+- **Benchmark Lines & Peak Markers**: ECharts `markLine` highlights average period consumption, while `markPoint` pins peak usage events.
+- **Summary KPI Bar**:
+  - **Total Consumption**: Total volume used in selected range with dynamic **period-over-period % trend badges** (e.g., `-12.5% vs prior`).
+  - **Average Rate**: Average consumption per hour, day, week, or month.
+  - **Peak in Period**: Highest recorded consumption bucket with timestamp callout.
+  - **Estimated Monthly**: 30-day extrapolated baseline estimate.
+- **Time Aggregations & Ranges**: Filter by **Hourly**, **Daily**, **Weekly**, or **Monthly** buckets across **7 Days**, **14 Days**, **30 Days**, **90 Days**, or **All Time**.
+- **Data Export & Actions**: 1-click **CSV Export** button to download full aggregated consumption data, plus demo history seeding and history reset.
 
 ### Readings Log
 - Tabular, searchable, and paginated log of all recorded readings.
