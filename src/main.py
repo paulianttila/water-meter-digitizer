@@ -218,9 +218,15 @@ def load_config_file() -> str:
 
 
 def save_config_file(data: str) -> None:
+    from config_history import ConfigHistoryManager
+
     with _config_lock:
-        new_config = Config().load_from_string(data)
-        new_config.save_to_file(config_file, make_backup=True)
+        # Validate syntax before writing
+        Config().load_from_string(data)
+        if os.path.exists(config_file):
+            ConfigHistoryManager.create_backup(config_file)
+        with open(config_file, "w") as f:
+            f.write(data)
 
 
 def list_config_backups() -> list[dict[str, Any]]:
@@ -377,7 +383,10 @@ def init_gui(app_instance: FastAPI) -> None:
 @log_execution_time
 def init_config() -> None:
     """Load configuration file and reconfigure services and logging levels."""
+    from cnn.pool import clear_interpreter_pools
+
     with _config_lock:
+        clear_interpreter_pools()
         global config
         new_config = Config().load_from_file(ini_file=config_file)
         config = new_config

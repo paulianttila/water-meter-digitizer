@@ -313,3 +313,68 @@ def test_get_meter_data_no_url():
 
     with pytest.raises(ValueError, match="No camera or image URL configured"):
         get_meter_data(url="", app_instance=app)
+
+
+def test_get_meter_data_conditional_model_init():
+    from api.routes_meter import get_meter_data
+    from data_classes import ImagePosition
+
+    cfg = Config()
+    cfg.image_source.url = "http://mock/image.jpg"
+    cfg.analog_readout.enabled = False
+    cfg.analog_readout.cut_images = []
+    cfg.digital_readout.enabled = True
+    cfg.digital_readout.cut_images = [ImagePosition(name="digit1", x=0, y=0, w=10, h=10)]
+    cfg.digital_readout.model_file = "test.tflite"
+    cfg.digital_readout.model = "auto"
+    app.state.config = cfg
+
+    dummy_frame = Image.new("RGB", (100, 100), color="white")
+    dummy_result = MeterResult(
+        meters=[MeterValue(name="total", value="123")],
+        digital_results={},
+        analog_results={},
+        error="",
+    )
+
+    with (
+        patch("api.routes_meter.ImageProcessor") as mock_proc_cls,
+        patch("api.routes_meter.DigitizerProcessor") as mock_dig_cls,
+    ):
+        mock_proc = MagicMock()
+        mock_proc.enable_image_saving.return_value = mock_proc
+        mock_proc.download_image.return_value = mock_proc
+        mock_proc.save_image.return_value = mock_proc
+        mock_proc.rotate_image.return_value = mock_proc
+        mock_proc.align_image.return_value = mock_proc
+        mock_proc.if_.return_value = mock_proc
+        mock_proc.endif_.return_value = mock_proc
+        mock_proc.crop_image.return_value = mock_proc
+        mock_proc.resize_image.return_value = mock_proc
+        mock_proc.to_gray_scale.return_value = mock_proc
+        mock_proc.adjust_image.return_value = mock_proc
+        mock_proc.autocontrast_image.return_value = mock_proc
+        mock_proc.suppress_glare.return_value = mock_proc
+        mock_proc.unsharp_mask.return_value = mock_proc
+        mock_proc.start_image_cutting.return_value = mock_proc
+        mock_proc.cut_images.return_value = mock_proc
+        mock_proc.stop_image_cutting.return_value = mock_proc
+        mock_proc.save_cut_images.return_value = mock_proc
+        mock_proc.get_cut_images.return_value = []
+        mock_proc.pictures = {"final": dummy_frame}
+        mock_proc.get_pictures.return_value = {"final": dummy_frame}
+        mock_proc_cls.return_value = mock_proc
+
+        mock_dig = MagicMock()
+        mock_dig.set_min_confidence_threshold.return_value = mock_dig
+        mock_dig.set_detect_negative_sign.return_value = mock_dig
+        mock_dig.init_analog_model.return_value = mock_dig
+        mock_dig.init_digital_model.return_value = mock_dig
+        mock_dig.use_previous_value_file.return_value = mock_dig
+        mock_dig.process.return_value = dummy_result
+        mock_dig_cls.return_value = mock_dig
+
+        res = get_meter_data(url="", app_instance=app)
+        assert res == dummy_result
+        mock_dig.init_analog_model.assert_not_called()
+        mock_dig.init_digital_model.assert_called_once_with("test.tflite", "auto")

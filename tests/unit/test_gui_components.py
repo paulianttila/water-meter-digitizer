@@ -499,3 +499,32 @@ def test_services_page(mock_callbacks):
     mock_callbacks.get_leak_status.assert_called()
     mock_callbacks.get_poller_status.assert_called()
     mock_callbacks.get_mqtt_status.assert_called()
+
+
+def test_services_status_card_with_error(mock_callbacks):
+    from nicegui import ui
+
+    card = ServicesStatusCard(mock_callbacks)
+    card.render()
+
+    # Update with poller error state
+    poller_err_data = {
+        "enabled": True,
+        "running": True,
+        "interval_seconds": 60,
+        "total_runs": 5,
+        "successful_runs": 4,
+        "failed_runs": 1,
+        "last_error": "Could not open model file: Model allocation is null",
+        "next_run": "2026-09-14T17:30:00Z",
+    }
+    mqtt_data = {
+        "enabled": True,
+        "connected": True,
+        "broker": "localhost",
+        "port": 1883,
+        "topic_prefix": "watermeter",
+        "ha_discovery": True,
+    }
+    card.update_data(poller_err_data, mqtt_data)
+    assert card._poller_data["last_error"] == "Could not open model file: Model allocation is null"

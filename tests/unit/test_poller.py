@@ -82,6 +82,54 @@ async def test_background_poller_error_handling():
     mock_mqtt.publish_error.assert_called_once_with("Camera connection failed")
 
 
+@pytest.mark.anyio
+async def test_background_poller_manual_trigger_when_disabled():
+    poller_cfg = Poller(
+        enabled=False,
+        interval_seconds=60,
+        run_on_startup=False,
+    )
+
+    mock_readout = MagicMock(
+        return_value=MeterResult(
+            meters=[MeterValue(name="main", value="50.0")],
+            digital_results={},
+            analog_results={},
+            error="",
+        )
+    )
+
+    poller = BackgroundPoller(
+        config=poller_cfg,
+        readout_func=mock_readout,
+    )
+    assert poller._running is False
+
+    # Trigger manual poll even though background scheduler is disabled
+    poller.trigger_now()
+    await asyncio.sleep(0.1)
+
+    assert mock_readout.call_count == 1
+    assert poller.total_runs == 1
+    assert poller.successful_runs == 1
+
+
+def test_background_poller_start_without_loop():
+    poller_cfg = Poller(
+        enabled=True,
+        interval_seconds=60,
+        run_on_startup=False,
+    )
+
+    poller = BackgroundPoller(
+        config=poller_cfg,
+        readout_func=lambda: None,
+    )
+    # Should not raise RuntimeError even when no loop is running
+    poller.start()
+    assert poller._task is None
+
+
 def test_poller_and_mqtt_api_endpoints():
     from fastapi.testclient import TestClient
 

@@ -10,6 +10,7 @@ from gui.theme import (
     BADGE_ERROR,
     BADGE_INFO,
     BADGE_SUCCESS,
+    BADGE_WARNING,
     CARD_DEFAULT,
 )
 
@@ -85,6 +86,7 @@ class ServicesStatusCard:
         p_total = self._poller_data.get("total_runs", 0)
         p_success = self._poller_data.get("successful_runs", 0)
         p_failed = self._poller_data.get("failed_runs", 0)
+        p_last_error = self._poller_data.get("last_error", "")
         next_run = self._poller_data.get("next_run")
 
         m_enabled = self._mqtt_data.get("enabled", False)
@@ -123,16 +125,28 @@ class ServicesStatusCard:
                             ui.label("Background Poller").classes(
                                 "text-xs font-semibold text-gray-300 uppercase tracking-wider"
                             )
-                        with ui.element("span").classes(
-                            BADGE_SUCCESS
-                            if p_running
-                            else (BADGE_INFO if not p_enabled else BADGE_ERROR)
-                        ):
-                            ui.label(
-                                "ACTIVE"
-                                if p_running
-                                else ("DISABLED" if not p_enabled else "STOPPED")
-                            )
+
+                        if p_running:
+                            if p_last_error:
+                                p_badge_cls = (
+                                    BADGE_ERROR if p_success == 0 else BADGE_WARNING
+                                )
+                                p_badge_label = (
+                                    "ERROR" if p_success == 0 else "DEGRADED"
+                                )
+                            else:
+                                p_badge_cls = BADGE_SUCCESS
+                                p_badge_label = "ACTIVE"
+                        else:
+                            if not p_enabled:
+                                p_badge_cls = BADGE_INFO
+                                p_badge_label = "DISABLED"
+                            else:
+                                p_badge_cls = BADGE_WARNING
+                                p_badge_label = "STOPPED"
+
+                        with ui.element("span").classes(p_badge_cls):
+                            ui.label(p_badge_label)
 
                     with ui.row().classes("items-baseline gap-2 my-1"):
                         ui.label(f"{p_interval}s").classes(
@@ -152,9 +166,33 @@ class ServicesStatusCard:
                             "font-semibold"
                         )
 
-                    ui.label(
-                        f"Runs: {p_total} | Success: {p_success} | Errors: {p_failed}"
-                    ).classes("text-[11px] text-gray-400")
+                    # Last error alert banner
+                    if p_last_error:
+                        with ui.element("div").classes(
+                            "w-full p-2.5 rounded-lg bg-rose-950/50 border border-rose-500/40 "
+                            "text-rose-200 text-xs flex items-start gap-2 mt-1"
+                        ):
+                            ui.icon("error", color="rose").classes(
+                                "text-sm mt-0.5 shrink-0"
+                            )
+                            with ui.column().classes("gap-0.5 overflow-hidden"):
+                                ui.label("Last Execution Error:").classes(
+                                    "font-semibold text-rose-300 text-[11px]"
+                                )
+                                ui.label(p_last_error).classes(
+                                    "font-mono text-[10px] break-all leading-tight text-rose-200"
+                                )
+
+                    with ui.row().classes(
+                        "items-center gap-1 text-[11px] text-gray-400 flex-wrap"
+                    ):
+                        ui.label(f"Runs: {p_total} | Success: {p_success} |")
+                        err_color = (
+                            "text-rose-400 font-semibold"
+                            if p_failed > 0
+                            else "text-gray-400"
+                        )
+                        ui.label(f"Errors: {p_failed}").classes(err_color)
 
                 # 2. MQTT & Home Assistant Card
                 with ui.element("div").classes(

@@ -367,23 +367,33 @@ def get_meter_data(
     detect_neg = config.digital_readout.detect_negative_sign or any(
         m.detect_negative_sign for m in config.meter_configs
     )
-    meter_result = (
+    proc = (
         DigitizerProcessor()
         .set_min_confidence_threshold(config.min_confidence_threshold)
         .set_detect_negative_sign(detect_neg)
-        .init_analog_model(
+    )
+    if (
+        config.analog_readout.enabled
+        and config.analog_readout.cut_images
+        and config.analog_readout.model_file
+    ):
+        proc.init_analog_model(
             config.analog_readout.model_file, config.analog_readout.model
         )
-        .init_digital_model(
+    if (
+        config.digital_readout.enabled
+        and config.digital_readout.cut_images
+        and config.digital_readout.model_file
+    ):
+        proc.init_digital_model(
             config.digital_readout.model_file, config.digital_readout.model
         )
-        .use_previous_value_file(config.previous_value_file)
-        .process(
-            analog_images=analog_images,
-            digital_images=digital_images,
-            meter_configs=config.meter_configs,
-            detect_negative_sign=detect_neg,
-        )
+    proc.use_previous_value_file(config.previous_value_file)
+    meter_result = proc.process(
+        analog_images=analog_images,
+        digital_images=digital_images,
+        meter_configs=config.meter_configs,
+        detect_negative_sign=detect_neg,
     )
 
     storage = getattr(app.state, "storage", None) if app else None

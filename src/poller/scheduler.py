@@ -47,9 +47,15 @@ class BackgroundPoller:
             logger.debug("Background poller is already running")
             return
 
+        try:
+            loop = asyncio.get_running_loop()
+        except RuntimeError:
+            logger.debug("No running event loop; poller start deferred until loop is active")
+            return
+
         self._running = True
         self._trigger_event.clear()
-        self._task = asyncio.create_task(self._run_loop())
+        self._task = loop.create_task(self._run_loop())
         logger.info(
             "Background poller started with interval %ds",
             self.config.interval_seconds,
@@ -66,7 +72,16 @@ class BackgroundPoller:
     def trigger_now(self) -> None:
         """Trigger an immediate readout cycle asynchronously."""
         logger.info("Manual poller trigger requested")
-        self._trigger_event.set()
+        if self._running and self._task and not self._task.done():
+            self._trigger_event.set()
+        else:
+            try:
+                loop = asyncio.get_running_loop()
+                loop.create_task(self._execute_poll())
+            except RuntimeError:
+                logger.warning(
+                    "Cannot execute manual poll: no active asyncio event loop"
+                )
 
     async def _run_loop(self) -> None:
         """Main polling scheduler loop."""
