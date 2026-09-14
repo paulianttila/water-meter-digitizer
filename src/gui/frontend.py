@@ -343,10 +343,10 @@ def init(fastapi_app: FastAPI, callbacks: Callbacks) -> None:
                 splitter.before,
                 ui.tabs().props("vertical").classes("w-full") as tabs,
             ):
-                main = ui.tab("Meter", icon="sym_s_speed")
+                main = ui.tab("Meter", icon="speed")
                 services = ui.tab("Services", icon="hub")
                 setup = ui.tab("Setup", icon="settings")
-                config = ui.tab("Config", icon="sym_s_manufacturing")
+                config = ui.tab("Config", icon="build")
                 baselines = ui.tab("Baselines", icon="tune")
                 api_console = ui.tab("API Console", icon="terminal")
                 help_tab = ui.tab("Help", icon="help_outline")

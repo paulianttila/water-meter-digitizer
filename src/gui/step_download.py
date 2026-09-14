@@ -73,11 +73,9 @@ class DownloadImageStep(BaseStep):
                     .classes("flex-grow")
                     .tooltip("Camera snapshot URL (e.g. http://... or file://...)")
                 )
-                ui.button(
-                    icon="sym_s_download", on_click=self.download
-                ).bind_enabled_from(self.url, "value").tooltip(
-                    "Download image from URL"
-                )
+                ui.button(icon="download", on_click=self.download).bind_enabled_from(
+                    self.url, "value"
+                ).tooltip("Download image from URL")
                 self.timeout = (
                     ui.number("Timeout (s)", value=10, min=1, max=60, step=1)
                     .classes("w-28")

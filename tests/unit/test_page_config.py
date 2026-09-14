@@ -1,8 +1,13 @@
-"""Unit tests for ConfigPage, format_diff_html, and configuration management."""
+"""Unit tests for ConfigPage, format_diff_html, section parsing, and configuration management."""
 
 from unittest.mock import MagicMock, patch
 
-from gui.page_config import ConfigPage, format_diff_html
+from gui.page_config import (
+    ConfigPage,
+    format_diff_html,
+    get_section_icon,
+    parse_ini_sections,
+)
 
 
 def test_format_diff_html_scenarios():
@@ -26,9 +31,48 @@ def test_format_diff_html_scenarios():
     assert "--- old.ini" in html_diff
 
 
+def test_parse_ini_sections_and_icons():
+    ini_content = """
+[TakeImage]
+Url = http://192.168.1.10/capture
+Rotate = 90
+
+[Meters]
+Names = total, sub1
+
+[MQTT]
+Host = 192.168.1.5
+Port = 1883
+"""
+    sections = parse_ini_sections(ini_content)
+    assert len(sections) == 3
+    assert sections[0]["name"] == "TakeImage"
+    assert sections[0]["items"]["rotate"] == "90"
+    assert sections[1]["name"] == "Meters"
+    assert sections[2]["name"] == "MQTT"
+
+    # Test icons
+    assert get_section_icon("TakeImage") == "camera_alt"
+    assert get_section_icon("Alignment") == "crop_free"
+    assert get_section_icon("AnalogReadout") == "speed"
+    assert get_section_icon("DigitalReadout") == "pin"
+    assert get_section_icon("Meters") == "water_drop"
+    assert get_section_icon("MQTT") == "hub"
+    assert get_section_icon("Poller") == "schedule"
+    assert get_section_icon("ZeroFlowTracker") == "water_damage"
+    assert get_section_icon("Logging") == "description"
+    assert get_section_icon("HistoricalData") == "show_chart"
+    assert get_section_icon("UnknownSection") == "settings"
+
+    # Test broken syntax handling
+    broken_sections = parse_ini_sections("[BrokenSection\nKey = Value")
+    assert broken_sections == []
+
+
 def test_page_config_init_and_show():
     callbacks = MagicMock()
-    callbacks.load_config_file.return_value = "[DEFAULT]\nLogLevel = INFO\n"
+    callbacks.load_config_file.return_value = "[TakeImage]\nUrl = http://mock/capture\n"
+    callbacks.get_config_version.return_value = 3
     callbacks.list_config_backups.return_value = [
         {
             "name": "config.ini_20260908_120000.bak",
@@ -46,7 +90,8 @@ def test_page_config_init_and_show():
     ]
 
     page = ConfigPage(callbacks)
-    assert page.txt == "[DEFAULT]\nLogLevel = INFO\n"
+    assert page.txt == "[TakeImage]\nUrl = http://mock/capture\n"
+    assert page.view_mode == "editor"
 
     with patch("gui.page_config.ui") as mock_ui:
         mock_ui.element.return_value.__enter__ = MagicMock()
@@ -65,7 +110,8 @@ def test_page_config_init_and_show():
 
 def test_page_config_editor_actions():
     callbacks = MagicMock()
-    callbacks.load_config_file.return_value = "[DEFAULT]\nLogLevel = INFO\n"
+    callbacks.load_config_file.return_value = "[TakeImage]\nUrl = http://mock/capture\n"
+    callbacks.get_config_version.return_value = 1
     callbacks.list_config_backups.return_value = []
     callbacks.undo_last_config.return_value = "config_bak_1"
 

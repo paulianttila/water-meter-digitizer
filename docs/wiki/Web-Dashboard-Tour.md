@@ -13,9 +13,9 @@ The top navigation bar provides instant access to all functional areas:
 | **Meter** | `speed` | Live dashboard, consumption charts, Time Machine frame scrubber, and intermediate ROI inspection. |
 | **Services** | `dns` | Telemetry overview, Zero-Flow Leak Monitor status, background Poller, and MQTT service controls. |
 | **Setup** | `settings` | 9-step interactive visual wizard for camera calibration, marker alignment, and ROI definition. |
-| **Config** | `manufacturing` | Raw INI configuration editor with syntax validation, 1-click Undo, snapshots, and color diffs. |
-| **Baselines** | `history` | Previous meter baseline editor with fallback value management. |
-| **API Console** | `code` | Interactive REST endpoint debugger and dedicated procedural Mock Camera Studio. |
+| **Config** | `build` | Raw INI configuration editor with syntax validation, 1-click Undo, snapshots, and color diffs. |
+| **Baselines** | `tune` | Previous meter baseline editor with fallback value management. |
+| **API Console** | `terminal` | Interactive REST endpoint debugger and dedicated procedural Mock Camera Studio. |
 | **Help / About** | `help` | Interactive keyboard/mouse guide and single-source-of-truth versioning telemetry. |
 
 ---
@@ -110,3 +110,39 @@ The **Services** tab provides unified system health telemetry:
 - **System Health Card**: CPU load, memory RSS footprint, system uptime, and cache hit ratios.
 - **Zero-Flow Leak Card**: Current continuous flow timer, flow state (`OK`, `SUSPECTED_LEAK`, `LEAK_ALERT`), and manual reset trigger.
 - **Service Status Card**: Background poller scheduler interval, run counter, next execution countdown, and MQTT connection status with last published topic lists.
+
+
+---
+
+## 🛠️ 4. Configuration Editor View
+
+The **Config** tab provides full runtime parameter control with safety checkpoints and hot-reloading:
+- **Dual View Modes**:
+  - **Raw INI Code Mode**: Direct monospaced syntax editor with instant syntax verification.
+  - **Visual Section Explorer**: Structured card grid organizing parameters by system module (`[TakeImage]`, `[Alignment]`, `[Meters]`, `[MQTT]`, `[Poller]`, `[ZeroFlowTracker]`, etc.) with quick copy badges.
+- **Zero-Downtime Hot-Reload**: Apply modified configuration directly into live background threads and web workers without restarting the Docker container or FastAPI daemon.
+- **Snapshot & Visual Diff Suite**:
+  - **Automatic Safety Backups**: Automatically creates timestamped checkpoints before every save.
+  - **Manual Snapshots**: Take tagged snapshots (e.g. `Pre-Calibration`, `Night-Tuning`).
+  - **Line-by-Line Diffs**: Color-coded unified diff view (emerald for additions, rose for deletions, cyan for section blocks).
+  - **1-Click Restore**: Instant revert to any historical snapshot.
+- **Editor Status Bar & Quick Actions**: Real-time line count, file size, dirty-state indicator (`● Unsaved Changes` vs `✓ Synced with Disk`), clipboard copy, and file download.
+
+
+---
+
+## ⚖️ 5. Baseline & Previous Values Manager View
+
+The **Baselines** tab manages fallback references and sanity baselines in `prevalue.ini`:
+- **Meter Baseline Hero Cards**:
+  - Displays configured meters, active fallback status (`🟢 Fallback Active` vs `⚪ Standby`), and timestamp of last calibration.
+  - Compares saved baseline against the latest live digitizer reading with real-time drift telemetry (e.g. `+0.2500 m³ accumulated`).
+  - 1-click **"Sync Live"** action directly on each meter card.
+- **Interactive Calibration & Stepper Drawer**:
+  - Rapid adjustment steppers (`+0.001`, `+0.01`, `+0.1`, `+1.0`, `+10.0`, `-1.0`, `-0.1`).
+  - One-click presets: **"Use Live Value"**, **"Reset to 0.000"**.
+  - Negative value validation and drift error prevention.
+- **Searchable Baselines Table & Raw Inspector**:
+  - Instant search across meter names, baseline readings, and timestamps.
+  - 1-click **Export CSV** download.
+  - **Inspect Raw prevalue.ini** dialog with syntax formatting and clipboard copy.

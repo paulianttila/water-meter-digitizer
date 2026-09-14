@@ -1,4 +1,6 @@
+import configparser
 import html
+from typing import Any
 
 from nicegui import ui
 
@@ -58,16 +60,84 @@ def format_diff_html(diff_lines: list[str]) -> str:
     )
 
 
+def parse_ini_sections(text: str) -> list[dict[str, Any]]:
+    """Parse raw INI text into structured section dictionaries for visual inspection."""
+    parser = configparser.ConfigParser(interpolation=None)
+    try:
+        parser.read_string(text)
+    except Exception:
+        return []
+
+    sections = []
+    for section_name in parser.sections():
+        items = dict(parser.items(section_name))
+        sections.append(
+            {
+                "name": section_name,
+                "items": items,
+                "count": len(items),
+            }
+        )
+    return sections
+
+
+def get_section_icon(name: str) -> str:
+    """Return appropriate icon for config sections."""
+    name_lower = name.lower()
+    if "image" in name_lower or "camera" in name_lower:
+        return "camera_alt"
+    if "align" in name_lower or "marker" in name_lower:
+        return "crop_free"
+    if "analog" in name_lower or "dial" in name_lower:
+        return "speed"
+    if "digit" in name_lower:
+        return "pin"
+    if "meter" in name_lower:
+        return "water_drop"
+    if "mqtt" in name_lower:
+        return "hub"
+    if "poll" in name_lower or "schedule" in name_lower:
+        return "schedule"
+    if "leak" in name_lower or "zero" in name_lower:
+        return "water_damage"
+    if "log" in name_lower:
+        return "description"
+    if "influx" in name_lower or "history" in name_lower or "historic" in name_lower:
+        return "show_chart"
+    return "settings"
+
+
 class ConfigPage:
     def __init__(self, callbacks: Callbacks) -> None:
         self.callbacks = callbacks
         self.txt = self.callbacks.load_config_file()
         self.new_config_saved = False
+        self.view_mode = "editor"  # "editor" or "inspector"
 
-    def show(self):
+    def show(self) -> None:
         def check_buttons() -> None:
-            button_save.enabled = editor.value != self.txt
+            is_dirty = editor.value != self.txt
+            button_save.enabled = is_dirty
             button_use_config.enabled = True
+
+            # Update status bar
+            lines_count = len(editor.value.splitlines())
+            char_count = len(editor.value)
+            size_kb = char_count / 1024.0
+            status_lines.text = f"Lines: {lines_count}"
+            status_size.text = f"{size_kb:.1f} KB ({char_count} chars)"
+
+            if is_dirty:
+                status_dirty.text = "● Unsaved Changes"
+                status_dirty.classes(
+                    replace="text-amber-400 bg-amber-500/10 border-amber-500/30 font-semibold"
+                )
+            else:
+                status_dirty.text = "✓ Synced with Disk"
+                status_dirty.classes(
+                    replace="text-emerald-400 bg-emerald-500/10 border-emerald-500/30 font-medium"
+                )
+
             try:
                 backups = self.callbacks.list_config_backups()
                 button_undo.enabled = len(backups) > 0
@@ -90,6 +160,7 @@ class ConfigPage:
             editor.value = self.txt
             self.new_config_saved = False
             check_buttons()
+            refresh_visual_inspector()
             ui.notify("Configuration reloaded from disk into editor", type="info")
 
         def show_config() -> None:
@@ -137,10 +208,29 @@ class ConfigPage:
             try:
                 config = Config()
                 config.load_from_string(editor.value)
+                sections = parse_ini_sections(editor.value)
+                diag_banner.visible = True
+                diag_banner.classes(
+                    replace="w-full p-2.5 rounded-xl bg-emerald-950/40 border border-emerald-500/30 flex items-center justify-between text-xs text-emerald-300"
+                )
+                diag_icon.name = "check_circle"
+                diag_icon.props("color=emerald")
+                meter_count = len(getattr(config, "meter_configs", []))
+                diag_text.text = (
+                    f"✓ Configuration Valid: {len(sections)} sections parsed, "
+                    f"{meter_count} meter{'s' if meter_count != 1 else ''} configured."
+                )
                 ui.notify("Syntax is valid", type="positive")
                 check_buttons()
                 return True
             except Exception as e:
+                diag_banner.visible = True
+                diag_banner.classes(
+                    replace="w-full p-2.5 rounded-xl bg-rose-950/40 border border-rose-500/30 flex items-center justify-between text-xs text-rose-300"
+                )
+                diag_icon.name = "error"
+                diag_icon.props("color=rose")
+                diag_text.text = f"Syntax Error: {e}"
                 ui.notify(f"Syntax error: {e}", type="negative")
                 button_save.disable()
                 return False
@@ -358,7 +448,7 @@ class ConfigPage:
                                                     + badge_c
                                                 )
                                             ui.label(f"{b_name} • {size_kb}").classes(
-                                                "text-xs font-mono " "text-slate-400"
+                                                "text-xs font-mono text-slate-400"
                                             )
 
                                     with ui.row().classes("items-center gap-1.5"):
@@ -509,39 +599,152 @@ class ConfigPage:
 
             history_dialog.open()
 
-        with ui.column().classes(
-            "w-full h-full flex flex-col gap-3 p-4 overflow-hidden"
-        ):
-            with ui.row().classes("w-full justify-between items-center shrink-0 mb-1"):
-                ui.label("Configuration Editor").classes("text-h4")
-                ui.label("config.ini").classes(
-                    "font-mono text-xs text-cyan-400 bg-cyan-500/10 "
-                    "border border-cyan-500/30 px-3 py-1 rounded-full"
-                )
+        def copy_to_clipboard() -> None:
+            # Escape text for JS clipboard call
+            js_code = (
+                f"navigator.clipboard.writeText({editor.value!r}).then(() => {{"
+                f"  console.log('Config copied');"
+                f"}});"
+            )
+            ui.run_javascript(js_code)
+            ui.notify("Configuration copied to clipboard", type="positive")
 
+        def download_config() -> None:
+            ui.download(editor.value.encode("utf-8"), filename="config.ini")
+            ui.notify("Downloading config.ini", type="info")
+
+        def switch_view(mode: str) -> None:
+            self.view_mode = mode
+            if mode == "editor":
+                editor_container.visible = True
+                inspector_container.visible = False
+                btn_mode_editor.props("unelevated color=cyan-8").classes(
+                    replace="text-white"
+                )
+                btn_mode_inspector.props("flat color=grey-4").classes(
+                    replace="text-slate-400"
+                )
+            else:
+                editor_container.visible = False
+                inspector_container.visible = True
+                btn_mode_editor.props("flat color=grey-4").classes(
+                    replace="text-slate-400"
+                )
+                btn_mode_inspector.props("unelevated color=cyan-8").classes(
+                    replace="text-white"
+                )
+                refresh_visual_inspector()
+
+        def refresh_visual_inspector() -> None:
+            inspector_cards_container.clear()
+            sections = parse_ini_sections(editor.value)
+            if not sections:
+                with (
+                    inspector_cards_container,
+                    ui.column().classes("w-full py-12 items-center justify-center"),
+                ):
+                    ui.icon("warning", size="xl", color="amber")
+                    ui.label("Unable to parse sections from current text").classes(
+                        "text-slate-400 text-sm mt-2"
+                    )
+                return
+
+            with inspector_cards_container:
+                for sec in sections:
+                    s_name = sec["name"]
+                    s_items = sec["items"]
+                    s_icon = get_section_icon(s_name)
+
+                    with ui.card().classes(
+                        "w-full p-4 bg-slate-900/90 border border-white/10 rounded-xl flex flex-col gap-2"
+                    ):
+                        with ui.row().classes(
+                            "w-full justify-between items-center pb-2 border-b border-white/5"
+                        ):
+                            with ui.row().classes("items-center gap-2"):
+                                with ui.element("div").classes(
+                                    "w-7 h-7 rounded-lg bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400"
+                                ):
+                                    ui.icon(s_icon, size="xs")
+                                ui.label(f"[{s_name}]").classes(
+                                    "font-mono font-bold text-sm text-cyan-300"
+                                )
+                            ui.label(f"{len(s_items)} parameters").classes(
+                                "text-[11px] px-2 py-0.5 rounded-full bg-white/5 text-slate-400 border border-white/10"
+                            )
+
+                        with ui.column().classes("w-full gap-1.5 pt-1"):
+                            for k, v in s_items.items():
+                                with ui.row().classes(
+                                    "w-full justify-between items-center text-xs py-1 px-2 rounded bg-slate-950/60 border border-white/5 font-mono"
+                                ):
+                                    ui.label(k).classes("text-slate-300 font-semibold")
+                                    ui.label(str(v)).classes(
+                                        "text-cyan-400 truncate max-w-md select-all"
+                                    )
+
+        with ui.column().classes(
+            "w-full h-full flex flex-col gap-2.5 p-4 overflow-hidden"
+        ):
+            # Header Row
+            with ui.row().classes("w-full justify-between items-center shrink-0"):
+                with ui.row().classes("items-center gap-3"):
+                    with ui.element("div").classes(
+                        "w-10 h-10 rounded-xl bg-cyan-500/10 border border-cyan-500/30 "
+                        "flex items-center justify-center shadow-lg shadow-cyan-500/10"
+                    ):
+                        ui.icon("build", color="cyan").classes("text-2xl")
+                    with ui.column().classes("gap-0"):
+                        ui.label("Configuration Editor").classes("text-h4")
+                        ui.label(
+                            "Manage system parameters, calibration constants, and service hot-reloading"
+                        ).classes("text-xs text-slate-400")
+
+                with ui.row().classes("items-center gap-2"):
+                    # Mode switcher
+                    with ui.row().classes(
+                        "p-1 rounded-xl bg-slate-900 border border-white/10 items-center gap-1"
+                    ):
+                        btn_mode_editor = ui.button(
+                            "Raw INI",
+                            icon="code",
+                            on_click=lambda: switch_view("editor"),
+                        ).props("unelevated dense size=sm color=cyan-8")
+                        btn_mode_inspector = ui.button(
+                            "Visual Explorer",
+                            icon="dashboard_customize",
+                            on_click=lambda: switch_view("inspector"),
+                        ).props("flat dense size=sm color=grey-4")
+
+                    ui.label("config.ini").classes(
+                        "font-mono text-xs text-cyan-400 bg-cyan-500/10 "
+                        "border border-cyan-500/30 px-3 py-1.5 rounded-full font-semibold"
+                    )
+
+            # Toolbar Row
             with ui.row().classes(
-                "w-full items-center justify-between gap-3 p-3 "
-                "rounded-xl bg-slate-900/60 border border-white/10 shrink-0"
+                "w-full items-center justify-between gap-3 p-2.5 "
+                "rounded-xl bg-slate-900/80 border border-white/10 shrink-0"
             ):
                 with ui.row().classes("items-center gap-2 flex-wrap"):
                     ui.button(
                         "Reload File", icon="file_download", on_click=load_config
-                    ).props("outline color=grey-4").tooltip(
+                    ).props("outline color=grey-4 size=sm").tooltip(
                         "Discard editor changes and reload config.ini file from disk"
                     )
                     ui.button("Validate", icon="verified", on_click=syntax_check).props(
-                        "outline color=cyan"
+                        "outline color=cyan size=sm"
                     ).tooltip("Validate INI syntax and configuration structure")
                     button_save = (
                         ui.button("Save File", icon="save", on_click=save_config)
-                        .props("unelevated color=primary")
+                        .props("unelevated color=primary size=sm")
                         .tooltip(
                             "Save editor changes to config.ini file on disk (creates auto-backup)"
                         )
                     )
                     button_undo = (
                         ui.button("Undo", icon="undo", on_click=undo_config)
-                        .props("outline color=amber")
+                        .props("outline color=amber size=sm")
                         .tooltip("Revert config.ini to the last snapshot backup")
                     )
                     button_use_config = (
@@ -550,7 +753,7 @@ class ConfigPage:
                             icon="bolt",
                             on_click=use_config,
                         )
-                        .props("unelevated color=warning")
+                        .props("unelevated color=warning size=sm")
                         .classes("text-black font-semibold shadow-sm")
                         .tooltip(
                             "Hot-reload config.ini directly into running services without server restart (zero downtime)"
@@ -562,19 +765,54 @@ class ConfigPage:
                         "Snapshots & Diffs",
                         icon="manage_history",
                         on_click=open_history_dialog,
-                    ).props("outline color=indigo").tooltip(
+                    ).props("outline color=indigo size=sm").tooltip(
                         "Manage configuration snapshots and visual line diffs"
                     )
-
+                    ui.button(
+                        "Copy", icon="content_copy", on_click=copy_to_clipboard
+                    ).props("flat color=grey-4 size=sm").tooltip(
+                        "Copy configuration to clipboard"
+                    )
+                    ui.button(
+                        "Download", icon="download", on_click=download_config
+                    ).props("flat color=grey-4 size=sm").tooltip(
+                        "Download config.ini file"
+                    )
                     ui.button(
                         "Inspect JSON", icon="preview", on_click=show_config
-                    ).props("flat color=grey-4").tooltip(
+                    ).props("flat color=grey-4 size=sm").tooltip(
                         "Inspect parsed configuration structure as JSON"
                     )
 
-            with ui.element("div").classes(
-                "w-full flex-1 min-h-[300px] rounded-xl bg-slate-950 p-3 "
-                "border border-white/10 flex flex-col overflow-hidden"
+            # Validation Diagnostics Banner (collapsible)
+            with (
+                ui.row()
+                .classes(
+                    "w-full p-2.5 rounded-xl bg-emerald-950/40 border border-emerald-500/30 "
+                    "items-center justify-between text-xs text-emerald-300 shrink-0"
+                )
+                .props('id="config-diag-banner"') as diag_banner
+            ):
+                diag_banner.visible = False
+                with ui.row().classes("items-center gap-2 flex-1 min-w-0"):
+                    diag_icon = ui.icon("check_circle", color="emerald", size="sm")
+                    diag_text = ui.label("Syntax is valid").classes(
+                        "font-medium truncate"
+                    )
+                ui.button(
+                    icon="close",
+                    on_click=lambda: diag_banner.set_visibility(False),
+                ).props("flat round dense size=xs text-color=grey-4")
+
+            # Main Content Containers
+            # 1. Raw INI Editor Container
+            with (
+                ui.element("div")
+                .classes(
+                    "w-full flex-1 min-h-[300px] rounded-xl bg-slate-950 p-3 "
+                    "border border-white/10 flex flex-col overflow-hidden"
+                )
+                .props('id="editor-container"') as editor_container
             ):
                 editor = (
                     ui.textarea(
@@ -584,5 +822,37 @@ class ConfigPage:
                     .classes("w-full h-full config-editor-field font-mono text-sm")
                     .props("borderless")
                 )
+
+            # 2. Visual Section Inspector Container
+            with (
+                ui.column()
+                .classes("w-full flex-1 overflow-y-auto pr-1 gap-3")
+                .props('id="inspector-container"') as inspector_container
+            ):
+                inspector_container.visible = False
+                inspector_cards_container = ui.column().classes(
+                    "w-full gap-3 max-w-5xl"
+                )
+
+            # Status & Telemetry Bar
+            with ui.row().classes(
+                "w-full items-center justify-between px-3 py-1.5 rounded-lg "
+                "bg-slate-900/60 border border-white/5 text-xs text-slate-400 shrink-0 select-none"
+            ):
+                with ui.row().classes("items-center gap-3"):
+                    status_dirty = ui.label("✓ Synced with Disk").classes(
+                        "px-2 py-0.5 rounded text-[11px] text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 font-medium"
+                    )
+                    status_lines = ui.label("Lines: 0").classes("font-mono")
+                    status_size = ui.label("0 KB").classes("font-mono")
+
+                with ui.row().classes("items-center gap-3"):
+                    version_num = self.callbacks.get_config_version()
+                    ui.label(f"Runtime Version #{version_num}").classes(
+                        "text-slate-400 font-mono text-[11px]"
+                    )
+                    ui.label("/config/config.ini").classes(
+                        "font-mono text-cyan-400/80 text-[11px]"
+                    )
 
             check_buttons()
