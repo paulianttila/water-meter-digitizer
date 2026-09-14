@@ -84,18 +84,25 @@ Color, gamma tone curves, contrast, brightness, spatial luminance unsharp maskin
 ---
 
 ### `[Alignment]`
-Affine transformation using reference markers to correct rotation and perspective shifts.
+Affine transformation using 3 reference markers to correct translation, rotation, scaling, and perspective shifts.
 
 | Parameter | Type | Default | Description |
 |---|---|---|---|
 | `RotationAngle` | float | `0.0` | Coarse rotation in degrees (`0`, `90`, `180`, `270`). |
-| `Refs` | string | `""` | Comma-separated list of reference image section names (e.g. `ref0, ref1, ref2`). |
+| `Refs` | string | `""` | Comma-separated list of reference image section names (requires exactly 3 markers, e.g. `ref0, ref1, ref2`). |
 | `PostRotationAngle` | float | `0.0` | Fine-tuning post-rotation angle in degrees (e.g. `0.5`). |
 
 **`[Alignment.<ref_name>]`** (For each reference marker):
 - `Image`: Path to the reference marker image file (e.g. `${ConfigDir}/ref0.jpg`).
 - `x`, `y`: Target upper-left coordinate in aligned space.
 - `w`, `h`: Width and height (0 reads actual file dimensions).
+
+> [!TIP]
+> **Best Practices for 3-Point Alignment**:
+> - Use **exactly 3 non-collinear reference markers** forming a wide triangle across the image plane (e.g. top-left logo, top-right screw, bottom-center dial rim).
+> - Choose static, high-contrast visual features away from rolling digit drums or rotating needles.
+> - Maintain at least a **20–30 px safety margin** from the image boundaries so physical camera shifts do not push the template outside the sensor field of view.
+> - See [Setup Wizard Calibration Manual](Setup-Wizard-Guide.md#step-3-reference-points-alignment-markers) for full calibration instructions.
 
 ---
 

@@ -30,9 +30,26 @@ The **Setup Wizard** (`/gui` or the **Setup** tab) is an interactive 9-step cali
 ---
 
 ### Step 3: Reference Points (Alignment Markers)
-- Define **2 or 3 high-contrast stationary reference markers** on the meter face (such as manufacturer logos, dial frame corners, or mounting screws).
-- *Tip*: Do not place reference points on moving needles, dials, or rolling numbers.
-- The digitizer automatically crops the template marker files to `/config/ref0.jpg`, `/config/ref1.jpg`, and `/config/ref2.jpg`.
+- Define **exactly 3 high-contrast stationary reference markers** on the meter face to enable affine 2D geometric alignment.
+- The digitizer automatically crops the template marker files (e.g., `${ConfigDir}/ref0.jpg`, `${ConfigDir}/ref1.jpg`, `${ConfigDir}/ref2.jpg`) and tracks their $(x, y)$ target coordinates.
+
+#### 🎯 Best Practices for Reference Markers (3-Point Affine Alignment)
+To achieve sub-pixel (0 to <2 px) alignment accuracy across camera vibrations, thermal drift, and lens shifts:
+
+1. **Spatial Geometry (Form a Large Triangle)**:
+   - Place 3 markers across the frame forming a **wide, non-collinear triangle** (e.g. top-left logo, top-right bolt/screw, bottom-center dial boundary).
+   - *Why*: Three points along a straight line cannot mathematically resolve 2D rotation, tilt, or scale changes. A wide triangle maximizes spatial leverage across the entire frame.
+2. **Stationary & High-Contrast Features**:
+   - Choose static, high-contrast visual features: manufacturer logos, serial number text labels, dial frame corner markings, or casing screws.
+   - ⚠️ **Never place markers on moving elements**: Avoid rolling odometer wheels, rotating needle dials, pointers, or areas obscured by water droplets / condensation.
+3. **Keep Safety Margins from Frame Edges**:
+   - Keep marker bounding boxes at least **20–30 pixels away from the outer image borders**.
+   - *Why*: If the camera vibrates or shifts physically, markers too close to the boundary may be clipped outside the field of view, causing template matching to fail.
+4. **Optimal Marker Dimensions**:
+   - Recommended template size is **40×40 px to 90×90 px** (proportional to image resolution).
+   - *Why*: Tiny templates (<20 px) lack unique feature texture and risk false matches elsewhere on the meter; overly large templates increase CPU template matching time without adding precision.
+5. **Glare & Lighting Immunity**:
+   - Position markers away from direct LED flash specular highlights or reflective glass glare hot spots.
 
 ---
 
