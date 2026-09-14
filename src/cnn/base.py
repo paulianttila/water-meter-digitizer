@@ -64,7 +64,12 @@ class CNNBase:
 
         try:
             self.pool = get_interpreter_pool(self.modelfile, max_size=self.pool_size)
-            self.get_model_details()
+            details = self.get_model_details()
+            logger.debug(
+                f"Model '{self.modelfile}' details: "
+                f"{details.xsize}x{details.ysize}x{details.channels}, "
+                f"Output: {details.numer_output}"
+            )
         except Exception as e:
             logger.error(f"Error occurred during model '{self.modelfile}' loading: {e}")
 
@@ -95,13 +100,7 @@ class CNNBase:
 
     def get_model_details(self) -> ModelDetails:
         if self.pool is not None:
-            details = self.pool.get_model_details()
-            logger.debug(
-                f"Model '{self.modelfile}' details: "
-                f"{details.xsize}x{details.ysize}x{details.channels}, "
-                f"Output: {details.numer_output}"
-            )
-            return details
+            return self.pool.get_model_details()
         return ModelDetails(self.modelfile, self.dx, self.dy, 3, 0)
 
     def _readout(self, image: Image) -> np.ndarray:

@@ -461,7 +461,10 @@ class TimeMachineCard:
 
                         # Fetch base64 data URIs
                         frame_data_uri = self.callbacks.get_frame_data_uri(cur_id)
-                        compare_data_uri = self.callbacks.get_frame_data_uri(compare_id)
+                        if compare_id == cur_id:
+                            compare_data_uri = frame_data_uri
+                        else:
+                            compare_data_uri = self.callbacks.get_frame_data_uri(compare_id)
 
                         logger.debug(
                             "TimeMachine: frame_data_uri result for reading_id=%s: %s (compare_id=%s: %s)",
