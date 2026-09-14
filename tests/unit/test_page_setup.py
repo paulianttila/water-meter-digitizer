@@ -278,3 +278,28 @@ def test_setup_page_gather_config_model_files_no_spaces():
     assert ana_file == "${AnalogModelsDir}/continuous/ana-cont_1209_s2.tflite"
     assert " " not in dig_file
     assert " " not in ana_file
+
+
+def test_show_rois_does_not_call_set_image():
+    from gui.step_draw_rois_base import DrawRoisBaseStep, Roi
+
+    set_img = MagicMock()
+    draw_roi = MagicMock(return_value="<rect />")
+    set_svg = MagicMock()
+    show_temp = MagicMock()
+
+    step = DrawRoisBaseStep(
+        name="ROIs",
+        name_template="roi",
+        set_image_callback=set_img,
+        draw_roi_func=draw_roi,
+        set_rois_to_svg_func=set_svg,
+        show_temp_draw_in_svg_func=show_temp,
+    )
+    step.rois = [Roi(name="roi1", x=10, y=10, w=20, h=20, enabled=True)]
+
+    step._show_rois()
+
+    set_svg.assert_called_once_with("<rect />")
+    set_img.assert_not_called()
+

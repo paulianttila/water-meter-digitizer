@@ -122,8 +122,6 @@ class DrawRoisBaseStep(BaseStep):
             for roi in self.rois
             if roi.enabled
         )
-        if self.set_image_callback is not None:
-            self.set_image_callback(self.image)
         self.set_rois_to_svg_func(content)
 
     def mouse_event(self, e: events.MouseEventArguments) -> None:

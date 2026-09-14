@@ -109,10 +109,10 @@ class SetupPage:
                 """
 
         def set_image(base64_str: str) -> None:
-            print_image_hash("set_image", base64_str)
-            if base64_str is None or base64_str == "":
+            if not base64_str or base64_str == self.image:
                 return
             self.image = base64_str
+            print_image_hash("set_image", base64_str)
             w, h = ImageUtils.image_size(
                 ImageUtils.convert_base64_str_to_image(base64_str)
             )
