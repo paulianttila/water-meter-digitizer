@@ -73,8 +73,21 @@ The **Meter** page is divided into four functional sub-views:
 - **Data Export & Actions**: 1-click **CSV Export** button to download full aggregated consumption data, plus demo history seeding and history reset.
 
 ### Readings Log
-- Tabular, searchable, and paginated log of all recorded readings.
-- Displays full meter readouts, individual segmented digit/dial outputs, confidence percentages, and quality ratings.
+- **Searchable & Filterable Historical Log**:
+  - **Live Search**: Instant real-time text query filtering across timestamps, meter readouts, segmented digit/dial values, and error strings.
+  - **Category Quick Toggles**: Filter records by **All**, **Good Only**, **Anomalies / Errors**, **Flow Active**, and **Snapshots Only**.
+  - **Configurable Time Ranges & Limits**: Filter by 24 Hours, 7 Days, 14 Days, 30 Days, or All Time, with 50 to 1000 row limits.
+- **Summary KPI Strip**: Displays Total Records, Health Success Rate (% Good), Average Neural Model Confidence, and Flow & Snapshot counters.
+- **Visual Status & Readout Badges**:
+  - Distinct colored badge chips for digital drums (cyan) and analog dials (amber).
+  - Flow activity badge (`💧 Active` vs `⏸️ Idle`).
+  - Color-scaled neural network confidence and quality tags.
+- **Deep Inspection & Snapshot Modal**: Click the inspect icon on any row to open a full breakdown dialog containing:
+  - High-resolution camera snapshot frame preview (when archived).
+  - Individual digit and analog needle dial classification confidence scores (`99.0%`, etc.).
+  - Meter readouts and raw unprocessed values.
+  - Formatted error messages and expandable raw JSON viewer.
+- **Data Export Suite**: 1-click **CSV** and **JSON** download buttons for historical auditing, dataset export, or reporting.
 
 
 ---

@@ -469,12 +469,97 @@ def test_consumption_card(mock_callbacks):
 
 
 def test_history_table_card(mock_callbacks):
+    from datetime import datetime
+
     from nicegui import ui
 
+    from storage.base import MeterReading, ReadingRecord
+
+    # 1. Test empty records
     card = HistoryTableCard(mock_callbacks)
     with ui.column() as container:
         card.render(container)
     mock_callbacks.get_storage.assert_called()
+
+    # 2. Test with sample records
+    mock_storage = mock_callbacks.get_storage()
+    records = [
+        ReadingRecord(
+            id=1,
+            timestamp=datetime(2026, 9, 14, 12, 0, 0),
+            meters={
+                "total": MeterReading(
+                    value=452.9124, unit="m3", quality="good", confidence=99.2
+                ),
+            },
+            digital_results={"0": "4", "1": "5", "2": "2"},
+            analog_results={"0": "9", "1": "1"},
+            error="",
+            frame_type="full",
+            frame_path="/tmp/frame1.jpg",
+            flow_detected=True,
+            confidence_scores={"digital_0": 99.0, "analog_0": 98.5},
+        ),
+        ReadingRecord(
+            id=2,
+            timestamp=datetime(2026, 9, 14, 12, 5, 0),
+            meters={
+                "total": MeterReading(
+                    value=None, raw_value="00452.9124", quality="error", confidence=0.0
+                ),
+            },
+            digital_results={},
+            analog_results={},
+            error="Rate of change exceeded limit",
+            frame_type=None,
+            frame_path=None,
+            flow_detected=False,
+            confidence_scores={},
+        ),
+    ]
+    mock_storage.get_readings.return_value = records
+
+    # Render with default filters (all)
+    card_all = HistoryTableCard(mock_callbacks)
+    with ui.column() as c_all:
+        card_all.render(c_all)
+
+    # Render with category filter: good
+    card_good = HistoryTableCard(mock_callbacks)
+    card_good.category_filter = "good"
+    with ui.column() as c_good:
+        card_good.render(c_good)
+
+    # Render with category filter: anomalies
+    card_anom = HistoryTableCard(mock_callbacks)
+    card_anom.category_filter = "anomalies"
+    with ui.column() as c_anom:
+        card_anom.render(c_anom)
+
+    # Render with category filter: flow
+    card_flow = HistoryTableCard(mock_callbacks)
+    card_flow.category_filter = "flow"
+    with ui.column() as c_flow:
+        card_flow.render(c_flow)
+
+    # Render with search query
+    card_search = HistoryTableCard(mock_callbacks)
+    card_search.search_query = "452.9124"
+    with ui.column() as c_search:
+        card_search.render(c_search)
+
+    # Test open_reading_dialog with and without snapshot frame
+    mock_callbacks.get_frame_data_uri.return_value = "data:image/jpeg;base64,AAAA"
+    card_all.open_reading_dialog(records[0])
+
+    mock_callbacks.get_frame_data_uri.return_value = None
+    card_all.open_reading_dialog(records[1])
+
+    # Test disabled backend
+    mock_callbacks.get_storage.return_value = None
+    card_disabled = HistoryTableCard(mock_callbacks)
+    with ui.column() as c_dis:
+        card_disabled.render(c_dis)
 
 
 def test_time_machine_card(mock_callbacks):
