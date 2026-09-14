@@ -302,4 +302,3 @@ def test_show_rois_does_not_call_set_image():
 
     set_svg.assert_called_once_with("<rect />")
     set_img.assert_not_called()
-

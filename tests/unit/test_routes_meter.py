@@ -324,7 +324,9 @@ def test_get_meter_data_conditional_model_init():
     cfg.analog_readout.enabled = False
     cfg.analog_readout.cut_images = []
     cfg.digital_readout.enabled = True
-    cfg.digital_readout.cut_images = [ImagePosition(name="digit1", x=0, y=0, w=10, h=10)]
+    cfg.digital_readout.cut_images = [
+        ImagePosition(name="digit1", x=0, y=0, w=10, h=10)
+    ]
     cfg.digital_readout.model_file = "test.tflite"
     cfg.digital_readout.model = "auto"
     app.state.config = cfg

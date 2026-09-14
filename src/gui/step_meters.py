@@ -143,9 +143,7 @@ class Meter:
                 )
                 ui.checkbox("Detect negative sign (-)").bind_value(
                     self.meter, "detect_negative_sign"
-                ).tooltip(
-                    "Detect '-' sign for negative flow on leading digital digits"
-                )
+                ).tooltip("Detect '-' sign for negative flow on leading digital digits")
 
             with ui.row().classes("w-full items-center gap-4 flex-wrap"):
                 ui.number("Max Rate (/min)", value=0.2, min=0, step=0.01).bind_value(

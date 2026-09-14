@@ -50,7 +50,9 @@ class BackgroundPoller:
         try:
             loop = asyncio.get_running_loop()
         except RuntimeError:
-            logger.debug("No running event loop; poller start deferred until loop is active")
+            logger.debug(
+                "No running event loop; poller start deferred until loop is active"
+            )
             return
 
         self._running = True
@@ -77,7 +79,7 @@ class BackgroundPoller:
         else:
             try:
                 loop = asyncio.get_running_loop()
-                loop.create_task(self._execute_poll())
+                self._task = loop.create_task(self._execute_poll())
             except RuntimeError:
                 logger.warning(
                     "Cannot execute manual poll: no active asyncio event loop"

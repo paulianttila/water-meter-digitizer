@@ -260,9 +260,7 @@ class ConsumptionCard:
                     chart_values = [round(r.consumption or 0.0, 3) for r in records]
 
                 series_name = (
-                    "Cumulative Reading (m³)"
-                    if self.cumulative
-                    else "Consumption (m³)"
+                    "Cumulative Reading (m³)" if self.cumulative else "Consumption (m³)"
                 )
 
                 series = [

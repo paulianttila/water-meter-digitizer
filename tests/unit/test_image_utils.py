@@ -241,4 +241,3 @@ def test_auto_tune_image(sample_pil_image: Image.Image) -> None:
     assert 0.2 <= params["gamma"] <= 3.0
     assert 0.5 <= params["contrast"] <= 2.5
     assert 0.5 <= params["brightness"] <= 2.5
-

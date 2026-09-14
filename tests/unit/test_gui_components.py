@@ -399,7 +399,9 @@ def test_api_console_page_apply_as_active_image_source(mock_callbacks):
 
 def test_consumption_card(mock_callbacks):
     from datetime import datetime
+
     from nicegui import ui
+
     from storage.base import ConsumptionRecord
 
     # Test empty records
@@ -502,8 +504,6 @@ def test_services_page(mock_callbacks):
 
 
 def test_services_status_card_with_error(mock_callbacks):
-    from nicegui import ui
-
     card = ServicesStatusCard(mock_callbacks)
     card.render()
 
@@ -527,4 +527,7 @@ def test_services_status_card_with_error(mock_callbacks):
         "ha_discovery": True,
     }
     card.update_data(poller_err_data, mqtt_data)
-    assert card._poller_data["last_error"] == "Could not open model file: Model allocation is null"
+    assert (
+        card._poller_data["last_error"]
+        == "Could not open model file: Model allocation is null"
+    )

@@ -493,12 +493,8 @@ class SetupPage:
                         self.adjust_step.adjust_enabled.value
                         and self.adjust_step.auto_sharpen_cut_images.value
                     ),
-                    unsharp_radius=float(
-                        self.adjust_step.unsharp_radius.value or 1.0
-                    ),
-                    unsharp_amount=float(
-                        self.adjust_step.unsharp_amount.value or 1.5
-                    ),
+                    unsharp_radius=float(self.adjust_step.unsharp_radius.value or 1.0),
+                    unsharp_amount=float(self.adjust_step.unsharp_amount.value or 1.5),
                     unsharp_threshold=int(
                         self.adjust_step.unsharp_threshold.value or 3
                     ),
@@ -530,12 +526,8 @@ class SetupPage:
                         self.adjust_step.adjust_enabled.value
                         and self.adjust_step.auto_sharpen_cut_images.value
                     ),
-                    unsharp_radius=float(
-                        self.adjust_step.unsharp_radius.value or 1.0
-                    ),
-                    unsharp_amount=float(
-                        self.adjust_step.unsharp_amount.value or 1.5
-                    ),
+                    unsharp_radius=float(self.adjust_step.unsharp_radius.value or 1.0),
+                    unsharp_amount=float(self.adjust_step.unsharp_amount.value or 1.5),
                     unsharp_threshold=int(
                         self.adjust_step.unsharp_threshold.value or 3
                     ),

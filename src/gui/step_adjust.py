@@ -259,8 +259,13 @@ class AdjustStep(BaseStep):
             )
 
         # AutoContrast
-        if hasattr(self, "autocontrast_enabled") and self.autocontrast_enabled is not None:
-            self.autocontrast_enabled.value = config.image_processing.autocontrast.enabled
+        if (
+            hasattr(self, "autocontrast_enabled")
+            and self.autocontrast_enabled is not None
+        ):
+            self.autocontrast_enabled.value = (
+                config.image_processing.autocontrast.enabled
+            )
         if (
             hasattr(self, "autocontrast_cutoff_low")
             and self.autocontrast_cutoff_low is not None
@@ -349,7 +354,9 @@ class AdjustStep(BaseStep):
         if not self.org_image:
             return
         try:
-            raw_img = ImageProcessor().set_image_from_base64_str(self.org_image).get_image()
+            raw_img = (
+                ImageProcessor().set_image_from_base64_str(self.org_image).get_image()
+            )
             if raw_img is None:
                 return
             res = utils.image.auto_tune_image(raw_img)
@@ -358,7 +365,10 @@ class AdjustStep(BaseStep):
                 self.adjust_gamma.value = float(res["gamma"])
             if hasattr(self, "adjust_contrast") and self.adjust_contrast is not None:
                 self.adjust_contrast.value = float(res["contrast"])
-            if hasattr(self, "adjust_brightness") and self.adjust_brightness is not None:
+            if (
+                hasattr(self, "adjust_brightness")
+                and self.adjust_brightness is not None
+            ):
                 self.adjust_brightness.value = float(res["brightness"])
             if hasattr(self, "sharpness_mode") and self.sharpness_mode is not None:
                 self.sharpness_mode.value = "unsharp_mask"
@@ -366,7 +376,10 @@ class AdjustStep(BaseStep):
                 self.unsharp_amount.value = float(res["unsharp_amount"])
             if hasattr(self, "unsharp_radius") and self.unsharp_radius is not None:
                 self.unsharp_radius.value = float(res["unsharp_radius"])
-            if hasattr(self, "unsharp_threshold") and self.unsharp_threshold is not None:
+            if (
+                hasattr(self, "unsharp_threshold")
+                and self.unsharp_threshold is not None
+            ):
                 self.unsharp_threshold.value = int(res["unsharp_threshold"])
             self._on_param_change()
             ui.notify(
@@ -525,23 +538,27 @@ class AdjustStep(BaseStep):
             try:
                 smode = (
                     str(self.sharpness_mode.value or "standard")
-                    if hasattr(self, "sharpness_mode") and self.sharpness_mode is not None
+                    if hasattr(self, "sharpness_mode")
+                    and self.sharpness_mode is not None
                     else "standard"
                 )
                 if smode in ("unsharp_mask", "auto"):
                     u_radius = (
                         float(self.unsharp_radius.value or 1.0)
-                        if hasattr(self, "unsharp_radius") and self.unsharp_radius is not None
+                        if hasattr(self, "unsharp_radius")
+                        and self.unsharp_radius is not None
                         else 1.0
                     )
                     u_amount = (
                         float(self.unsharp_amount.value or 1.5)
-                        if hasattr(self, "unsharp_amount") and self.unsharp_amount is not None
+                        if hasattr(self, "unsharp_amount")
+                        and self.unsharp_amount is not None
                         else 1.5
                     )
                     u_thresh = (
                         int(self.unsharp_threshold.value or 3)
-                        if hasattr(self, "unsharp_threshold") and self.unsharp_threshold is not None
+                        if hasattr(self, "unsharp_threshold")
+                        and self.unsharp_threshold is not None
                         else 3
                     )
                     proc.unsharp_mask(
@@ -572,7 +589,9 @@ class AdjustStep(BaseStep):
                     hasattr(self, "histogram_container")
                     and self.histogram_container is not None
                 ):
-                    self.histogram_container.content = _generate_histogram_svg(hist_data)
+                    self.histogram_container.content = _generate_histogram_svg(
+                        hist_data
+                    )
                 if (
                     hasattr(self, "shadow_clip_badge")
                     and self.shadow_clip_badge is not None
@@ -600,7 +619,9 @@ class AdjustStep(BaseStep):
             with ui.column().classes(
                 "w-full p-3 mb-2 rounded-xl bg-indigo-950/40 border border-indigo-500/30 backdrop-blur-md gap-2"
             ):
-                with ui.row().classes("w-full items-center justify-between flex-wrap gap-2"):
+                with ui.row().classes(
+                    "w-full items-center justify-between flex-wrap gap-2"
+                ):
                     with ui.row().classes("items-center gap-3"):
                         self.live_preview = ui.checkbox(
                             "Live Preview", value=True, on_change=self._on_param_change
@@ -624,7 +645,9 @@ class AdjustStep(BaseStep):
                             on_click=self._apply_auto_enhance,
                         ).props("unelevated dense").classes(
                             "text-xs bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-400 hover:to-orange-500 text-white font-bold px-3 py-1 rounded-lg shadow-sm"
-                        ).tooltip("Automatically analyze image and calculate optimal gamma, contrast, brightness, and sharpness")
+                        ).tooltip(
+                            "Automatically analyze image and calculate optimal gamma, contrast, brightness, and sharpness"
+                        )
 
                         ui.button(
                             "Hold for Original",
@@ -646,28 +669,40 @@ class AdjustStep(BaseStep):
                             "Press and hold to temporarily view raw unadjusted image"
                         )
 
-                with ui.row().classes("w-full items-center gap-2 pt-1 border-t border-indigo-500/20 flex-wrap"):
-                    ui.label("Presets:").classes("text-xs text-indigo-300/80 font-medium")
+                with ui.row().classes(
+                    "w-full items-center gap-2 pt-1 border-t border-indigo-500/20 flex-wrap"
+                ):
+                    ui.label("Presets:").classes(
+                        "text-xs text-indigo-300/80 font-medium"
+                    )
                     ui.button(
                         "Crisp Text",
                         icon="text_fields",
                         on_click=lambda: self._apply_preset("crisp"),
-                    ).props("flat dense").classes("text-xs text-slate-300 hover:text-white hover:bg-white/10 px-2")
+                    ).props("flat dense").classes(
+                        "text-xs text-slate-300 hover:text-white hover:bg-white/10 px-2"
+                    )
                     ui.button(
                         "Basement / Dim",
                         icon="wb_twilight",
                         on_click=lambda: self._apply_preset("basement"),
-                    ).props("flat dense").classes("text-xs text-slate-300 hover:text-white hover:bg-white/10 px-2")
+                    ).props("flat dense").classes(
+                        "text-xs text-slate-300 hover:text-white hover:bg-white/10 px-2"
+                    )
                     ui.button(
                         "Reflective Glass",
                         icon="flare",
                         on_click=lambda: self._apply_preset("reflective"),
-                    ).props("flat dense").classes("text-xs text-slate-300 hover:text-white hover:bg-white/10 px-2")
+                    ).props("flat dense").classes(
+                        "text-xs text-slate-300 hover:text-white hover:bg-white/10 px-2"
+                    )
                     ui.button(
                         "Reset Defaults",
                         icon="replay",
                         on_click=lambda: self._apply_preset("default"),
-                    ).props("flat dense").classes("text-xs text-slate-400 hover:text-slate-200 hover:bg-white/10 px-2")
+                    ).props("flat dense").classes(
+                        "text-xs text-slate-400 hover:text-slate-200 hover:bg-white/10 px-2"
+                    )
 
             with ui.column().classes("w-full gap-3 my-2"):
                 # Image Processing Master Card
@@ -928,7 +963,9 @@ class AdjustStep(BaseStep):
                     ),
                     ui.column().classes("w-full gap-3 p-3"),
                 ):
-                    with ui.row().classes("w-full items-center justify-between flex-wrap gap-2"):
+                    with ui.row().classes(
+                        "w-full items-center justify-between flex-wrap gap-2"
+                    ):
                         self.sharpness_mode = (
                             ui.select(
                                 {
@@ -941,19 +978,27 @@ class AdjustStep(BaseStep):
                                 on_change=self._on_param_change,
                             )
                             .classes("w-64")
-                            .tooltip("Algorithm used for spatial digit edge enhancement")
+                            .tooltip(
+                                "Algorithm used for spatial digit edge enhancement"
+                            )
                         )
 
                         with ui.row().classes("items-center gap-2"):
-                            ui.label("Focus Metric:").classes("text-xs text-slate-400 font-medium")
+                            ui.label("Focus Metric:").classes(
+                                "text-xs text-slate-400 font-medium"
+                            )
                             self.focus_score_badge = ui.label("Calculating...").classes(
                                 "text-xs font-mono font-bold px-2 py-1 rounded bg-slate-800 border border-white/10 text-emerald-400"
                             )
 
                     with ui.column().classes("w-full gap-4"):
                         # Standard Sharpness (visible when standard is selected)
-                        with ui.row().classes("w-full items-center gap-3 py-1").bind_visibility_from(
-                            self.sharpness_mode, "value", lambda v: v == "standard"
+                        with (
+                            ui.row()
+                            .classes("w-full items-center gap-3 py-1")
+                            .bind_visibility_from(
+                                self.sharpness_mode, "value", lambda v: v == "standard"
+                            )
                         ):
                             ui.label("Sharpness").classes(
                                 "w-24 text-xs font-semibold text-slate-300"
@@ -976,8 +1021,14 @@ class AdjustStep(BaseStep):
                             )
 
                         # Unsharp Mask Amount
-                        with ui.row().classes("w-full items-center gap-3 py-1").bind_visibility_from(
-                            self.sharpness_mode, "value", lambda v: v in ("unsharp_mask", "auto")
+                        with (
+                            ui.row()
+                            .classes("w-full items-center gap-3 py-1")
+                            .bind_visibility_from(
+                                self.sharpness_mode,
+                                "value",
+                                lambda v: v in ("unsharp_mask", "auto"),
+                            )
                         ):
                             ui.label("Amount (Strength)").classes(
                                 "w-24 text-xs font-semibold text-slate-300"
@@ -1000,8 +1051,14 @@ class AdjustStep(BaseStep):
                             )
 
                         # Unsharp Mask Radius
-                        with ui.row().classes("w-full items-center gap-3 py-1").bind_visibility_from(
-                            self.sharpness_mode, "value", lambda v: v in ("unsharp_mask", "auto")
+                        with (
+                            ui.row()
+                            .classes("w-full items-center gap-3 py-1")
+                            .bind_visibility_from(
+                                self.sharpness_mode,
+                                "value",
+                                lambda v: v in ("unsharp_mask", "auto"),
+                            )
                         ):
                             ui.label("Radius (px)").classes(
                                 "w-24 text-xs font-semibold text-slate-300"
@@ -1024,8 +1081,14 @@ class AdjustStep(BaseStep):
                             )
 
                         # Unsharp Mask Threshold
-                        with ui.row().classes("w-full items-center gap-3 py-1").bind_visibility_from(
-                            self.sharpness_mode, "value", lambda v: v in ("unsharp_mask", "auto")
+                        with (
+                            ui.row()
+                            .classes("w-full items-center gap-3 py-1")
+                            .bind_visibility_from(
+                                self.sharpness_mode,
+                                "value",
+                                lambda v: v in ("unsharp_mask", "auto"),
+                            )
                         ):
                             ui.label("Noise Threshold").classes(
                                 "w-24 text-xs font-semibold text-slate-300"
@@ -1051,7 +1114,9 @@ class AdjustStep(BaseStep):
                         "Sharpen Cut Images (ROIs) Individually",
                         value=False,
                         on_change=self._on_param_change,
-                    ).tooltip("Apply luminance unsharp masking to cropped digit and pointer images before neural inference")
+                    ).tooltip(
+                        "Apply luminance unsharp masking to cropped digit and pointer images before neural inference"
+                    )
 
                 # Histogram & AutoContrast Expansion
                 with (
@@ -1064,14 +1129,24 @@ class AdjustStep(BaseStep):
                     ui.column().classes("w-full gap-3 p-3"),
                 ):
                     # Live Histogram Area
-                    with ui.column().classes("w-full gap-1 p-2 rounded-lg bg-slate-950/60 border border-white/5"):
+                    with ui.column().classes(
+                        "w-full gap-1 p-2 rounded-lg bg-slate-950/60 border border-white/5"
+                    ):
                         with ui.row().classes("w-full items-center justify-between"):
-                            ui.label("Luminance Distribution (Rec.709)").classes("text-xs font-semibold text-slate-400")
+                            ui.label("Luminance Distribution (Rec.709)").classes(
+                                "text-xs font-semibold text-slate-400"
+                            )
                             with ui.row().classes("gap-2 items-center"):
-                                self.shadow_clip_badge = ui.label("Shadows: 0.0%").classes("text-[11px] font-mono text-cyan-400")
-                                self.highlight_clip_badge = ui.label("Highlights: 0.0%").classes("text-[11px] font-mono text-amber-400")
+                                self.shadow_clip_badge = ui.label(
+                                    "Shadows: 0.0%"
+                                ).classes("text-[11px] font-mono text-cyan-400")
+                                self.highlight_clip_badge = ui.label(
+                                    "Highlights: 0.0%"
+                                ).classes("text-[11px] font-mono text-amber-400")
 
-                        self.histogram_container = ui.html(_generate_histogram_svg({})).classes("w-full")
+                        self.histogram_container = ui.html(
+                            _generate_histogram_svg({})
+                        ).classes("w-full")
 
                     self.autocontrast_enabled = ui.checkbox(
                         "Full Frame AutoContrast",

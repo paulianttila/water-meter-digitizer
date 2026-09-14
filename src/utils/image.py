@@ -71,7 +71,7 @@ def convert_to_image(image: Image) -> Image:
         raise ValueError("Invalid image")
 
 
-def convert_image_to_np_array(image: Image) -> np.ndarray:
+def convert_image_to_np_array(image: Image | np.ndarray) -> np.ndarray:
     if isinstance(image, Image):
         return np.array(image)
     elif isinstance(image, np.ndarray):
