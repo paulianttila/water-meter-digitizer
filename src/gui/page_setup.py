@@ -587,6 +587,20 @@ class SetupPage:
                 current_img = get_image_by_step_name(step) or src_img
                 set_image(current_img)
                 set_comparison_image("")
+                # Ensure active step ROIs are freshly synced and SVG canvas is updated
+                if step == NAME_DRAW_REFS:
+                    self.draw_refs_step._show_rois()
+                elif step == NAME_DRAW_DIGITAL_ROIS:
+                    self.draw_digital_rois_step._show_rois()
+                elif step == NAME_DRAW_ANALOG_ROIS:
+                    self.draw_analog_rois_step._show_rois()
+                elif step in (NAME_METERS, NAME_SERVICES, NAME_FINAL):
+                    self.draw_digital_rois_step._show_rois()
+                    self.draw_analog_rois_step._show_rois()
+                    if step == NAME_FINAL:
+                        self.draw_refs_step._show_rois()
+                else:
+                    update_svg()
 
             if step == NAME_METERS:
                 self.meters_step.refresh_digit_names()
