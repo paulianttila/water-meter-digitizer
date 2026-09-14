@@ -251,16 +251,23 @@ class ConsumptionCard:
                     running_total = 0.0
                     chart_values = []
                     for r in records:
-                        running_total += r.consumption or 0.0
-                        chart_values.append(round(running_total, 3))
+                        if r.end_value is not None:
+                            chart_values.append(round(r.end_value, 3))
+                        else:
+                            running_total += r.consumption or 0.0
+                            chart_values.append(round(running_total, 3))
                 else:
                     chart_values = [round(r.consumption or 0.0, 3) for r in records]
 
+                series_name = (
+                    "Cumulative Reading (m³)"
+                    if self.cumulative
+                    else "Consumption (m³)"
+                )
+
                 series = [
                     {
-                        "name": (
-                            "Cumulative (m³)" if self.cumulative else "Consumption (m³)"
-                        ),
+                        "name": series_name,
                         "type": self.chart_style,
                         "data": chart_values,
                         "smooth": True,
@@ -306,9 +313,7 @@ class ConsumptionCard:
                     }
                 ]
 
-                legend_data = [
-                    "Cumulative (m³)" if self.cumulative else "Consumption (m³)"
-                ]
+                legend_data = [series_name]
                 y_axis = {
                     "type": "value",
                     "name": "Volume (m³)",

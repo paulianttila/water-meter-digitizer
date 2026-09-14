@@ -398,12 +398,57 @@ def test_api_console_page_apply_as_active_image_source(mock_callbacks):
 
 
 def test_consumption_card(mock_callbacks):
+    from datetime import datetime
     from nicegui import ui
+    from storage.base import ConsumptionRecord
 
+    # Test empty records
     card = ConsumptionCard(mock_callbacks)
     with ui.column() as container:
         card.render(container)
     mock_callbacks.get_storage.assert_called()
+
+    # Test with records in differential mode
+    mock_storage = mock_callbacks.get_storage()
+    mock_storage.get_consumption.return_value = [
+        ConsumptionRecord(
+            bucket="2026-09-10",
+            start_time=datetime(2026, 9, 10, 0, 0),
+            end_time=datetime(2026, 9, 10, 23, 59),
+            meter_name="total",
+            unit="m3",
+            consumption=0.250,
+            start_value=300.000,
+            end_value=300.250,
+            min_value=300.000,
+            max_value=300.250,
+            reading_count=10,
+        ),
+        ConsumptionRecord(
+            bucket="2026-09-11",
+            start_time=datetime(2026, 9, 11, 0, 0),
+            end_time=datetime(2026, 9, 11, 23, 59),
+            meter_name="total",
+            unit="m3",
+            consumption=0.300,
+            start_value=300.250,
+            end_value=300.550,
+            min_value=300.250,
+            max_value=300.550,
+            reading_count=12,
+        ),
+    ]
+
+    card_diff = ConsumptionCard(mock_callbacks)
+    card_diff.cumulative = False
+    with ui.column() as c_diff:
+        card_diff.render(c_diff)
+
+    # Test with records in cumulative mode (meter index)
+    card_cum = ConsumptionCard(mock_callbacks)
+    card_cum.cumulative = True
+    with ui.column() as c_cum:
+        card_cum.render(c_cum)
 
 
 def test_history_table_card(mock_callbacks):

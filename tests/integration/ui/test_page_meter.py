@@ -40,18 +40,18 @@ def test_meter_dashboard_metrics_and_images(page: Page, live_server_url: str):
 
 @pytest.mark.ui
 def test_meter_tabs_values_statistics_and_history(page: Page, live_server_url: str):
-    """Verify switching between Values, Statistics, and History tabs on Meter page."""
+    """Verify switching between Live Readout, Consumption, and Readings Log tabs on Meter page."""
     page.goto(f"{live_server_url}/gui", wait_until="domcontentloaded")
     page.get_by_role("tab", name="Meter").click()
 
-    # 1. Values tab is selected by default
-    expect(page.get_by_role("tab", name="Values")).to_be_visible(timeout=10000)
-    stats_tab = page.get_by_role("tab", name="Statistics")
-    history_tab = page.get_by_role("tab", name="History")
+    # 1. Live Readout tab is selected by default
+    expect(page.get_by_role("tab", name="Live Readout")).to_be_visible(timeout=10000)
+    stats_tab = page.get_by_role("tab", name="Consumption")
+    history_tab = page.get_by_role("tab", name="Readings Log")
     expect(stats_tab).to_be_visible()
     expect(history_tab).to_be_visible()
 
-    # 2. Switch to Statistics tab and test demo seeding
+    # 2. Switch to Consumption tab and test demo seeding
     stats_tab.click()
     expect(page.get_by_text("TOTAL CONSUMPTION")).to_be_visible(timeout=5000)
     expect(page.get_by_text("AVG PER DAILY")).to_be_visible(timeout=5000)
@@ -69,7 +69,7 @@ def test_meter_tabs_values_statistics_and_history(page: Page, live_server_url: s
     )
     expect(page.locator(".nicegui-echart")).to_be_visible(timeout=5000)
 
-    # 3. Switch to History tab and check table columns
+    # 3. Switch to Readings Log tab and check table columns
     history_tab.click()
     expect(page.get_by_role("columnheader", name="Timestamp")).to_be_visible(
         timeout=5000
@@ -87,8 +87,8 @@ def test_meter_tabs_values_statistics_and_history(page: Page, live_server_url: s
         timeout=5000
     )
 
-    # 4. Switch back to Values tab
-    page.get_by_role("tab", name="Values").click()
+    # 4. Switch back to Live Readout tab
+    page.get_by_role("tab", name="Live Readout").click()
     expect(page.get_by_text("Processed Capture")).to_be_visible(timeout=5000)
 
 

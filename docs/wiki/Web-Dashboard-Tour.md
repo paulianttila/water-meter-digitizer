@@ -45,22 +45,28 @@ The **API Console** tab is divided into three specialized workspaces:
 
 ## 📊 1. Meter Dashboard View
 
-The **Meter** page is divided into three functional sub-views:
+The **Meter** page is divided into four functional sub-views:
 
-### Values (Live Meter Cards)
+### Live Readout
 - **Live Metric Cards**: Shows formatted readings (e.g. `00452.91241 m³`), calculated flow rate (`0.000 m³/h`), unit, timestamp, and duration.
 - **ROI Confidence Badges**: Displays color-coded neural network confidence scores (e.g. `99.2%`, `85.4%`) for individual digital drums and analog needle dials.
 - **Inspect ROI Modal**: Click on any ROI pill to open high-resolution zoomed crops of the segmented digit and its raw model classification score distribution.
-
-### Statistics & Consumption Charts
-- Aggregates recorded consumption deltas into **Hourly**, **Daily**, or **Weekly** time buckets.
-- Toggle between bar charts (period deltas) and cumulative curves (running total).
-- Custom time window filters (Last 24 Hours, Last 7 Days, Last 30 Days, Custom range).
 
 ### Time Machine (Visual Frame Scrubber)
 - **Chronological Timeline**: Drag the timeline slider or click play to scrub across recorded snapshot frames from past to present.
 - **Side-by-Side Visual Diff**: Compare historical captures directly against the latest live frame with structural similarity metrics (SSIM).
 - **Difference Heatmap**: Displays an amplified visual diff highlighting what moved (e.g., fast spinning dial needles or transitioning drum wheels).
+
+### Consumption
+- Aggregates recorded consumption deltas into **Hourly**, **Daily**, **Weekly**, or **Monthly** time buckets.
+- Toggle between **Differential** (period usage deltas) and **Cumulative** (total meter reading index over time).
+- Custom time window filters (7 Days, 14 Days, 30 Days, 90 Days, All Time).
+- Chart style toggle between Bar and Line views with gradient area fill.
+
+### Readings Log
+- Tabular, searchable, and paginated log of all recorded readings.
+- Displays full meter readouts, individual segmented digit/dial outputs, confidence percentages, and quality ratings.
+
 
 ---
 

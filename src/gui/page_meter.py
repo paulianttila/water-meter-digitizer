@@ -378,23 +378,23 @@ class MeterPage:
             .classes("w-full border-b border-white/10")
             .props("align=left active-color=cyan") as tabs
         ):
-            values = ui.tab("Values", icon="speed")
+            live_readout = ui.tab("Live Readout", icon="speed")
             time_machine = ui.tab("Time Machine", icon="history_toggle_off")
-            statistics = ui.tab("Statistics", icon="bar_chart")
-            history = ui.tab("History", icon="table_view")
+            consumption = ui.tab("Consumption", icon="bar_chart")
+            readings_log = ui.tab("Readings Log", icon="table_view")
 
-        with ui.tab_panels(tabs, value=values).classes(
+        with ui.tab_panels(tabs, value=live_readout).classes(
             "w-full h-full bg-transparent p-0 pt-4"
         ):
-            with ui.tab_panel(values).classes("p-0"):
+            with ui.tab_panel(live_readout).classes("p-0"):
                 value_container = ui.column().classes("w-full")
             with ui.tab_panel(time_machine).classes("p-0"):
                 tm_container = ui.column().classes("w-full")
                 self.time_machine_card.render(tm_container)
-            with ui.tab_panel(statistics).classes("p-0"):
+            with ui.tab_panel(consumption).classes("p-0"):
                 stats_container = ui.column().classes("w-full")
                 self.consumption_card.render(stats_container)
-            with ui.tab_panel(history).classes("p-0"):
+            with ui.tab_panel(readings_log).classes("p-0"):
                 history_container = ui.column().classes("w-full")
                 self.history_card.render(history_container)
 
