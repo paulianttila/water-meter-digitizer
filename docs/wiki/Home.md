@@ -79,3 +79,11 @@ The **Water Meter Digitizer** is an edge-optimized AI vision system that reads a
     │   `/meter` & Broker  │                │  Dashboard & Wizard  │
     └──────────────────────┘                └──────────────────────┘
 ```
+
+---
+
+## 👏 Kudos & Acknowledgments
+
+Special thanks to **[jomjol](https://github.com/jomjol)** for providing the pre-trained neural network `.tflite` models used in this project:
+- **[neural-network-analog-needle-readout](https://github.com/jomjol/neural-network-analog-needle-readout)** (Analog needle angle estimation models)
+- **[neural-network-digital-counter-readout](https://github.com/jomjol/neural-network-digital-counter-readout)** (Digital drum digit counter classification models)

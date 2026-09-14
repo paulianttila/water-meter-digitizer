@@ -161,3 +161,31 @@ The **Baselines** tab manages fallback references and sanity baselines in `preva
   - Instant search across meter names, baseline readings, and timestamps.
   - 1-click **Export CSV** download.
   - **Inspect Raw prevalue.ini** dialog with syntax formatting and clipboard copy.
+
+---
+
+## ℹ️ 7. Help & About Documentation Suite
+
+The **Help** and **About** tabs provide an interactive knowledge base, live hardware telemetry, and documentation links:
+
+### Help & Documentation
+- **Categorized Sub-Tabs**:
+  - 📋 **Setup Wizard (9 Steps) & Pipeline Architecture**: Visual 5-stage pipeline breakdown (Capture ➔ Alignment ➔ Inference ➔ Consistency ➔ Export) followed by detailed stage-by-stage wizard walkthrough.
+  - 🎯 **Marker Best Practices**: Triangle geometry, landmark rigidity, subpixel stability, and glare prevention guidelines.
+  - ⌨️ **Canvas & Shortcuts**: Interactive bounding box creation, coordinate tracking, batch alignment, and nudge keys.
+  - 🔌 **Integrations & Services**: MQTT topics, Home Assistant auto-discovery, consumption history API, and REST endpoints.
+  - ❓ **Troubleshooting & FAQ**: Common questions and resolutions (unreadable digits marked with `?`, decreasing rate rejections, camera reachability, and landmark stability).
+- **Support Diagnostic Bundle**: 1-click modal to copy or download a GitHub-ready Markdown bundle with system specs, memory usage, camera reachability, and model telemetry.
+
+### About & System Diagnostics
+- **Hero & Documentation Wiki Link**: Direct link to the complete project wiki documentation (`https://github.com/paulianttila/water-meter-digitizer/wiki`).
+- **Live System Telemetry Grid**: Real-time cards displaying Application Version (`v{VERSION}`), Python runtime environment, LiteRT neural engine status, NiceGUI framework version, process RSS/peak memory usage, and system uptime.
+
+---
+
+## 👏 Kudos & Acknowledgments
+
+Special thanks to **[jomjol](https://github.com/jomjol)** for pioneering water meter neural digitization and providing the trained `.tflite` neural network models used by this project:
+- [neural-network-analog-needle-readout](https://github.com/jomjol/neural-network-analog-needle-readout)
+- [neural-network-digital-counter-readout](https://github.com/jomjol/neural-network-digital-counter-readout)
+

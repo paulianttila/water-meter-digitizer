@@ -28,3 +28,12 @@ Standard TensorFlow Lite Python interpreters are not thread-safe. To support con
 - Maintains a configurable pool of independent `tflite.Interpreter` worker instances.
 - Thread-safe `acquire()` / `release()` context managers eliminate lock contention.
 - Tracks real-time inference latency metrics ($p50$, $p95$, average ms).
+
+---
+
+## 👏 Kudos & Model Sources
+
+Special thanks and acknowledgment to **[jomjol](https://github.com/jomjol)** for training, optimizing, and providing the TensorFlow Lite models used by this project:
+- **[neural-network-analog-needle-readout](https://github.com/jomjol/neural-network-analog-needle-readout)** — Circular needle angle regression and classification neural networks.
+- **[neural-network-digital-counter-readout](https://github.com/jomjol/neural-network-digital-counter-readout)** — Mechanical digit drum classification neural networks.
+

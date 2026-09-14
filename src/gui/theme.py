@@ -55,3 +55,70 @@ COLOR_ROI_ANALOG = (245, 158, 11)  # Vivid Amber / Orange
 HEX_ROI_REFS = "#10b981"
 HEX_ROI_DIGITAL = "#3b82f6"
 HEX_ROI_ANALOG = "#f59e0b"
+
+
+def copy_to_clipboard(text: str, notify_message: str = "") -> None:
+    """Copy text to clipboard with automatic fallback for non-secure HTTP (e.g. LAN IP) contexts."""
+    import json
+
+    from nicegui import ui
+
+    escaped_json = json.dumps(text)
+    ui.run_javascript(f"""
+        (function(text) {{
+            function fallbackCopy(val) {{
+                try {{
+                    var t = document.createElement("textarea");
+                    t.value = val;
+                    t.setAttribute("readonly", "");
+                    t.style.position = "fixed";
+                    t.style.left = "0";
+                    t.style.top = "0";
+                    t.style.width = "2em";
+                    t.style.height = "2em";
+                    t.style.padding = "0";
+                    t.style.border = "none";
+                    t.style.outline = "none";
+                    t.style.boxShadow = "none";
+                    t.style.background = "transparent";
+                    t.style.opacity = "0.01";
+                    t.style.zIndex = "-1";
+                    document.body.appendChild(t);
+                    t.focus();
+                    t.select();
+                    t.setSelectionRange(0, val.length);
+                    var successful = false;
+                    try {{
+                        successful = document.execCommand("copy");
+                    }} catch (e) {{
+                        console.warn("document.execCommand copy error:", e);
+                    }}
+                    document.body.removeChild(t);
+                    return successful;
+                }} catch (err) {{
+                    console.error("Fallback clipboard copy failed:", err);
+                    return false;
+                }}
+            }}
+
+            if (navigator.clipboard && window.isSecureContext) {{
+                navigator.clipboard.writeText(text).catch(function(e) {{
+                    console.warn("navigator.clipboard failed, attempting fallback:", e);
+                    fallbackCopy(text);
+                }});
+                return;
+            }}
+
+            if (window.Quasar && typeof window.Quasar.copyToClipboard === "function") {{
+                window.Quasar.copyToClipboard(text).catch(function(e) {{
+                    console.warn("Quasar copyToClipboard failed, attempting fallback:", e);
+                    fallbackCopy(text);
+                }});
+                return;
+            }}
+
+            fallbackCopy(text);
+        }})({escaped_json});
+    """)
+    if notify_message:
+        ui.notify(notify_message, type="positive")

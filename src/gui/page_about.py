@@ -1,68 +1,190 @@
+import logging
+import platform
+import sys
+from typing import Any
+
 from nicegui import ui
 
+from callbacks import Callbacks
 from main import VERSION
+from utils.diagnostics import get_process_memory_info, get_system_info
+
+logger = logging.getLogger(__name__)
 
 
 class AboutPage:
-    def __init__(self) -> None:
-        pass
+    """About & System Diagnostics Page."""
+
+    def __init__(self, callbacks: Callbacks | None = None) -> None:
+        self.callbacks = callbacks
+
+    def _get_diagnostics_data(self) -> dict[str, Any]:
+        """Collect full diagnostics information for telemetry."""
+        sys_info = get_system_info(VERSION)
+        mem_info = get_process_memory_info()
+
+        health_data: dict[str, Any] = {}
+        if self.callbacks and hasattr(self.callbacks, "_get_health_data"):
+            try:
+                fn = self.callbacks._get_health_data
+                if fn is not None:
+                    health_data = fn() or {}
+            except Exception as e:
+                health_data = {"error": str(e)}
+
+        return {
+            "version": VERSION,
+            "system": sys_info,
+            "python": {
+                "version": sys.version.split()[0],
+                "platform": f"{platform.system()} {platform.release()}",
+                "architecture": platform.machine(),
+            },
+            "memory": mem_info,
+            "health": health_data,
+        }
 
     def show(self) -> None:
-        with ui.column().classes("w-full max-w-3xl gap-4"):
-            ui.label("About Water Meter Digitizer").classes("text-h4")
+        diag = self._get_diagnostics_data()
+        health = diag.get("health", {})
+        uptime_info = health.get("uptime", {})
+        memory_info = diag.get("memory", {})
 
+        with ui.column().classes(
+            "w-full h-full flex flex-col gap-4 p-4 overflow-y-auto"
+        ):
+            # Header Hero Card
             with ui.element("div").classes(
                 "w-full p-6 rounded-2xl "
-                "bg-gradient-to-tr from-blue-900/30 to-cyan-900/20 "
-                "border border-blue-500/30 shadow-xl shadow-blue-500/10 "
-                "flex items-center gap-6"
+                "bg-gradient-to-tr from-blue-900/40 via-cyan-900/30 to-slate-900/60 "
+                "border border-cyan-500/30 shadow-xl shadow-cyan-500/10 "
+                "flex flex-col md:flex-row justify-between items-start md:items-center gap-6"
             ):
-                with ui.element("div").classes(
-                    "w-16 h-16 rounded-2xl "
-                    "bg-gradient-to-tr from-blue-600 to-cyan-400 "
-                    "flex items-center justify-center shadow-lg "
-                    "shadow-blue-500/30 shrink-0"
-                ):
-                    ui.icon("water_drop", color="white").classes("text-3xl")
+                with ui.row().classes("items-center gap-4"):
+                    with ui.element("div").classes(
+                        "w-16 h-16 rounded-2xl "
+                        "bg-gradient-to-tr from-blue-600 to-cyan-400 "
+                        "flex items-center justify-center shadow-lg "
+                        "shadow-cyan-500/30 shrink-0"
+                    ):
+                        ui.icon("water_drop", color="white").classes("text-3xl")
 
-                with ui.column().classes("gap-1"):
-                    ui.label("Water Meter Digitizer").classes("text-h5 font-['Outfit']")
-                    ui.label(
-                        "Automatic utility meter digitizer using neural network "
-                        "inference, affine computer vision alignment, and rolling "
-                        "odometer predecessor deduction."
-                    ).classes("text-sm text-gray-300")
+                    with ui.column().classes("gap-1"):
+                        with ui.row().classes("items-center gap-2"):
+                            ui.label("About Water Meter Digitizer").classes(
+                                "text-h4 font-['Outfit'] font-bold text-white leading-none"
+                            )
+                            ui.label(f"v{VERSION}").classes(
+                                "text-xs font-bold text-cyan-400 bg-cyan-500/15 "
+                                "border border-cyan-500/30 px-2.5 py-0.5 rounded-full"
+                            )
+                        ui.label(
+                            "Edge-AI automated utility meter digitizer using neural network inference, "
+                            "affine geometric alignment, and predecessor odometer consistency deduction."
+                        ).classes("text-sm text-gray-300 max-w-2xl")
 
-            with ui.row().classes("w-full gap-4 flex-wrap"):
-                with ui.element("div").classes(
-                    "p-4 rounded-xl bg-slate-900/60 border border-white/10 "
-                    "flex-1 min-w-[200px]"
-                ):
-                    ui.label("APPLICATION VERSION").classes(
-                        "text-xs font-semibold text-gray-400 tracking-wider mb-1"
+                with ui.row().classes("items-center gap-2 shrink-0"):
+                    ui.link(
+                        "Documentation",
+                        "https://github.com/paulianttila/water-meter-digitizer/wiki",
+                        new_tab=True,
+                    ).classes(
+                        "text-xs font-semibold text-gray-300 hover:text-white px-3 py-1.5 "
+                        "rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 transition-colors"
                     )
+
+            # System Telemetry Metric Cards
+            with ui.row().classes("w-full gap-3 flex-wrap"):
+                # Application Version
+                with ui.element("div").classes(
+                    "p-4 rounded-xl bg-slate-900/60 border border-white/10 flex-1 min-w-[200px]"
+                ):
+                    with ui.row().classes("items-center justify-between mb-1"):
+                        ui.label("APPLICATION VERSION").classes(
+                            "text-xs font-semibold text-gray-400 tracking-wider"
+                        )
+                        ui.icon("verified", color="cyan").classes("text-sm")
                     ui.label(f"v{VERSION}").classes(
                         "font-['Outfit'] text-2xl font-bold text-white"
                     )
+                    ui.label("Production Release").classes("text-xs text-gray-400")
 
+                # Python & Platform
                 with ui.element("div").classes(
-                    "p-4 rounded-xl bg-slate-900/60 border border-white/10 "
-                    "flex-1 min-w-[200px]"
+                    "p-4 rounded-xl bg-slate-900/60 border border-white/10 flex-1 min-w-[200px]"
                 ):
-                    ui.label("INFERENCE ENGINE").classes(
-                        "text-xs font-semibold text-gray-400 tracking-wider mb-1"
+                    with ui.row().classes("items-center justify-between mb-1"):
+                        ui.label("RUNTIME ENVIRONMENT").classes(
+                            "text-xs font-semibold text-gray-400 tracking-wider"
+                        )
+                        ui.icon("terminal", color="purple").classes("text-sm")
+                    ui.label(f"Python {diag['python']['version']}").classes(
+                        "font-['Outfit'] text-2xl font-bold text-purple-400"
                     )
+                    ui.label(
+                        f"{diag['python']['platform']} ({diag['python']['architecture']})"
+                    ).classes("text-xs text-gray-400 truncate")
+
+                # Inference Engine
+                with ui.element("div").classes(
+                    "p-4 rounded-xl bg-slate-900/60 border border-white/10 flex-1 min-w-[200px]"
+                ):
+                    with ui.row().classes("items-center justify-between mb-1"):
+                        ui.label("INFERENCE ENGINE").classes(
+                            "text-xs font-semibold text-gray-400 tracking-wider"
+                        )
+                        ui.icon("memory", color="cyan").classes("text-sm")
                     ui.label("Google LiteRT").classes(
                         "font-['Outfit'] text-2xl font-bold text-cyan-400"
                     )
-
-                with ui.element("div").classes(
-                    "p-4 rounded-xl bg-slate-900/60 border border-white/10 "
-                    "flex-1 min-w-[200px]"
-                ):
-                    ui.label("FRONTEND FRAMEWORK").classes(
-                        "text-xs font-semibold text-gray-400 tracking-wider mb-1"
+                    ui.label("Quantized CNN Interpreter Pool").classes(
+                        "text-xs text-gray-400"
                     )
+
+                # Frontend Framework
+                with ui.element("div").classes(
+                    "p-4 rounded-xl bg-slate-900/60 border border-white/10 flex-1 min-w-[200px]"
+                ):
+                    with ui.row().classes("items-center justify-between mb-1"):
+                        ui.label("FRONTEND FRAMEWORK").classes(
+                            "text-xs font-semibold text-gray-400 tracking-wider"
+                        )
+                        ui.icon("web", color="emerald").classes("text-sm")
                     ui.label("NiceGUI 3.16.0").classes(
                         "font-['Outfit'] text-2xl font-bold text-emerald-400"
                     )
+                    ui.label("FastAPI & Vue Quasar Engine").classes(
+                        "text-xs text-gray-400"
+                    )
+
+                # Memory Footprint
+                with ui.element("div").classes(
+                    "p-4 rounded-xl bg-slate-900/60 border border-white/10 flex-1 min-w-[200px]"
+                ):
+                    with ui.row().classes("items-center justify-between mb-1"):
+                        ui.label("PROCESS MEMORY").classes(
+                            "text-xs font-semibold text-gray-400 tracking-wider"
+                        )
+                        ui.icon("data_usage", color="amber").classes("text-sm")
+                    ui.label(f"{memory_info.get('rss_mb', 0):.1f} MB").classes(
+                        "font-['Outfit'] text-2xl font-bold text-amber-400"
+                    )
+                    ui.label(
+                        f"Peak RSS: {memory_info.get('peak_rss_mb', 0):.1f} MB"
+                    ).classes("text-xs text-gray-400")
+
+                # Process Uptime
+                with ui.element("div").classes(
+                    "p-4 rounded-xl bg-slate-900/60 border border-white/10 flex-1 min-w-[200px]"
+                ):
+                    with ui.row().classes("items-center justify-between mb-1"):
+                        ui.label("SYSTEM UPTIME").classes(
+                            "text-xs font-semibold text-gray-400 tracking-wider"
+                        )
+                        ui.icon("schedule", color="rose").classes("text-sm")
+                    ui.label(f"{uptime_info.get('uptime_human', 'Active')}").classes(
+                        "font-['Outfit'] text-2xl font-bold text-rose-400"
+                    )
+                    ui.label(
+                        f"Started: {uptime_info.get('started_at', 'Now')[:19]}"
+                    ).classes("text-xs text-gray-400 truncate")

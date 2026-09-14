@@ -114,6 +114,15 @@ See **[DEVELOPER.md](DEVELOPER.md)** for more developer shortcuts.
 
 ---
 
+## 👏 Kudos & Acknowledgments
+
+Special thanks to **[jomjol](https://github.com/jomjol)** for pioneering the water meter digitization concept and providing the pre-trained neural network models used by this project:
+- [neural-network-analog-needle-readout](https://github.com/jomjol/neural-network-analog-needle-readout) — Analog dial needle angle classification models.
+- [neural-network-digital-counter-readout](https://github.com/jomjol/neural-network-digital-counter-readout) — Mechanical digit drum classification models.
+
+---
+
 ## 📄 License
 
 Distributed under the [GNU General Public License v3.0 (GPL-3.0)](LICENSE.md).
+

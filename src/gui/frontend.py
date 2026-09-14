@@ -285,8 +285,8 @@ def init(fastapi_app: FastAPI, callbacks: Callbacks) -> None:
         config_page = ConfigPage(callbacks=_callbacks)
         previous_values_page = PreviousValuesPage(callbacks=_callbacks)
         api_console_page = ApiConsolePage(callbacks=_callbacks)
-        help_page = HelpPage()
-        about_page = AboutPage()
+        help_page = HelpPage(callbacks=_callbacks)
+        about_page = AboutPage(callbacks=_callbacks)
 
         tabs: ui.tabs | None = None
         services: ui.tab | None = None

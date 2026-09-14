@@ -100,7 +100,7 @@ sitemap default label="Home Automation" {
 
 ---
 
-## 🟢 3. Node-RED, Prometheus & Custom Automations
+## 🟢 3. Node-RED & Custom Automations
 
 ### MQTT Subscriptions
 Any custom script or broker consumer can subscribe to the topic hierarchy:
