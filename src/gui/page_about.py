@@ -3,6 +3,7 @@ import platform
 import sys
 from typing import Any
 
+import nicegui
 from nicegui import ui
 
 from callbacks import Callbacks
@@ -24,11 +25,9 @@ class AboutPage:
         mem_info = get_process_memory_info()
 
         health_data: dict[str, Any] = {}
-        if self.callbacks and hasattr(self.callbacks, "_get_health_data"):
+        if self.callbacks:
             try:
-                fn = self.callbacks._get_health_data
-                if fn is not None:
-                    health_data = fn() or {}
+                health_data = self.callbacks.get_health_data() or {}
             except Exception as e:
                 health_data = {"error": str(e)}
 
@@ -54,44 +53,36 @@ class AboutPage:
             "w-full h-full flex flex-col gap-4 p-4 overflow-y-auto"
         ):
             # Header Hero Card
-            with ui.element("div").classes(
-                "w-full p-6 rounded-2xl "
-                "bg-gradient-to-tr from-blue-900/40 via-cyan-900/30 to-slate-900/60 "
-                "border border-cyan-500/30 shadow-xl shadow-cyan-500/10 "
-                "flex flex-col md:flex-row justify-between items-start md:items-center gap-6"
+            with (
+                ui.element("div").classes(
+                    "w-full p-6 rounded-2xl "
+                    "bg-gradient-to-tr from-blue-900/40 via-cyan-900/30 to-slate-900/60 "
+                    "border border-cyan-500/30 shadow-xl shadow-cyan-500/10 "
+                    "flex flex-col md:flex-row justify-between items-start md:items-center gap-6"
+                ),
+                ui.row().classes("items-center gap-4"),
             ):
-                with ui.row().classes("items-center gap-4"):
-                    with ui.element("div").classes(
-                        "w-16 h-16 rounded-2xl "
-                        "bg-gradient-to-tr from-blue-600 to-cyan-400 "
-                        "flex items-center justify-center shadow-lg "
-                        "shadow-cyan-500/30 shrink-0"
-                    ):
-                        ui.icon("water_drop", color="white").classes("text-3xl")
+                with ui.element("div").classes(
+                    "w-16 h-16 rounded-2xl "
+                    "bg-gradient-to-tr from-blue-600 to-cyan-400 "
+                    "flex items-center justify-center shadow-lg "
+                    "shadow-cyan-500/30 shrink-0"
+                ):
+                    ui.icon("water_drop", color="white").classes("text-3xl")
 
-                    with ui.column().classes("gap-1"):
-                        with ui.row().classes("items-center gap-2"):
-                            ui.label("About Water Meter Digitizer").classes(
-                                "text-h4 font-['Outfit'] font-bold text-white leading-none"
-                            )
-                            ui.label(f"v{VERSION}").classes(
-                                "text-xs font-bold text-cyan-400 bg-cyan-500/15 "
-                                "border border-cyan-500/30 px-2.5 py-0.5 rounded-full"
-                            )
-                        ui.label(
-                            "Edge-AI automated utility meter digitizer using neural network inference, "
-                            "affine geometric alignment, and predecessor odometer consistency deduction."
-                        ).classes("text-sm text-gray-300 max-w-2xl")
-
-                with ui.row().classes("items-center gap-2 shrink-0"):
-                    ui.link(
-                        "Documentation",
-                        "https://github.com/paulianttila/water-meter-digitizer/wiki",
-                        new_tab=True,
-                    ).classes(
-                        "text-xs font-semibold text-gray-300 hover:text-white px-3 py-1.5 "
-                        "rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 transition-colors"
-                    )
+                with ui.column().classes("gap-1"):
+                    with ui.row().classes("items-center gap-2"):
+                        ui.label("About Water Meter Digitizer").classes(
+                            "text-h4 font-['Outfit'] font-bold text-white leading-none"
+                        )
+                        ui.label(f"v{VERSION}").classes(
+                            "text-xs font-bold text-cyan-400 bg-cyan-500/15 "
+                            "border border-cyan-500/30 px-2.5 py-0.5 rounded-full"
+                        )
+                    ui.label(
+                        "Edge-AI automated utility meter digitizer using neural network inference, "
+                        "affine geometric alignment, and predecessor odometer consistency deduction."
+                    ).classes("text-sm text-gray-300 max-w-2xl")
 
             # System Telemetry Metric Cards
             with ui.row().classes("w-full gap-3 flex-wrap"):
@@ -107,7 +98,7 @@ class AboutPage:
                     ui.label(f"v{VERSION}").classes(
                         "font-['Outfit'] text-2xl font-bold text-white"
                     )
-                    ui.label("Production Release").classes("text-xs text-gray-400")
+                    ui.label("Edge AI System").classes("text-xs text-gray-400")
 
                 # Python & Platform
                 with ui.element("div").classes(
@@ -150,7 +141,7 @@ class AboutPage:
                             "text-xs font-semibold text-gray-400 tracking-wider"
                         )
                         ui.icon("web", color="emerald").classes("text-sm")
-                    ui.label("NiceGUI 3.16.0").classes(
+                    ui.label(f"NiceGUI {nicegui.__version__}").classes(
                         "font-['Outfit'] text-2xl font-bold text-emerald-400"
                     )
                     ui.label("FastAPI & Vue Quasar Engine").classes(

@@ -1,4 +1,6 @@
-"""Centralized UI styling tokens and CSS classes for NiceGUI components."""
+import json
+
+from nicegui import ui
 
 # --- Card & Container Styles ---
 CARD_CONTAINER = (
@@ -59,10 +61,6 @@ HEX_ROI_ANALOG = "#f59e0b"
 
 def copy_to_clipboard(text: str, notify_message: str = "") -> None:
     """Copy text to clipboard with automatic fallback for non-secure HTTP (e.g. LAN IP) contexts."""
-    import json
-
-    from nicegui import ui
-
     escaped_json = json.dumps(text)
     ui.run_javascript(f"""
         (function(text) {{

@@ -24,11 +24,9 @@ class HelpPage:
         mem_info = get_process_memory_info()
 
         health_data: dict[str, Any] = {}
-        if self.callbacks and hasattr(self.callbacks, "_get_health_data"):
+        if self.callbacks:
             try:
-                fn = self.callbacks._get_health_data
-                if fn is not None:
-                    health_data = fn() or {}
+                health_data = self.callbacks.get_health_data() or {}
             except Exception as e:
                 health_data = {"error": str(e)}
 
@@ -162,6 +160,15 @@ class HelpPage:
                         ).classes("text-xs text-gray-400")
 
                 with ui.row().classes("items-center gap-2"):
+                    ui.link(
+                        "Wiki Documentation",
+                        "https://github.com/paulianttila/water-meter-digitizer/wiki",
+                        new_tab=True,
+                    ).classes(
+                        "text-xs font-semibold text-gray-300 hover:text-white px-3 py-1.5 "
+                        "rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 transition-colors"
+                    )
+
                     with (
                         ui.button(
                             "Support Bundle",
@@ -232,24 +239,29 @@ class HelpPage:
                                 "Affine warp via 3 reference markers",
                             ),
                             (
-                                "3. Inference",
+                                "3. Adjustment",
+                                "tune",
+                                "Contrast, brightness & sharpness prep",
+                            ),
+                            (
+                                "4. Inference",
                                 "memory",
                                 "LiteRT quantized CNN classification",
                             ),
                             (
-                                "4. Consistency",
+                                "5. Consistency",
                                 "rule",
                                 "Odometer roll & predecessor check",
                             ),
                             (
-                                "5. Export",
+                                "6. Export",
                                 "cloud_upload",
                                 "MQTT, Home Assistant, SQLite & REST",
                             ),
                         ]
 
                         with ui.element("div").classes(
-                            "grid grid-cols-1 sm:grid-cols-5 gap-2"
+                            "grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2"
                         ):
                             for step_title, step_icon, step_desc in pipeline_steps:
                                 with ui.element("div").classes(

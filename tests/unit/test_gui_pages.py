@@ -10,7 +10,7 @@ from gui.page_help import HelpPage
 @pytest.fixture
 def mock_callbacks():
     cb = MagicMock()
-    cb._get_health_data.return_value = {
+    health_payload = {
         "status": "healthy",
         "uptime": {
             "uptime_human": "1d 2h",
@@ -30,6 +30,8 @@ def mock_callbacks():
             "avg_inference_ms": 14.2,
         },
     }
+    cb.get_health_data.return_value = health_payload
+    cb._get_health_data.return_value = health_payload
     return cb
 
 
@@ -39,6 +41,13 @@ def test_theme_constants():
     assert "cyan" in theme.BADGE_INFO
     assert "amber" in theme.BADGE_WARNING
     assert "rose" in theme.BADGE_ERROR
+
+
+def test_theme_copy_to_clipboard():
+    with patch("gui.theme.ui") as mock_ui:
+        theme.copy_to_clipboard("test snippet", notify_message="Copied successfully")
+        mock_ui.run_javascript.assert_called_once()
+        mock_ui.notify.assert_called_once_with("Copied successfully", type="positive")
 
 
 def test_page_about_show():
@@ -60,7 +69,7 @@ def test_page_about_with_callbacks(mock_callbacks):
 
 def test_page_about_with_failing_health_callback():
     mock_cb = MagicMock()
-    mock_cb._get_health_data.side_effect = RuntimeError("Health failure")
+    mock_cb.get_health_data.side_effect = RuntimeError("Health failure")
     page = AboutPage(callbacks=mock_cb)
     diag = page._get_diagnostics_data()
     assert "error" in diag["health"]
@@ -87,7 +96,7 @@ def test_page_help_with_callbacks(mock_callbacks):
 
 def test_page_help_with_failing_health_callback():
     mock_cb = MagicMock()
-    mock_cb._get_health_data.side_effect = RuntimeError("Health error")
+    mock_cb.get_health_data.side_effect = RuntimeError("Health error")
     page = HelpPage(callbacks=mock_cb)
     bundle = page._generate_support_bundle()
     assert "Support Diagnostic Bundle" in bundle

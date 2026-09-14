@@ -14,6 +14,9 @@ from gui.theme import (
     TAG_AUTO_CLS,
     TAG_SNAP_CLS,
 )
+from gui.theme import (
+    copy_to_clipboard as theme_copy_to_clipboard,
+)
 
 
 def format_diff_html(diff_lines: list[str]) -> str:
@@ -600,14 +603,10 @@ class ConfigPage:
             history_dialog.open()
 
         def copy_to_clipboard() -> None:
-            # Escape text for JS clipboard call
-            js_code = (
-                f"navigator.clipboard.writeText({editor.value!r}).then(() => {{"
-                f"  console.log('Config copied');"
-                f"}});"
+            theme_copy_to_clipboard(
+                editor.value,
+                notify_message="Configuration copied to clipboard",
             )
-            ui.run_javascript(js_code)
-            ui.notify("Configuration copied to clipboard", type="positive")
 
         def download_config() -> None:
             ui.download(editor.value.encode("utf-8"), filename="config.ini")

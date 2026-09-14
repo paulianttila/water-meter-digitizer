@@ -117,7 +117,10 @@ def test_page_config_editor_actions():
 
     page = ConfigPage(callbacks)
 
-    with patch("gui.page_config.ui") as mock_ui:
+    with (
+        patch("gui.page_config.ui") as mock_ui,
+        patch("gui.page_config.theme_copy_to_clipboard") as mock_clipboard,
+    ):
         mock_ui.element.return_value.__enter__ = MagicMock()
         mock_ui.element.return_value.__exit__ = MagicMock()
         mock_ui.row.return_value.__enter__ = MagicMock()
@@ -128,5 +131,35 @@ def test_page_config_editor_actions():
         mock_ui.dialog.return_value.__exit__ = MagicMock()
         mock_ui.card.return_value.__enter__ = MagicMock()
         mock_ui.card.return_value.__exit__ = MagicMock()
+        mock_textarea = MagicMock()
+        mock_textarea.value = page.txt
+        mock_ui.textarea.return_value.classes.return_value.props.return_value = (
+            mock_textarea
+        )
+
+        # Capture button click handlers
+        button_handlers = {}
+
+        def fake_button(*args, **kwargs):
+            btn = MagicMock()
+            if kwargs.get("on_click"):
+                handler = kwargs["on_click"]
+                name = args[0] if args else kwargs.get("text", "")
+                button_handlers[name] = handler
+            btn.on = MagicMock()
+            btn.classes = MagicMock(return_value=btn)
+            btn.props = MagicMock(return_value=btn)
+            btn.tooltip = MagicMock(return_value=btn)
+            return btn
+
+        mock_ui.button.side_effect = fake_button
 
         page.show()
+
+        # Verify Copy button triggered theme_copy_to_clipboard
+        if "Copy" in button_handlers:
+            button_handlers["Copy"]()
+            mock_clipboard.assert_called_once_with(
+                page.txt,
+                notify_message="Configuration copied to clipboard",
+            )

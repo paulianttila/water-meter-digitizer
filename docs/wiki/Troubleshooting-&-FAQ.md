@@ -25,3 +25,16 @@ Open the **Config** tab ➔ click **History / Backups** ➔ click **Create Snaps
 
 ### Does this work with gas or electricity meters?
 **Yes.** Any utility meter featuring mechanical rolling number drums or rotating needle dials can be digitized using the same workflow.
+
+### Why does the digitizer return `?` (unreadable digit)?
+Check if the bounding box is cropped too tightly or includes adjacent drum borders. In Step 4 (Image Preprocessing), enable **AutoContrast** or adjust **Sharpness**. If digits are in mid-roll (transitioning between two numbers), the consistency engine uses predecessor deduction to resolve uncertain digits marked with `?`.
+
+### Why was my reading rejected with "Decreasing rate rejected"?
+The consistency engine prevents negative flow spikes if a glare or misread occurs. If your physical meter was replaced or rolled over, set `AllowNegativeRates = True` or use the **Baselines** page to set a new starting baseline.
+
+### Camera shows offline or timeout errors?
+Verify camera IP reachability, test the URL in the **API Console**, check network firewall rules, or increase `Timeout` in the `[TakeImage]` configuration section.
+
+### Reference markers shift over time?
+Ensure the camera mount is rigidly fixed. If lighting conditions change drastically, place reference points on high-contrast black/white features rather than reflective metal edges.
+
