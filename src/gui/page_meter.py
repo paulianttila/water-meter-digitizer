@@ -1,6 +1,9 @@
 """Meter Dashboard Page for NiceGUI (Live Readouts, Cropped Dials, Analytics, and History Table)."""
 
 import asyncio
+import time
+from datetime import datetime
+from typing import Any
 
 from nicegui import ui
 
@@ -12,7 +15,7 @@ from gui.theme import BADGE_ERROR, BADGE_SUCCESS, BADGE_WARNING
 
 
 class MeterPage:
-    """Page rendering live water meter deductions, processed captures, digit crops, statistics, and history table."""
+    """Page rendering live water meter deductions, multi-stage pipeline captures, digit crops, and analytics."""
 
     def __init__(self, callbacks: Callbacks) -> None:
         self.callbacks = callbacks
@@ -20,6 +23,12 @@ class MeterPage:
         self.history_card = HistoryTableCard(self.callbacks)
         self.time_machine_card = TimeMachineCard(self.callbacks)
         self.spinner: ui.spinner | None = None
+        self.active_image_stage: str = "final"
+        self.auto_refresh_seconds: int = 0
+        self._auto_timer: ui.timer | None = None
+        self.last_fetch_time: datetime | None = None
+        self.last_pipeline_ms: float = 0.0
+        self._fetch_task: asyncio.Task | None = None
 
     async def show(self) -> None:
         """Render the Meter Dashboard page."""
@@ -28,8 +37,11 @@ class MeterPage:
             if self.spinner:
                 self.spinner.visible = True
             value_container.clear()
+            t0 = time.perf_counter()
             try:
                 await fetch_data()
+                self.last_fetch_time = datetime.now()
+                self.last_pipeline_ms = (time.perf_counter() - t0) * 1000.0
             except Exception as e:
                 ui.notify(
                     f"Error occurred: {e}",
@@ -42,51 +54,173 @@ class MeterPage:
                 )
             if self.spinner:
                 self.spinner.visible = False
+            update_freshness_header()
+
+        def update_freshness_header() -> None:
+            freshness_container.clear()
+            with freshness_container:
+                if self.last_fetch_time:
+                    ts_str = self.last_fetch_time.strftime("%H:%M:%S")
+                    with ui.row().classes("items-center gap-1.5 text-xs font-mono"):
+                        ui.icon("fiber_manual_record", size="10px").classes(
+                            "text-emerald-400 animate-pulse"
+                        )
+                        ui.label(f"Updated: {ts_str}").classes("text-slate-300")
+                        if self.last_pipeline_ms > 0:
+                            ui.badge(
+                                f"⚡ {self.last_pipeline_ms:.0f}ms",
+                                color="dark",
+                            ).classes(
+                                "text-[10px] font-mono border border-white/10 text-cyan-300"
+                            )
+
+        def on_auto_refresh_change(e: Any) -> None:
+            self.auto_refresh_seconds = int(e.value)
+            if self._auto_timer:
+                self._auto_timer.cancel()
+                self._auto_timer = None
+            if self.auto_refresh_seconds > 0:
+
+                def trigger_periodic_fetch() -> None:
+                    self._fetch_task = asyncio.create_task(do_fetch())
+
+                self._auto_timer = ui.timer(
+                    float(self.auto_refresh_seconds),
+                    trigger_periodic_fetch,
+                )
+                ui.notify(
+                    f"Auto-refresh set to {self.auto_refresh_seconds}s",
+                    type="info",
+                )
+
+        def trigger_background_poll() -> None:
+            try:
+                self.callbacks.trigger_poller()
+                ui.notify("Triggered background poller run", type="positive")
+                self._fetch_task = asyncio.create_task(do_fetch())
+            except Exception as err:
+                ui.notify(f"Poller trigger failed: {err}", type="negative")
+
+        def open_crop_modal(
+            name: str, value: Any, conf: float, is_digital: bool
+        ) -> None:
+            crop_base64 = ""
+            try:
+                crop_base64 = self.callbacks.get_image_as_base64_str(name)
+            except Exception:
+                crop_base64 = ""
+
+            with (
+                ui.dialog() as crop_modal,
+                ui.card().classes(
+                    "bg-slate-900 border border-white/10 rounded-2xl p-6 gap-4 min-w-[320px] max-w-md shadow-2xl text-white"
+                ),
+            ):
+                with ui.row().classes(
+                    "w-full justify-between items-center pb-2 border-b border-white/10"
+                ):
+                    with ui.row().classes("items-center gap-2"):
+                        ui.icon("pin" if is_digital else "speed", color="cyan").classes(
+                            "text-lg"
+                        )
+                        ui.label(
+                            f"{'Digital Counter' if is_digital else 'Analog Dial'} - {name}"
+                        ).classes("font-['Outfit'] font-bold text-sm text-gray-100")
+                    ui.button(icon="close", on_click=crop_modal.close).props(
+                        "flat round dense size=sm"
+                    )
+
+                with ui.column().classes("w-full items-center gap-3"):
+                    with ui.element("div").classes(
+                        "w-48 h-48 rounded-2xl bg-black/60 p-2 border border-white/10 flex items-center justify-center overflow-hidden"
+                    ):
+                        if crop_base64:
+                            ui.image(f"data:image/jpeg;base64,{crop_base64}").props(
+                                "fit=contain no-spinner"
+                            ).classes("max-w-full max-h-full rounded-xl")
+                        else:
+                            ui.icon("image_not_supported", color="gray").classes(
+                                "text-4xl"
+                            )
+
+                    with ui.row().classes("items-baseline gap-2 mt-1"):
+                        ui.label(str(value)).classes(
+                            "font-['Outfit'] text-4xl font-extrabold text-cyan-300"
+                        )
+                        ui.label(f"#{name}").classes("text-xs font-mono text-slate-400")
+
+                    conf_color = (
+                        "text-emerald-400"
+                        if conf >= 85.0
+                        else ("text-amber-400" if conf >= 70.0 else "text-rose-400")
+                    )
+                    with ui.row().classes("items-center gap-1.5 text-xs font-mono"):
+                        ui.label("Neural Confidence:").classes("text-slate-400")
+                        ui.label(f"{conf:.1f}%").classes(f"font-bold {conf_color}")
+
+                with ui.row().classes(
+                    "w-full justify-end pt-2 border-t border-white/10"
+                ):
+                    ui.button("Close", on_click=crop_modal.close).props(
+                        "unelevated color=primary size=sm"
+                    ).classes("rounded-xl px-4")
+
+            crop_modal.open()
 
         async def fetch_data() -> None:
             result = await asyncio.to_thread(
                 self.callbacks.get_meter_data, saveimages=True
             )
 
+            # Check leak / flow telemetry
+            leak_status: dict[str, Any] = {}
+            try:
+                leak_status = self.callbacks.get_leak_status() or {}
+            except Exception:
+                leak_status = {}
+
             with value_container:
                 # 0. Optional Recognition Error/Warning Banner
                 if result.error:
                     with ui.element("div").classes(
-                        "w-full p-3.5 rounded-xl bg-amber-950/40 border border-amber-500/30 "
-                        "text-amber-200 text-xs flex items-center gap-2 mb-4"
+                        "w-full p-3.5 rounded-2xl bg-amber-950/50 border border-amber-500/40 "
+                        "text-amber-200 text-xs flex items-center justify-between gap-2 mb-3 shadow-lg"
                     ):
-                        ui.icon("warning", color="amber").classes("text-lg")
-                        ui.label(f"Recognition Status: {result.error}").classes(
-                            "font-semibold"
-                        )
+                        with ui.row().classes("items-center gap-2"):
+                            ui.icon("warning", color="amber").classes("text-lg")
+                            ui.label(f"Recognition Warning: {result.error}").classes(
+                                "font-semibold"
+                            )
+                        ui.button("Open Setup Wizard", icon="settings").props(
+                            'unelevated size=xs color=amber text-color=dark href="/#setup"'
+                        ).classes("rounded-lg font-bold")
 
-                # 1. Metric Summary Cards
+                # 1. Metric Summary Cards & Flow Badges
                 with ui.row().classes("w-full gap-4 flex-wrap mb-4"):
                     for meter in result.meters:
                         is_total = meter.name == "total"
                         bg_grad = (
-                            "bg-gradient-to-tr from-blue-900/30 to-cyan-900/20 "
-                            "border-blue-500/40 shadow-lg shadow-blue-500/10"
+                            "bg-gradient-to-br from-blue-950/60 via-slate-900/80 to-cyan-950/40 "
+                            "border-cyan-500/40 shadow-xl shadow-cyan-500/5"
                             if is_total
-                            else "bg-slate-900/60 border-white/10"
+                            else "bg-slate-900/70 border-white/10 shadow-lg"
                         )
-                        card_classes = (
-                            "p-4 rounded-xl border flex-1 min-w-[200px] " f"{bg_grad}"
-                        )
+                        card_classes = f"p-4 rounded-2xl border flex-1 min-w-[220px] backdrop-blur-md {bg_grad}"
                         with ui.element("div").classes(card_classes):
                             with ui.row().classes(
-                                "w-full justify-between items-center mb-1"
+                                "w-full justify-between items-center mb-1.5"
                             ):
-                                ui.label(meter.name.upper()).classes(
-                                    "text-xs font-semibold text-gray-400 tracking-wider"
-                                )
                                 with ui.row().classes("items-center gap-1.5"):
+                                    ui.label(meter.name.upper()).classes(
+                                        "text-xs font-bold text-gray-300 tracking-wider font-mono"
+                                    )
                                     if is_total:
                                         ui.label("PRIMARY").classes(
-                                            "text-[10px] font-bold text-emerald-400 "
-                                            "bg-emerald-500/10 px-2 py-0.5 rounded-full "
-                                            "border border-emerald-500/30"
+                                            "text-[10px] font-bold text-cyan-400 bg-cyan-500/10 "
+                                            "px-2 py-0.5 rounded-full border border-cyan-500/30"
                                         )
+
+                                with ui.row().classes("items-center gap-1.5"):
                                     conf_val = getattr(meter, "confidence", 100.0)
                                     qual = getattr(meter, "quality", "good").lower()
                                     badge_cls = (
@@ -102,24 +236,83 @@ class MeterPage:
                                         ui.label(
                                             f"{conf_val:.1f}% • {qual.capitalize()}"
                                         )
-                            with ui.row().classes("items-baseline gap-2"):
-                                text_grad = (
-                                    "text-transparent bg-clip-text "
-                                    "bg-gradient-to-r from-white to-cyan-200"
-                                    if is_total
-                                    else "text-white"
-                                )
-                                val_classes = (
-                                    f"font-['Outfit'] text-3xl font-extrabold "
-                                    f"tracking-tight {text_grad}"
-                                )
-                                ui.label(str(meter.value)).classes(val_classes)
-                                if meter.unit:
-                                    ui.label(meter.unit).classes(
-                                        "text-sm text-gray-400 font-semibold"
+
+                            with ui.row().classes(
+                                "w-full justify-between items-baseline gap-2"
+                            ):
+                                with ui.row().classes("items-baseline gap-1.5"):
+                                    text_grad = (
+                                        "text-transparent bg-clip-text bg-gradient-to-r from-white via-cyan-100 to-cyan-300"
+                                        if is_total
+                                        else "text-white"
+                                    )
+                                    val_classes = f"font-['Outfit'] text-3xl font-extrabold tracking-tight {text_grad}"
+                                    ui.label(str(meter.value)).classes(val_classes)
+                                    if meter.unit:
+                                        ui.label(meter.unit).classes(
+                                            "text-sm text-gray-400 font-semibold"
+                                        )
+
+                                def copy_value(val: str = meter.value) -> None:
+                                    ui.run_javascript(
+                                        f"navigator.clipboard.writeText('{val}')"
+                                    )
+                                    ui.notify(
+                                        f"Copied '{val}' to clipboard", type="info"
                                     )
 
-                # 2. Main Processed Image & Crop Grids
+                                ui.button(
+                                    icon="content_copy", on_click=copy_value
+                                ).props("flat round dense size=xs color=gray").tooltip(
+                                    "Copy reading to clipboard"
+                                )
+
+                    # Flow & Leak Telemetry Card
+                    is_flowing = leak_status.get("flow_active", False)
+                    leak_state = leak_status.get("state", "OK")
+                    flow_dur = leak_status.get("continuous_flow_seconds", 0)
+                    with ui.element("div").classes(
+                        "p-4 rounded-2xl border border-white/10 bg-slate-900/70 shadow-lg min-w-[200px] flex-1 backdrop-blur-md"
+                    ):
+                        with ui.row().classes(
+                            "w-full justify-between items-center mb-1.5"
+                        ):
+                            ui.label("FLOW MONITOR").classes(
+                                "text-xs font-bold text-gray-400 tracking-wider font-mono"
+                            )
+                            if leak_state in ("LEAK_ALERT", "SUSPECTED_LEAK"):
+                                ui.badge(leak_state, color="negative").classes(
+                                    "text-[10px] font-bold"
+                                )
+                            else:
+                                ui.badge("NORMAL", color="emerald").classes(
+                                    "text-[10px] font-bold"
+                                )
+
+                        with ui.row().classes("items-baseline gap-2"):
+                            if is_flowing:
+                                with ui.row().classes("items-center gap-1.5"):
+                                    ui.icon("water_drop", color="blue").classes(
+                                        "text-2xl animate-bounce"
+                                    )
+                                    ui.label("Active Flow").classes(
+                                        "font-['Outfit'] text-2xl font-bold text-blue-300"
+                                    )
+                            else:
+                                with ui.row().classes("items-center gap-1.5"):
+                                    ui.icon("pause_circle", color="gray").classes(
+                                        "text-2xl"
+                                    )
+                                    ui.label("Zero-Flow").classes(
+                                        "font-['Outfit'] text-2xl font-bold text-slate-400"
+                                    )
+
+                        if flow_dur > 0:
+                            ui.label(f"Continuous flow: {flow_dur}s").classes(
+                                "text-[11px] text-blue-300/80 font-mono mt-0.5"
+                            )
+
+                # 2. Main Multi-Stage Image & Crop Grids
                 def open_roi_dialog() -> None:
                     roi_img = ""
                     try:
@@ -150,7 +343,7 @@ class MeterPage:
                     with (
                         ui.dialog() as roi_modal,
                         ui.card().classes(
-                            "w-full max-w-4xl p-5 bg-slate-900 border border-white/10 rounded-2xl gap-4"
+                            "w-full max-w-4xl p-5 bg-slate-900 border border-white/10 rounded-2xl gap-4 shadow-2xl text-white"
                         ),
                     ):
                         with ui.row().classes(
@@ -235,143 +428,287 @@ class MeterPage:
                     roi_modal.open()
 
                 with ui.row().classes("w-full gap-6 items-start"):
-                    # Processed image
-                    with ui.column().classes("flex-1 min-w-[320px]"):
+                    # Processed image with multi-stage switcher
+                    with ui.column().classes("flex-1 min-w-[340px] gap-2"):
                         with ui.row().classes(
-                            "w-full justify-between items-center mb-2"
+                            "w-full justify-between items-center gap-2 flex-wrap"
                         ):
-                            ui.label("Processed Capture").classes(
-                                "font-['Outfit'] font-bold text-sm text-gray-300"
-                            )
-                            ui.button(
-                                "Inspect ROIs",
-                                icon="crop_free",
-                                on_click=open_roi_dialog,
-                            ).props("flat dense color=cyan size=sm").classes(
-                                "text-xs font-semibold"
+                            with ui.row().classes("items-center gap-1.5"):
+                                ui.icon("photo_camera", color="cyan").classes(
+                                    "text-base"
+                                )
+                                ui.label("Processed Capture").classes(
+                                    "font-['Outfit'] font-bold text-sm text-gray-200"
+                                )
+
+                            with ui.row().classes("items-center gap-1.5"):
+                                ui.button(
+                                    "Inspect ROIs",
+                                    icon="crop_free",
+                                    on_click=open_roi_dialog,
+                                ).props("flat dense color=cyan size=sm").classes(
+                                    "text-xs font-semibold"
+                                )
+
+                        # In-place stage switcher toggle
+                        def on_stage_toggle(e: Any) -> None:
+                            self.active_image_stage = e.value
+                            render_stage_image()
+
+                        def render_stage_image() -> None:
+                            if stage_image_container:
+                                stage_image_container.clear()
+                                with stage_image_container:
+                                    img_data = ""
+                                    try:
+                                        img_data = (
+                                            self.callbacks.get_image_as_base64_str(
+                                                self.active_image_stage
+                                            )
+                                        )
+                                    except Exception:
+                                        try:
+                                            img_data = (
+                                                self.callbacks.get_image_as_base64_str(
+                                                    "final"
+                                                )
+                                            )
+                                        except Exception:
+                                            img_data = ""
+
+                                    if img_data:
+                                        ui.image(
+                                            f"data:image/jpeg;base64,{img_data}"
+                                        ).props("fit=contain no-spinner").classes(
+                                            "w-full rounded-xl max-h-[460px]"
+                                        )
+                                    else:
+                                        with ui.column().classes(
+                                            "p-12 items-center justify-center gap-2"
+                                        ):
+                                            ui.icon(
+                                                "image_not_supported", color="gray"
+                                            ).classes("text-4xl")
+                                            ui.label(
+                                                f"Stage '{self.active_image_stage}' not available"
+                                            ).classes("text-xs text-gray-400 font-mono")
+
+                        with ui.row().classes(
+                            "w-full justify-between items-center gap-2 flex-wrap"
+                        ):
+                            ui.toggle(
+                                options={
+                                    "final": "Final",
+                                    "roi": "ROIs",
+                                    "cropped": "Cropped",
+                                    "aligned": "Aligned",
+                                    "rotated": "Rotated",
+                                    "original": "Original",
+                                },
+                                value=self.active_image_stage,
+                                on_change=on_stage_toggle,
+                            ).props(
+                                "dense rounded unelevated toggle-color=cyan text-color=grey-4"
+                            ).classes(
+                                "text-xs font-medium bg-slate-950/80 p-0.5"
                             )
 
-                        with ui.element("div").classes(
-                            "w-full rounded-xl bg-slate-950 p-2 border border-white/10 "
-                            "flex items-center justify-center overflow-hidden"
-                        ):
-                            base64img = self.callbacks.get_image_as_base64_str("final")
-                            ui.image(f"data:image/jpeg;base64,{base64img}").classes(
-                                "w-full rounded-lg"
-                            )
+                        stage_image_container = ui.element("div").classes(
+                            "w-full rounded-2xl bg-slate-950/80 p-2.5 border border-white/10 "
+                            "flex items-center justify-center overflow-hidden shadow-xl"
+                        )
+                        render_stage_image()
 
-                    # Deductions Breakdown
+                    # Deductions Breakdown (Interactive Zoom Cards)
                     with ui.column().classes("flex-1 min-w-[320px] gap-4"):
                         if result.digital_results:
-                            ui.label("Digital Counters").classes(
-                                "font-['Outfit'] font-bold text-sm text-gray-300"
-                            )
+                            with ui.row().classes(
+                                "w-full justify-between items-center"
+                            ):
+                                with ui.row().classes("items-center gap-1.5"):
+                                    ui.icon("pin", color="cyan").classes("text-base")
+                                    ui.label("Digital Counters").classes(
+                                        "font-['Outfit'] font-bold text-sm text-gray-200"
+                                    )
+                                ui.label("Click to Zoom").classes(
+                                    "text-[10px] text-slate-500 font-mono"
+                                )
+
                             with ui.row().classes("w-full gap-3 flex-wrap"):
-                                for (
-                                    image,
-                                    value,
-                                ) in result.digital_results.items():
-                                    with ui.element("div").classes(
-                                        "p-2.5 rounded-lg bg-slate-900/80 border "
-                                        "border-white/10 flex flex-col items-center "
-                                        "gap-1 min-w-[75px]"
+                                for image, value in result.digital_results.items():
+                                    c_score = (
+                                        result.confidence_scores.get(image, 100.0)
+                                        if result.confidence_scores
+                                        else 100.0
+                                    )
+                                    c_col = (
+                                        "text-emerald-400"
+                                        if c_score >= 80
+                                        else (
+                                            "text-amber-400"
+                                            if c_score >= 60
+                                            else "text-rose-400"
+                                        )
+                                    )
+
+                                    with (
+                                        ui.element("div")
+                                        .classes(
+                                            "p-2.5 rounded-xl bg-slate-900/90 border border-white/10 "
+                                            "flex flex-col items-center gap-1 min-w-[80px] shadow-lg "
+                                            "cursor-pointer hover:border-cyan-500/50 hover:bg-slate-800/90 transition-all"
+                                        )
+                                        .on(
+                                            "click",
+                                            lambda _, im=image, val=value, sc=c_score: open_crop_modal(
+                                                im, val, sc, True
+                                            ),
+                                        )
                                     ):
                                         ui.label(image).classes(
-                                            "text-[11px] text-gray-400 "
-                                            "uppercase tracking-wider"
+                                            "text-[10px] text-gray-400 uppercase tracking-wider font-mono"
                                         )
-                                        base64img = (
-                                            self.callbacks.get_image_as_base64_str(
-                                                image
-                                            )
-                                        )
-                                        ui.image(
-                                            f"data:image/jpeg;base64,{base64img}"
-                                        ).props("fit=contain").classes(
-                                            "w-16 h-16 rounded bg-slate-950 p-0.5"
-                                        )
-                                        ui.label(str(value)).classes(
-                                            "font-['Outfit'] font-bold "
-                                            "text-cyan-400 text-sm"
-                                        )
-                                        if (
-                                            result.confidence_scores
-                                            and image in result.confidence_scores
-                                        ):
-                                            c_score = result.confidence_scores[image]
-                                            c_col = (
-                                                "text-emerald-400"
-                                                if c_score >= 80
-                                                else (
-                                                    "text-amber-400"
-                                                    if c_score >= 60
-                                                    else "text-rose-400"
+                                        base64img = ""
+                                        try:
+                                            base64img = (
+                                                self.callbacks.get_image_as_base64_str(
+                                                    image
                                                 )
                                             )
-                                            ui.label(f"{c_score:.0f}% conf").classes(
-                                                f"text-[10px] font-mono {c_col}"
+                                        except Exception:
+                                            base64img = ""
+                                        if base64img:
+                                            ui.image(
+                                                f"data:image/jpeg;base64,{base64img}"
+                                            ).props("fit=contain no-spinner").classes(
+                                                "w-16 h-16 rounded-lg bg-slate-950 p-0.5 border border-white/5"
                                             )
+                                        ui.label(str(value)).classes(
+                                            "font-['Outfit'] font-bold text-cyan-300 text-base"
+                                        )
+                                        ui.label(f"{c_score:.0f}% conf").classes(
+                                            f"text-[10px] font-mono {c_col}"
+                                        )
 
                         if result.analog_results:
-                            ui.label("Analog Dials").classes(
-                                "font-['Outfit'] font-bold text-sm text-gray-300"
-                            )
+                            with ui.row().classes(
+                                "w-full justify-between items-center"
+                            ):
+                                with ui.row().classes("items-center gap-1.5"):
+                                    ui.icon("speed", color="amber").classes("text-base")
+                                    ui.label("Analog Dials").classes(
+                                        "font-['Outfit'] font-bold text-sm text-gray-200"
+                                    )
+                                ui.label("Click to Zoom").classes(
+                                    "text-[10px] text-slate-500 font-mono"
+                                )
+
                             with ui.row().classes("w-full gap-3 flex-wrap"):
-                                for (
-                                    image,
-                                    value,
-                                ) in result.analog_results.items():
-                                    with ui.element("div").classes(
-                                        "p-2.5 rounded-lg bg-slate-900/80 border "
-                                        "border-white/10 flex flex-col items-center "
-                                        "gap-1 min-w-[75px]"
+                                for image, value in result.analog_results.items():
+                                    c_score = (
+                                        result.confidence_scores.get(image, 100.0)
+                                        if result.confidence_scores
+                                        else 100.0
+                                    )
+                                    c_col = (
+                                        "text-emerald-400"
+                                        if c_score >= 80
+                                        else (
+                                            "text-amber-400"
+                                            if c_score >= 60
+                                            else "text-rose-400"
+                                        )
+                                    )
+
+                                    with (
+                                        ui.element("div")
+                                        .classes(
+                                            "p-2.5 rounded-xl bg-slate-900/90 border border-white/10 "
+                                            "flex flex-col items-center gap-1 min-w-[80px] shadow-lg "
+                                            "cursor-pointer hover:border-amber-500/50 hover:bg-slate-800/90 transition-all"
+                                        )
+                                        .on(
+                                            "click",
+                                            lambda _, im=image, val=value, sc=c_score: open_crop_modal(
+                                                im, val, sc, False
+                                            ),
+                                        )
                                     ):
                                         ui.label(image).classes(
-                                            "text-[11px] text-gray-400 "
-                                            "uppercase tracking-wider"
+                                            "text-[10px] text-gray-400 uppercase tracking-wider font-mono"
                                         )
-                                        base64img = (
-                                            self.callbacks.get_image_as_base64_str(
-                                                image
-                                            )
-                                        )
-                                        ui.image(
-                                            f"data:image/jpeg;base64,{base64img}"
-                                        ).props("fit=contain").classes(
-                                            "w-16 h-16 rounded bg-slate-950 p-0.5"
-                                        )
-                                        ui.label(str(value)).classes(
-                                            "font-['Outfit'] font-bold "
-                                            "text-cyan-400 text-sm"
-                                        )
-                                        if (
-                                            result.confidence_scores
-                                            and image in result.confidence_scores
-                                        ):
-                                            c_score = result.confidence_scores[image]
-                                            c_col = (
-                                                "text-emerald-400"
-                                                if c_score >= 80
-                                                else (
-                                                    "text-amber-400"
-                                                    if c_score >= 60
-                                                    else "text-rose-400"
+                                        base64img = ""
+                                        try:
+                                            base64img = (
+                                                self.callbacks.get_image_as_base64_str(
+                                                    image
                                                 )
                                             )
-                                            ui.label(f"{c_score:.0f}% conf").classes(
-                                                f"text-[10px] font-mono {c_col}"
+                                        except Exception:
+                                            base64img = ""
+                                        if base64img:
+                                            ui.image(
+                                                f"data:image/jpeg;base64,{base64img}"
+                                            ).props("fit=contain no-spinner").classes(
+                                                "w-16 h-16 rounded-lg bg-slate-950 p-0.5 border border-white/5"
                                             )
+                                        ui.label(str(value)).classes(
+                                            "font-['Outfit'] font-bold text-amber-300 text-base"
+                                        )
+                                        ui.label(f"{c_score:.0f}% conf").classes(
+                                            f"text-[10px] font-mono {c_col}"
+                                        )
 
         # Top Bar
-        with ui.row().classes("w-full justify-between items-center mb-2"):
+        with ui.row().classes(
+            "w-full justify-between items-center gap-4 flex-wrap mb-3"
+        ):
             with ui.row().classes("items-center gap-3"):
                 ui.label("Meter Dashboard").classes("text-h4")
                 self.spinner = ui.spinner("dots", size="md", color="cyan")
                 self.spinner.visible = False
 
-            ui.button("Refresh", icon="refresh", on_click=do_fetch).props(
-                "unelevated color=primary"
-            ).classes("shadow-md shadow-blue-500/20")
+            freshness_container = ui.row().classes("items-center gap-2")
+
+            with ui.row().classes("items-center gap-2.5 flex-wrap"):
+                ui.label("Auto:").classes("text-xs font-semibold text-gray-400")
+                ui.select(
+                    options={
+                        0: "Manual Only",
+                        5: "Every 5s",
+                        10: "Every 10s",
+                        30: "Every 30s",
+                        60: "Every 60s",
+                    },
+                    value=self.auto_refresh_seconds,
+                    on_change=on_auto_refresh_change,
+                ).props("dense outlined options-dense").classes(
+                    "w-32 text-xs bg-slate-950 rounded-lg"
+                )
+
+                def on_manual_refresh() -> None:
+                    self._fetch_task = asyncio.create_task(do_fetch())
+
+                ui.button(
+                    "Refresh",
+                    icon="refresh",
+                    on_click=on_manual_refresh,
+                ).props(
+                    "unelevated color=primary size=sm"
+                ).classes("shadow-md shadow-blue-500/20 rounded-xl")
+
+                ui.button(
+                    icon="bolt",
+                    on_click=trigger_background_poll,
+                ).props(
+                    "flat round dense color=amber size=sm"
+                ).tooltip("Trigger Poller Execution")
+
+                ui.button(
+                    icon="open_in_new",
+                ).props(
+                    'flat round dense color=cyan size=sm href="/meter" target="_blank"'
+                ).tooltip("Open /meter REST API")
 
         with (
             ui.tabs()

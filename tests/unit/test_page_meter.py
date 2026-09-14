@@ -115,6 +115,11 @@ def test_page_meter_fetch_exception():
 def test_page_meter_roi_dialog_and_fallbacks(mock_meter_result):
     callbacks = MagicMock()
     callbacks.get_meter_data.return_value = mock_meter_result
+    callbacks.get_leak_status.return_value = {
+        "flow_active": True,
+        "state": "OK",
+        "continuous_flow_seconds": 45,
+    }
     callbacks.get_image_as_base64_str.side_effect = [
         "dGVzdGZpbmFs",  # processed capture
         "dGVzdGRpZzE=",  # digit1
@@ -146,3 +151,12 @@ def test_page_meter_roi_dialog_and_fallbacks(mock_meter_result):
         mock_ui.tab_panel.return_value.__enter__ = MagicMock()
         mock_ui.tab_panel.return_value.__exit__ = MagicMock()
         asyncio.run(page.show())
+
+
+def test_page_meter_poller_trigger():
+    callbacks = MagicMock()
+    page = MeterPage(callbacks)
+    callbacks.trigger_poller.return_value = {"status": "ok"}
+    res = page.callbacks.trigger_poller()
+    assert res == {"status": "ok"}
+    callbacks.trigger_poller.assert_called_once()

@@ -48,9 +48,21 @@ The **API Console** tab is divided into three specialized workspaces:
 The **Meter** page is divided into four functional sub-views:
 
 ### Live Readout
-- **Live Metric Cards**: Shows formatted readings (e.g. `00452.91241 m³`), calculated flow rate (`0.000 m³/h`), unit, timestamp, and duration.
-- **ROI Confidence Badges**: Displays color-coded neural network confidence scores (e.g. `99.2%`, `85.4%`) for individual digital drums and analog needle dials.
-- **Inspect ROI Modal**: Click on any ROI pill to open high-resolution zoomed crops of the segmented digit and its raw model classification score distribution.
+- **Auto-Refresh & Pipeline Freshness Toolbar**:
+  - Configurable auto-polling interval (`Off`, `5s`, `10s`, `30s`, `60s`).
+  - Freshness timestamp indicator (e.g. `Updated 18:30:05` with live pulse dot) and pipeline latency badge (`⚡ 124ms`).
+  - 1-click "Trigger Poller" button to force an instant background poll and MQTT broadcast.
+- **Hero Readout Cards & Flow Status**:
+  - Shows formatted primary readings (e.g. `00452.91241 m³`) in bold monospaced typography with gradient badges.
+  - 1-click **Copy Reading** button.
+  - Active flow indicator badge (`💧 Flow Active` vs `⏸️ Zero-Flow Idle`) with continuous flow duration timer.
+  - Neural network confidence ratings (`99.2% • Good`).
+- **Multi-Stage Processing Pipeline Inspector**:
+  - In-place stage switcher toggle: **Final Processed**, **ROI Overlays**, **Cropped**, **Aligned**, **Rotated**, and **Original Source**.
+  - High-resolution "Inspect ROIs" full-screen dialog with color-coded legend for reference markers, digital counters, and analog dials.
+- **Interactive Digit & Dial Counter Zoom Cards**:
+  - Colorized counter drum cards and analog needle dials with individual confidence scores.
+  - Click on any digit or dial thumbnail to open an enlarged modal view with neural prediction confidence meters.
 
 ### Time Machine (Visual Frame Scrubber)
 - **Chronological Timeline**: Drag the timeline slider or click play to scrub across recorded snapshot frames from past to present.
