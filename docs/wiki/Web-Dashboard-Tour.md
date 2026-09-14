@@ -25,15 +25,30 @@ The top navigation bar provides instant access to all functional areas:
 The **API Console** tab is divided into three specialized workspaces:
 
 ### REST Endpoints Explorer
-- Interactively execute and inspect all backend REST API routes (`/health`, `/version`, `/meter`, `/leak/status`, `/history/consumption`, etc.).
-- Inspect response latency, HTTP status codes, formatted JSON payloads, HTML, and image streams.
-- 1-click clipboard copy for responses.
+- **Categorized Endpoint Selector**: Grouped endpoints with color-coded HTTP method badges (`GET` / `POST` / `PUT` / `DELETE`):
+  - 🟢 **System & Diagnostics**: `/health`, `/healthcheck`, `/version`
+  - 🔵 **Meter & Digitization**: `/meter`, `/reload`, `/get_previous_values`
+  - 🟣 **Poller & MQTT Services**: `/poller/status`, `/poller/trigger`, `/mqtt/status`
+  - 🟠 **Leak Protection & History**: `/leak/status`, `/leak/reset`, `/history/consumption`, `/history/records`
+  - 🔴 **Mock Camera Generator**: `/api/mock_camera`, `/api/mock_camera/reset`
+- **Dynamic Request Builder**: Interactive method selector, path builder, and request body payload editor.
+- **Multi-View Response Inspector**:
+  - **Response Body**: Formatted JSON, rendered HTML, or text stream.
+  - **Response Headers**: Structured table of HTTP response headers (`Content-Type`, `X-Mock-...`, `Date`, etc.).
+  - **cURL Command**: 1-click `Copy cURL` command generator ready for terminal execution.
+  - **Request History**: Chronological log of executed requests with latency and HTTP status indicators.
+- **Telemetry Bar**: Live response latency (`⚡ 12ms`), payload size (`1.4 KB`), and status code badge (`HTTP 200 OK`).
 
 ### Mock Camera Studio
-- Procedural water meter generation studio with live visual preview.
-- **Simulation Parameters**: Mode (`fixed`, `ticker`, `random`, `flow`), target meter value, ticker increment rate, rotation skew, specular glare hotspot, Gaussian sensor noise, optical blur, brightness, contrast, LCD colors, and per-digit/per-dial overrides.
-- **Live Generated Picture**: Real-time canvas rendering with metadata header inspection (`X-Mock-Meter-Value`, `X-Mock-Digital-Value`, `X-Mock-Analog-Value`).
-- **One-Click Actions**: "Copy Mock URL", "Reset Defaults", "Reset Ticker", and "Set as [ImageSource] URL" to immediately feed simulated data to the digitizer engine.
+- **Procedural Simulation Engine**: Real-time generation of realistic water meter dial/drum images with full parameter control:
+  - **Feed Modes**: `fixed`, `ticker`, `random`, `flow`
+  - **Optical Distortions**: Rotation skew (-180° to +180°), specular glare hotspot with intensity tuning, sensor noise (0-30%), lens blur (0-5px), brightness, and contrast.
+  - **Visual Themes**: Digit drum foreground/background color combinations, needle colors, standard resolution presets (VGA, SVGA, XGA, UXGA, or custom).
+  - **Individual Overrides**: Per-digit drum overrides (D1–D5) and per-dial needle overrides (A1–A4).
+- **Scenario Presets Library**: 1-click real-world presets:
+  - *Clean Daytime*, *Tilted & Noisy Sensor*, *Harsh Specular Glare*, *Dim Cellar / Low Light*, *High-Speed Dynamic Flow*, *Transitioning Digit Drum*.
+- **Digitizer Engine Testing**: 1-click **"Test in Engine"** button to feed the generated frame directly into the active recognition pipeline and inspect model predictions, confidence scores, and latency.
+- **One-Click Actions**: "Download JPG", "Copy Mock URL", "Reset Defaults", "Reset Ticker", and "Set as [ImageSource] URL".
 
 ### Swagger UI & OpenAPI Documentation
 - Embedded interactive Swagger UI interface rendering live OpenAPI documentation.

@@ -397,6 +397,66 @@ def test_api_console_page_apply_as_active_image_source(mock_callbacks):
         mock_notify.assert_called()
 
 
+def test_api_console_scenario_presets():
+    from gui.page_api_console import SCENARIO_PRESETS
+
+    page = ApiConsolePage()
+    assert len(SCENARIO_PRESETS) >= 5
+
+    # Test applying first preset
+    preset = SCENARIO_PRESETS[1]  # Tilted & Noisy
+    with patch("gui.page_api_console.ui.notify") as mock_notify:
+        asyncio.run(page._apply_scenario_preset(preset))
+        assert page.mock_rotate == 15.0
+        assert page.mock_noise == 8.0
+        mock_notify.assert_called_with(
+            f"Applied scenario: {preset['name']}", type="positive"
+        )
+
+
+def test_api_console_curl_generation_and_image_download():
+    from gui.page_api_console import generate_curl_command
+
+    cmd = generate_curl_command(
+        "GET", "http://localhost:3000/meter", headers={"Accept": "application/json"}
+    )
+    assert "curl -X GET" in cmd
+    assert "-H 'Accept: application/json'" in cmd
+    assert "'http://localhost:3000/meter'" in cmd
+
+    page = ApiConsolePage()
+    page._raw_mock_bytes = b"sample_jpg_bytes"
+    with (
+        patch("gui.page_api_console.ui.download") as mock_dl,
+        patch("gui.page_api_console.ui.notify"),
+    ):
+        page._download_mock_image()
+        mock_dl.assert_called_once_with(
+            b"sample_jpg_bytes", filename="mock_meter_frame.jpg"
+        )
+
+
+def test_api_console_test_in_engine(mock_callbacks):
+    page = ApiConsolePage(callbacks=mock_callbacks)
+    mock_result = MagicMock()
+    mock_result.value = "00452.91241"
+    mock_result.readouts = [
+        MagicMock(name="digit1", value="0", confidence=99.2),
+        MagicMock(name="analog1", value="9.1", confidence=98.5),
+    ]
+    mock_callbacks.get_meter_data.return_value = mock_result
+
+    with (
+        patch("gui.page_api_console.ui.dialog") as mock_dialog,
+        patch("gui.page_api_console.ui.card"),
+        patch("gui.page_api_console.ui.notify"),
+    ):
+        mock_dialog.return_value.__enter__ = MagicMock()
+        mock_dialog.return_value.__exit__ = MagicMock()
+        asyncio.run(page._test_in_digitizer_engine())
+        mock_callbacks.get_meter_data.assert_called_once()
+
+
 def test_consumption_card(mock_callbacks):
     from datetime import datetime
 

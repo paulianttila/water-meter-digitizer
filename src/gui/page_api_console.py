@@ -25,66 +25,253 @@ if TYPE_CHECKING:
     from callbacks import Callbacks
 
 ENDPOINTS = [
+    # System & Diagnostics
     {
+        "category": "System & Diagnostics",
         "label": "GET /health (Diagnostics & Telemetry)",
         "url": "/health",
         "method": "GET",
     },
     {
+        "category": "System & Diagnostics",
         "label": "GET /healthcheck (Liveness Probe)",
         "url": "/healthcheck",
         "method": "GET",
     },
-    {"label": "GET /version (App Version)", "url": "/version", "method": "GET"},
     {
+        "category": "System & Diagnostics",
+        "label": "GET /version (App Version)",
+        "url": "/version",
+        "method": "GET",
+    },
+    # Meter & Digitization
+    {
+        "category": "Meter & Digitization",
         "label": "GET /meter (Raw Meter Deductions as JSON)",
         "url": "/meter?format=json&saveimages=false",
         "method": "GET",
     },
     {
-        "label": "GET /api/mock_camera (Mock Camera Generator Feed)",
-        "url": "/api/mock_camera?value=00452.91241",
-        "method": "GET",
-    },
-    {
-        "label": "POST /api/mock_camera/reset (Reset Mock Ticker)",
-        "url": "/api/mock_camera/reset?start_value=100.0",
-        "method": "POST",
-    },
-    {
-        "label": "GET /leak/status (Zero-Flow Leak Telemetry)",
-        "url": "/leak/status",
-        "method": "GET",
-    },
-    {
-        "label": "POST /leak/reset (Reset Leak State)",
-        "url": "/leak/reset",
-        "method": "POST",
-    },
-    {
-        "label": "GET /poller/status (Poller Schedule)",
-        "url": "/poller/status",
-        "method": "GET",
-    },
-    {
-        "label": "POST /poller/trigger (Trigger Immediate Readout)",
-        "url": "/poller/trigger",
-        "method": "POST",
-    },
-    {
-        "label": "GET /mqtt/status (MQTT Broker Telemetry)",
-        "url": "/mqtt/status",
-        "method": "GET",
-    },
-    {
+        "category": "Meter & Digitization",
         "label": "GET /reload (Reload Configuration as JSON)",
         "url": "/reload?format=json",
         "method": "GET",
     },
     {
+        "category": "Meter & Digitization",
+        "label": "GET /get_previous_values (Stored Baseline Readings)",
+        "url": "/get_previous_values",
+        "method": "GET",
+    },
+    # Poller & MQTT Services
+    {
+        "category": "Poller & MQTT Services",
+        "label": "GET /poller/status (Poller Schedule)",
+        "url": "/poller/status",
+        "method": "GET",
+    },
+    {
+        "category": "Poller & MQTT Services",
+        "label": "POST /poller/trigger (Trigger Immediate Readout)",
+        "url": "/poller/trigger",
+        "method": "POST",
+    },
+    {
+        "category": "Poller & MQTT Services",
+        "label": "GET /mqtt/status (MQTT Broker Telemetry)",
+        "url": "/mqtt/status",
+        "method": "GET",
+    },
+    # Leak Protection & History
+    {
+        "category": "Leak Protection & History",
+        "label": "GET /leak/status (Zero-Flow Leak Telemetry)",
+        "url": "/leak/status",
+        "method": "GET",
+    },
+    {
+        "category": "Leak Protection & History",
+        "label": "POST /leak/reset (Reset Leak State)",
+        "url": "/leak/reset",
+        "method": "POST",
+    },
+    {
+        "category": "Leak Protection & History",
         "label": "GET /history/consumption (Historical Aggregates)",
         "url": "/history/consumption?meter_name=total&interval=daily&days=7",
         "method": "GET",
+    },
+    {
+        "category": "Leak Protection & History",
+        "label": "GET /history/records (Reading Records Log)",
+        "url": "/history/records?limit=10",
+        "method": "GET",
+    },
+    # Mock Camera Generator
+    {
+        "category": "Mock Camera Studio",
+        "label": "GET /api/mock_camera (Mock Camera Generator Feed)",
+        "url": "/api/mock_camera?value=00452.91241",
+        "method": "GET",
+    },
+    {
+        "category": "Mock Camera Studio",
+        "label": "POST /api/mock_camera/reset (Reset Mock Ticker)",
+        "url": "/api/mock_camera/reset?start_value=100.0",
+        "method": "POST",
+    },
+]
+
+SCENARIO_PRESETS = [
+    {
+        "name": "Clean Daytime",
+        "icon": "wb_sunny",
+        "desc": "Standard VGA, clean digits & analog dials, optimal contrast",
+        "config": {
+            "mode": "fixed",
+            "value": "00452.91241",
+            "rate": 0.005,
+            "rotate": 0.0,
+            "glare": False,
+            "glare_pos": "320,240",
+            "glare_intensity": 1.0,
+            "noise": 0.0,
+            "blur": 0.0,
+            "brightness": 1.0,
+            "contrast": 1.0,
+            "lcd_color": "black",
+            "lcd_bg": "grey",
+            "needle_color": "red",
+            "width": 640,
+            "height": 480,
+            "digit_overrides": ["", "", "", "", ""],
+            "analog_overrides": ["", "", "", ""],
+        },
+    },
+    {
+        "name": "Tilted & Noisy Sensor",
+        "icon": "screen_rotation",
+        "desc": "15° camera angle tilt, 8% sensor noise, slight lens blur",
+        "config": {
+            "mode": "fixed",
+            "value": "00452.91241",
+            "rate": 0.005,
+            "rotate": 15.0,
+            "glare": False,
+            "glare_pos": "320,240",
+            "glare_intensity": 1.0,
+            "noise": 8.0,
+            "blur": 1.2,
+            "brightness": 0.95,
+            "contrast": 1.05,
+            "lcd_color": "black",
+            "lcd_bg": "grey",
+            "needle_color": "red",
+            "width": 640,
+            "height": 480,
+            "digit_overrides": ["", "", "", "", ""],
+            "analog_overrides": ["", "", "", ""],
+        },
+    },
+    {
+        "name": "Harsh Specular Glare",
+        "icon": "flash_on",
+        "desc": "Intense flashlight/sun reflection directly over central dials",
+        "config": {
+            "mode": "fixed",
+            "value": "00452.91241",
+            "rate": 0.005,
+            "rotate": 0.0,
+            "glare": True,
+            "glare_pos": "320,240",
+            "glare_intensity": 1.6,
+            "noise": 2.0,
+            "blur": 0.5,
+            "brightness": 1.1,
+            "contrast": 1.1,
+            "lcd_color": "black",
+            "lcd_bg": "grey",
+            "needle_color": "red",
+            "width": 640,
+            "height": 480,
+            "digit_overrides": ["", "", "", "", ""],
+            "analog_overrides": ["", "", "", ""],
+        },
+    },
+    {
+        "name": "Dim Cellar / Low Light",
+        "icon": "nightlight",
+        "desc": "Low illumination (brightness 0.65, contrast 0.85) with dark noise",
+        "config": {
+            "mode": "fixed",
+            "value": "00452.91241",
+            "rate": 0.005,
+            "rotate": 0.0,
+            "glare": False,
+            "glare_pos": "320,240",
+            "glare_intensity": 1.0,
+            "noise": 6.0,
+            "blur": 0.8,
+            "brightness": 0.65,
+            "contrast": 0.85,
+            "lcd_color": "black",
+            "lcd_bg": "grey",
+            "needle_color": "red",
+            "width": 640,
+            "height": 480,
+            "digit_overrides": ["", "", "", "", ""],
+            "analog_overrides": ["", "", "", ""],
+        },
+    },
+    {
+        "name": "High-Speed Dynamic Flow",
+        "icon": "waves",
+        "desc": "Continuous flowing simulation running ticker at 0.05 / frame",
+        "config": {
+            "mode": "flow",
+            "value": "00452.91241",
+            "rate": 0.05,
+            "rotate": 0.0,
+            "glare": False,
+            "glare_pos": "320,240",
+            "glare_intensity": 1.0,
+            "noise": 1.0,
+            "blur": 0.4,
+            "brightness": 1.0,
+            "contrast": 1.0,
+            "lcd_color": "black",
+            "lcd_bg": "grey",
+            "needle_color": "red",
+            "width": 640,
+            "height": 480,
+            "digit_overrides": ["", "", "", "", ""],
+            "analog_overrides": ["", "", "", ""],
+        },
+    },
+    {
+        "name": "Transitioning Digit Drum",
+        "icon": "change_circle",
+        "desc": "Digit 5 transitioning halfway (2.9) across zero-crossing",
+        "config": {
+            "mode": "fixed",
+            "value": "00452.91241",
+            "rate": 0.005,
+            "rotate": 0.0,
+            "glare": False,
+            "glare_pos": "320,240",
+            "glare_intensity": 1.0,
+            "noise": 0.0,
+            "blur": 0.0,
+            "brightness": 1.0,
+            "contrast": 1.0,
+            "lcd_color": "black",
+            "lcd_bg": "grey",
+            "needle_color": "red",
+            "width": 640,
+            "height": 480,
+            "digit_overrides": ["0", "0", "4", "5", "2.9"],
+            "analog_overrides": ["", "", "", ""],
+        },
     },
 ]
 
@@ -95,6 +282,24 @@ STANDARD_RESOLUTIONS = {
     "1600x1200": "1600x1200 (UXGA)",
     "custom": "Custom Resolution",
 }
+
+
+def generate_curl_command(
+    method: str,
+    full_url: str,
+    headers: dict[str, str] | None = None,
+    body: str | None = None,
+) -> str:
+    """Generate exact copyable cURL terminal command."""
+    parts = [f"curl -X {method}"]
+    if headers:
+        for k, v in headers.items():
+            parts.append(f"-H '{k}: {v}'")
+    if body and method in ("POST", "PUT", "PATCH"):
+        escaped_body = body.replace("'", "'\\''")
+        parts.append(f"--data '{escaped_body}'")
+    parts.append(f"'{full_url}'")
+    return " \\\n  ".join(parts)
 
 
 class ApiConsolePage:
@@ -108,11 +313,27 @@ class ApiConsolePage:
         self.status_badge: ui.element | None = None
         self.status_label: ui.label | None = None
         self.latency_label: ui.label | None = None
+        self.size_label: ui.label | None = None
         self.viewer_container: ui.column | None = None
         self.response_viewer: ui.code | None = None
         self.last_response_text: str = ""
+        self.last_response_headers: dict[str, str] = {}
+        self.last_curl_cmd: str = ""
+        self.request_history: list[dict[str, Any]] = []
         self.url_input: ui.input | None = None
+        self.method_select: ui.select | None = None
+        self.body_input: ui.textarea | None = None
         self.spinner: ui.spinner | None = None
+
+        # Multi-view response tab references
+        self.resp_tabs: ui.tabs | None = None
+        self.resp_tab_body: ui.tab | None = None
+        self.resp_tab_headers: ui.tab | None = None
+        self.resp_tab_curl: ui.tab | None = None
+        self.resp_tab_history: ui.tab | None = None
+        self.headers_container: ui.column | None = None
+        self.curl_viewer: ui.code | None = None
+        self.history_container: ui.column | None = None
 
         # --- Mock Camera Studio State ---
         self.mock_mode = "fixed"
@@ -137,6 +358,7 @@ class ApiConsolePage:
         self.mock_auto_refresh = True
         self.mock_streaming = False
         self.mock_stream_timer: ui.timer | None = None
+        self._raw_mock_bytes: bytes = b""
         self._background_tasks: set[asyncio.Task[None]] = set()
 
         # Mock UI Element references
@@ -176,6 +398,7 @@ class ApiConsolePage:
                 width=self.mock_width,
                 height=self.mock_height,
             )
+            self._raw_mock_bytes = jpeg_bytes
             b64 = base64.b64encode(jpeg_bytes).decode("ascii")
             self.mock_img_src = f"data:image/jpeg;base64,{b64}"
         except Exception:
@@ -195,10 +418,12 @@ class ApiConsolePage:
         return f"http://127.0.0.1:{self.port}"
 
     def _on_endpoint_change(self, e: Any) -> None:
-        target_url = e.value
+        target_url = getattr(e, "value", str(e))
         for ep in ENDPOINTS:
             if ep["url"] == target_url:
                 self.selected_method = ep["method"]
+                if self.method_select:
+                    self.method_select.value = ep["method"]
                 if self.url_input:
                     self.url_input.value = target_url
                 break
@@ -209,6 +434,11 @@ class ApiConsolePage:
 
         endpoint = self.url_input.value.strip()
         method = self.selected_method
+        body_data = (
+            self.body_input.value.strip()
+            if self.body_input and self.body_input.value
+            else None
+        )
 
         if self.spinner:
             self.spinner.visible = True
@@ -218,12 +448,20 @@ class ApiConsolePage:
             self.latency_label.text = ""
 
         full_url = f"{self._get_base_url()}{endpoint}"
+        self.last_curl_cmd = generate_curl_command(method, full_url, body=body_data)
+        if self.curl_viewer:
+            self.curl_viewer.content = self.last_curl_cmd
+
         start_time = time.perf_counter()
 
         def _do_req() -> dict[str, Any]:
             try:
                 if method == "POST":
-                    resp = requests.post(full_url, timeout=10.0)
+                    resp = requests.post(full_url, data=body_data, timeout=10.0)
+                elif method == "PUT":
+                    resp = requests.put(full_url, data=body_data, timeout=10.0)
+                elif method == "DELETE":
+                    resp = requests.delete(full_url, timeout=10.0)
                 else:
                     resp = requests.get(full_url, timeout=10.0)
                 latency = round((time.perf_counter() - start_time) * 1000, 1)
@@ -278,6 +516,21 @@ class ApiConsolePage:
         is_image = result["is_image"]
         headers = result["headers"]
         self.last_response_text = body
+        self.last_response_headers = headers
+
+        # Save to history
+        self.request_history.insert(
+            0,
+            {
+                "time": time.strftime("%H:%M:%S"),
+                "method": method,
+                "url": endpoint,
+                "status": status_code,
+                "latency": latency,
+            },
+        )
+        if len(self.request_history) > 20:
+            self.request_history.pop()
 
         if self.status_label:
             self.status_label.text = (
@@ -296,6 +549,11 @@ class ApiConsolePage:
         if self.latency_label:
             self.latency_label.text = f"{latency} ms"
 
+        if self.size_label:
+            size_kb = round(result["raw_len"] / 1024.0, 1)
+            self.size_label.text = f"{size_kb} KB"
+
+        # Update Body Viewer
         if self.viewer_container:
             self.viewer_container.clear()
             with self.viewer_container:
@@ -336,12 +594,60 @@ class ApiConsolePage:
         elif self.response_viewer:
             self.response_viewer.content = body
 
+        # Update Headers Container
+        if self.headers_container:
+            self.headers_container.clear()
+            with self.headers_container:
+                if not headers:
+                    ui.label("No headers returned").classes(
+                        "text-xs text-slate-400 italic p-3"
+                    )
+                else:
+                    for k, v in headers.items():
+                        with ui.row().classes(
+                            "w-full justify-between items-center py-1.5 px-3 bg-slate-950/70 border-b border-white/5 font-mono text-xs"
+                        ):
+                            ui.label(k).classes("text-cyan-300 font-semibold")
+                            ui.label(str(v)).classes(
+                                "text-slate-300 truncate max-w-md select-all"
+                            )
+
+        # Update History Container
+        if self.history_container:
+            self.history_container.clear()
+            with self.history_container:
+                for item in self.request_history:
+                    with ui.row().classes(
+                        "w-full justify-between items-center p-2 rounded-lg bg-slate-950/60 border border-white/5 text-xs font-mono"
+                    ):
+                        with ui.row().classes("items-center gap-2"):
+                            ui.label(item["time"]).classes("text-slate-400")
+                            ui.badge(item["method"], color="indigo")
+                            ui.label(item["url"]).classes(
+                                "text-slate-200 truncate max-w-xs"
+                            )
+                        with ui.row().classes("items-center gap-2"):
+                            status_c = (
+                                "text-emerald-400"
+                                if item["status"] < 400
+                                else "text-rose-400"
+                            )
+                            ui.label(f"HTTP {item['status']}").classes(
+                                f"font-bold {status_c}"
+                            )
+                            ui.label(f"{item['latency']}ms").classes("text-slate-400")
+
     def _copy_response(self) -> None:
         if self.last_response_text:
             ui.run_javascript(
-                f"navigator.clipboard.writeText({json.dumps(self.last_response_text)});"
+                f"navigator.clipboard.writeText({self.last_response_text!r});"
             )
             ui.notify("Response copied to clipboard!", type="positive")
+
+    def _copy_curl(self) -> None:
+        if self.last_curl_cmd:
+            ui.run_javascript(f"navigator.clipboard.writeText({self.last_curl_cmd!r});")
+            ui.notify("cURL command copied to clipboard!", type="positive")
 
     # --- Mock Camera Studio Helpers ---
     def build_mock_query_string(self) -> str:
@@ -462,6 +768,7 @@ class ApiConsolePage:
                     analog3=a_vals[2] if len(a_vals) > 2 else None,
                     analog4=a_vals[3] if len(a_vals) > 3 else None,
                 )
+                self._raw_mock_bytes = jpeg_bytes
                 b64 = base64.b64encode(jpeg_bytes).decode("ascii")
                 return {
                     "ok": True,
@@ -529,7 +836,11 @@ class ApiConsolePage:
                     if self.mock_rot_badge:
                         self.mock_rot_badge.text = f"{self.mock_rotate:.0f}°"
             if qs.get("glare"):
-                self.mock_glare = qs["glare"][0].lower() in ("true", "1", "yes")
+                self.mock_glare = qs["glare"][0].lower() in (
+                    "true",
+                    "1",
+                    "yes",
+                )
                 if self.mock_glare_switch:
                     self.mock_glare_switch.value = self.mock_glare
             if qs.get("glare_pos"):
@@ -597,6 +908,170 @@ class ApiConsolePage:
                     if i < len(self.mock_analog_inputs) and self.mock_analog_inputs[i]:
                         self.mock_analog_inputs[i].value = qs[key][0]
 
+    async def _apply_scenario_preset(self, preset: dict[str, Any]) -> None:
+        """Apply a pre-configured scenario preset to all mock camera controls."""
+        cfg = preset["config"]
+        self.mock_mode = cfg.get("mode", "fixed")
+        self.mock_value = cfg.get("value", "00452.91241")
+        self.mock_rate = cfg.get("rate", 0.005)
+        self.mock_rotate = cfg.get("rotate", 0.0)
+        self.mock_glare = cfg.get("glare", False)
+        self.mock_glare_pos = cfg.get("glare_pos", "320,240")
+        self.mock_glare_intensity = cfg.get("glare_intensity", 1.0)
+        self.mock_noise = cfg.get("noise", 0.0)
+        self.mock_blur = cfg.get("blur", 0.0)
+        self.mock_brightness = cfg.get("brightness", 1.0)
+        self.mock_contrast = cfg.get("contrast", 1.0)
+        self.mock_lcd_color = cfg.get("lcd_color", "black")
+        self.mock_lcd_bg = cfg.get("lcd_bg", "grey")
+        self.mock_needle_color = cfg.get("needle_color", "red")
+        self.mock_width = cfg.get("width", 640)
+        self.mock_height = cfg.get("height", 480)
+        self.mock_digit_overrides = list(
+            cfg.get("digit_overrides", ["", "", "", "", ""])
+        )
+        self.mock_analog_overrides = list(cfg.get("analog_overrides", ["", "", "", ""]))
+
+        # Update UI controls
+        if self.mock_mode_select:
+            self.mock_mode_select.value = self.mock_mode
+        if self.mock_value_input:
+            self.mock_value_input.value = self.mock_value
+        if self.mock_rate_input:
+            self.mock_rate_input.value = self.mock_rate
+        if self.mock_rot_slider:
+            self.mock_rot_slider.value = self.mock_rotate
+        if self.mock_rot_badge:
+            self.mock_rot_badge.text = f"{self.mock_rotate:.0f}°"
+        if self.mock_glare_switch:
+            self.mock_glare_switch.value = self.mock_glare
+        if self.mock_noise_slider:
+            self.mock_noise_slider.value = self.mock_noise
+        if self.mock_blur_slider:
+            self.mock_blur_slider.value = self.mock_blur
+        if self.mock_bright_slider:
+            self.mock_bright_slider.value = self.mock_brightness
+        if self.mock_contrast_slider:
+            self.mock_contrast_slider.value = self.mock_contrast
+        for i, val in enumerate(self.mock_digit_overrides):
+            if i < len(self.mock_digit_inputs) and self.mock_digit_inputs[i]:
+                self.mock_digit_inputs[i].value = val
+        for i, val in enumerate(self.mock_analog_overrides):
+            if i < len(self.mock_analog_inputs) and self.mock_analog_inputs[i]:
+                self.mock_analog_inputs[i].value = val
+
+        await self._generate_mock_frame()
+        ui.notify(f"Applied scenario: {preset['name']}", type="positive")
+
+    async def _test_in_digitizer_engine(self) -> None:
+        """Run active digitizer engine against the generated mock camera image."""
+        if not self.callbacks:
+            ui.notify(
+                "Callbacks unavailable in standalone testing mode",
+                type="warning",
+            )
+            return
+
+        mock_url = self.get_mock_url(relative=False)
+        ui.notify("Running digitizer engine on mock frame...", type="info")
+
+        try:
+            start_t = time.perf_counter()
+            result = await asyncio.to_thread(
+                self.callbacks.get_meter_data, mock_url, False
+            )
+            dur_ms = round((time.perf_counter() - start_t) * 1000, 1)
+
+            # Open diagnosis modal
+            with (
+                ui.dialog() as dialog,
+                ui.card().classes(
+                    "w-full max-w-2xl p-5 bg-slate-900 border border-white/10 rounded-2xl gap-3"
+                ),
+            ):
+                with ui.row().classes(
+                    "w-full justify-between items-center pb-2 border-b border-white/10"
+                ):
+                    with ui.row().classes("items-center gap-2"):
+                        ui.icon("analytics", color="cyan", size="sm")
+                        ui.label("Digitizer Recognition Test Result").classes(
+                            "text-base font-bold text-slate-100"
+                        )
+                    ui.button(icon="close", on_click=dialog.close).props(
+                        "flat round dense"
+                    )
+
+                with ui.row().classes(
+                    "w-full justify-between items-center p-3 rounded-xl bg-slate-950/70 border border-white/5"
+                ):
+                    with ui.column().classes("gap-0"):
+                        ui.label("PRIMARY METER READING").classes(
+                            "text-[10px] text-slate-400 font-semibold uppercase"
+                        )
+                        m_val = getattr(result, "value", "N/A")
+                        ui.label(str(m_val)).classes(
+                            "text-2xl font-mono font-bold text-cyan-300"
+                        )
+                    with ui.column().classes("gap-1 items-end"):
+                        ui.badge(f"⚡ {dur_ms} ms", color="indigo")
+                        ui.label("Pipeline Latency").classes(
+                            "text-[10px] text-slate-400"
+                        )
+
+                # Breakdown of readouts
+                with ui.column().classes("w-full gap-2 pt-2"):
+                    ui.label("Individual ROI Classifications").classes(
+                        "text-xs font-semibold text-slate-300"
+                    )
+                    readouts = getattr(result, "readouts", []) or []
+                    if not readouts:
+                        ui.label("No individual readout items returned.").classes(
+                            "text-xs text-slate-400 italic"
+                        )
+                    else:
+                        with ui.grid(columns=3).classes("w-full gap-2"):
+                            for r in readouts:
+                                r_name = getattr(r, "name", "roi")
+                                r_val = getattr(r, "value", "—")
+                                r_conf = getattr(r, "confidence", 0.0)
+                                is_dig = "digit" in r_name.lower()
+                                tag_c = (
+                                    "border-cyan-500/30 text-cyan-300"
+                                    if is_dig
+                                    else "border-amber-500/30 text-amber-300"
+                                )
+
+                                with ui.card().classes(
+                                    f"p-2 bg-slate-950/60 border {tag_c} rounded-lg flex flex-col gap-1 text-xs"
+                                ):
+                                    with ui.row().classes(
+                                        "w-full justify-between items-center"
+                                    ):
+                                        ui.label(r_name).classes(
+                                            "font-semibold text-slate-200 uppercase"
+                                        )
+                                        ui.label(f"{r_conf:.1f}%").classes(
+                                            "text-[10px] text-slate-400"
+                                        )
+                                    ui.label(str(r_val)).classes(
+                                        "font-mono font-bold text-sm text-white"
+                                    )
+
+                with ui.row().classes("w-full justify-end pt-2"):
+                    ui.button("Close", on_click=dialog.close).props(
+                        "flat dense"
+                    ).classes("text-slate-300 px-3")
+
+            dialog.open()
+        except Exception as ex:
+            ui.notify(f"Engine test failed: {ex}", type="negative")
+
+    def _download_mock_image(self) -> None:
+        """Download current generated mock image frame."""
+        if self._raw_mock_bytes:
+            ui.download(self._raw_mock_bytes, filename="mock_meter_frame.jpg")
+            ui.notify("Downloading mock_meter_frame.jpg", type="info")
+
     async def _execute_mock_query(self) -> None:
         """Execute mock camera query button action: syncs from URL display input if present, renders frame, and notifies."""
         if self.mock_url_display and self.mock_url_display.value:
@@ -613,7 +1088,7 @@ class ApiConsolePage:
 
     def _toggle_mock_streaming(self, e: Any) -> None:
         """Toggle live periodic ticker stream timer."""
-        self.mock_streaming = bool(e.value)
+        self.mock_streaming = bool(getattr(e, "value", e))
         if self.mock_stream_timer:
             self.mock_stream_timer.active = self.mock_streaming
         if self.mock_streaming:
@@ -651,7 +1126,7 @@ class ApiConsolePage:
         if self.mock_rot_slider:
             self.mock_rot_slider.value = 0.0
         if self.mock_rot_badge:
-            self.mock_rot_badge.text = "0.0°"
+            self.mock_rot_badge.text = "0°"
         if self.mock_glare_switch:
             self.mock_glare_switch.value = False
         if self.mock_glare_pos_input:
@@ -676,6 +1151,7 @@ class ApiConsolePage:
             self.mock_width_input.value = 640
         if self.mock_height_input:
             self.mock_height_input.value = 480
+
         for inp in self.mock_digit_inputs:
             if inp:
                 inp.value = ""
@@ -683,17 +1159,15 @@ class ApiConsolePage:
             if inp:
                 inp.value = ""
 
-        if self.mock_url_display:
-            self.mock_url_display.value = self.get_mock_url(relative=True)
-
         await self._generate_mock_frame()
         ui.notify("Mock camera parameters reset to default values", type="positive")
 
     async def _reset_mock_ticker(self) -> None:
-        """Send reset request to mock camera ticker endpoint."""
-        reset_url = f"{self._get_base_url()}/api/mock_camera/reset?start_value=100.0"
+        """Reset the server-side mock camera ticker start value."""
+        base = self._get_base_url()
+        url = f"{base}/api/mock_camera/reset?start_value=100.0"
         try:
-            resp = await asyncio.to_thread(requests.post, reset_url, timeout=5.0)
+            resp = await asyncio.to_thread(requests.post, url, timeout=5.0)
             if resp.ok:
                 ui.notify("Mock camera ticker reset to 100.0", type="positive")
                 await self._generate_mock_frame()
@@ -705,7 +1179,7 @@ class ApiConsolePage:
     def _copy_mock_url(self) -> None:
         """Copy the mock camera relative or full URL to clipboard."""
         url = self.get_mock_url(relative=True)
-        ui.run_javascript(f"navigator.clipboard.writeText({json.dumps(url)});")
+        ui.run_javascript(f"navigator.clipboard.writeText({url!r});")
         ui.notify("Mock camera URL copied to clipboard!", type="positive")
 
     def _apply_as_active_image_source(self) -> None:
@@ -732,7 +1206,6 @@ class ApiConsolePage:
         with ui.column().classes(
             "w-full h-full flex flex-col gap-3 p-4 overflow-hidden"
         ):
-            # Header
             with (
                 ui.row().classes("w-full justify-between items-center shrink-0 mb-1"),
                 ui.row().classes("items-center gap-3"),
@@ -743,7 +1216,9 @@ class ApiConsolePage:
                 ):
                     ui.icon("terminal", color="cyan").classes("text-2xl")
                 with ui.column().classes("gap-0"):
-                    ui.label("REST API Console & Studio").classes("text-h4")
+                    ui.label("REST API Console & Studio").classes(
+                        "text-h4 font-['Outfit']"
+                    )
                     ui.label(
                         "Interactive endpoint debugger, REST tester & procedural mock camera studio"
                     ).classes("text-xs text-gray-400")
@@ -780,10 +1255,10 @@ class ApiConsolePage:
                         "w-full h-full flex flex-col p-0 gap-3 overflow-hidden"
                     ),
                     ui.card().classes(
-                        "w-full flex-1 min-h-0 flex flex-col p-5 bg-slate-900 border border-white/10 rounded-2xl gap-4 overflow-hidden"
+                        "w-full flex-1 min-h-0 flex flex-col p-4 bg-slate-900 border border-white/10 rounded-2xl gap-3 overflow-hidden"
                     ),
                 ):
-                    # Selector Row
+                    # Preset Selector Row
                     with ui.row().classes("w-full gap-3 items-center shrink-0"):
                         ui.select(
                             options={ep["url"]: ep["label"] for ep in ENDPOINTS},
@@ -794,8 +1269,20 @@ class ApiConsolePage:
                             "flex-1 text-sm bg-slate-950/60"
                         )
 
-                    # Endpoint input & execute button
+                    # Endpoint input & execute button row
                     with ui.row().classes("w-full gap-2 items-center shrink-0"):
+                        self.method_select = (
+                            ui.select(
+                                options=["GET", "POST", "PUT", "DELETE"],
+                                value=self.selected_method,
+                                on_change=lambda e: setattr(
+                                    self, "selected_method", e.value
+                                ),
+                            )
+                            .props("outlined dense options-dense")
+                            .classes("w-28 font-mono text-sm bg-slate-950/60")
+                        )
+
                         self.url_input = (
                             ui.input(
                                 value=self.selected_endpoint,
@@ -813,9 +1300,9 @@ class ApiConsolePage:
                             "px-4 font-semibold shadow-md shadow-blue-500/20"
                         )
 
-                    # Status Bar
+                    # Telemetry Status Bar & Action Strip
                     with ui.row().classes(
-                        "w-full justify-between items-center px-1 shrink-0"
+                        "w-full justify-between items-center px-1 shrink-0 bg-slate-950/60 p-2 rounded-xl border border-white/5"
                     ):
                         with ui.row().classes("items-center gap-3"):
                             self.spinner = ui.spinner("dots", size="sm", color="cyan")
@@ -827,23 +1314,109 @@ class ApiConsolePage:
                             self.latency_label = ui.label("").classes(
                                 "text-xs font-mono text-gray-400"
                             )
+                            self.size_label = ui.label("").classes(
+                                "text-xs font-mono text-cyan-400/80"
+                            )
 
-                        ui.button(
-                            "Copy Output",
-                            icon="content_copy",
-                            on_click=self._copy_response,
-                        ).props("flat dense size=sm color=cyan")
+                        with ui.row().classes("items-center gap-2"):
+                            ui.button(
+                                "Copy cURL",
+                                icon="terminal",
+                                on_click=self._copy_curl,
+                            ).props("flat dense size=sm color=indigo").tooltip(
+                                "Copy request as cURL command"
+                            )
+                            ui.button(
+                                "Copy Output",
+                                icon="content_copy",
+                                on_click=self._copy_response,
+                            ).props("flat dense size=sm color=cyan")
 
-                    # Response Viewer
-                    with ui.element("div").classes(
-                        "w-full flex-1 min-h-0 rounded-xl bg-slate-950 p-4 border border-white/10 overflow-y-auto"
+                    # Multi-View Response Inspector Sub-Tabs
+                    with (
+                        ui.tabs().classes(
+                            "w-full bg-slate-950/80 border border-white/5 rounded-lg p-0.5 shrink-0"
+                        ) as resp_subtabs,
+                        ui.row().classes("w-full gap-1"),
                     ):
-                        self.viewer_container = ui.column().classes("w-full p-0 gap-0")
-                        with self.viewer_container:
-                            self.response_viewer = ui.code(
-                                "// Select an endpoint above and click Execute to test API responses.",
-                                language="json",
-                            ).classes("w-full text-xs font-mono text-emerald-400")
+                        self.resp_tab_body = ui.tab(
+                            "Response Body", icon="data_object"
+                        ).classes("text-xs")
+                        self.resp_tab_headers = ui.tab(
+                            "Response Headers", icon="view_list"
+                        ).classes("text-xs")
+                        self.resp_tab_curl = ui.tab(
+                            "cURL Command", icon="terminal"
+                        ).classes("text-xs")
+                        self.resp_tab_history = ui.tab(
+                            "Request History", icon="history"
+                        ).classes("text-xs")
+
+                    # Response Sub-Panels
+                    with ui.tab_panels(resp_subtabs, value=self.resp_tab_body).classes(
+                        "w-full flex-1 min-h-0 bg-transparent p-0 overflow-hidden"
+                    ):
+                        # Panel 1: Body
+                        with (
+                            ui.tab_panel(self.resp_tab_body).classes(
+                                "w-full h-full p-0 overflow-y-auto"
+                            ),
+                            ui.element("div").classes(
+                                "w-full h-full rounded-xl bg-slate-950 p-3 border border-white/10 overflow-y-auto"
+                            ),
+                        ):
+                            self.viewer_container = ui.column().classes(
+                                "w-full p-0 gap-0"
+                            )
+                            with self.viewer_container:
+                                self.response_viewer = ui.code(
+                                    "// Select an endpoint above and click Execute to test API responses.",
+                                    language="json",
+                                ).classes("w-full text-xs font-mono text-emerald-400")
+
+                        # Panel 2: Headers
+                        with (
+                            ui.tab_panel(self.resp_tab_headers).classes(
+                                "w-full h-full p-0 overflow-y-auto"
+                            ),
+                            ui.element("div").classes(
+                                "w-full h-full rounded-xl bg-slate-950 p-3 border border-white/10 overflow-y-auto"
+                            ),
+                        ):
+                            self.headers_container = ui.column().classes("w-full gap-1")
+                            with self.headers_container:
+                                ui.label(
+                                    "No headers available yet. Click Execute."
+                                ).classes("text-xs text-slate-400 italic p-3")
+
+                        # Panel 3: cURL
+                        with (
+                            ui.tab_panel(self.resp_tab_curl).classes(
+                                "w-full h-full p-0 overflow-y-auto"
+                            ),
+                            ui.element("div").classes(
+                                "w-full h-full rounded-xl bg-slate-950 p-3 border border-white/10 overflow-y-auto"
+                            ),
+                        ):
+                            self.curl_viewer = ui.code(
+                                "curl -X GET 'http://localhost:3000/health'",
+                                language="bash",
+                            ).classes("w-full text-xs font-mono text-cyan-300")
+
+                        # Panel 4: History
+                        with (
+                            ui.tab_panel(self.resp_tab_history).classes(
+                                "w-full h-full p-0 overflow-y-auto"
+                            ),
+                            ui.element("div").classes(
+                                "w-full h-full rounded-xl bg-slate-950 p-3 border border-white/10 overflow-y-auto"
+                            ),
+                        ):
+                            self.history_container = ui.column().classes("w-full gap-2")
+                            with self.history_container:
+                                ui.label("No request history recorded yet.").classes(
+                                    "text-xs text-slate-400 italic p-3"
+                                )
 
                 # =========================================================================
                 # TAB 2: Mock Camera Studio (Dedicated Simulator & Generator)
@@ -906,7 +1479,27 @@ class ApiConsolePage:
                                     "text-xs font-semibold text-gray-300"
                                 )
 
-                            with ui.row().classes("items-center gap-2"):
+                            with ui.row().classes("items-center gap-2 flex-wrap"):
+                                ui.button(
+                                    "Test in Engine",
+                                    icon="speed",
+                                    on_click=self._test_in_digitizer_engine,
+                                ).props(
+                                    "unelevated dense size=sm color=cyan-8"
+                                ).classes(
+                                    "text-xs font-semibold text-white"
+                                ).tooltip(
+                                    "Run active digitizer engine recognition cycle on this mock frame"
+                                )
+
+                                ui.button(
+                                    "Download JPG",
+                                    icon="download",
+                                    on_click=self._download_mock_image,
+                                ).props("flat dense size=sm color=grey-4").classes(
+                                    "text-xs font-semibold"
+                                )
+
                                 ui.button(
                                     "Reset Defaults",
                                     icon="settings_backup_restore",
@@ -940,6 +1533,33 @@ class ApiConsolePage:
                                 ).classes(
                                     "text-xs font-semibold"
                                 )
+
+                    # Scenario Presets Quick Strip
+                    with ui.row().classes(
+                        "w-full items-center gap-2 px-3 py-2 bg-slate-900/80 rounded-xl border border-white/10 shrink-0 overflow-x-auto"
+                    ):
+                        ui.label("Scenario Presets:").classes(
+                            "text-xs font-bold text-cyan-400 shrink-0"
+                        )
+                        for preset in SCENARIO_PRESETS:
+
+                            def make_preset_cb(p: dict[str, Any]):
+                                return lambda: asyncio.create_task(
+                                    self._apply_scenario_preset(p)
+                                )
+
+                            p_name = str(preset["name"])
+                            p_icon = str(preset["icon"])
+                            p_desc = str(preset["desc"])
+                            ui.button(
+                                p_name,
+                                icon=p_icon,
+                                on_click=make_preset_cb(preset),
+                            ).props("outline dense size=xs color=cyan").classes(
+                                "text-[11px] font-semibold"
+                            ).tooltip(
+                                p_desc
+                            )
 
                     # LOWER WORKSPACE: Two-Column Split (Parameters Left, Snapshot Right)
                     with ui.element("div").classes(
@@ -1102,19 +1722,19 @@ class ApiConsolePage:
 
                                     self.mock_glare_pos_input = (
                                         ui.input(
-                                            label="Glare Center (X,Y)",
+                                            label="Glare Pos (X,Y)",
                                             value=self.mock_glare_pos,
                                             on_change=_on_gpos_change,
                                         )
                                         .props("outlined dense")
-                                        .classes("w-36 text-xs")
+                                        .classes("w-32 font-mono text-xs")
                                     )
 
                                 # Noise & Blur
                                 with ui.grid(columns=2).classes("w-full gap-3"):
                                     with ui.column().classes("gap-1"):
-                                        ui.label("Gaussian Noise").classes(
-                                            "text-xs text-gray-300"
+                                        ui.label("Sensor Noise (%)").classes(
+                                            "text-xs text-gray-400"
                                         )
 
                                         async def _on_noise_change(
@@ -1123,17 +1743,21 @@ class ApiConsolePage:
                                             self.mock_noise = float(e.value)
                                             await self._on_mock_param_change()
 
-                                        self.mock_noise_slider = ui.slider(
-                                            min=0.0,
-                                            max=30.0,
-                                            step=0.5,
-                                            value=self.mock_noise,
-                                            on_change=_on_noise_change,
-                                        ).props("color=cyan dense")
+                                        self.mock_noise_slider = (
+                                            ui.slider(
+                                                min=0.0,
+                                                max=30.0,
+                                                step=0.5,
+                                                value=self.mock_noise,
+                                                on_change=_on_noise_change,
+                                            )
+                                            .props("color=teal dense")
+                                            .classes("w-full")
+                                        )
 
                                     with ui.column().classes("gap-1"):
-                                        ui.label("Gaussian Blur").classes(
-                                            "text-xs text-gray-300"
+                                        ui.label("Lens Blur (px)").classes(
+                                            "text-xs text-gray-400"
                                         )
 
                                         async def _on_blur_change(
@@ -1142,19 +1766,23 @@ class ApiConsolePage:
                                             self.mock_blur = float(e.value)
                                             await self._on_mock_param_change()
 
-                                        self.mock_blur_slider = ui.slider(
-                                            min=0.0,
-                                            max=5.0,
-                                            step=0.2,
-                                            value=self.mock_blur,
-                                            on_change=_on_blur_change,
-                                        ).props("color=cyan dense")
+                                        self.mock_blur_slider = (
+                                            ui.slider(
+                                                min=0.0,
+                                                max=5.0,
+                                                step=0.1,
+                                                value=self.mock_blur,
+                                                on_change=_on_blur_change,
+                                            )
+                                            .props("color=teal dense")
+                                            .classes("w-full")
+                                        )
 
                                 # Brightness & Contrast
                                 with ui.grid(columns=2).classes("w-full gap-3"):
                                     with ui.column().classes("gap-1"):
                                         ui.label("Brightness").classes(
-                                            "text-xs text-gray-300"
+                                            "text-xs text-gray-400"
                                         )
 
                                         async def _on_bright_change(
@@ -1163,17 +1791,21 @@ class ApiConsolePage:
                                             self.mock_brightness = float(e.value)
                                             await self._on_mock_param_change()
 
-                                        self.mock_bright_slider = ui.slider(
-                                            min=0.2,
-                                            max=2.0,
-                                            step=0.05,
-                                            value=self.mock_brightness,
-                                            on_change=_on_bright_change,
-                                        ).props("color=cyan dense")
+                                        self.mock_bright_slider = (
+                                            ui.slider(
+                                                min=0.2,
+                                                max=2.0,
+                                                step=0.05,
+                                                value=self.mock_brightness,
+                                                on_change=_on_bright_change,
+                                            )
+                                            .props("color=amber dense")
+                                            .classes("w-full")
+                                        )
 
                                     with ui.column().classes("gap-1"):
                                         ui.label("Contrast").classes(
-                                            "text-xs text-gray-300"
+                                            "text-xs text-gray-400"
                                         )
 
                                         async def _on_contrast_change(
@@ -1182,25 +1814,32 @@ class ApiConsolePage:
                                             self.mock_contrast = float(e.value)
                                             await self._on_mock_param_change()
 
-                                        self.mock_contrast_slider = ui.slider(
-                                            min=0.2,
-                                            max=2.0,
-                                            step=0.05,
-                                            value=self.mock_contrast,
-                                            on_change=_on_contrast_change,
-                                        ).props("color=cyan dense")
+                                        self.mock_contrast_slider = (
+                                            ui.slider(
+                                                min=0.2,
+                                                max=2.0,
+                                                step=0.05,
+                                                value=self.mock_contrast,
+                                                on_change=_on_contrast_change,
+                                            )
+                                            .props("color=amber dense")
+                                            .classes("w-full")
+                                        )
 
-                            # --- Section 3: Themes & Dimensions ---
-                            with ui.expansion(
-                                "Theme Colors & Frame Size",
-                                icon="palette",
-                                value=False,
-                            ).classes(
-                                "w-full bg-slate-950/60 rounded-xl border border-white/5 text-sm"
+                            # --- Section 3: Colors & Resolution ---
+                            with (
+                                ui.expansion(
+                                    "Colors & Resolution",
+                                    icon="palette",
+                                    value=False,
+                                ).classes(
+                                    "w-full bg-slate-950/60 rounded-xl border border-white/5 text-sm"
+                                ),
+                                ui.column().classes("w-full gap-3 p-1"),
                             ):
-                                with ui.grid(columns=3).classes("w-full gap-2 p-1"):
+                                with ui.grid(columns=3).classes("w-full gap-2"):
 
-                                    async def _on_lcd_col(e: Any) -> None:
+                                    async def _on_lcd_c(e: Any) -> None:
                                         self.mock_lcd_color = e.value
                                         await self._on_mock_param_change()
 
@@ -1208,11 +1847,14 @@ class ApiConsolePage:
                                         ui.select(
                                             options=[
                                                 "black",
+                                                "white",
+                                                "red",
                                                 "blue",
+                                                "green",
                                             ],
                                             value=self.mock_lcd_color,
-                                            on_change=_on_lcd_col,
-                                            label="LCD Text",
+                                            on_change=_on_lcd_c,
+                                            label="Digit Color",
                                         )
                                         .props("outlined dense options-dense")
                                         .classes("text-xs")
@@ -1226,17 +1868,19 @@ class ApiConsolePage:
                                         ui.select(
                                             options=[
                                                 "grey",
-                                                "green",
+                                                "black",
+                                                "white",
+                                                "silver",
                                             ],
                                             value=self.mock_lcd_bg,
                                             on_change=_on_lcd_bg,
-                                            label="LCD BG",
+                                            label="Digit BG",
                                         )
                                         .props("outlined dense options-dense")
                                         .classes("text-xs")
                                     )
 
-                                    async def _on_needle_col(e: Any) -> None:
+                                    async def _on_needle_c(e: Any) -> None:
                                         self.mock_needle_color = e.value
                                         await self._on_mock_param_change()
 
@@ -1245,103 +1889,85 @@ class ApiConsolePage:
                                             options=[
                                                 "red",
                                                 "black",
+                                                "white",
+                                                "blue",
                                             ],
                                             value=self.mock_needle_color,
-                                            on_change=_on_needle_col,
-                                            label="Needle",
+                                            on_change=_on_needle_c,
+                                            label="Needle Color",
                                         )
                                         .props("outlined dense options-dense")
                                         .classes("text-xs")
                                     )
 
-                                with ui.grid(columns=3).classes("w-full gap-2 p-1"):
+                                # Resolution Presets
+                                with ui.row().classes(
+                                    "w-full items-center justify-between gap-2"
+                                ):
 
-                                    async def _on_res_change(e: Any) -> None:
-                                        preset = e.value
-                                        self.mock_res_preset = preset
-                                        if preset != "custom":
-                                            w_str, h_str = preset.split("x")
-                                            self.mock_width = int(w_str)
-                                            self.mock_height = int(h_str)
+                                    async def _on_res_preset(e: Any) -> None:
+                                        self.mock_res_preset = e.value
+                                        if e.value != "custom":
+                                            w, h = map(int, e.value.split("x"))
+                                            self.mock_width = w
+                                            self.mock_height = h
                                             if self.mock_width_input:
-                                                self.mock_width_input.value = (
-                                                    self.mock_width
-                                                )
+                                                self.mock_width_input.value = w
                                             if self.mock_height_input:
-                                                self.mock_height_input.value = (
-                                                    self.mock_height
-                                                )
+                                                self.mock_height_input.value = h
                                         await self._on_mock_param_change()
 
                                     self.mock_res_select = (
                                         ui.select(
                                             options=STANDARD_RESOLUTIONS,
                                             value=self.mock_res_preset,
-                                            on_change=_on_res_change,
+                                            on_change=_on_res_preset,
                                             label="Resolution Preset",
                                         )
                                         .props("outlined dense options-dense")
-                                        .classes("text-xs")
+                                        .classes("flex-1 text-xs")
                                     )
 
-                                    async def _on_w(e: Any) -> None:
-                                        self.mock_width = (
-                                            int(e.value) if e.value else 640
-                                        )
-                                        key = f"{self.mock_width}x{self.mock_height}"
-                                        self.mock_res_preset = (
-                                            key
-                                            if key in STANDARD_RESOLUTIONS
-                                            else "custom"
-                                        )
-                                        if self.mock_res_select:
-                                            self.mock_res_select.value = (
-                                                self.mock_res_preset
-                                            )
-                                        await self._on_mock_param_change()
+                                    async def _on_w_change(e: Any) -> None:
+                                        if e.value:
+                                            self.mock_width = int(e.value)
+                                            await self._on_mock_param_change()
 
                                     self.mock_width_input = (
                                         ui.number(
-                                            label="Width (px)",
+                                            label="Width",
                                             value=self.mock_width,
-                                            step=32,
-                                            on_change=_on_w,
+                                            min=320,
+                                            max=3840,
+                                            step=10,
+                                            on_change=_on_w_change,
                                         )
                                         .props("outlined dense")
-                                        .classes("text-xs")
+                                        .classes("w-20 text-xs")
                                     )
 
-                                    async def _on_h(e: Any) -> None:
-                                        self.mock_height = (
-                                            int(e.value) if e.value else 480
-                                        )
-                                        key = f"{self.mock_width}x{self.mock_height}"
-                                        self.mock_res_preset = (
-                                            key
-                                            if key in STANDARD_RESOLUTIONS
-                                            else "custom"
-                                        )
-                                        if self.mock_res_select:
-                                            self.mock_res_select.value = (
-                                                self.mock_res_preset
-                                            )
-                                        await self._on_mock_param_change()
+                                    async def _on_h_change(e: Any) -> None:
+                                        if e.value:
+                                            self.mock_height = int(e.value)
+                                            await self._on_mock_param_change()
 
                                     self.mock_height_input = (
                                         ui.number(
-                                            label="Height (px)",
+                                            label="Height",
                                             value=self.mock_height,
-                                            step=32,
-                                            on_change=_on_h,
+                                            min=240,
+                                            max=2160,
+                                            step=10,
+                                            on_change=_on_h_change,
                                         )
                                         .props("outlined dense")
-                                        .classes("text-xs")
+                                        .classes("w-20 text-xs")
                                     )
 
                             # --- Section 4: Digit & Dial Overrides ---
                             with (
                                 ui.expansion(
-                                    "Per-Digit & Dial Direct Overrides",
+                                    "Individual Drum / Dial Overrides",
                                     icon="pin",
                                     value=False,
                                 ).classes(
@@ -1350,19 +1976,15 @@ class ApiConsolePage:
                                 ui.column().classes("w-full gap-2 p-1"),
                             ):
                                 ui.label(
-                                    "Digital Digits (0.0 - 9.9, or blank)"
-                                ).classes("text-xs text-gray-400 font-semibold")
-                                self.mock_digit_inputs = []
-                                with ui.grid(columns=5).classes("w-full gap-1"):
+                                    "Digital Drums (D1-D5, e.g. 0-9 or 2.5):"
+                                ).classes("text-xs text-cyan-400 font-semibold")
+                                with ui.grid(columns=5).classes("w-full gap-1.5"):
+                                    self.mock_digit_inputs.clear()
                                     for i in range(5):
 
                                         def _make_dig_cb(idx: int):
                                             async def _cb(e: Any) -> None:
-                                                self.mock_digit_overrides[idx] = (
-                                                    str(e.value)
-                                                    if e.value is not None
-                                                    else ""
-                                                )
+                                                self.mock_digit_overrides[idx] = e.value
                                                 await self._on_mock_param_change()
 
                                             return _cb
@@ -1379,18 +2001,16 @@ class ApiConsolePage:
                                         self.mock_digit_inputs.append(d_inp)
 
                                 ui.label(
-                                    "Analog Needles (0.0 - 9.9, or blank)"
-                                ).classes("text-xs text-gray-400 font-semibold")
-                                self.mock_analog_inputs = []
-                                with ui.grid(columns=4).classes("w-full gap-1"):
+                                    "Analog Needles (A1-A4, e.g. 0.0-9.9):"
+                                ).classes("text-xs text-amber-400 font-semibold pt-1")
+                                with ui.grid(columns=4).classes("w-full gap-1.5"):
+                                    self.mock_analog_inputs.clear()
                                     for i in range(4):
 
                                         def _make_ana_cb(idx: int):
                                             async def _cb(e: Any) -> None:
                                                 self.mock_analog_overrides[idx] = (
-                                                    str(e.value)
-                                                    if e.value is not None
-                                                    else ""
+                                                    e.value
                                                 )
                                                 await self._on_mock_param_change()
 
