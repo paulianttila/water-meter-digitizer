@@ -8,15 +8,15 @@ The **Water Meter Digitizer** provides a modern, responsive web application serv
 
 ## 🧭 Navigation & Core Tabs Overview
 
-| Tab | Icon | Purpose |
-| :--- | :--- | :--- |
-| **Meter** | `speed` | Live dashboard, primary metrics, confidence badges, cropped dial previews, consumption charts, and Time Machine scrubber. |
-| **Services** | `dns` | Telemetry overview, Zero-Flow Leak Monitor status, background Poller, and MQTT service controls. |
-| **Setup** | `settings` | 9-step interactive visual wizard for camera calibration, marker alignment, and ROI definition. |
-| **Config** | `build` | Raw INI configuration editor with syntax validation, 1-click Undo, snapshots, and color diffs. |
-| **Baselines** | `tune` | Previous meter baseline editor with fallback value management. |
-| **API Console** | `terminal` | Interactive REST endpoint debugger and dedicated procedural Mock Camera Studio. |
-| **About / Help**| `help` | System telemetry metrics, versioning information, and visual workflow cheat-sheets. |
+| Tab | Purpose |
+| :--- | :--- |
+| **Meter** | Live dashboard, primary metrics, confidence badges, cropped dial previews, consumption charts, and Time Machine scrubber. |
+| **Services** | Telemetry overview, Zero-Flow Leak Monitor status, background Poller, and MQTT service controls. |
+| **Setup** | 9-step interactive visual wizard for camera calibration, marker alignment, and ROI definition. |
+| **Config** | Raw INI configuration editor with syntax validation, 1-click Undo, snapshots, and color diffs. |
+| **Baselines** | Previous meter baseline editor with fallback value management. |
+| **API Console** | Interactive REST endpoint debugger and dedicated procedural Mock Camera Studio. |
+| **About / Help** | System telemetry metrics, versioning information, and visual workflow cheat-sheets. |
 
 ---
 
