@@ -1,6 +1,6 @@
 # ⚙️ Configuration & Storage Manual
 
-This manual provides the comprehensive reference for the `config.ini` configuration schema, environment variable overrides, automated configuration history/backups, and SQLite/WebP historical data storage retention policies.
+This manual provides the comprehensive, authoritative reference for the `config.ini` configuration schema, environment variable overrides, automated configuration history/backups, and SQLite/WebP historical data storage retention policies.
 
 ---
 
@@ -9,7 +9,7 @@ This manual provides the comprehensive reference for the `config.ini` configurat
 To ensure reliable, fail-safe operation, the **Water Meter Digitizer** includes a built-in configuration versioning and backup subsystem:
 
 1. **Automatic Safety Backups on Save**: Every time `config.ini` is modified via the Web GUI or API, the previous version is saved to `/config/backups/config_<YYYYMMDD_HHMMSS>_<tag>.ini`.
-2. **1-Click Undo**: Instantly rollback recent configuration changes with one click from the **Config** tab.
+2. **1-Click Undo**: Instantly rollback recent configuration changes with one click from the **Config** tab (`/config`).
 3. **Named Checkpoint Snapshots**: Create milestone snapshots before major adjustments (e.g. `pre-recalibration`).
 4. **Visual Color-Coded Diffs**: Inspect line additions (`+`) and deletions (`-`) between active configuration and historical backups directly in the Web GUI.
 
@@ -23,20 +23,36 @@ The digitizer utilizes a dual-backend architecture designed for low SD card writ
 - **SQLite Storage (`sqlite`)**: Default persistence stored in `/data/meter_history.db`. Utilizes Write-Ahead Logging (`WAL` mode) and connection pooling for concurrent reads and writes.
 - **In-Memory Storage (`memory`)**: High-speed ephemeral storage for read-only filesystem containers or temporary test environments.
 
-### Snapshot Recording Modes & WebP Compression
-- Historical frame images are compressed into **WebP** format (reducing storage footprint by 75–80% compared to raw JPEG) and stored in binary blobs within SQLite.
-- **Modes**:
-  - `all`: Persist a visual snapshot on every readout interval.
-  - `anomalies_only` (Recommended): Persist frames only when flow anomalies, vision confidence drops, or leak alerts occur.
-  - `disabled`: Only record numerical meter readings without saving visual frames.
+### Snapshot Storage Strategies & WebP Compression
+Historical image frames are compressed into **WebP** format (reducing storage footprint by 75–80% compared to raw JPEG) and stored in `/data/snapshots/`:
 
-### Automatic Disk Pruning Policies
+- **`smart_tiered`** (Recommended): Retains high-resolution full camera frames for recent days (`RecentFullFrameDays`), keeps lightweight composite ROI strips for longer historical windows (`RoiStripRetentionDays`), captures idle heartbeats, and always archives full frames on anomaly.
+- **`change_only`**: Persists frames only when measured meter reading changes.
+- **`roi_strips_only`**: Saves compact horizontal composite strips of cropped digit/dial ROIs without storing full camera frames.
+- **`full_frames`**: Archives full camera frames on every interval.
+- **`disabled`**: Records numerical meter timeseries without saving visual image frames.
+
+### Retention Configuration Example
 ```ini
-[Storage]
+[History]
+Enabled = True
 Backend = sqlite
-RetentionDays = 365
-MaxRecords = 100000
-MaxSnapshotDiskMb = 500
+RetentionDays = 30
+MaxRecords = 50000
+AutoVacuum = True
+PruneInterval = 50
+
+[Snapshots]
+Enabled = True
+Mode = smart_tiered
+Format = webp
+Quality = 75
+MaxDiskMB = 500.0
+RecentFullFrameDays = 2
+RoiStripRetentionDays = 14
+IdleHeartbeatMinutes = 15
+AlwaysSaveOnAnomaly = True
+StorageDir = /data/snapshots
 ```
 
 ---
@@ -44,68 +60,245 @@ MaxSnapshotDiskMb = 500
 ## 📑 3. Full `config.ini` Section Reference
 
 ### `[DEFAULT]`
+Global application paths, runtime directories, and confidence thresholds.
+
 | Parameter | Type | Default | Description |
 | :--- | :--- | :--- | :--- |
-| `LogLevel` | string | `INFO` | Verbosity (`DEBUG`, `INFO`, `WARNING`, `ERROR`). |
-| `Timezone` | string | `UTC` | Timezone (e.g. `Europe/Helsinki`, `America/New_York`). |
-| `ConfigDir` | string | `/config` | Directory containing configuration and reference files. |
-| `DataDir` | string | `/data` | Directory containing persistent database (`meter_history.db`). |
-| `MinConfidenceThreshold` | float | `50.0` | Minimum confidence percentage (0–100) before marking digit `?`. |
+| `LogLevel` | string | `INFO` | Logging verbosity (`DEBUG`, `INFO`, `WARNING`, `ERROR`). |
+| `Timezone` | string | `UTC` | Timezone for timestamps and consumption intervals (e.g. `Europe/Helsinki`, `America/New_York`). |
+| `ConfigDir` | string | `/config` | Directory path containing configuration files and reference images. |
+| `DataDir` | string | `/data` | Directory path for databases, snapshots, and persistent data. |
+| `DigitalModelsDir` | string | `${ConfigDir}/neuralnets/digital` | Directory containing digital digit recognition neural network models. |
+| `AnalogModelsDir` | string | `${ConfigDir}/neuralnets/analog` | Directory containing analog needle recognition neural network models. |
+| `PreviousValueFile` | string | `${ConfigDir}/prevalue.ini` | File path for persisting previous meter values across readouts. |
+| `MinConfidenceThreshold` | float | `60.0` | Global minimum confidence score percentage threshold (0.0–100.0) before marking uncertain digits with `?`. |
+
+---
 
 ### `[ImageSource]`
+Settings for capturing or loading the source image.
+
 | Parameter | Type | Default | Description |
 | :--- | :--- | :--- | :--- |
-| `URL` | string | `""` | Snapshot endpoint (e.g. `http://192.168.1.100/capture` or `file:///data/meter.jpg`). |
-| `Timeout` | integer | `30` | Network request timeout in seconds. |
-| `MinSize` | integer | `10000` | Minimum image size in bytes to discard corrupt frames. |
+| `URL` | string | `file://${ConfigDir}/original.jpg` | Source image URL (e.g. `http://...`, `https://...`, or `file://...`). |
+| `Timeout` | integer | `10` | Network request timeout in seconds when retrieving image frames. |
+| `MinSize` | integer | `20000` | Minimum image file size in bytes to discard corrupt or partial frames. |
+
+---
+
+### `[Crop]` & `[Resize]`
+Optional pre-processing stages to crop and resize the raw image before reference marker alignment.
+
+#### `[Crop]`
+| Parameter | Type | Default | Description |
+| :--- | :--- | :--- | :--- |
+| `Enabled` | boolean | `False` | Enable image cropping before alignment. |
+| `x`, `y` | integer | `0` | Top-left bounding box coordinates in pixels. |
+| `w`, `h` | integer | `0` | Width and height of crop bounding box in pixels. |
+
+#### `[Resize]`
+| Parameter | Type | Default | Description |
+| :--- | :--- | :--- | :--- |
+| `Enabled` | boolean | `False` | Enable image resizing before alignment. |
+| `w`, `h` | integer | `0` | Target width and height in pixels for resized frame. |
+
+---
 
 ### `[ImageProcessing]`
+Color, tone curve, spatial unsharp masking, autocontrast, and specular glare suppression adjustments.
+
 | Parameter | Type | Default | Description |
 | :--- | :--- | :--- | :--- |
-| `Enabled` | boolean | `False` | Enable image filter adjustments. |
+| `Enabled` | boolean | `False` | Enable image processing and enhancement filters. |
+| `Contrast` | float | `1.0` | Contrast adjustment factor (1.0 = unchanged). |
+| `Brightness` | float | `1.0` | Brightness adjustment factor (1.0 = unchanged). |
+| `Color` | float | `1.0` | Color saturation adjustment factor (1.0 = unchanged). |
+| `Sharpness` | float | `1.0` | Sharpness enhancement factor (1.0 = unchanged). |
+| `GrayScale` | boolean | `False` | Convert camera image to grayscale before processing. |
 | `Gamma` | float | `1.0` | Non-linear gamma curve tone adjustment (`0.2`–`3.0`). |
-| `Contrast` | float | `1.0` | Linear contrast multiplier. |
-| `Brightness` | float | `1.0` | Linear brightness multiplier. |
-| `AutoContrast` | boolean | `False` | Dynamic histogram contrast stretching. |
-| `UnsharpMask` | boolean | `False` | Spatial edge sharpening in CIELAB color space. |
-| `GlareSuppression` | boolean | `False` | Enable optical glare suppression (`clahe` or `inpaint`). |
+| `SharpnessMode` | string | `standard` | Sharpening algorithm: `standard`, `unsharp_mask`, or `auto`. |
+| `UnsharpRadius` | float | `1.0` | Blur radius (sigma) for luminance unsharp masking. |
+| `UnsharpAmount` | float | `1.5` | Sharpening strength multiplier for unsharp mask. |
+| `UnsharpThreshold` | integer | `3` | Noise coring threshold (0–255) to avoid sharpening camera sensor noise. |
+| `AutoSharpenCutImages`| boolean | `False` | Apply spatial edge sharpening individually to cropped ROI sub-images. |
+| `AutoContrast` | boolean | `False` | Apply dynamic histogram auto-contrast stretching to full frame. |
+| `AutoContrastCutoffLow` | float | `2.0` | Lower histogram percentile cutoff percentage for auto-contrast. |
+| `AutoContrastCutoffHigh` | float | `45.0` | Upper histogram percentile cutoff percentage for auto-contrast. |
+| `AutoContrastIgnore` | int/None | `None` | Pixel intensity value to ignore during auto-contrast calculation. |
+| `AutoContrastCutImages`| boolean | `False` | Apply auto-contrast individually to cropped ROI sub-images. |
+| `AutoContrastCutImagesCutoffLow` | float | `2.0` | Lower percentile cutoff for cut ROI auto-contrast. |
+| `AutoContrastCutImagesCutoffHigh` | float | `45.0` | Upper percentile cutoff for cut ROI auto-contrast. |
+| `AutoContrastCutImagesIgnore` | int/None | `None` | Pixel intensity value to ignore in cut ROI auto-contrast. |
+| `GlareSuppressionEnabled` | boolean | `False` | Enable specular glare and reflection suppression. |
+| `GlareSuppressionMode` | string | `clahe` | Glare algorithm: `clahe`, `inpaint`, `illumination_normalize`, or `combined`. |
+| `GlareInpaintThreshold` | integer | `230` | Luminance threshold (0–255) to detect specular reflection hotspots. |
+| `GlareInpaintRadius` | integer | `3` | Inpainting neighborhood radius in pixels (Fast Marching method). |
+| `GlareClaheClipLimit` | float | `2.0` | Contrast limiting threshold factor for CLAHE equalization. |
+| `GlareClaheGridSize` | integer | `8` | Tile grid division size for CLAHE (e.g. 8 for 8×8 grid). |
+| `GlareApplyToCutImages`| boolean | `False` | Apply glare suppression individually to cropped ROI cutouts. |
 
-### `[Alignment]`
+---
+
+### `[Alignment]` & `[Alignment.refX]`
+Geometric 3-point affine transformation locking onto stationary reference markers.
+
+#### `[Alignment]`
 | Parameter | Type | Default | Description |
 | :--- | :--- | :--- | :--- |
-| `InitialRotate` | integer | `0` | Upright rotation angle in degrees. |
-| `SearchFieldX`, `SearchFieldY` | integer | `20` | Max template search offset in pixels. |
-| `MatchingThreshold` | float | `0.6` | Minimum template matching correlation score. |
+| `RotationAngle` | integer | `0` | Coarse initial rotation angle in degrees (`0`, `90`, `180`, `270`). |
+| `Refs` | string | `ref0, ref1, ref2` | Comma-separated list of reference marker section names. |
+| `PostRotationAngle` | integer | `0` | Fine-tuning rotation angle in degrees applied after reference alignment. |
 
-### `[NeuralNetworks]`
+#### `[Alignment.ref0]`, `[Alignment.ref1]`, `[Alignment.ref2]`
 | Parameter | Type | Default | Description |
 | :--- | :--- | :--- | :--- |
-| `PoolSize` | integer | `2` | Number of concurrent LiteRT interpreter workers in pool. |
+| `Image` | string | path | File path of cropped reference template image (e.g. `${ConfigDir}/Ref_0.jpg`). |
+| `x`, `y` | integer | `0` | Target coordinate in aligned pixel coordinate space. |
+| `w`, `h` | integer | `0` | Template dimensions in pixels (`0` = auto-detected from template image file). |
+
+---
 
 ### `[Digits]` & `[Analog]`
+Neural network ROI extraction for mechanical rolling drums and analog needle dials.
+
+#### `[Digits]` & `[Analog]` Section Level
 | Parameter | Type | Default | Description |
 | :--- | :--- | :--- | :--- |
-| `Enabled` | boolean | `True` | Enable digital / analog ROI extraction. |
-| `Names` | string | `digit1, ...` | Comma-separated list of active ROI definitions. |
-| `Model` | string | `auto` | Model type (`auto`, `digital`, `digital100`, `analog`). |
-| `Modelfile` | string | path | Path to `.tflite` model file. |
+| `Enabled` | boolean | `True` | Enable digital / analog ROI recognition. |
+| `Names` | string | `digit1, ...` | Comma-separated list of active ROI section names. |
+| `Modelfile` | string | path | File path to TensorFlow Lite `.tflite` model. |
+| `Model` | string | `auto` | Model family: `auto`, `digital`, `digital100`, `analog`, `analog100`. |
+| `DetectNegativeSign` | boolean | `False` | *(Digits only)* Detect minus sign (`-`) on digital meters with reverse flow. |
+
+#### `[Digits.digitX]` & `[Analog.analogX]` Sub-sections
+| Parameter | Type | Default | Description |
+| :--- | :--- | :--- | :--- |
+| `x`, `y` | integer | `0` | Top-left X and Y coordinates of ROI bounding box in aligned space. |
+| `w`, `h` | integer | `0` | Width and height of ROI bounding box in pixels. |
+
+---
 
 ### `[Meters]` & `[Meter.<name>]`
+Virtual meter compositions, rate validation, and rollover consistency checking.
+
+#### `[Meters]`
 | Parameter | Type | Default | Description |
 | :--- | :--- | :--- | :--- |
-| `Value` | string | template | ROI substitution pattern (e.g. `{digit1}{digit2}.{analog1}`). |
-| `ConsistencyEnabled` | boolean | `True` | Enable predecessor rollover validation. |
-| `AllowNegativeRates` | boolean | `False` | Reject decreasing count anomalies. |
-| `MaxRateValue` | float | `0.2` | Maximum allowable volume delta per interval. |
-| `UseExtendedResolution` | boolean | `True` | Enable fractional sub-digit decimal calculation. |
+| `Names` | string | `digital, analog, total` | Comma-separated list of logical virtual meter definitions. |
 
-### `[Poller]`, `[MQTT]`, `[ZeroFlowMonitor]`
-| Section | Parameter | Default | Description |
+#### `[Meter.<name>]` (e.g. `[Meter.total]`)
+| Parameter | Type | Default | Description |
 | :--- | :--- | :--- | :--- |
-| `[Poller]` | `IntervalSeconds` | `300` | Automated capture interval in seconds. |
-| `[MQTT]` | `Broker` | `localhost` | MQTT broker hostname or IP. |
-| `[MQTT]` | `HomeAssistantDiscovery` | `True` | Publish Home Assistant sensor auto-discovery configs. |
-| `[ZeroFlowMonitor]` | `ContinuousFlowHours` | `2.0` | Max uninterrupted flow duration before leak alert. |
+| `Value` | string | template | Value pattern referencing ROIs (e.g. `${Meter.digital:Value}.${Meter.analog:Value}` or `{digit1}{digit2}.{analog1}`). |
+| `ConsistencyEnabled` | boolean | `True` | Enable predecessor rollover consistency validation check. |
+| `AllowNegativeRates` | boolean | `False` | Reject decreasing count anomalies when set to `False`. |
+| `MaxRateValue` | float | `0.2` | Maximum allowable consumption change per readout interval. |
+| `UsePreviousValue` | boolean | `True` | Replace uncertain digits (`?`) with last known valid reading. |
+| `PreValueFromFileMaxAge` | integer | `0` | Max age in minutes to trust previous value from file (`0` = no limit). |
+| `UseExtendedResolution` | boolean | `True` | Append fractional sub-digit decimal resolution from analog needle. |
+| `Unit` | string | `m³` | Measurement unit string reported in MQTT and API (e.g. `m³`, `L`, `kWh`). |
+
+---
+
+### `[History]`
+Timeseries database backend and retention configuration.
+
+| Parameter | Type | Default | Description |
+| :--- | :--- | :--- | :--- |
+| `Enabled` | boolean | `True` | Enable historical timeseries storage and persistence. |
+| `Backend` | string | `sqlite` | Storage backend: `sqlite` (persistent file) or `memory` (ephemeral RAM). |
+| `DBUrl` | string | `""` | Optional custom database connection URL (e.g. `sqlite:////data/meter_history.db`). |
+| `MaxMemoryMB` | float | `20.0` | Maximum memory threshold in MB for in-memory database or buffers. |
+| `MaxRecords` | integer | `50000` | Maximum row limit before oldest records are FIFO pruned (`0` = disable). |
+| `RetentionDays` | integer | `30` | Days to retain readings before automated pruning (`0` = retain forever). |
+| `AutoVacuum` | boolean | `True` | Enable incremental auto-vacuuming on SQLite database. |
+| `PruneInterval` | integer | `50` | Number of write cycles between automated retention pruning runs. |
+
+---
+
+### `[Snapshots]`
+Time Machine image frame recording and WebP compression settings.
+
+| Parameter | Type | Default | Description |
+| :--- | :--- | :--- | :--- |
+| `Enabled` | boolean | `True` | Enable historical image frame archival for Time Machine. |
+| `Mode` | string | `smart_tiered` | Strategy: `smart_tiered`, `change_only`, `roi_strips_only`, `full_frames`, `disabled`. |
+| `Format` | string | `webp` | Image compression format: `webp` or `jpeg`. |
+| `Quality` | integer | `75` | Compression quality factor (1–100). |
+| `MaxDiskMB` | float | `500.0` | Maximum disk space cap in MB for stored snapshot frames. |
+| `RecentFullFrameDays` | integer | `2` | Retention period in days for high-resolution full camera frames. |
+| `RoiStripRetentionDays`| integer | `14` | Retention period in days for compact composite ROI strips. |
+| `IdleHeartbeatMinutes` | integer | `15` | Maximum interval in minutes between snapshot captures when no flow occurs. |
+| `AlwaysSaveOnAnomaly` | boolean | `True` | Always archive full camera frame when OCR error or low confidence occurs. |
+| `StorageDir` | string | `/data/snapshots` | Filesystem directory path for compressed snapshot storage. |
+
+---
+
+### `[Poller]`
+Automated background interval scheduling.
+
+| Parameter | Type | Default | Description |
+| :--- | :--- | :--- | :--- |
+| `Enabled` | boolean | `False` | Enable scheduled background poller. |
+| `IntervalSeconds` | integer | `300` | Interval in seconds between background readouts (e.g. 60–300s). |
+| `RunOnStartup` | boolean | `True` | Trigger an immediate readout cycle upon application startup. |
+| `SaveImages` | boolean | `False` | Save intermediate debug images during polled readouts. |
+| `RetryIntervalSeconds` | integer | `30` | Retry interval in seconds following a capture failure. |
+
+---
+
+### `[MQTT]`
+MQTT telemetry broadcasting and Home Assistant Auto-Discovery.
+
+| Parameter | Type | Default | Description |
+| :--- | :--- | :--- | :--- |
+| `Enabled` | boolean | `True` | Enable MQTT client service. |
+| `Broker` | string | `localhost` | MQTT broker hostname or IP address. |
+| `Port` | integer | `1883` | MQTT broker port. |
+| `Username` | string | `""` | MQTT authentication username (optional). |
+| `Password` | string | `""` | MQTT authentication password (optional). |
+| `ClientID` | string | `water-meter-digitizer` | Client identifier presented to MQTT broker. |
+| `TopicPrefix` | string | `watermeter` | Base MQTT topic prefix for published readings and status. |
+| `KeepAlive` | integer | `60` | MQTT keepalive ping interval in seconds. |
+| `TLS` | boolean | `False` | Enable TLS/SSL connection encryption. |
+| `Retain` | boolean | `True` | Publish telemetry messages with MQTT retain flag. |
+| `HomeAssistantDiscovery`| boolean | `True` | Publish Home Assistant MQTT auto-discovery configuration topics. |
+| `DiscoveryPrefix` | string | `homeassistant` | Home Assistant MQTT discovery topic prefix. |
+| `DeviceName` | string | `Water Meter Digitizer` | Friendly device name reported in Home Assistant. |
+| `DeviceID` | string | `water_meter_digitizer` | Unique device identifier reported in Home Assistant. |
+
+---
+
+### `[ZeroFlowMonitor]`
+Continuous water flow tracking and continuous leak alarm engine.
+
+| Parameter | Type | Default | Description |
+| :--- | :--- | :--- | :--- |
+| `Enabled` | boolean | `False` | Enable zero-flow tracking & continuous leak detection. |
+| `MeterName` | string | `total` | Target meter name to monitor for continuous flow. |
+| `ValueType` | string | `cumulative` | Reading type: `cumulative` (volume deltas) or `flow_rate` (instantaneous flow). |
+| `ContinuousFlowHours` | float | `2.0` | Uninterrupted flow duration threshold in hours before triggering alert. |
+| `MinLeakVolume` | float | `0.010` | Minimum accumulated volume in $m^3$ during continuous flow to flag leak. |
+| `FlowThreshold` | float | `0.001` | Minimum delta or flow rate (in meter units) to count as active flow. |
+| `ResolveDebounceCount` | integer | `2` | Consecutive zero-flow readings required to auto-resolve active leak alert. |
+| `MaxHistoryEvents` | integer | `50` | Maximum historical leak events to retain in memory log. |
+
+---
+
+## 🌐 4. Environment Variable Overrides (`METER_*`)
+
+Any parameter in `config.ini` can be overridden via environment variables using Pydantic Settings:
+
+| Environment Variable | Target Parameter | Example |
+| :--- | :--- | :--- |
+| `CONFIG_FILE` | Root INI File Path | `/config/config.ini` |
+| `METER_LOG_LEVEL` | `[DEFAULT] LogLevel` | `DEBUG` |
+| `METER_IMAGESOURCE_URL` | `[ImageSource] URL` | `http://192.168.1.50/capture` |
+| `METER_MQTT_BROKER` | `[MQTT] Broker` | `192.168.1.100` |
+| `METER_MQTT_PORT` | `[MQTT] Port` | `1883` |
+| `METER_MQTT_TOPIC_PREFIX` | `[MQTT] TopicPrefix` | `watermeter` |
+| `METER_POLLER_INTERVAL_SECONDS` | `[Poller] IntervalSeconds` | `60` |
+| `TZ` | Container Timezone | `Europe/Helsinki` |
 
 ---
 
