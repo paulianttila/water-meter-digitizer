@@ -80,7 +80,7 @@ The test suite leverages the mock camera for true full-system end-to-end integra
 | **Leak & MQTT** | `test_e2e_mock_camera_leak_alert.py` | Zero-flow tracking, `/leak/status`, `/leak/reset`, and live MQTT telemetry publishing. |
 | **Setup Wizard UI** | `ui/test_page_setup_mock_camera.py` | Playwright browser test completing the 9-step calibration wizard using mock camera frames. |
 
-See the full [Mock Camera & Meter Generator Wiki](Mock-Camera-&-Meter-Generator.md) for full REST parameters and details.
+See the full [Dashboard, Features & Tools Guide](Dashboard-&-Features-Guide.md) for full REST parameters and Mock Camera details.
 
 ---
 

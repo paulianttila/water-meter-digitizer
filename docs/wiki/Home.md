@@ -6,31 +6,22 @@ The **Water Meter Digitizer** is an edge-optimized AI vision system that reads a
 
 ## 🗺️ Documentation Sitemap
 
-### 🚀 Getting Started
-- **[[Installation-&-Deployment]]**: Deploy via Docker, Docker Compose, Raspberry Pi, or bare metal with `uv`.
-- **[[Hardware-&-Camera-Setup]]**: Best practices for camera placement, ESP32-CAM configuration, lighting, and glare suppression.
+### 🚀 Getting Started & Calibration
+- **[[Getting-Started-&-Hardware]]**: Deploy via Docker, Docker Compose, Raspberry Pi (ARM64), hardware mounting, camera selection, and lighting/glare mitigation.
+- **[[Setup-Wizard-&-Calibration]]**: Step-by-step 9-step visual calibration wizard, marker alignment rules, canvas shortcuts, and ROI setup.
+- **[[Dashboard-&-Features-Guide]]**: Live monitoring dashboard, Time Machine historical frame scrubber, Zero-Flow continuous leak detection, and Mock Camera Studio.
 
-### 🛠️ User Guide & Setup
-- **[[Web-Dashboard-Tour]]**: Exploring the glassmorphic web UI, live metrics, consumption charts, and Time Machine frame scrubber.
-- **[[Setup-Wizard-Guide]]**: Step-by-step visual calibration wizard (9 steps from image capture to live deployment).
-- **[[Zero-Flow-Leak-Detection]]**: Continuous zero-flow tracking, leak alert thresholds, and Home Assistant binary sensor notifications.
-
-### 🏡 Integrations & Connectivity
-- **[[Smart-Home-Integrations]]**: Native Home Assistant MQTT Discovery, openHAB MQTT Binding, Node-RED, and REST/Webhook connectivity.
-- **[[MQTT-Topic-&-Payload-Reference]]**: MQTT topic hierarchy, JSON readouts, retained topics, and state broadcasting.
-- **[[REST-API-Reference]]**: Comprehensive REST API reference with curl examples and OpenAPI schemas.
+### 🏡 Integrations & Automation
+- **[[Integrations-&-API-Reference]]**: Native Home Assistant MQTT Auto-Discovery, openHAB, complete MQTT topic schemas, and REST API reference.
 
 ### ⚙️ Configuration & Storage
-- **[[Configuration-Reference]]**: Detailed parameter-by-parameter `config.ini` documentation.
-- **[[Config-Backups-&-Version-Control]]**: Automated safety backups, 1-click Undo, named checkpoints, and line-by-line diff inspection.
-- **[[Storage-&-Snapshot-Pruning]]**: Dual storage architecture (SQLite + In-Memory), retention policies, and WebP frame compression.
+- **[[Configuration-&-Storage-Manual]]**: Complete `config.ini` manual, environment variables, automated configuration backups, Undo, and SQLite/WebP retention policies.
 
-### 🔬 Developer Architecture & Algorithms
-- **[[Architecture-&-Pipeline]]**: High-level component architecture and end-to-end dataflow pipeline.
-- **[[Neural-Network-Models]]**: CNN model types, LiteRT inference pooling (`InterpreterPool`), and benchmarks.
-- **[[Digit-Roll-Over-&-Extended-Resolution]]**: Predecessor consistency math, roll-over boundary correction, and fractional sub-digit calculation.
-- **[[Mock-Camera-&-Meter-Generator]]**: Autonomous procedural water meter generator, 7-segment LCD rendering engine, and HTTP mock camera service.
-- **[[Development-&-Testing]]**: Setting up local development with `uv`, executing unit, Playwright UI, and Tavern integration test suites.
+### 🔬 Architecture & Deep Dives
+- **[[Architecture-&-Neural-Networks]]**: 6-Stage runtime pipeline, LiteRT neural models (`InterpreterPool`), and predecessor rollover consistency mathematics.
+
+### 🧪 Development & Testing
+- **[[Development-&-Testing]]**: Setting up local development with `uv`, executing unit, Playwright UI, and Tavern integration test suites, and release build workflows.
 
 ### ❓ Troubleshooting & Support
 - **[[Troubleshooting-&-FAQ]]**: Comprehensive diagnostics matrix, error codes, and frequently asked questions.

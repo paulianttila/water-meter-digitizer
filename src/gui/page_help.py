@@ -451,20 +451,24 @@ class HelpPage:
                                     )
                                 wiki_links = [
                                     (
-                                        "System Architecture",
-                                        "https://github.com/paulianttila/water-meter-digitizer/wiki/Architecture-&-Pipeline",
+                                        "Getting Started & Hardware",
+                                        "https://github.com/paulianttila/water-meter-digitizer/wiki/Getting-Started-&-Hardware",
                                     ),
                                     (
-                                        "Neural Network Models",
-                                        "https://github.com/paulianttila/water-meter-digitizer/wiki/Neural-Network-Models",
+                                        "Setup & Calibration Manual",
+                                        "https://github.com/paulianttila/water-meter-digitizer/wiki/Setup-Wizard-&-Calibration",
                                     ),
                                     (
-                                        "Odometer Math & Rollover",
-                                        "https://github.com/paulianttila/water-meter-digitizer/wiki/Digit-Roll-Over-&-Extended-Resolution",
+                                        "Smart Home & API Reference",
+                                        "https://github.com/paulianttila/water-meter-digitizer/wiki/Integrations-&-API-Reference",
                                     ),
                                     (
-                                        "Home Assistant Guide",
-                                        "https://github.com/paulianttila/water-meter-digitizer/wiki/Smart-Home-Integrations",
+                                        "Architecture & Neural Models",
+                                        "https://github.com/paulianttila/water-meter-digitizer/wiki/Architecture-&-Neural-Networks",
+                                    ),
+                                    (
+                                        "Configuration & Storage",
+                                        "https://github.com/paulianttila/water-meter-digitizer/wiki/Configuration-&-Storage-Manual",
                                     ),
                                 ]
                                 for title, url in wiki_links:

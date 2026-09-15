@@ -77,23 +77,14 @@ Detailed guides, API specifications, and calibration tutorials are available in 
 
 | Guide | Description |
 | :--- | :--- |
-| 🚀 **[Installation & Deployment](docs/wiki/Installation-&-Deployment.md)** | Docker Compose, Raspberry Pi / ARM64, and bare-metal `uv` setups. |
-| 📷 **[Hardware & Camera Setup](docs/wiki/Hardware-&-Camera-Setup.md)** | ESP32-CAM, network cameras, lighting, and glare suppression. |
-| 🧭 **[Web Dashboard Tour](docs/wiki/Web-Dashboard-Tour.md)** | Live readouts, consumption graphs, and Time Machine scrubber. |
-| 🪜 **[Setup Wizard Manual](docs/wiki/Setup-Wizard-Guide.md)** | Step-by-step 9-step calibration workflow. |
-| 💧 **[Zero-Flow Leak Detection](docs/wiki/Zero-Flow-Leak-Detection.md)** | Continuous leak monitoring, quiet windows, and reset triggers. |
-| 🏡 **[Smart Home Integrations](docs/wiki/Smart-Home-Integrations.md)** | Home Assistant MQTT Discovery, Energy Dashboard, and openHAB. |
-| 📡 **[MQTT Topic Reference](docs/wiki/MQTT-Topic-&-Payload-Reference.md)** | Topic schemas, JSON payloads, and retain flags. |
-| 🔌 **[REST API Reference](docs/wiki/REST-API-Reference.md)** | Endpoints, query parameters, curl examples, and Swagger UI. |
-| ⚙️ **[Configuration Reference](docs/wiki/Configuration-Reference.md)** | Full `config.ini` manual, `METER_*` environment overrides, and sample file. |
-| 🛡️ **[Config Backups & History](docs/wiki/Config-Backups-&-Version-Control.md)** | Automatic safety backups, 1-click Undo, snapshots, and diffs. |
-| 💾 **[Storage & Snapshot Pruning](docs/wiki/Storage-&-Snapshot-Pruning.md)** | SQLite database, WebP compression, and disk quota pruning. |
-| 🔬 **[Architecture & Pipeline](docs/wiki/Architecture-&-Pipeline.md)** | Component decoupling and execution flow. |
-| 🧠 **[Neural Network Models](docs/wiki/Neural-Network-Models.md)** | CNN architectures, LiteRT runtime, and thread pooling. |
-| 🧮 **[Digit Roll-Over Math](docs/wiki/Digit-Roll-Over-&-Extended-Resolution.md)** | Predecessor consistency algorithms and fractional decimal math. |
-| 📸 **[Mock Camera & Generator](docs/wiki/Mock-Camera-&-Meter-Generator.md)** | Procedural synthetic meter generator and HTTP mock camera API. |
-| 🧪 **[Development & Testing](docs/wiki/Development-&-Testing.md)** | Local environment setup, test suites (`./run_tests.sh`), and code quality. |
-| ❓ **[Troubleshooting & FAQ](docs/wiki/Troubleshooting-&-FAQ.md)** | Diagnostics matrix and frequently asked questions. |
+| 🚀 **[Getting Started & Hardware](docs/wiki/Getting-Started-&-Hardware.md)** | Docker Compose, Raspberry Pi / ARM64, hardware mounting, and camera setup. |
+| 🪜 **[Setup Wizard & Calibration](docs/wiki/Setup-Wizard-&-Calibration.md)** | Step-by-step 9-step visual calibration workflow and marker alignment rules. |
+| 🧭 **[Dashboard & Features Guide](docs/wiki/Dashboard-&-Features-Guide.md)** | Live readouts, Time Machine frame scrubber, leak detection, and Mock Studio. |
+| 🏡 **[Integrations & API Reference](docs/wiki/Integrations-&-API-Reference.md)** | Home Assistant Auto-Discovery, MQTT topic schemas, and REST API docs. |
+| ⚙️ **[Configuration & Storage Manual](docs/wiki/Configuration-&-Storage-Manual.md)** | Full `config.ini` manual, environment variables, safety backups, and SQLite retention. |
+| 🔬 **[Architecture & Neural Networks](docs/wiki/Architecture-&-Neural-Networks.md)** | 6-stage pipeline, LiteRT pooling, and predecessor rollover mathematics. |
+| 🧪 **[Development & Testing](docs/wiki/Development-&-Testing.md)** | Local environment setup, test suites (`./run_tests.sh`), and release builds. |
+| ❓ **[Troubleshooting & FAQ](docs/wiki/Troubleshooting-&-FAQ.md)** | Diagnostics matrix, error codes, and frequently asked questions. |
 
 ---
 

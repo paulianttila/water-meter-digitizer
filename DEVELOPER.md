@@ -119,13 +119,12 @@ Explore detailed documentation in the project Wiki:
 
 | Topic | Documentation Link |
 | :--- | :--- |
-| **System Architecture & Pipeline** | [Architecture & Pipeline](docs/wiki/Architecture-&-Pipeline.md) |
-| **Neural Network & LiteRT Inference** | [Neural Network Models](docs/wiki/Neural-Network-Models.md) |
-| **Predecessor Roll-Over Math** | [Digit Roll-Over & Extended Resolution](docs/wiki/Digit-Roll-Over-&-Extended-Resolution.md) |
-| **Zero-Flow Leak Detection Engine** | [Zero-Flow Leak Detection](docs/wiki/Zero-Flow-Leak-Detection.md) |
-| **Storage & Snapshot Retention** | [Storage & Snapshot Pruning](docs/wiki/Storage-&-Snapshot-Pruning.md) |
-| **Smart Home Integrations (HA/openHAB)**| [Smart Home Integrations](docs/wiki/Smart-Home-Integrations.md) |
-| **REST API Reference** | [REST API Reference](docs/wiki/REST-API-Reference.md) |
-| **Mock Camera & Meter Generator** | [Mock Camera & Meter Generator](docs/wiki/Mock-Camera-&-Meter-Generator.md) |
+| **Getting Started & Hardware** | [Getting Started & Hardware Guide](docs/wiki/Getting-Started-&-Hardware.md) |
+| **Setup Wizard & Calibration** | [Setup Wizard & Calibration Manual](docs/wiki/Setup-Wizard-&-Calibration.md) |
+| **Dashboard & Features** | [Dashboard, Features & Tools Guide](docs/wiki/Dashboard-&-Features-Guide.md) |
+| **Smart Home & REST APIs** | [Integrations & API Reference](docs/wiki/Integrations-&-API-Reference.md) |
+| **Configuration & Storage Retention** | [Configuration & Storage Manual](docs/wiki/Configuration-&-Storage-Manual.md) |
+| **System Architecture & Neural Models**| [Architecture, Neural Networks & Pipeline](docs/wiki/Architecture-&-Neural-Networks.md) |
 | **Development & Test Guidelines** | [Development & Testing Guide](docs/wiki/Development-&-Testing.md) |
+| **Troubleshooting & FAQ** | [Troubleshooting & FAQ Guide](docs/wiki/Troubleshooting-&-FAQ.md) |
 

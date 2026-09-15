@@ -24,7 +24,7 @@
 Open the **Config** tab ➔ click **History / Backups** ➔ click **Create Snapshot** and assign a tag (e.g. `pre-experiment`). You can rollback with 1-click anytime.
 
 ### Does this work with gas or electricity meters?
-**Yes.** Any utility meter featuring mechanical rolling number drums or rotating needle dials can be digitized using the same workflow.
+**Yes.** Any utility meter featuring LCD display, mechanical rolling number drums or rotating needle dials can be digitized using the same workflow.
 
 ### Why does the digitizer return `?` (unreadable digit)?
 Check if the bounding box is cropped too tightly or includes adjacent drum borders. In Step 4 (Image Preprocessing), enable **AutoContrast** or adjust **Sharpness**. If digits are in mid-roll (transitioning between two numbers), the consistency engine uses predecessor deduction to resolve uncertain digits marked with `?`.

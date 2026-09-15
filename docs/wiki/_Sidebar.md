@@ -5,38 +5,29 @@
 
 ---
 
-### 🚀 Getting Started
-- [[Installation-&-Deployment]]
-- [[Hardware-&-Camera-Setup]]
+### 🚀 Getting Started & Setup
+- [[Getting-Started-&-Hardware]]
+- [[Setup-Wizard-&-Calibration]]
+- [[Dashboard-&-Features-Guide]]
 
 ---
 
-### 🛠️ User Guide & Calibration
-- [[Web-Dashboard-Tour]]
-- [[Setup-Wizard-Guide]]
-- [[Zero-Flow-Leak-Detection]]
-
----
-
-### 🏡 Integrations & APIs
-- [[Smart-Home-Integrations]]
-- [[MQTT-Topic-&-Payload-Reference]]
-- [[REST-API-Reference]]
+### 🏡 Integrations & Automation
+- [[Integrations-&-API-Reference]]
 
 ---
 
 ### ⚙️ Configuration & Storage
-- [[Configuration-Reference]]
-- [[Config-Backups-&-Version-Control]]
-- [[Storage-&-Snapshot-Pruning]]
+- [[Configuration-&-Storage-Manual]]
 
 ---
 
-### 🔬 Architecture & Deep Dive
-- [[Architecture-&-Pipeline]]
-- [[Neural-Network-Models]]
-- [[Digit-Roll-Over-&-Extended-Resolution]]
-- [[Mock-Camera-&-Meter-Generator]]
+### 🔬 Architecture & Models
+- [[Architecture-&-Neural-Networks]]
+
+---
+
+### 🧪 Development & Testing
 - [[Development-&-Testing]]
 
 ---
