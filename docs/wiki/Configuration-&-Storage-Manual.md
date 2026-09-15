@@ -1,8 +1,10 @@
 # ⚙️ Configuration & Storage Manual
 
-This manual provides the comprehensive, authoritative reference for the `config.ini` configuration schema, environment variable overrides, automated configuration history/backups, and SQLite/WebP historical data storage retention policies.
+[🏠 Wiki Home](Home.md) • [◀ Previous: Integrations & API Reference](Integrations-&-API-Reference.md) • [Next: Architecture, Neural Networks & Pipeline Deep Dive ▶](Architecture-&-Neural-Networks.md)
 
 ---
+
+This manual provides the comprehensive, authoritative reference for the `config.ini` configuration schema, environment variable overrides, automated configuration history/backups, and SQLite/WebP historical data storage retention policies.
 
 ## 🛡️ 1. Configuration History, Backups & Undo
 
@@ -302,6 +304,4 @@ Any parameter in `config.ini` can be overridden via environment variables using 
 
 ---
 
-## ⏭️ Next Step
-
-Understand the vision engine and mathematical algorithms in the **[Core Engine & Architecture Deep Dive](Architecture-&-Neural-Networks.md)**.
+[🏠 Wiki Home](Home.md) • [◀ Previous: Integrations & API Reference](Integrations-&-API-Reference.md) • [Next: Architecture, Neural Networks & Pipeline Deep Dive ▶](Architecture-&-Neural-Networks.md)

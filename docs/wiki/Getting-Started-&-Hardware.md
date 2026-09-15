@@ -1,8 +1,10 @@
 # 🚀 Getting Started & Hardware Guide
 
-This comprehensive guide covers everything needed to deploy the **Water Meter Digitizer**, set up camera hardware, optimize physical lighting, and configure the container runtime on edge devices (such as Raspberry Pi) and x86_64 servers.
+[🏠 Wiki Home](Home.md) • [Next: Setup Wizard & Calibration Manual ▶](Setup-Wizard-&-Calibration.md)
 
 ---
+
+This comprehensive guide covers everything needed to deploy the **Water Meter Digitizer**, set up camera hardware, optimize physical lighting, and configure the container runtime on edge devices (such as Raspberry Pi) and x86_64 servers.
 
 ## 🐳 Docker & Docker Compose (Recommended)
 
@@ -149,6 +151,4 @@ Direct flash or LED reflections on curved meter glass can obscure rolling number
 
 ---
 
-## ⏭️ Next Step
-
-Once your container is running and camera URL is reachable, open **`http://<host-ip>:3000/setup`** and proceed to the **[Setup Wizard & Calibration Manual](Setup-Wizard-&-Calibration.md)**.
+[🏠 Wiki Home](Home.md) • [Next: Setup Wizard & Calibration Manual ▶](Setup-Wizard-&-Calibration.md)

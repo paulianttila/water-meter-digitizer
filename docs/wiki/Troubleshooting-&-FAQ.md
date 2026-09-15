@@ -1,4 +1,6 @@
-# Troubleshooting & Frequently Asked Questions (FAQ)
+# ❓ Troubleshooting & Frequently Asked Questions (FAQ)
+
+[🏠 Wiki Home](Home.md) • [◀ Previous: Development & Testing Guide](Development-&-Testing.md)
 
 ---
 
@@ -37,4 +39,8 @@ Verify camera IP reachability, test the URL in the **API Console**, check networ
 
 ### Reference markers shift over time?
 Ensure the camera mount is rigidly fixed. If lighting conditions change drastically, place reference points on high-contrast black/white features rather than reflective metal edges.
+
+---
+
+[🏠 Wiki Home](Home.md) • [◀ Previous: Development & Testing Guide](Development-&-Testing.md)
 

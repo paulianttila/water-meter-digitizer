@@ -1,6 +1,10 @@
 # 🔬 Architecture, Neural Networks & Pipeline Deep Dive
 
-This document details the internal system architecture, decoupled module design, 6-stage runtime execution pipeline, neural network model specifications, thread-safe LiteRT pooling, and predecessor roll-over mathematics.
+[🏠 Wiki Home](Home.md) • [◀ Previous: Configuration & Storage Manual](Configuration-&-Storage-Manual.md) • [Next: Development & Testing Guide ▶](Development-&-Testing.md)
+
+---
+
+This document details the internal system architecture, decoupled module design, 6-stage runtime execution pipeline, neural network model specifications, thread-safe LiteRT pooling, SQLite WAL concurrency, and predecessor roll-over mathematics.
 
 ---
 
@@ -65,11 +69,34 @@ This document details the internal system architecture, decoupled module design,
   - Resolution: $32 \times 32$ px (RGB).
   - File: `ana-cont_1209_s2.tflite`.
 
-### 2. Thread-Safe `InterpreterPool`
-Standard TensorFlow Lite interpreters are not thread-safe. The digitizer implements an `InterpreterPool`:
-- Configurable worker pool (`PoolSize = 2` by default).
-- Thread-safe `acquire()` / `release()` context managers eliminate lock contention during concurrent API calls and background polling.
-- Tracks real-time $p50$ and $p95$ inference latency.
+### 2. Thread-Safe `InterpreterPool` & Resource Sizing
+Standard TensorFlow Lite interpreters are not thread-safe. The digitizer implements an `InterpreterPool` to manage concurrent inference without lock contention:
+
+| Host Environment | `PoolSize` | Approx. RAM Usage | Concurrency Behavior |
+| :--- | :---: | :---: | :--- |
+| **Raspberry Pi Zero 2 W** (512 MB RAM) | `1` | ~20 MB | Sequential inference; lowest memory footprint. |
+| **Raspberry Pi 4 / 5** (1 GB–8 GB RAM) | `2` | ~40 MB | Concurrent REST `/readout` + background Poller. |
+| **x86_64 Server / Docker** | `4` | ~80 MB | High-throughput concurrent multi-meter processing. |
+
+- Worker instances utilize thread-safe `acquire()` / `release()` context managers.
+- Telemetry monitors real-time $p50$, $p95$, and average inference latency.
+
+---
+
+## 💾 SQLite Concurrency & WAL Locking Model
+
+The persistent storage engine (`SQLiteStorage`) is optimized for embedded edge storage:
+
+- **Write-Ahead Logging (`WAL` Mode)**: Readers never block writers, and writers never block readers. Concurrent UI reads and REST queries proceed simultaneously with ongoing poller writes.
+- **Write Serialization Mutex**: Database write transactions are serialized using an internal threading mutex (`StorageBackend.lock`) to prevent `SQLITE_BUSY` contention during bursts.
+- **Memory Fallback**: If the storage path is mounted read-only (e.g. read-only container root), the system automatically degrades to `MemoryStorage` with warning telemetry.
+
+---
+
+## 🌐 Network Resilience & Outage Handling
+
+- **Exponential Retry Backoff**: When the camera source or MQTT broker becomes temporarily unreachable, background workers apply exponential backoff (up to `RetryIntervalSeconds`) without crashing the application shell.
+- **Baseline Reading Fallback (`prevalue.ini`)**: If a camera frame capture fails or OCR confidence drops below threshold, the consistency engine preserves the last known valid state from disk, preventing false zero readings or corrupted consumption spikes.
 
 ---
 
@@ -90,6 +117,4 @@ Special thanks to **[jomjol](https://github.com/jomjol)** for pioneering edge me
 
 ---
 
-## ⏭️ Next Step
-
-Check the **[Troubleshooting & FAQ Guide](Troubleshooting-&-FAQ.md)** for error codes, edge cases, and diagnostics reporting.
+[🏠 Wiki Home](Home.md) • [◀ Previous: Configuration & Storage Manual](Configuration-&-Storage-Manual.md) • [Next: Development & Testing Guide ▶](Development-&-Testing.md)

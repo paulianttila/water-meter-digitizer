@@ -1,8 +1,10 @@
-# Development & Testing Guide
+# 🧪 Development & Testing Guide
 
-This guide covers setting up a local development environment, running test suites, and contributing to the **Water Meter Digitizer**.
+[🏠 Wiki Home](Home.md) • [◀ Previous: Architecture, Neural Networks & Pipeline Deep Dive](Architecture-&-Neural-Networks.md) • [Next: Troubleshooting & FAQ Guide ▶](Troubleshooting-&-FAQ.md)
 
 ---
+
+This guide covers setting up a local development environment, running test suites, and contributing to the **Water Meter Digitizer**.
 
 ## 🛠️ Environment Setup
 
@@ -139,5 +141,9 @@ GitHub Actions will automatically:
 1. Build multi-arch container images (`linux/amd64`, `linux/arm64`) with QEMU and Buildx.
 2. Push tagged release images (`v1.0.0`, `v1.0`, `latest`) to Docker Hub.
 3. Synchronize markdown wiki pages (`docs/wiki/`) to the GitHub Wiki.
+
+---
+
+[🏠 Wiki Home](Home.md) • [◀ Previous: Architecture, Neural Networks & Pipeline Deep Dive](Architecture-&-Neural-Networks.md) • [Next: Troubleshooting & FAQ Guide ▶](Troubleshooting-&-FAQ.md)
 
 

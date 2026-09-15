@@ -1,6 +1,10 @@
 # 🏡 Integrations & API Reference
 
-The **Water Meter Digitizer** is designed for seamless integration into smart home systems and custom automation workflows via **Home Assistant MQTT Auto-Discovery**, **openHAB**, **Structured MQTT Topics**, and a comprehensive **REST API**.
+[🏠 Wiki Home](Home.md) • [◀ Previous: Dashboard, Features & Tools Guide](Dashboard-&-Features-Guide.md) • [Next: Configuration & Storage Manual ▶](Configuration-&-Storage-Manual.md)
+
+---
+
+The **Water Meter Digitizer** is designed for seamless integration into smart home systems and custom automation workflows via **Home Assistant MQTT Auto-Discovery**, **openHAB 3/4**, **Structured MQTT Topics**, and a comprehensive **REST API**.
 
 ---
 
@@ -34,9 +38,75 @@ The **Water Meter Digitizer** is designed for seamless integration into smart ho
 3. Select `sensor.water_meter_digitizer_total`.
 4. Click **Save** to track hourly and daily water usage charts.
 
+### Example Lovelace Mini-Graph Card
+Using the popular `custom:mini-graph-card`:
+```yaml
+type: custom:mini-graph-card
+name: 💧 Water Flow Rate
+entities:
+  - entity: sensor.water_meter_digitizer_flow_rate
+    name: Flow Rate
+    color: '#00e5ff'
+line_width: 2
+hours_to_show: 24
+points_per_hour: 4
+show:
+  fill: fade
+  extrema: true
+  labels: true
+color_thresholds:
+  - value: 0.0
+    color: '#22c55e'
+  - value: 0.05
+    color: '#eab308'
+  - value: 0.20
+    color: '#ef4444'
+```
+
 ---
 
-## 📡 2. MQTT Topic & Telemetry Schema
+## 🏠 2. openHAB 3 / 4 Integration
+
+For openHAB deployments using the Generic MQTT Binding:
+
+### Things Configuration (`watermeter.things`)
+```java
+Bridge mqtt:broker:myBroker [ host="192.168.1.100", port=1883 ] {
+    Thing topic watermeter "Water Meter Digitizer" {
+        Channels:
+            Type number : total_value "Total Reading" [
+                stateTopic="watermeter/total/value"
+            ]
+            Type number : flow_rate "Flow Rate" [
+                stateTopic="watermeter/total/rate"
+            ]
+            Type number : confidence "Vision Confidence" [
+                stateTopic="watermeter/total/confidence"
+            ]
+            Type switch : leak_alert "Leak Alert" [
+                stateTopic="watermeter/leak/detected",
+                on="true",
+                off="false"
+            ]
+            Type string : status "System Availability" [
+                stateTopic="watermeter/status"
+            ]
+    }
+}
+```
+
+### Items Configuration (`watermeter.items`)
+```java
+Number:VolumeWater WaterMeter_Total "Cumulative Reading [%.3f m³]" <water> { channel="mqtt:topic:myBroker:watermeter:total_value" }
+Number:VolumetricFlowRate WaterMeter_FlowRate "Current Flow Rate [%.4f m³/h]" <flow> { channel="mqtt:topic:myBroker:watermeter:flow_rate" }
+Number WaterMeter_Confidence "Vision Confidence [%.1f %%]" <qualityofservice> { channel="mqtt:topic:myBroker:watermeter:confidence" }
+Switch WaterMeter_LeakAlert "Continuous Leak Alarm" <alarm> { channel="mqtt:topic:myBroker:watermeter:leak_alert" }
+String WaterMeter_Status "Digitizer Status [%s]" <status> { channel="mqtt:topic:myBroker:watermeter:status" }
+```
+
+---
+
+## 📡 3. MQTT Topic & Telemetry Schema
 
 All telemetry is published under the configured `TopicPrefix` (default: `watermeter/`):
 
@@ -82,7 +152,7 @@ All telemetry is published under the configured `TopicPrefix` (default: `waterme
 
 ---
 
-## 🔌 3. REST API Reference
+## 🔌 4. REST API Reference
 
 Interactive API documentation and schema inspection are available live at:
 - **Swagger UI**: `http://<digitizer-ip>:3000/docs`
@@ -121,6 +191,4 @@ Interactive API documentation and schema inspection are available live at:
 
 ---
 
-## ⏭️ Next Step
-
-Read the **[Configuration & Storage Manual](Configuration-&-Storage-Manual.md)** to configure storage backends, automated backups, and snapshot retention limits.
+[🏠 Wiki Home](Home.md) • [◀ Previous: Dashboard, Features & Tools Guide](Dashboard-&-Features-Guide.md) • [Next: Configuration & Storage Manual ▶](Configuration-&-Storage-Manual.md)

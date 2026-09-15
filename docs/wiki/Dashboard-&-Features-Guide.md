@@ -1,8 +1,10 @@
 # 🧭 Dashboard, Features & Tools Guide
 
-The **Water Meter Digitizer** provides a modern, responsive web application served on port `3000` (accessible by default at `http://localhost:3000`). This guide covers the main monitoring views, historical Time Machine playback, Zero-Flow continuous leak detection, and the built-in Mock Camera Studio.
+[🏠 Wiki Home](Home.md) • [◀ Previous: Setup Wizard & Calibration Manual](Setup-Wizard-&-Calibration.md) • [Next: Integrations & API Reference ▶](Integrations-&-API-Reference.md)
 
 ---
+
+The **Water Meter Digitizer** provides a modern, responsive web application served on port `3000` (accessible by default at `http://localhost:3000`). This guide covers the main monitoring views, historical Time Machine playback, Zero-Flow continuous leak detection, and the built-in Mock Camera Studio.
 
 ## 🧭 Navigation & Core Tabs Overview
 
@@ -105,6 +107,4 @@ Accessible via the **API Console** tab (`/api_console`):
 
 ---
 
-## ⏭️ Next Step
-
-Connect the digitizer to your home automation system in the **[Integrations & API Reference](Integrations-&-API-Reference.md)**.
+[🏠 Wiki Home](Home.md) • [◀ Previous: Setup Wizard & Calibration Manual](Setup-Wizard-&-Calibration.md) • [Next: Integrations & API Reference ▶](Integrations-&-API-Reference.md)

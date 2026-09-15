@@ -1,8 +1,10 @@
 # 🪜 Setup Wizard & Calibration Manual
 
-The **Setup Wizard** (accessible via the **Setup** tab at `/setup`) is an interactive 9-step guided workflow that steps you through acquiring a baseline frame, aligning geometric reference markers, tuning contrast & sharpness, drawing neural network ROIs, configuring virtual meters, and deploying live settings.
+[🏠 Wiki Home](Home.md) • [◀ Previous: Getting Started & Hardware Guide](Getting-Started-&-Hardware.md) • [Next: Dashboard, Features & Tools Guide ▶](Dashboard-&-Features-Guide.md)
 
 ---
+
+The **Setup Wizard** (accessible via the **Setup** tab at `/setup`) is an interactive 9-step guided workflow that steps you through acquiring a baseline frame, aligning geometric reference markers, tuning contrast & sharpness, drawing neural network ROIs, configuring virtual meters, and deploying live settings.
 
 ## 🧭 9-Step Calibration Flow Overview
 
@@ -132,6 +134,4 @@ The **Setup Wizard** (accessible via the **Setup** tab at `/setup`) is an intera
 
 ---
 
-## ⏭️ Next Step
-
-Explore the **[Dashboard, Features & Tools Guide](Dashboard-&-Features-Guide.md)** to monitor live readouts, set up continuous leak detection, or inspect historical readings with Time Machine.
+[🏠 Wiki Home](Home.md) • [◀ Previous: Getting Started & Hardware Guide](Getting-Started-&-Hardware.md) • [Next: Dashboard, Features & Tools Guide ▶](Dashboard-&-Features-Guide.md)

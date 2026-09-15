@@ -12,7 +12,7 @@ The **Water Meter Digitizer** is an edge-optimized AI vision system that reads a
 - **[[Dashboard-&-Features-Guide]]**: Live monitoring dashboard, Time Machine historical frame scrubber, Zero-Flow continuous leak detection, and Mock Camera Studio.
 
 ### 🏡 Integrations & Automation
-- **[[Integrations-&-API-Reference]]**: Native Home Assistant MQTT Auto-Discovery, openHAB, complete MQTT topic schemas, and REST API reference.
+- **[[Integrations-&-API-Reference]]**: Native Home Assistant MQTT Auto-Discovery, openHAB 3/4, complete MQTT topic schemas, and REST API reference.
 
 ### ⚙️ Configuration & Storage
 - **[[Configuration-&-Storage-Manual]]**: Complete `config.ini` manual, environment variables, automated configuration backups, Undo, and SQLite/WebP retention policies.
@@ -25,6 +25,23 @@ The **Water Meter Digitizer** is an edge-optimized AI vision system that reads a
 
 ### ❓ Troubleshooting & Support
 - **[[Troubleshooting-&-FAQ]]**: Comprehensive diagnostics matrix, error codes, and frequently asked questions.
+
+---
+
+## 📖 Core Concepts & Glossary
+
+| Term | Category | Definition |
+| :--- | :--- | :--- |
+| **ROI (Region of Interest)** | Vision / Calibration | Bounding box coordinates on the aligned frame defining an individual digit drum or analog dial needle. |
+| **3-Point Affine Alignment** | Image Processing | 2D geometric transformation derived from 3 static reference markers to correct camera tilt, scale, and vibration. |
+| **Predecessor Consistency** | Mathematics / Logic | Algorithm resolving ambiguous half-turned digits (e.g. 4.6) by evaluating the rotation angle of the adjacent lower-order dial. |
+| **Extended Resolution** | Analytics | Appending fractional sub-digit decimal precision from the lowest-order continuous analog dial (e.g. `00452.91241 m³`). |
+| **Zero-Flow Quiet Window** | Leak Protection | Intermittent period of zero water consumption required to reset continuous flow timers and prevent false leak alarms. |
+| **InterpreterPool** | Neural Runtime | Thread-safe pool of Google LiteRT worker instances eliminating inference lock contention during concurrent API/poller calls. |
+| **Time Machine** | Storage / Web UI | Historical frame scrubber allowing side-by-side comparison between past captures and live feeds with SSIM difference heatmaps. |
+| **SSIM Difference Heatmap** | Computer Vision | Structural Similarity Index matrix rendered as an RGB heatmap highlighting physical meter shifts or dial movements. |
+| **CLAHE Glare Suppression** | Image Processing | Contrast Limited Adaptive Histogram Equalization applied locally to eliminate bright specular LED flash reflections. |
+| **Pre-Value Baseline** | State Persistence | Last validated meter reading persisted in `prevalue.ini`, preventing erroneous zero drops during temporary camera outages. |
 
 ---
 
@@ -44,17 +61,17 @@ The **Water Meter Digitizer** is an edge-optimized AI vision system that reads a
                       │  - Cut ROI Sub-images   │
                       └────────────┬────────────┘
                                    │
-               ┌───────────────────┴───────────────────┐
-               ▼                                       ▼
-    ┌──────────────────────┐                ┌──────────────────────┐
-    │   Digital Counter    │                │    Analog Needle     │
-    │      CNN Models      │                │      CNN Models      │
-    │ (digital/digital100) │                │   (analog/analog100) │
-    └──────────┬───────────┘                └──────────┬───────────┘
-               │                                       │
-               └───────────────────┬───────────────────┘
-                                   │ Raw CNN Predictions
-                                   ▼
+                ┌───────────────────┴───────────────────┐
+                ▼                                       ▼
+     ┌──────────────────────┐                ┌──────────────────────┐
+     │   Digital Counter    │                │    Analog Needle     │
+     │      CNN Models      │                │      CNN Models      │
+     │ (digital/digital100) │                │   (analog/analog100) │
+     └──────────┬───────────┘                └──────────┬───────────┘
+                │                                       │
+                └───────────────────┬───────────────────┘
+                                    │ Raw CNN Predictions
+                                    ▼
                       ┌─────────────────────────┐
                       │    DigitizerProcessor   │
                       │  - Predecessor Roll-fix │
@@ -63,12 +80,12 @@ The **Water Meter Digitizer** is an edge-optimized AI vision system that reads a
                       │  - Previous Value File  │
                       └────────────┬────────────┘
                                    │
-               ┌───────────────────┴───────────────────┐
-               ▼                                       ▼
-    ┌──────────────────────┐                ┌──────────────────────┐
-    │     REST API & MQTT  │                │   Interactive Web UI │
-    │   `/meter` & Broker  │                │  Dashboard & Wizard  │
-    └──────────────────────┘                └──────────────────────┘
+                ┌───────────────────┴───────────────────┐
+                ▼                                       ▼
+     ┌──────────────────────┐                ┌──────────────────────┐
+     │     REST API & MQTT  │                │   Interactive Web UI │
+     │   `/meter` & Broker  │                │  Dashboard & Wizard  │
+     └──────────────────────┘                └──────────────────────┘
 ```
 
 ---
