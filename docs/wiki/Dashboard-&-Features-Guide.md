@@ -1,6 +1,6 @@
 # 🧭 Dashboard, Features & Tools Guide
 
-[🏠 Wiki Home](Home.md) • [◀ Previous: Setup Wizard & Calibration Manual](Setup-Wizard-&-Calibration.md) • [Next: Integrations & API Reference ▶](Integrations-&-API-Reference.md)
+[🏠 Wiki Home](Home) • [◀ Previous: Setup Wizard & Calibration Manual](Setup-Wizard-&-Calibration) • [Next: Integrations & API Reference ▶](Integrations-&-API-Reference)
 
 ---
 
@@ -107,4 +107,4 @@ Accessible via the **API Console** tab (`/api_console`):
 
 ---
 
-[🏠 Wiki Home](Home.md) • [◀ Previous: Setup Wizard & Calibration Manual](Setup-Wizard-&-Calibration.md) • [Next: Integrations & API Reference ▶](Integrations-&-API-Reference.md)
+[🏠 Wiki Home](Home) • [◀ Previous: Setup Wizard & Calibration Manual](Setup-Wizard-&-Calibration) • [Next: Integrations & API Reference ▶](Integrations-&-API-Reference)

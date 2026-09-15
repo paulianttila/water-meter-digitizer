@@ -41,16 +41,17 @@ def test_wiki_internal_links_exist():
                 f"Target {target_file} does not exist."
             )
 
-        # 2. Check standard relative markdown [text](target.md) links
+        # 2. Check standard relative markdown [text](target) links (e.g. extensionless for wiki pages)
         md_links = _extract_markdown_links(content)
         for link in md_links:
             if link.startswith(("http://", "https://", "mailto:", "ftp://")):
                 continue
-            # Resolve relative link from current file directory
+            # In GitHub Wiki, internal links are extensionless (e.g. (Setup-Wizard-&-Calibration))
             target_path = (md_file.parent / link).resolve()
-            assert target_path.exists(), (
+            target_with_md = (md_file.parent / f"{link}.md").resolve()
+            assert target_path.exists() or target_with_md.exists(), (
                 f"Broken relative link [{link}] in {md_file.name}. "
-                f"Resolved target {target_path} does not exist."
+                f"Neither {target_path} nor {target_with_md} exists."
             )
 
 

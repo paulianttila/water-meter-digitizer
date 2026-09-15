@@ -1,6 +1,6 @@
 # 🏡 Integrations & API Reference
 
-[🏠 Wiki Home](Home.md) • [◀ Previous: Dashboard, Features & Tools Guide](Dashboard-&-Features-Guide.md) • [Next: Configuration & Storage Manual ▶](Configuration-&-Storage-Manual.md)
+[🏠 Wiki Home](Home) • [◀ Previous: Dashboard, Features & Tools Guide](Dashboard-&-Features-Guide) • [Next: Configuration & Storage Manual ▶](Configuration-&-Storage-Manual)
 
 ---
 
@@ -191,4 +191,4 @@ Interactive API documentation and schema inspection are available live at:
 
 ---
 
-[🏠 Wiki Home](Home.md) • [◀ Previous: Dashboard, Features & Tools Guide](Dashboard-&-Features-Guide.md) • [Next: Configuration & Storage Manual ▶](Configuration-&-Storage-Manual.md)
+[🏠 Wiki Home](Home) • [◀ Previous: Dashboard, Features & Tools Guide](Dashboard-&-Features-Guide) • [Next: Configuration & Storage Manual ▶](Configuration-&-Storage-Manual)

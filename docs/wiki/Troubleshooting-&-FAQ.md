@@ -1,6 +1,6 @@
 # ❓ Troubleshooting & Frequently Asked Questions (FAQ)
 
-[🏠 Wiki Home](Home.md) • [◀ Previous: Development & Testing Guide](Development-&-Testing.md)
+[🏠 Wiki Home](Home) • [◀ Previous: Development & Testing Guide](Development-&-Testing)
 
 ---
 
@@ -42,5 +42,5 @@ Ensure the camera mount is rigidly fixed. If lighting conditions change drastica
 
 ---
 
-[🏠 Wiki Home](Home.md) • [◀ Previous: Development & Testing Guide](Development-&-Testing.md)
+[🏠 Wiki Home](Home) • [◀ Previous: Development & Testing Guide](Development-&-Testing)
 

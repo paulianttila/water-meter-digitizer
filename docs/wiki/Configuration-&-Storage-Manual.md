@@ -1,6 +1,6 @@
 # ⚙️ Configuration & Storage Manual
 
-[🏠 Wiki Home](Home.md) • [◀ Previous: Integrations & API Reference](Integrations-&-API-Reference.md) • [Next: Architecture, Neural Networks & Pipeline Deep Dive ▶](Architecture-&-Neural-Networks.md)
+[🏠 Wiki Home](Home) • [◀ Previous: Integrations & API Reference](Integrations-&-API-Reference) • [Next: Architecture, Neural Networks & Pipeline Deep Dive ▶](Architecture-&-Neural-Networks)
 
 ---
 
@@ -304,4 +304,4 @@ Any parameter in `config.ini` can be overridden via environment variables using 
 
 ---
 
-[🏠 Wiki Home](Home.md) • [◀ Previous: Integrations & API Reference](Integrations-&-API-Reference.md) • [Next: Architecture, Neural Networks & Pipeline Deep Dive ▶](Architecture-&-Neural-Networks.md)
+[🏠 Wiki Home](Home) • [◀ Previous: Integrations & API Reference](Integrations-&-API-Reference) • [Next: Architecture, Neural Networks & Pipeline Deep Dive ▶](Architecture-&-Neural-Networks)

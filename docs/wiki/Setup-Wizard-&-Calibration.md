@@ -1,6 +1,6 @@
 # 🪜 Setup Wizard & Calibration Manual
 
-[🏠 Wiki Home](Home.md) • [◀ Previous: Getting Started & Hardware Guide](Getting-Started-&-Hardware.md) • [Next: Dashboard, Features & Tools Guide ▶](Dashboard-&-Features-Guide.md)
+[🏠 Wiki Home](Home) • [◀ Previous: Getting Started & Hardware Guide](Getting-Started-&-Hardware) • [Next: Dashboard, Features & Tools Guide ▶](Dashboard-&-Features-Guide)
 
 ---
 
@@ -134,4 +134,4 @@ The **Setup Wizard** (accessible via the **Setup** tab at `/setup`) is an intera
 
 ---
 
-[🏠 Wiki Home](Home.md) • [◀ Previous: Getting Started & Hardware Guide](Getting-Started-&-Hardware.md) • [Next: Dashboard, Features & Tools Guide ▶](Dashboard-&-Features-Guide.md)
+[🏠 Wiki Home](Home) • [◀ Previous: Getting Started & Hardware Guide](Getting-Started-&-Hardware) • [Next: Dashboard, Features & Tools Guide ▶](Dashboard-&-Features-Guide)

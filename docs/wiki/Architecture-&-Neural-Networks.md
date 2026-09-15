@@ -1,6 +1,6 @@
 # 🔬 Architecture, Neural Networks & Pipeline Deep Dive
 
-[🏠 Wiki Home](Home.md) • [◀ Previous: Configuration & Storage Manual](Configuration-&-Storage-Manual.md) • [Next: Development & Testing Guide ▶](Development-&-Testing.md)
+[🏠 Wiki Home](Home) • [◀ Previous: Configuration & Storage Manual](Configuration-&-Storage-Manual) • [Next: Development & Testing Guide ▶](Development-&-Testing)
 
 ---
 
@@ -117,4 +117,4 @@ Special thanks to **[jomjol](https://github.com/jomjol)** for pioneering edge me
 
 ---
 
-[🏠 Wiki Home](Home.md) • [◀ Previous: Configuration & Storage Manual](Configuration-&-Storage-Manual.md) • [Next: Development & Testing Guide ▶](Development-&-Testing.md)
+[🏠 Wiki Home](Home) • [◀ Previous: Configuration & Storage Manual](Configuration-&-Storage-Manual) • [Next: Development & Testing Guide ▶](Development-&-Testing)

@@ -1,6 +1,6 @@
 # 🧪 Development & Testing Guide
 
-[🏠 Wiki Home](Home.md) • [◀ Previous: Architecture, Neural Networks & Pipeline Deep Dive](Architecture-&-Neural-Networks.md) • [Next: Troubleshooting & FAQ Guide ▶](Troubleshooting-&-FAQ.md)
+[🏠 Wiki Home](Home) • [◀ Previous: Architecture, Neural Networks & Pipeline Deep Dive](Architecture-&-Neural-Networks) • [Next: Troubleshooting & FAQ Guide ▶](Troubleshooting-&-FAQ)
 
 ---
 
@@ -82,7 +82,7 @@ The test suite leverages the mock camera for true full-system end-to-end integra
 | **Leak & MQTT** | `test_e2e_mock_camera_leak_alert.py` | Zero-flow tracking, `/leak/status`, `/leak/reset`, and live MQTT telemetry publishing. |
 | **Setup Wizard UI** | `ui/test_page_setup_mock_camera.py` | Playwright browser test completing the 9-step calibration wizard using mock camera frames. |
 
-See the full [Dashboard, Features & Tools Guide](Dashboard-&-Features-Guide.md) for full REST parameters and Mock Camera details.
+See the full [Dashboard, Features & Tools Guide](Dashboard-&-Features-Guide) for full REST parameters and Mock Camera details.
 
 ---
 
@@ -144,6 +144,6 @@ GitHub Actions will automatically:
 
 ---
 
-[🏠 Wiki Home](Home.md) • [◀ Previous: Architecture, Neural Networks & Pipeline Deep Dive](Architecture-&-Neural-Networks.md) • [Next: Troubleshooting & FAQ Guide ▶](Troubleshooting-&-FAQ.md)
+[🏠 Wiki Home](Home) • [◀ Previous: Architecture, Neural Networks & Pipeline Deep Dive](Architecture-&-Neural-Networks) • [Next: Troubleshooting & FAQ Guide ▶](Troubleshooting-&-FAQ)
 
 

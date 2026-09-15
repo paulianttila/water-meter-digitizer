@@ -1,6 +1,6 @@
 # 🚀 Getting Started & Hardware Guide
 
-[🏠 Wiki Home](Home.md) • [Next: Setup Wizard & Calibration Manual ▶](Setup-Wizard-&-Calibration.md)
+[🏠 Wiki Home](Home) • [Next: Setup Wizard & Calibration Manual ▶](Setup-Wizard-&-Calibration)
 
 ---
 
@@ -151,4 +151,4 @@ Direct flash or LED reflections on curved meter glass can obscure rolling number
 
 ---
 
-[🏠 Wiki Home](Home.md) • [Next: Setup Wizard & Calibration Manual ▶](Setup-Wizard-&-Calibration.md)
+[🏠 Wiki Home](Home) • [Next: Setup Wizard & Calibration Manual ▶](Setup-Wizard-&-Calibration)
