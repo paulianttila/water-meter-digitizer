@@ -1,7 +1,9 @@
+import asyncio
 import contextlib
 import logging
 import random
 import string
+from typing import Any
 
 from fastapi import FastAPI
 from nicegui import ui
@@ -53,19 +55,21 @@ GLOBAL_CSS = (
     }
 
     html, body {
-        height: 100vh !important;
+        min-height: 100dvh !important;
+        height: 100dvh !important;
+        max-height: 100dvh !important;
         margin: 0 !important;
         padding: 0 !important;
-        overflow: hidden !important;
+        overflow: hidden;
     }
 
     .nicegui-content {
         padding: 0 !important;
         margin: 0 !important;
         gap: 0 !important;
-        height: 100vh !important;
-        max-height: 100vh !important;
-        overflow: hidden !important;
+        height: 100dvh !important;
+        max-height: 100dvh !important;
+        overflow: hidden;
         display: flex !important;
         flex-direction: column !important;
     }
@@ -97,6 +101,7 @@ GLOBAL_CSS = (
 
     .q-splitter__panel {
         background: transparent !important;
+        min-height: 0 !important;
     }
 
     .q-stepper {
@@ -231,38 +236,6 @@ GLOBAL_CSS = (
         display: block !important;
     }
 </style>
-
-<script>
-    async function checkGuiHealth() {
-        const badge = document.getElementById('gui-status-badge');
-        const text = document.getElementById('gui-status-text');
-        if (!badge || !text) return;
-
-        try {
-            const controller = new AbortController();
-            const timeoutId = setTimeout(() => controller.abort(), 3500);
-            const response = await fetch('/healthcheck', { signal: controller.signal });
-            clearTimeout(timeoutId);
-
-            if (response.ok) {
-                const body = await response.text();
-                if (body.includes('Health - OK')) {
-                    badge.className = 'gui-badge-status';
-                    text.textContent = 'Online';
-                    return;
-                }
-            }
-            badge.className = 'gui-badge-status gui-status-offline';
-            text.textContent = 'Degraded';
-        } catch (err) {
-            badge.className = 'gui-badge-status gui-status-offline';
-            text.textContent = 'Offline';
-        }
-    }
-
-    setInterval(checkGuiHealth, 5000);
-    setTimeout(checkGuiHealth, 800);
-</script>
 """
 )
 
@@ -399,41 +372,98 @@ def init(fastapi_app: FastAPI, callbacks: Callbacks) -> None:
 
                 ui.timer(2.0, check_config_reload)
 
+                tab_defs = [
+                    (
+                        "meter",
+                        main,
+                        meter_page.show,
+                        "w-full h-full p-0 overflow-y-auto",
+                    ),
+                    (
+                        "services",
+                        services,
+                        services_page.show,
+                        "w-full h-full p-0 overflow-y-auto",
+                    ),
+                    (
+                        "setup",
+                        setup,
+                        setup_page.show,
+                        "w-full h-full p-0 overflow-hidden flex flex-col min-h-0",
+                    ),
+                    (
+                        "config",
+                        config,
+                        config_page.show,
+                        "w-full h-full p-0 overflow-hidden flex flex-col min-h-0",
+                    ),
+                    (
+                        "baselines",
+                        baselines,
+                        previous_values_page.show,
+                        "w-full h-full p-0 overflow-y-auto",
+                    ),
+                    (
+                        "api_console",
+                        api_console,
+                        api_console_page.show,
+                        "w-full h-full p-0 overflow-y-auto flex flex-col",
+                    ),
+                    (
+                        "help",
+                        help_tab,
+                        help_page.show,
+                        "w-full h-full p-0 overflow-y-auto",
+                    ),
+                    (
+                        "about",
+                        about,
+                        about_page.show,
+                        "w-full h-full p-0 overflow-y-auto",
+                    ),
+                ]
+
+                panels: dict[str, tuple[ui.tab_panel, Any]] = {}
                 with ui.tab_panels(tabs, value=main).classes(
-                    "w-full flex-1 p-4 overflow-hidden"
+                    "w-full flex-1 p-4 overflow-hidden min-h-0"
                 ):
-                    with ui.tab_panel(main).classes(
-                        "w-full h-full p-0 overflow-y-auto"
-                    ):
-                        await meter_page.show()
-                    with ui.tab_panel(services).classes(
-                        "w-full h-full p-0 overflow-y-auto"
-                    ):
-                        await services_page.show()
-                    with ui.tab_panel(setup).classes(
-                        "w-full h-full p-0 overflow-hidden flex flex-col"
-                    ):
-                        await setup_page.show()
-                    with ui.tab_panel(config).classes(
-                        "w-full h-full p-0 overflow-hidden flex flex-col"
-                    ):
-                        config_page.show()
-                    with ui.tab_panel(baselines).classes(
-                        "w-full h-full p-0 overflow-y-auto"
-                    ):
-                        previous_values_page.show()
-                    with ui.tab_panel(api_console).classes(
-                        "w-full h-full p-0 overflow-hidden flex flex-col"
-                    ):
-                        api_console_page.show()
-                    with ui.tab_panel(help_tab).classes(
-                        "w-full h-full p-0 overflow-y-auto"
-                    ):
-                        help_page.show()
-                    with ui.tab_panel(about).classes(
-                        "w-full h-full p-0 overflow-y-auto"
-                    ):
-                        about_page.show()
+                    for tab_id, tab_obj, show_fn, css_cls in tab_defs:
+                        panel = ui.tab_panel(tab_obj).classes(css_cls)
+                        panels[tab_id] = (panel, show_fn)
+
+                loaded_tabs: set[str] = set()
+
+                async def load_tab(tab_ref: Any) -> None:
+                    target_id = None
+                    if isinstance(tab_ref, str):
+                        target_id = tab_ref.lower().replace(" ", "_")
+                    else:
+                        for tid, tobj, _, _ in tab_defs:
+                            if tab_ref is tobj:
+                                target_id = tid
+                                break
+                    if not target_id:
+                        target_id = "meter"
+
+                    if target_id in loaded_tabs:
+                        return
+                    loaded_tabs.add(target_id)
+
+                    if target_id in panels:
+                        panel, show_fn = panels[target_id]
+                        with panel:
+                            res = show_fn()
+                            if asyncio.iscoroutine(res):
+                                await res
+
+                # Initial render: load default active tab (Meter)
+                await load_tab(main)
+
+                async def on_tab_change(e: Any) -> None:
+                    val = getattr(e, "value", e)
+                    await load_tab(val)
+
+                tabs.on_value_change(on_tab_change)
 
     # Nothing special is stored in the cookie, so it's fine to use random secret
     secret = "".join(

@@ -1275,11 +1275,13 @@ class SetupPage:
             with (
                 splitter.after,
                 ui.element("div").classes(
-                    "w-full h-full flex flex-col justify-between min-h-0 overflow-y-auto pr-1"
+                    "w-full h-full flex flex-col justify-between min-h-0 overflow-hidden pr-1"
                 ),
             ):
                 with (
-                    ui.element("div").classes("w-full"),
+                    ui.element("div").classes(
+                        "w-full flex-1 min-h-0 overflow-y-auto pr-1"
+                    ),
                     ui.stepper(on_value_change=lambda x: handle_stepper_change(x.value))
                     .props("vertical")
                     .classes(

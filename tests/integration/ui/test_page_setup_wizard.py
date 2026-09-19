@@ -163,9 +163,10 @@ def test_setup_wizard_start_clean_dialog(page: Page, live_server_url: str):
 
 @pytest.mark.ui
 def test_setup_wizard_tall_step_scrollability(page: Page, live_server_url: str):
-    """Verify that tall wizard steps (like Step 4 Adjust image) are scrollable
-    and that navigation buttons (Back/Continue) remain accessible and functional
-    in restricted viewports.
+    """Verify that on tall wizard steps (like Step 4 Adjust image):
+    - The main page and left image panel remain fixed in view.
+    - Only the wizard step container scrolls independently.
+    - Docked navigation buttons (Back/Continue) remain visible and functional.
     """
     page.set_viewport_size({"width": 1024, "height": 600})
     page.goto(f"{live_server_url}/gui", wait_until="domcontentloaded")
@@ -185,19 +186,31 @@ def test_setup_wizard_tall_step_scrollability(page: Page, live_server_url: str):
     continue_btn.click()
     expect(page.get_by_text("Step 4 of 9: Adjust image")).to_be_visible(timeout=5000)
 
-    # Verify that the page content overflows the 600px viewport and is scrollable
-    scroll_info = page.evaluate("""() => {
-            return {
-                bodyScrollHeight: document.body.scrollHeight,
-                windowHeight: window.innerHeight,
-                isScrollable: document.body.scrollHeight > window.innerHeight
-            };
-        }""")
-    assert scroll_info["isScrollable"] is True
-    assert scroll_info["bodyScrollHeight"] > scroll_info["windowHeight"]
+    # Verify that the body is not scrolling, the left panel stays pinned, and the stepper scrolls
+    layout_info = page.evaluate("""() => {
+        const body = document.body;
+        const leftPanel = document.querySelector('.q-splitter__before');
+        const stepper = document.querySelector('.q-stepper');
+        const stepperContainer = stepper ? stepper.parentElement : null;
+        const leftRect = leftPanel ? leftPanel.getBoundingClientRect() : null;
 
-    # Scroll the Continue button into view and click it
-    continue_btn.scroll_into_view_if_needed()
+        return {
+            windowHeight: window.innerHeight,
+            bodyScrollHeight: body.scrollHeight,
+            bodyClientHeight: body.clientHeight,
+            leftPanelTop: leftRect ? leftRect.top : 0,
+            stepperScrollable: stepperContainer ? stepperContainer.scrollHeight > stepperContainer.clientHeight : false
+        };
+    }""")
+
+    # Body must not be scrolling
+    assert layout_info["bodyScrollHeight"] <= layout_info["windowHeight"]
+    # Left image panel stays pinned right below the top navbar (~56px)
+    assert 50 <= layout_info["leftPanelTop"] <= 70
+    # The stepper content container inside the right panel must be scrollable
+    assert layout_info["stepperScrollable"] is True
+
+    # Continue and Back buttons remain docked and directly visible in the viewport
     expect(continue_btn).to_be_visible()
     continue_btn.click()
 
@@ -206,8 +219,7 @@ def test_setup_wizard_tall_step_scrollability(page: Page, live_server_url: str):
         page.get_by_text("Step 5 of 9: Draw digital region of interest")
     ).to_be_visible(timeout=5000)
 
-    # Scroll Back button into view and navigate back to Step 4
-    back_btn.scroll_into_view_if_needed()
+    # Back button remains docked and directly visible
     expect(back_btn).to_be_visible()
     back_btn.click()
     expect(page.get_by_text("Step 4 of 9: Adjust image")).to_be_visible(timeout=5000)

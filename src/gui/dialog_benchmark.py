@@ -137,7 +137,7 @@ def open_model_benchmark_dialog(
                         f"{model_type} models across {len(cut_images)} ROIs"
                     ).classes("text-xs text-slate-400")
             ui.button(icon="close", on_click=dialog.close).props(
-                "flat round dense text-color=slate-400"
+                "flat round dense text-color=slate-400 aria-label='Close dialog'"
             ).classes("hover:bg-white/10")
 
         # KPI Summary Bar
