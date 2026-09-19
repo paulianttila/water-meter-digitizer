@@ -139,5 +139,7 @@ class DrawRefsStep(DrawRoisBaseStep):
                         "Add a new reference landmark bounding box"
                     )
 
-            self.container = ui.column().classes("w-full gap-2")
+            self.container = ui.column().classes(
+                "w-full gap-1.5 max-h-[320px] overflow-y-auto pr-1"
+            )
             super().add_navigator(stepper, first_step, last_step)

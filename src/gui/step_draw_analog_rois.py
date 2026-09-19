@@ -261,7 +261,9 @@ class DrawAnalogRoisStep(DrawRoisBaseStep):
                     )
 
             # ROI List Container
-            self.container = ui.column().classes("w-full gap-2 my-2")
+            self.container = ui.column().classes(
+                "w-full gap-1.5 max-h-[320px] overflow-y-auto pr-1 my-2"
+            )
 
             # Inference & Testing Card
             with ui.card().classes(

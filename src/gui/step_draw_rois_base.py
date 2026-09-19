@@ -555,37 +555,48 @@ class DrawRoisBaseStep(BaseStep):
         with (
             self.container,
             ui.row().classes(
-                "w-full items-center justify-between p-2 rounded-xl "
-                "bg-slate-900/70 border border-white/10 shadow-sm gap-2 mb-2"
+                "w-full items-center justify-between px-3 py-1.5 rounded-lg "
+                "bg-slate-900/60 border border-white/10 shadow-sm gap-2 mb-1.5 "
+                "hover:border-slate-700/80 transition-colors"
             ) as row_elem,
         ):
-            with ui.row().classes("items-center gap-2 flex-grow"):
+            with ui.row().classes(
+                "items-center gap-2 flex-grow min-w-0 flex-wrap sm:flex-nowrap"
+            ):
                 ui.checkbox(on_change=self._on_roi_enabled_change).bind_value(
                     roi, "enabled"
-                ).props(f"color={roi.color} keep-color").tooltip(
+                ).props(f"color={roi.color} keep-color dense").tooltip(
                     "Toggle ROI overlay visibility on canvas"
                 )
-                ui.input(label="Name").bind_value(roi, "name").classes(
-                    "w-28 text-sm"
-                ).tooltip("Region of interest name")
+                ui.input(label="Name").bind_value(roi, "name").props(
+                    "dense outlined"
+                ).classes("w-28 text-xs").tooltip("Region of interest name")
                 ui.number("X", on_change=self._show_rois, step=1).bind_value(
                     roi, "x", forward=lambda x: int(x or 0)
-                ).classes("w-20 text-sm").tooltip("X coordinate in pixels")
+                ).props("dense outlined").classes("w-16 text-xs").tooltip(
+                    "X coordinate in pixels"
+                )
                 ui.number("Y", on_change=self._show_rois, step=1).bind_value(
                     roi, "y", forward=lambda x: int(x or 0)
-                ).classes("w-20 text-sm").tooltip("Y coordinate in pixels")
+                ).props("dense outlined").classes("w-16 text-xs").tooltip(
+                    "Y coordinate in pixels"
+                )
                 ui.number("W", on_change=self._show_rois, min=1, step=1).bind_value(
                     roi, "w", forward=lambda x: int(x or 1)
-                ).classes("w-20 text-sm").tooltip("Width in pixels")
+                ).props("dense outlined").classes("w-16 text-xs").tooltip(
+                    "Width in pixels"
+                )
                 ui.number("H", on_change=self._show_rois, min=1, step=1).bind_value(
                     roi, "h", forward=lambda x: int(x or 1)
-                ).classes("w-20 text-sm").tooltip("Height in pixels")
+                ).props("dense outlined").classes("w-16 text-xs").tooltip(
+                    "Height in pixels"
+                )
 
             ui.button(
                 icon="delete_outline",
                 on_click=lambda r=roi, el=row_elem: self._delete_roi(r, el),
-            ).props("flat color=negative dense").classes(
-                "rounded-lg hover:bg-red-500/20"
+            ).props("flat color=negative dense size=sm").classes(
+                "rounded-lg hover:bg-red-500/20 shrink-0"
             ).tooltip(
                 "Delete this region"
             )
