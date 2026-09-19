@@ -1,7 +1,4 @@
-"""Backward-compatibility facade for configuration module.
-
-Re-exports all configuration models and utilities from the modular `config` package.
-"""
+"""Configuration package for water-meter-digitizer."""
 
 from config.exceptions import ConfigurationMissing
 from config.main import Config
@@ -24,10 +21,6 @@ from config.paths import format_config_path
 from config.seed import ensure_config_initialized, find_seed_dir
 from data_classes import ImagePosition, MeterConfig, RefImage
 
-# Aliases for private legacy helpers
-_find_seed_dir = find_seed_dir
-_format_config_path = format_config_path
-
 __all__ = [
     "MQTT",
     "Alignment",
@@ -47,8 +40,6 @@ __all__ = [
     "Resize",
     "Snapshots",
     "ZeroFlowMonitor",
-    "_find_seed_dir",
-    "_format_config_path",
     "ensure_config_initialized",
     "find_seed_dir",
     "format_config_path",
