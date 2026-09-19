@@ -17,6 +17,7 @@ from fastapi import FastAPI, HTTPException
 from fastapi.staticfiles import StaticFiles
 
 import utils.image
+from api.error_handlers import register_exception_handlers
 from api.routes_health import router as health_router
 from api.routes_history import router as history_router
 from api.routes_meter import get_meter_data, set_app_ref
@@ -211,6 +212,9 @@ app.include_router(meter_router)
 app.include_router(history_router)
 app.include_router(services_router)
 app.include_router(mock_camera_router)
+
+# Register RFC 7807 Domain Exception Handlers
+register_exception_handlers(app)
 
 
 # --- Helper Functions for NiceGUI Bridge ---

@@ -1,6 +1,7 @@
+"""Digitizer processing pipeline orchestrator coordinating CNN inference, rollover corrections, and consistency validation."""
+
 import logging
 import math
-from decimal import Decimal, InvalidOperation
 
 from pydantic import BaseModel, Field
 
@@ -13,27 +14,26 @@ from previous_value import (
     load_previous_value_from_file,
     save_previous_value_to_file,
 )
-from processor.sign_detector import detect_minus_sign
-from utils.math import (
-    fill_value_with_ending_zeros,
-    fill_with_predecessor_digits,
+from processor.consistency_validator import ConsistencyError, ConsistencyValidator
+from processor.format_parser import FormatParser
+from processor.rollover_corrector import (
+    ANALOG_MODELS,
+    DIGITAL_MODELS,
+    INVALID_DIGIT,
+    MODEL_ANALOG,
+    MODEL_ANALOG100,
+    MODEL_DIGITAL,
+    MODEL_DIGITAL100,
+    RolloverCorrector,
 )
+from processor.sign_detector import detect_minus_sign
+from utils.math import fill_with_predecessor_digits
 
 logger = logging.getLogger(__name__)
 
-INVALID_DIGIT = "?"
 DEFAULT_MIN_CONFIDENCE_THRESHOLD = 60.0
 MIN_CONFIDENCE_THRESHOLD = DEFAULT_MIN_CONFIDENCE_THRESHOLD
-
 MODEL_AUTO = "auto"
-MODEL_ANALOG = "analog"  # Analogue
-MODEL_DIGITAL = "digital"  # Digit
-MODEL_ANALOG100 = "analog100"  # Analogue100
-MODEL_DIGITAL100 = "digital100"  # Digit100
-# DoubleHyprid10
-
-ANALOG_MODELS = {MODEL_ANALOG, MODEL_ANALOG100}
-DIGITAL_MODELS = {MODEL_DIGITAL, MODEL_DIGITAL100}
 
 
 class ReadoutResult(BaseModel):
@@ -67,15 +67,8 @@ class Meter(BaseModel):
     previous_value: str = ""
 
 
-class ConsistencyError(Exception):
-    pass
-
-
 class DigitizerProcessor:
-
-    # ------------------------------------------------------------------
-    # Initialization
-    # ------------------------------------------------------------------
+    """Orchestrates CNN readout inference, decimal rollover correction, format template assembly, and consistency checks."""
 
     def __init__(self) -> None:
         self.condition = None
@@ -203,7 +196,7 @@ class DigitizerProcessor:
                     )
                 )
             self.cnn_analog_results = result
-            logger.debug(f"Analog CNN results: {self.cnn_analog_results}")
+            logger.debug("Analog CNN results: %s", self.cnn_analog_results)
         return self
 
     @log_execution_time
@@ -236,8 +229,10 @@ class DigitizerProcessor:
                             item.image, min_confidence=sign_thresh
                         )
                         logger.info(
-                            f"Minus sign detector for ROI '{item.name}': "
-                            f"detected={is_minus}, confidence={minus_conf:.1f}%"
+                            "Minus sign detector for ROI '%s': detected=%s, confidence=%.1f%%",
+                            item.name,
+                            is_minus,
+                            minus_conf,
                         )
                         if is_minus:
                             value = "-"
@@ -252,22 +247,8 @@ class DigitizerProcessor:
                     )
                 )
             self.cnn_digital_results = result
-            logger.debug(f"Digital CNN results: {self.cnn_digital_results}")
+            logger.debug("Digital CNN results: %s", self.cnn_digital_results)
         return self
-
-    # ------------------------------------------------------------------
-    # CNN results evaluation & Predecessor Rollover Logic
-    # ------------------------------------------------------------------
-    # Predecessor chaining corrects physical odometer drum transitions.
-    # When a drum rolls from 9 -> 0, the adjacent higher-significance drum
-    # starts moving halfway. The predecessor value (lower drum) determines
-    # whether the higher drum has already crossed the threshold:
-    #
-    #   Lower Drum (Predecessor)      Higher Drum (Current)
-    #   ────────────────────────────────────────────────────────
-    #   Fractional part < 0.5   --->  Already rolled over: floor(current + 0.5) % 10
-    #   Fractional part >= 0.5  --->  Mid-transition: (digit - 1) % 10 or 9
-    # ------------------------------------------------------------------
 
     def evaluate_cnn_results(self) -> "DigitizerProcessor":
         """Evaluate raw CNN predictions into preliminary discrete digits."""
@@ -281,7 +262,7 @@ class DigitizerProcessor:
             ):
                 digit = INVALID_DIGIT
             else:
-                digit = self._evaluate_counter(
+                digit = RolloverCorrector.evaluate_counter(
                     name=result.name,
                     number=result.value,
                     predecessor_digit=None,
@@ -290,47 +271,14 @@ class DigitizerProcessor:
             available_values[result.name] = digit
 
         self.available_values = available_values
-        logger.debug(f"Available values: {available_values}")
+        logger.debug("Available values: %s", available_values)
         return self
 
     def _evaluate_counters(self, values: list[ReadoutResult]) -> dict[str, str]:
-        predecessor_value: float | str | None = None
-        predecessor_model: str | None = None
-        evaluated: dict[str, str] = {}
-
-        for result in reversed(values):
-            model = result.model.lower()
-
-            # A change of model means a new independent wheel group.
-            if model != predecessor_model:
-                predecessor_value = None
-
-            if result.value == "-":
-                digit: int | str = "-"
-            elif result.confidence < self.min_confidence_threshold or (
-                isinstance(result.value, float) and math.isnan(result.value)
-            ):
-                digit = INVALID_DIGIT
-            else:
-                pred_val = (
-                    predecessor_value
-                    if isinstance(predecessor_value, (int, float))
-                    else None
-                )
-                digit = self._evaluate_counter(
-                    name=result.name,
-                    number=result.value,
-                    predecessor_digit=None,
-                    predecessor_value=pred_val,
-                    model=model,
-                )
-
-            evaluated[result.name] = str(digit)
-
-            predecessor_value = result.value
-            predecessor_model = model
-
-        return evaluated
+        return RolloverCorrector.evaluate_counters(
+            values=values,
+            min_confidence_threshold=self.min_confidence_threshold,
+        )
 
     def _evaluate_counter(
         self,
@@ -340,38 +288,13 @@ class DigitizerProcessor:
         model: str,
         predecessor_value: float | None = None,
     ) -> int | str:
-
-        if number == "-":
-            return "-"
-
-        model = model.lower()
-        digit: int | str
-        if model in ANALOG_MODELS:
-            digit = self._evaluate_analog_counter(
-                name=name,
-                number=float(number),
-                predecessor_digit=predecessor_digit,
-                predecessor_value=predecessor_value,
-                model=model,
-            )
-        elif model in DIGITAL_MODELS:
-            digit = self._evaluate_digital_counter(
-                name=name,
-                number=number,
-                predecessor_digit=predecessor_digit,
-                predecessor_value=predecessor_value,
-                model=model,
-            )
-        else:
-            raise ValueError(f"Unknown model: {model}")
-
-        logger.debug(
-            f"Evaluate {name}: {number} "
-            f"(predecessor: {predecessor_digit}, "
-            f"predecessor_value: {predecessor_value}) -> {digit}"
+        return RolloverCorrector.evaluate_counter(
+            name=name,
+            number=number,
+            predecessor_digit=predecessor_digit,
+            model=model,
+            predecessor_value=predecessor_value,
         )
-
-        return digit
 
     def _evaluate_analog_counter(
         self,
@@ -381,9 +304,12 @@ class DigitizerProcessor:
         predecessor_value: float | None = None,
         model: str = "",
     ) -> int:
-        return self._evaluate_wheel_counter(
+        return RolloverCorrector.evaluate_analog_counter(
+            name=name,
             number=number,
+            predecessor_digit=predecessor_digit,
             predecessor_value=predecessor_value,
+            model=model,
         )
 
     def _evaluate_digital_counter(
@@ -394,49 +320,23 @@ class DigitizerProcessor:
         predecessor_value: float | None = None,
         model: str = "",
     ) -> int | str:
-
-        if number == "-":
-            return "-"
-
-        model = model.lower()
-
-        if model == MODEL_DIGITAL:
-            if isinstance(number, (int, float)) and (number < 0 or number >= 10):
-                return INVALID_DIGIT
-            return int(number) if isinstance(number, (int, float)) else INVALID_DIGIT
-
-        if model == MODEL_DIGITAL100:
-            if (
-                not isinstance(number, (int, float))
-                or math.isnan(number)
-                or number < 0
-                or number >= 100
-            ):
-                return INVALID_DIGIT
-            if predecessor_value is None:
-                return math.floor(number) % 10
-
-            return math.floor(number + 0.5) % 10
-
-        raise ValueError(f"Unknown digital model: {model}")
+        return RolloverCorrector.evaluate_digital_counter(
+            name=name,
+            number=number,
+            predecessor_digit=predecessor_digit,
+            predecessor_value=predecessor_value,
+            model=model,
+        )
 
     def _evaluate_wheel_counter(
         self,
         number: float,
         predecessor_value: float | None = None,
     ) -> int:
-        if predecessor_value is None:
-            return math.floor(number + 0.5) % 10
-
-        digit = math.floor(number + 0.5) % 10
-
-        if number % 1 >= 0.5 and predecessor_value % 1 < 0.5:
-            return (digit - 1) % 10
-
-        if number % 1 < 0.5 and predecessor_value % 1 >= 0.5:
-            return 9
-
-        return digit
+        return RolloverCorrector.evaluate_wheel_counter(
+            number=number,
+            predecessor_value=predecessor_value,
+        )
 
     # ------------------------------------------------------------------
     # Meter post-processing
@@ -454,16 +354,17 @@ class DigitizerProcessor:
     def _get_meter_values(self, meter_configs: list[MeterConfig]) -> list[Meter]:
         meters: list[Meter] = []
         for meter_config in meter_configs:
-            value = meter_config.format.format(**self.available_values)
+            value = FormatParser.format_template(
+                meter_config.format, self.available_values
+            )
             meter = Meter(
                 name=meter_config.name,
                 value=value,
                 unprocessed_value=value,
                 config=meter_config,
             )
-            logger.debug(f" Meter: {meter}")
+            logger.debug(" Meter: %s", meter)
             meters.append(meter)
-        # logger.debug(f" Meters: {meters}")
         return meters
 
     def _postprocess_meter_values(
@@ -472,10 +373,7 @@ class DigitizerProcessor:
         values: dict,
         cnn_results: list[ReadoutResult],
     ) -> None:
-
-        # for easier access
         cnn_results_dict = {item.name: item for item in cnn_results}
-
         for meter in meters:
             self._postprocess_meter_value(
                 meter,
@@ -489,18 +387,16 @@ class DigitizerProcessor:
         values: dict,
         cnn_results: dict[str, ReadoutResult],
     ) -> None:
-
         results = self._get_readout_results(meter, cnn_results)
-        logger.info(f" Postprocess meter: {meter}, readout results: {results}")
+        logger.info(" Postprocess meter: %s, readout results: %s", meter, results)
 
         values = self._evaluate_counters(results)
-        meter.value = meter.config.format.format(**values)
+        meter.value = FormatParser.format_template(meter.config.format, values)
 
         if meter.config.use_previous_value:
             if self.previous_value_file is None:
                 raise ValueError(
-                    "Previous value file must be configured "
-                    "when use_previous_value is enabled"
+                    "Previous value file must be configured when use_previous_value is enabled"
                 )
             meter.previous_value = load_previous_value_from_file(
                 self.previous_value_file,
@@ -512,14 +408,16 @@ class DigitizerProcessor:
             meter.value = self._append_extended_digit(meter, cnn_results)
 
         if meter.config.use_previous_value:
-            meter.previous_value = self._adapt_previous_value_to_match_length(
+            meter.previous_value = FormatParser.adapt_previous_value_to_match_length(
                 meter.value, meter.previous_value
             )
             meter.value = fill_with_predecessor_digits(
                 meter.value, meter.previous_value
             )
             if meter.config.consistency_enabled:
-                self._check_consistency(meter, meter.value, meter.previous_value)
+                ConsistencyValidator.validate_reading(
+                    meter.config, meter.value, meter.previous_value
+                )
 
             save_previous_value_to_file(
                 str(self.previous_value_file), meter.name, meter.value
@@ -535,50 +433,21 @@ class DigitizerProcessor:
     def _adapt_previous_value_to_match_length(
         self, number: str, previous_value: str
     ) -> str:
-        if len(number) > len(previous_value):
-            logger.debug(
-                f"Fill previous value {previous_value} "
-                f"to match new value {number} len"
-            )
-            previous_value = fill_value_with_ending_zeros(len(number), previous_value)
-        elif len(number) < len(previous_value):
-            logger.debug(
-                f"Remove digits from previous value {previous_value} to match "
-                f"new value {number} len"
-            )
-            previous_value = previous_value[: len(number)]
-        return previous_value
+        return FormatParser.adapt_previous_value_to_match_length(number, previous_value)
 
     def _append_extended_digit(
         self,
         meter: Meter,
         cnn_results: dict[str, ReadoutResult],
     ) -> str:
-
-        last_digit = cnn_results[meter.config.value_names[-1]]
-        if isinstance(last_digit.value, str) or math.isnan(last_digit.value):
-            return meter.value  # can't extend with invalid data
-        decimal_digit = math.floor(last_digit.value * 10) % 10
-        return f"{meter.value}{decimal_digit}"
+        last_digit = cnn_results.get(meter.config.value_names[-1])
+        last_val = last_digit.value if last_digit else None
+        return FormatParser.append_extended_digit(meter.value, last_val)
 
     def _check_consistency(
         self, meter: Meter, currentValue: str, previousValue: str
     ) -> None:
-
-        try:
-            current = Decimal(currentValue)
-            previous = Decimal(previousValue)
-        except InvalidOperation as err:
-            raise ConsistencyError(
-                f"Invalid value: {currentValue} or {previousValue}"
-            ) from err
-
-        delta = current - previous
-        # delta = float(currentValue) - float(previous_value)
-        if not (meter.config.allow_negative_rates) and (delta < 0):
-            raise ConsistencyError(f"Negative rate ({delta:.3f})")
-        if abs(delta) > meter.config.max_rate_value:
-            raise ConsistencyError(f"Rate too high ({delta:.3f})")
+        ConsistencyValidator.validate_reading(meter.config, currentValue, previousValue)
 
     # ------------------------------------------------------------------
     # Result generation
@@ -666,3 +535,25 @@ class DigitizerProcessor:
             # Other 100-output models are digital 00-99
             return MODEL_DIGITAL100
         raise ValueError(f"Unable to determine model from details: {details}")
+
+
+__all__ = [
+    "ANALOG_MODELS",
+    "DIGITAL_MODELS",
+    "INVALID_DIGIT",
+    "MODEL_ANALOG",
+    "MODEL_ANALOG100",
+    "MODEL_AUTO",
+    "MODEL_DIGITAL",
+    "MODEL_DIGITAL100",
+    "ConsistencyError",
+    "ConsistencyValidator",
+    "DigitizerProcessor",
+    "FormatParser",
+    "Meter",
+    "MeterConfig",
+    "MeterResult",
+    "MeterValue",
+    "ReadoutResult",
+    "RolloverCorrector",
+]

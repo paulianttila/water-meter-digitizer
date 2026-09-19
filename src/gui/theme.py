@@ -68,48 +68,35 @@ def copy_to_clipboard(text: str, notify_message: str = "") -> None:
                 try {{
                     var t = document.createElement("textarea");
                     t.value = val;
-                    t.setAttribute("readonly", "");
                     t.style.position = "fixed";
-                    t.style.left = "0";
-                    t.style.top = "0";
-                    t.style.width = "2em";
-                    t.style.height = "2em";
-                    t.style.padding = "0";
-                    t.style.border = "none";
-                    t.style.outline = "none";
-                    t.style.boxShadow = "none";
-                    t.style.background = "transparent";
-                    t.style.opacity = "0.01";
-                    t.style.zIndex = "-1";
+                    t.style.left = "-999999px";
+                    t.style.top = "-999999px";
                     document.body.appendChild(t);
                     t.focus();
                     t.select();
-                    t.setSelectionRange(0, val.length);
                     var successful = false;
                     try {{
-                        successful = document.execCommand("copy");
-                    }} catch (e) {{
-                        console.warn("document.execCommand copy error:", e);
+                        successful = document.execCommand('copy');
+                    }} catch (err) {{
+                        console.error('execCommand copy failed', err);
                     }}
                     document.body.removeChild(t);
-                    return successful;
-                }} catch (err) {{
-                    console.error("Fallback clipboard copy failed:", err);
-                    return false;
+                    if (successful) return;
+                }} catch (e) {{
+                    console.error('fallback copy failed', e);
                 }}
             }}
 
             if (navigator.clipboard && window.isSecureContext) {{
-                navigator.clipboard.writeText(text).catch(function(e) {{
-                    console.warn("navigator.clipboard failed, attempting fallback:", e);
+                navigator.clipboard.writeText(text).catch(function(err) {{
+                    console.warn('navigator.clipboard failed, falling back:', err);
                     fallbackCopy(text);
                 }});
                 return;
             }}
 
-            if (window.Quasar && typeof window.Quasar.copyToClipboard === "function") {{
-                window.Quasar.copyToClipboard(text).catch(function(e) {{
-                    console.warn("Quasar copyToClipboard failed, attempting fallback:", e);
+            if (navigator.clipboard) {{
+                navigator.clipboard.writeText(text).catch(function(err) {{
                     fallbackCopy(text);
                 }});
                 return;

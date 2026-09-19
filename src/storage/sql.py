@@ -1,20 +1,16 @@
+"""SQLAlchemy historical storage implementation supporting SQLite, PostgreSQL, and other relational backends."""
+
 import json
 import logging
 import os
 import re
 import threading
-from collections import OrderedDict, defaultdict
-from datetime import datetime, timedelta
+from collections import OrderedDict
+from datetime import datetime
 from pathlib import Path
 from typing import Any, Literal
 
 from sqlalchemy import (
-    Boolean,
-    DateTime,
-    Integer,
-    LargeBinary,
-    String,
-    Text,
     create_engine,
     delete,
     event,
@@ -23,11 +19,12 @@ from sqlalchemy import (
     select,
     text,
 )
-from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, sessionmaker
+from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
 from utils.visual_diff import compress_image_to_bytes, create_roi_composite_strip
 
+from .aggregations import aggregate_consumption
 from .base import (
     ConsumptionRecord,
     MeterReading,
@@ -35,30 +32,17 @@ from .base import (
     StorageBackend,
     StorageSummary,
 )
+from .models import Base, ReadingModel
+from .pruner import prune_database
+from .snapshots import (
+    detect_mime,
+    ensure_snapshots_dir,
+    find_frame_bytes,
+    prune_disk_snapshots,
+    read_file_safe,
+)
 
 logger = logging.getLogger(__name__)
-
-
-class Base(DeclarativeBase):
-    pass
-
-
-class ReadingModel(Base):
-    __tablename__ = "readings"
-
-    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
-    timestamp: Mapped[datetime] = mapped_column(
-        DateTime(timezone=True), index=True, nullable=False
-    )
-    meters_json: Mapped[str] = mapped_column(Text, nullable=False)
-    digital_json: Mapped[str | None] = mapped_column(Text, nullable=True)
-    analog_json: Mapped[str | None] = mapped_column(Text, nullable=True)
-    error: Mapped[str] = mapped_column(String(500), default="")
-    frame_type: Mapped[str | None] = mapped_column(String(30), nullable=True)
-    frame_path: Mapped[str | None] = mapped_column(String(500), nullable=True)
-    frame_blob: Mapped[bytes | None] = mapped_column(LargeBinary, nullable=True)
-    flow_detected: Mapped[bool] = mapped_column(Boolean, default=False)
-    confidence_scores_json: Mapped[str | None] = mapped_column(Text, nullable=True)
 
 
 class SQLAlchemyStorageBackend(StorageBackend):
@@ -190,30 +174,23 @@ class SQLAlchemyStorageBackend(StorageBackend):
     def _ensure_snapshots_dir(self) -> Path | None:
         if self.is_memory or not self.snapshots_dir:
             return None
-        try:
-            p = Path(self.snapshots_dir)
-            p.mkdir(parents=True, exist_ok=True)
+        p = ensure_snapshots_dir(self.snapshots_dir)
+        if p is not None:
             return p
-        except Exception as e:
-            logger.debug(
-                "Failed creating snapshots directory %s: %s. Attempting fallback.",
-                self.snapshots_dir,
-                e,
-            )
-            # Fallback to local snapshots or data/snapshots directory
-            for fallback in [
-                Path("snapshots"),
-                Path("data/snapshots"),
-                Path("./snapshots"),
-            ]:
-                try:
-                    fallback.mkdir(parents=True, exist_ok=True)
-                    self.snapshots_dir = str(fallback)
-                    logger.info("Using fallback snapshots directory: %s", fallback)
-                    return fallback
-                except Exception as fb_err:
-                    logger.debug("Fallback %s failed: %s", fallback, fb_err)
-            return None
+        # Fallback to local snapshots or data/snapshots directory
+        for fallback in [
+            Path("snapshots"),
+            Path("data/snapshots"),
+            Path("./snapshots"),
+        ]:
+            try:
+                fallback.mkdir(parents=True, exist_ok=True)
+                self.snapshots_dir = str(fallback)
+                logger.info("Using fallback snapshots directory: %s", fallback)
+                return fallback
+            except Exception as fb_err:
+                logger.debug("Fallback %s failed: %s", fallback, fb_err)
+        return None
 
     def record_reading(
         self,
@@ -411,62 +388,17 @@ class SQLAlchemyStorageBackend(StorageBackend):
 
     def _prune_and_vacuum(self, session: Any) -> None:
         """Enforce time-based retention, max records limits, and snapshot storage caps."""
-        now = datetime.now().astimezone()
-
-        # 1. Time-based retention pruning
-        if self.retention_days > 0:
-            cutoff = now - timedelta(days=self.retention_days)
-            old_rows = session.scalars(
-                select(ReadingModel).where(ReadingModel.timestamp < cutoff)
-            ).all()
-            for r in old_rows:
-                if r.frame_path and os.path.exists(r.frame_path):
-                    try:
-                        os.remove(r.frame_path)
-                    except Exception as e:
-                        logger.debug(
-                            "Failed removing old snapshot file %s: %s", r.frame_path, e
-                        )
-            session.execute(delete(ReadingModel).where(ReadingModel.timestamp < cutoff))
-            session.commit()
-
-        # 2. Max row count limit (oldest-first FIFO)
-        if self.max_records > 0:
-            total_count = session.scalar(select(func.count(ReadingModel.id))) or 0
-            if total_count > self.max_records:
-                excess = total_count - self.max_records
-                oldest_rows = session.scalars(
-                    select(ReadingModel)
-                    .order_by(ReadingModel.timestamp.asc())
-                    .limit(excess)
-                ).all()
-                oldest_ids = [r.id for r in oldest_rows]
-                for r in oldest_rows:
-                    if r.frame_path and os.path.exists(r.frame_path):
-                        try:
-                            os.remove(r.frame_path)
-                        except Exception as e:
-                            logger.debug(
-                                "Failed deleting snapshot file %s: %s", r.frame_path, e
-                            )
-                    self._memory_frames.pop(r.id, None)
-
-                if oldest_ids:
-                    session.execute(
-                        delete(ReadingModel).where(ReadingModel.id.in_(oldest_ids))
-                    )
-                    session.commit()
-
-        # 3. Snapshot disk / file pruning
-        self.prune_snapshots()
-
-        # 4. SQLite incremental vacuum to return freed pages to OS
-        if self.is_sqlite and not self.is_memory and self.auto_vacuum:
-            try:
-                session.execute(text("PRAGMA incremental_vacuum"))
-                session.commit()
-            except Exception as e:
-                logger.debug("Incremental vacuum ignored error: %s", e)
+        prune_database(
+            session=session,
+            retention_days=self.retention_days,
+            max_records=self.max_records,
+            is_sqlite=self.is_sqlite,
+            is_memory=self.is_memory,
+            auto_vacuum=self.auto_vacuum,
+            snapshots_dir=self.snapshots_dir,
+            max_disk_mb=500.0,
+            memory_frames=self._memory_frames,
+        )
 
     def prune_snapshots(
         self,
@@ -474,32 +406,7 @@ class SQLAlchemyStorageBackend(StorageBackend):
         max_disk_mb: float | None = None,
     ) -> int:
         """Prune snapshot files exceeding max disk limit or age threshold."""
-        snap_dir = self._ensure_snapshots_dir()
-        if not snap_dir or not snap_dir.exists():
-            return 0
-
-        target_max_mb = max_disk_mb or 500.0
-        max_bytes = int(target_max_mb * 1024 * 1024)
-        deleted_count = 0
-
-        try:
-            files = sorted(
-                snap_dir.glob("*.*"),
-                key=lambda f: f.stat().st_mtime,
-            )
-            total_size = sum(f.stat().st_size for f in files)
-
-            for f in files:
-                if total_size <= max_bytes:
-                    break
-                sz = f.stat().st_size
-                f.unlink(missing_ok=True)
-                total_size -= sz
-                deleted_count += 1
-        except Exception as e:
-            logger.debug("Error during snapshot disk pruning: %s", e)
-
-        return deleted_count
+        return prune_disk_snapshots(self.snapshots_dir, max_disk_mb or 500.0)
 
     def prune(self) -> None:
         """Manually trigger pruning and vacuuming."""
@@ -685,169 +592,29 @@ class SQLAlchemyStorageBackend(StorageBackend):
             )
             return data, mime
 
-        def _detect_mime(data: bytes, path_str: str = "") -> str:
-            if data.startswith(b"RIFF") or path_str.lower().endswith(".webp"):
-                return "image/webp"
-            if data.startswith(b"\x89PNG") or path_str.lower().endswith(".png"):
-                return "image/png"
-            return "image/jpeg"
-
-        def _read_file_safe(p: Path | str) -> tuple[bytes | None, str | None]:
-            target = Path(p)
-            if target.is_file():
-                try:
-                    data = target.read_bytes()
-                    mime_type = _detect_mime(data, str(target))
-                    logger.debug(
-                        "get_frame_bytes: successfully read %s (%d bytes, mime=%s)",
-                        target,
-                        len(data),
-                        mime_type,
-                    )
-                    return data, mime_type
-                except Exception as e:
-                    logger.warning(
-                        "get_frame_bytes: error reading snapshot file %s: %s", target, e
-                    )
-            else:
-                logger.debug("get_frame_bytes: path does not exist: %s", target)
-            return None, None
-
         # 2. Check database row
         row_frame_path = None
         row_frame_blob = None
-        row_frame_type = None
         with self._lock, self.Session() as session:
             row = session.get(ReadingModel, reading_id)
             if row:
                 row_frame_path = row.frame_path
                 row_frame_blob = row.frame_blob
-                row_frame_type = row.frame_type
                 logger.debug(
                     "get_frame_bytes: DB row #%s found: frame_path='%s', frame_type='%s', has_blob=%s",
                     reading_id,
-                    row_frame_path,
-                    row_frame_type,
-                    row_frame_blob is not None,
-                )
-            else:
-                logger.debug(
-                    "get_frame_bytes: no DB row found for reading_id=%s", reading_id
+                    row.frame_path,
+                    row.frame_type,
+                    row.frame_blob is not None,
                 )
 
-        # 3. Check explicit row path and possible relocations
-        if row_frame_path:
-            logger.debug(
-                "get_frame_bytes: checking exact row.frame_path='%s'", row_frame_path
-            )
-            file_res = _read_file_safe(row_frame_path)
-            if file_res[0] is not None:
-                return file_res[0], file_res[1]
-
-            # Check inside configured snapshots_dir
-            if self.snapshots_dir:
-                candidate = Path(self.snapshots_dir) / Path(row_frame_path).name
-                logger.debug(
-                    "get_frame_bytes: checking snapshots_dir/basename='%s'", candidate
-                )
-                file_res = _read_file_safe(candidate)
-                if file_res[0] is not None:
-                    return file_res[0], file_res[1]
-
-                candidate_sub = Path(self.snapshots_dir) / row_frame_path
-                logger.debug(
-                    "get_frame_bytes: checking snapshots_dir/relpath='%s'",
-                    candidate_sub,
-                )
-                file_res = _read_file_safe(candidate_sub)
-                if file_res[0] is not None:
-                    return file_res[0], file_res[1]
-
-            # Check inside common default locations
-            for candidate_dir in [
-                Path("snapshots"),
-                Path("data/snapshots"),
-                Path("/data/snapshots"),
-                Path("/config/snapshots"),
-            ]:
-                candidate = candidate_dir / Path(row_frame_path).name
-                logger.debug(
-                    "get_frame_bytes: checking fallback candidate '%s'", candidate
-                )
-                file_res = _read_file_safe(candidate)
-                if file_res[0] is not None:
-                    return file_res[0], file_res[1]
-
-        if row_frame_blob:
-            logger.debug(
-                "get_frame_bytes: returning frame_blob from DB row #%s (%d bytes)",
-                reading_id,
-                len(row_frame_blob),
-            )
-            return row_frame_blob, _detect_mime(row_frame_blob)
-
-        # 4. Fallback search across snapshot directories using reading_id pattern matching
-        search_dirs: list[Path] = []
-        if self.snapshots_dir:
-            search_dirs.append(Path(self.snapshots_dir))
-        for d in [
-            Path("snapshots"),
-            Path("data/snapshots"),
-            Path("/data/snapshots"),
-            Path("/config/snapshots"),
-        ]:
-            if d not in search_dirs:
-                search_dirs.append(d)
-
-        logger.debug(
-            "get_frame_bytes: searching for snapshot files matching reading_id=%s in dirs: %s",
-            reading_id,
-            [str(d) for d in search_dirs],
+        return find_frame_bytes(
+            reading_id=reading_id,
+            row_frame_path=row_frame_path,
+            row_frame_blob=row_frame_blob,
+            memory_frames=self._memory_frames,
+            snapshots_dir=self.snapshots_dir,
         )
-
-        for s_dir in search_dirs:
-            if not s_dir.is_dir():
-                logger.debug(
-                    "get_frame_bytes: directory %s is not accessible/dir", s_dir
-                )
-                continue
-
-            existing_files = [f.name for f in list(s_dir.glob("*.*"))[:15]]
-            logger.debug(
-                "get_frame_bytes: dir '%s' contains %d files (sample: %s)",
-                s_dir,
-                len(list(s_dir.glob("*.*"))),
-                existing_files,
-            )
-
-            for pattern in [
-                f"*_{reading_id}_*.*",
-                f"*_{reading_id}.*",
-                f"{reading_id}.*",
-                f"frame_{reading_id}*.*",
-                f"strip_{reading_id}*.*",
-            ]:
-                matches = sorted(
-                    list(s_dir.glob(pattern)),
-                    key=lambda f: f.stat().st_mtime,
-                    reverse=True,
-                )
-                if matches:
-                    logger.debug(
-                        "get_frame_bytes: pattern '%s' matched file %s in %s",
-                        pattern,
-                        matches[0],
-                        s_dir,
-                    )
-                    file_res = _read_file_safe(matches[0])
-                    if file_res[0] is not None:
-                        return file_res[0], file_res[1]
-
-        logger.debug(
-            "get_frame_bytes: no snapshot frame found for reading_id=%s",
-            reading_id,
-        )
-        return None, None
 
     def get_consumption(
         self,
@@ -857,78 +624,9 @@ class SQLAlchemyStorageBackend(StorageBackend):
         end: datetime | None = None,
     ) -> list[ConsumptionRecord]:
         readings = self.get_readings(meter_name=meter_name, start=start, end=end)
-        if not readings:
-            return []
-
-        def get_bucket_key(ts: datetime) -> str:
-            if interval == "hourly":
-                return ts.strftime("%Y-%m-%d %H:00")
-            if interval == "weekly":
-                return f"{ts.year}-W{ts.isocalendar()[1]:02d}"
-            return ts.strftime("%Y-%m-%d")
-
-        bucket_groups: dict[str, list[tuple[datetime, float, str]]] = defaultdict(list)
-        for r in readings:
-            if meter_name in r.meters:
-                m = r.meters[meter_name]
-                if m.value is not None:
-                    b_key = get_bucket_key(r.timestamp)
-                    bucket_groups[b_key].append((r.timestamp, m.value, m.unit))
-
-        sorted_buckets = sorted(bucket_groups.keys())
-        consumption_records: list[ConsumptionRecord] = []
-
-        prev_end_value: float | None = None
-
-        for b_key in sorted_buckets:
-            items = bucket_groups[b_key]
-            if not items:
-                continue
-
-            items_sorted = sorted(items, key=lambda x: x[0])
-            start_t = items_sorted[0][0]
-            end_t = items_sorted[-1][0]
-            unit = items_sorted[0][2]
-            values = [x[1] for x in items_sorted]
-
-            start_v = values[0]
-            end_v = values[-1]
-            min_v = min(values)
-            max_v = max(values)
-            cnt = len(values)
-
-            # Delta within bucket
-            bucket_delta = 0.0
-            for i in range(1, len(values)):
-                diff = values[i] - values[i - 1]
-                if diff > 0:
-                    bucket_delta += diff
-
-            # If there was a previous bucket reading, include cross-bucket jump
-            if prev_end_value is not None:
-                cross_diff = start_v - prev_end_value
-                if 0 < cross_diff < 1000.0:
-                    bucket_delta += cross_diff
-
-            prev_end_value = end_v
-
-            consumption_records.append(
-                ConsumptionRecord(
-                    bucket=b_key,
-                    start_time=start_t,
-                    end_time=end_t,
-                    meter_name=meter_name,
-                    unit=unit,
-                    consumption=round(bucket_delta, 3),
-                    start_value=start_v,
-                    end_value=end_v,
-                    min_value=min_v,
-                    max_value=max_v,
-                    reading_count=cnt,
-                )
-            )
-
-        return consumption_records
+        return aggregate_consumption(
+            readings=readings, meter_name=meter_name, interval=interval
+        )
 
     def get_summary(self) -> StorageSummary:
         with self._lock, self.Session() as session:
@@ -1050,3 +748,15 @@ class SQLAlchemyStorageBackend(StorageBackend):
                     f.unlink(missing_ok=True)
                 except Exception as e:
                     logger.debug("Failed deleting snapshot file %s: %s", f, e)
+
+
+__all__ = [
+    "Base",
+    "ReadingModel",
+    "SQLAlchemyStorageBackend",
+    "detect_mime",
+    "ensure_snapshots_dir",
+    "find_frame_bytes",
+    "prune_disk_snapshots",
+    "read_file_safe",
+]
