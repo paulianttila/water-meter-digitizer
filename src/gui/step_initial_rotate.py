@@ -90,27 +90,29 @@ class InitialRotateStep(BaseStep):
     async def show(self, stepper, first_step=False, last_step=False) -> None:
         with ui.step(self.name):
             self.add_help(HELP_TEXT)
-            with ui.row():
-                ui.button(
-                    icon="rotate_left", on_click=self._rotate_left
+            with ui.row().classes("items-center gap-2"):
+                ui.button(icon="rotate_left", on_click=self._rotate_left).props(
+                    "dense"
                 ).bind_enabled_from(self, "image", lambda image: image != "").tooltip(
                     "Rotate image 90° left"
                 )
-                ui.button(
-                    icon="flip_camera_android", on_click=self._rotate_180
+                ui.button(icon="flip_camera_android", on_click=self._rotate_180).props(
+                    "dense"
                 ).bind_enabled_from(self, "image", lambda image: image != "").tooltip(
                     "Rotate image 180°"
                 )
-                ui.button(
-                    icon="rotate_right", on_click=self._rotate_right
+                ui.button(icon="rotate_right", on_click=self._rotate_right).props(
+                    "dense"
                 ).bind_enabled_from(self, "image", lambda image: image != "").tooltip(
                     "Rotate image 90° right"
                 )
-            self.angle_label = ui.label("")
-            ui.button(icon="restore", on_click=self._reset_image).props(
-                "aria-label='Restore original image'"
-            ).bind_enabled_from(self, "image", lambda image: image != "").tooltip(
-                "Restore original image"
-            )
+                self.angle_label = ui.label("").classes(
+                    "text-xs font-mono font-semibold text-slate-300"
+                )
+                ui.button(icon="restore", on_click=self._reset_image).props(
+                    "dense flat aria-label='Restore original image'"
+                ).bind_enabled_from(self, "image", lambda image: image != "").tooltip(
+                    "Restore original image"
+                )
 
             super().add_navigator(stepper, first_step, last_step)

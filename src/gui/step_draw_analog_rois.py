@@ -177,7 +177,7 @@ class DrawAnalogRoisStep(DrawRoisBaseStep):
             # Alignment & Action Bar
             with (
                 ui.card().classes(
-                    "w-full bg-slate-900/60 border border-white/10 rounded-xl p-3 my-2"
+                    "w-full bg-slate-900/60 border border-white/10 rounded-xl p-2.5 my-1.5"
                 ),
                 ui.row().classes("w-full items-center justify-between gap-2 flex-wrap"),
             ):
@@ -241,15 +241,19 @@ class DrawAnalogRoisStep(DrawRoisBaseStep):
                     )
 
                 with ui.row().classes("items-center gap-2"):
-                    self.select_all = ui.checkbox(
-                        "Show All",
-                        value=(
-                            bool(self.rois and all(r.enabled for r in self.rois))
-                            if self.rois
-                            else True
-                        ),
-                        on_change=self._select_all_rois,
-                    ).tooltip("Toggle visibility of all bounding boxes on canvas")
+                    self.select_all = (
+                        ui.checkbox(
+                            "Show All",
+                            value=(
+                                bool(self.rois and all(r.enabled for r in self.rois))
+                                if self.rois
+                                else True
+                            ),
+                            on_change=self._select_all_rois,
+                        )
+                        .props("dense")
+                        .tooltip("Toggle visibility of all bounding boxes on canvas")
+                    )
                     self._sync_select_all_checkbox()
                     ui.button("Add Dial ROI", icon="add", on_click=self._add_roi).props(
                         "dense unelevated"
@@ -262,13 +266,13 @@ class DrawAnalogRoisStep(DrawRoisBaseStep):
 
             # ROI List Container
             self.container = ui.column().classes(
-                "w-full gap-1.5 max-h-[320px] overflow-y-auto pr-1 my-2"
+                "w-full gap-1.5 max-h-[320px] overflow-y-auto pr-1 my-1.5"
             )
 
             # Inference & Testing Card
             with ui.card().classes(
                 "w-full bg-slate-900/60 border border-white/10 rounded-xl "
-                "p-4 my-2 gap-3 shadow-md"
+                "p-3.5 my-1.5 gap-2.5 shadow-md"
             ):
                 with ui.row().classes(
                     "w-full items-center gap-2 text-slate-300 font-semibold"
@@ -282,6 +286,7 @@ class DrawAnalogRoisStep(DrawRoisBaseStep):
                             options=self._get_cnn_models(self.analog_models_dir),
                             label="CNN Model File",
                         )
+                        .props("dense outlined")
                         .classes("flex-grow min-w-[200px]")
                         .tooltip(
                             "Select TensorFlow Lite neural network model file "
@@ -294,6 +299,7 @@ class DrawAnalogRoisStep(DrawRoisBaseStep):
                             value="auto",
                             label="CNN Architecture",
                         )
+                        .props("dense outlined")
                         .classes("w-40")
                         .tooltip(
                             "CNN architecture: auto (detect from output shape), "
@@ -304,7 +310,7 @@ class DrawAnalogRoisStep(DrawRoisBaseStep):
 
                 with (
                     ui.row().classes(
-                        "w-full items-center justify-between pt-2 border-t border-white/10"
+                        "w-full items-center justify-between pt-1.5 border-t border-white/10"
                     ),
                     ui.row().classes("items-center gap-2"),
                 ):
@@ -312,7 +318,7 @@ class DrawAnalogRoisStep(DrawRoisBaseStep):
                         "Run Inference Test",
                         icon="play_arrow",
                         on_click=self._show_analogs,
-                    ).props("unelevated").classes(
+                    ).props("unelevated dense").classes(
                         "bg-gradient-to-r from-emerald-600 to-teal-600 "
                         "hover:from-emerald-500 hover:to-teal-500 text-white "
                         "font-medium"
@@ -327,7 +333,7 @@ class DrawAnalogRoisStep(DrawRoisBaseStep):
                         "Benchmark Models",
                         icon="analytics",
                         on_click=self._benchmark_models,
-                    ).props("outline").classes(
+                    ).props("outline dense").classes(
                         "text-indigo-300 border-indigo-500/40 "
                         "hover:bg-indigo-500/10 font-medium"
                     ).tooltip(

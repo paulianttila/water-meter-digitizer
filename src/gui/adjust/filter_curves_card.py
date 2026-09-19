@@ -12,20 +12,24 @@ def build_filter_curves_card(step: Any, ui: Any) -> None:
             "w-full bg-slate-900/60 border border-white/10 rounded-xl "
             "shadow-md overflow-hidden"
         ),
-        ui.column().classes("w-full gap-3 p-3"),
+        ui.column().classes("w-full gap-2.5 p-2.5"),
     ):
         with ui.row().classes("w-full items-center gap-4 flex-wrap"):
-            step.grayscale_enabled = ui.checkbox(
-                "Grayscale",
-                value=False,
-                on_change=step._on_param_change,
-            ).tooltip("Convert the full image to grayscale")
+            step.grayscale_enabled = (
+                ui.checkbox(
+                    "Grayscale",
+                    value=False,
+                    on_change=step._on_param_change,
+                )
+                .props("dense")
+                .tooltip("Convert the full image to grayscale")
+            )
 
         # Live Visual Sliders for Tonal Settings
-        with ui.column().classes("w-full gap-4"):
+        with ui.column().classes("w-full gap-2.5"):
             # Gamma Slider
-            with ui.row().classes("w-full items-center gap-3 py-1"):
-                ui.label("Gamma").classes("w-24 text-xs font-semibold text-slate-300")
+            with ui.row().classes("w-full items-center gap-3 py-0.5"):
+                ui.label("Gamma").classes("w-20 text-xs font-semibold text-slate-300")
                 step.adjust_gamma = (
                     ui.slider(
                         min=0.2,
@@ -35,7 +39,7 @@ def build_filter_curves_card(step: Any, ui: Any) -> None:
                         on_change=step._on_param_change,
                     )
                     .classes("flex-1")
-                    .props("label")
+                    .props("label dense")
                 )
                 ui.label().classes(BADGE_CLASSES).bind_text_from(
                     step.adjust_gamma,
@@ -44,9 +48,9 @@ def build_filter_curves_card(step: Any, ui: Any) -> None:
                 )
 
             # Contrast
-            with ui.row().classes("w-full items-center gap-3 py-1"):
+            with ui.row().classes("w-full items-center gap-3 py-0.5"):
                 ui.label("Contrast").classes(
-                    "w-24 text-xs font-semibold text-slate-300"
+                    "w-20 text-xs font-semibold text-slate-300"
                 )
                 step.adjust_contrast = (
                     ui.slider(
@@ -57,7 +61,7 @@ def build_filter_curves_card(step: Any, ui: Any) -> None:
                         on_change=step._on_param_change,
                     )
                     .classes("flex-1")
-                    .props("label")
+                    .props("label dense")
                 )
                 ui.label().classes(BADGE_CLASSES).bind_text_from(
                     step.adjust_contrast,
@@ -66,9 +70,9 @@ def build_filter_curves_card(step: Any, ui: Any) -> None:
                 )
 
             # Brightness
-            with ui.row().classes("w-full items-center gap-3 py-1"):
+            with ui.row().classes("w-full items-center gap-3 py-0.5"):
                 ui.label("Brightness").classes(
-                    "w-24 text-xs font-semibold text-slate-300"
+                    "w-20 text-xs font-semibold text-slate-300"
                 )
                 step.adjust_brightness = (
                     ui.slider(
@@ -79,7 +83,7 @@ def build_filter_curves_card(step: Any, ui: Any) -> None:
                         on_change=step._on_param_change,
                     )
                     .classes("flex-1")
-                    .props("label")
+                    .props("label dense")
                 )
                 ui.label().classes(BADGE_CLASSES).bind_text_from(
                     step.adjust_brightness,
@@ -88,9 +92,9 @@ def build_filter_curves_card(step: Any, ui: Any) -> None:
                 )
 
             # Color Saturation
-            with ui.row().classes("w-full items-center gap-3 py-1"):
+            with ui.row().classes("w-full items-center gap-3 py-0.5"):
                 ui.label("Color / Sat").classes(
-                    "w-24 text-xs font-semibold text-slate-300"
+                    "w-20 text-xs font-semibold text-slate-300"
                 )
                 step.adjust_color = (
                     ui.slider(
@@ -101,7 +105,7 @@ def build_filter_curves_card(step: Any, ui: Any) -> None:
                         on_change=step._on_param_change,
                     )
                     .classes("flex-1")
-                    .props("label")
+                    .props("label dense")
                 )
                 ui.label().classes(BADGE_CLASSES).bind_text_from(
                     step.adjust_color,

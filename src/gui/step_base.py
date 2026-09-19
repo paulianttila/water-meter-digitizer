@@ -55,7 +55,7 @@ class BaseStep:
     def add_help(self, content: str) -> None:
         classes = (
             "w-full text-caption text-slate-300 bg-slate-900/60 "
-            "border border-white/10 rounded-xl mb-3 overflow-hidden shadow-sm"
+            "border border-white/10 rounded-xl mb-2 overflow-hidden shadow-sm"
         )
         with (
             ui.expansion("Help & Guidance", icon="help_outline")

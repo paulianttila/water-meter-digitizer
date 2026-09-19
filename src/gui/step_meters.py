@@ -68,7 +68,7 @@ class Meter:
     def show_new(self) -> MeterParams:
         self.value_container = ui.card().classes(
             "w-full bg-slate-900/60 border border-white/10 rounded-xl "
-            "p-4 gap-3 my-2 shadow-md"
+            "p-3.5 gap-2.5 my-1.5 shadow-md"
         )
         with self.value_container:
             with ui.row().classes("w-full items-center justify-between"):
@@ -92,11 +92,11 @@ class Meter:
                         )
 
             with ui.grid(columns="160px 1fr 100px").classes(
-                "w-full gap-3 items-center"
+                "w-full gap-2.5 items-center"
             ):
-                ui.input("Meter Name").bind_value(self.meter, "name").classes(
-                    "w-full"
-                ).tooltip(
+                ui.input("Meter Name").props("dense outlined").bind_value(
+                    self.meter, "name"
+                ).classes("w-full").tooltip(
                     "Unique logical name for this meter (e.g. main, total, digital)"
                 )
                 self.digits = (
@@ -107,57 +107,64 @@ class Meter:
                         on_change=self.update_vals,
                     )
                     .classes("w-full")
-                    .props("use-chips")
+                    .props("dense outlined use-chips")
                     .tooltip(
                         "Select ordered sequence of digit/analog ROIs and "
                         "decimal points comprising this meter"
                     )
                 )
-                ui.input("Unit", value="㎥").bind_value(self.meter, "unit").classes(
-                    "w-full"
-                ).tooltip("Engineering unit of measurement (e.g. m³, L, kWh)").on(
+                ui.input("Unit", value="㎥").props("dense outlined").bind_value(
+                    self.meter, "unit"
+                ).classes("w-full").tooltip(
+                    "Engineering unit of measurement (e.g. m³, L, kWh)"
+                ).on(
                     "blur", self.update_vals
                 )
 
-            with ui.row().classes("w-full items-center gap-4 flex-wrap text-sm"):
-                ui.checkbox("Consistency checks").bind_value(
+            with ui.row().classes("w-full items-center gap-3 flex-wrap text-xs"):
+                ui.checkbox("Consistency checks").props("dense").bind_value(
                     self.meter, "consistency_enabled"
                 ).tooltip(
                     "Validate rate of change against max rate to reject "
                     "outlier misreadings"
                 )
-                ui.checkbox("Allow negative rates").bind_value(
+                ui.checkbox("Allow negative rates").props("dense").bind_value(
                     self.meter, "allow_negative_rates"
                 ).tooltip("Allow consumption to decrease between readouts")
-                ui.checkbox("Use previous value").bind_value(
+                ui.checkbox("Use previous value").props("dense").bind_value(
                     self.meter, "use_previous_value"
                 ).tooltip(
                     "Substitute unreadable digits ('?') with digits from the "
                     "previous valid reading"
                 )
-                ui.checkbox("Extended resolution").bind_value(
+                ui.checkbox("Extended resolution").props("dense").bind_value(
                     self.meter, "use_extended_resolution"
                 ).tooltip(
                     "Append fractional decimal from lowest significant digit "
                     "or analog dial"
                 )
-                ui.checkbox("Detect negative sign (-)").bind_value(
+                ui.checkbox("Detect negative sign (-)").props("dense").bind_value(
                     self.meter, "detect_negative_sign"
                 ).tooltip("Detect '-' sign for negative flow on leading digital digits")
 
-            with ui.row().classes("w-full items-center gap-4 flex-wrap"):
-                ui.number("Max Rate (/min)", value=0.2, min=0, step=0.01).bind_value(
-                    self.meter, "max_rate_value"
-                ).classes("w-36").tooltip(
+            with ui.row().classes("w-full items-center gap-3 flex-wrap"):
+                ui.number("Max Rate (/min)", value=0.2, min=0, step=0.01).props(
+                    "dense outlined"
+                ).bind_value(self.meter, "max_rate_value").classes("w-36").tooltip(
                     "Maximum allowed consumption increase per reading/minute before "
                     "flagging as inconsistent"
                 )
-                ui.number("Prevalue Max Age (min)", value=0, min=0, step=1).bind_value(
-                    self.meter, "prevalue_from_file_max_age"
-                ).classes("w-44").tooltip(
+                ui.number("Prevalue Max Age (min)", value=0, min=0, step=1).props(
+                    "dense outlined"
+                ).bind_value(self.meter, "prevalue_from_file_max_age").classes(
+                    "w-44"
+                ).tooltip(
                     "Maximum age in minutes for reading prevalue from persistent file "
                     "(0 = unlimited)"
                 )
+
+        self.update_vals()
+        return self.meter
 
         self.update_vals()
         return self.meter

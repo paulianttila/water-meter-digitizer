@@ -214,11 +214,11 @@ class ServicesStep(BaseStep):
         with ui.step(self.name):
             self.add_help(HELP_TEXT)
 
-            with ui.column().classes("w-full gap-3 my-2"):
+            with ui.column().classes("w-full gap-2.5 my-1.5"):
                 # Poller Section Card
                 with ui.card().classes(
                     "w-full bg-slate-900/60 border border-white/10 rounded-xl "
-                    "p-4 gap-3 shadow-md"
+                    "p-3.5 gap-2.5 shadow-md"
                 ):
                     with ui.row().classes("w-full items-center justify-between"):
                         with ui.row().classes(
@@ -226,40 +226,56 @@ class ServicesStep(BaseStep):
                         ):
                             ui.icon("schedule", size="sm").classes("text-amber-400")
                             ui.label("Scheduled Background Poller")
-                        self.poller_enabled = ui.switch("Enabled").tooltip(
-                            "Enable automated background scheduled image capture "
-                            "and readout"
+                        self.poller_enabled = (
+                            ui.switch("Enabled")
+                            .props("dense")
+                            .tooltip(
+                                "Enable automated background scheduled image capture "
+                                "and readout"
+                            )
                         )
 
-                    with ui.row().classes("w-full items-center gap-4 flex-wrap"):
-                        self.poller_run_on_startup = ui.checkbox(
-                            "Run on Startup", value=True
-                        ).tooltip(
-                            "Trigger an immediate readout when the server starts up"
+                    with ui.row().classes(
+                        "w-full items-center gap-4 flex-wrap text-xs"
+                    ):
+                        self.poller_run_on_startup = (
+                            ui.checkbox("Run on Startup", value=True)
+                            .props("dense")
+                            .tooltip(
+                                "Trigger an immediate readout when the server starts up"
+                            )
                         )
-                        self.poller_save_images = ui.checkbox(
-                            "Save Debug Images", value=False
-                        ).tooltip(
-                            "Save intermediate diagnostic debug crop images to "
-                            "disk on each scheduled run"
+                        self.poller_save_images = (
+                            ui.checkbox("Save Debug Images", value=False)
+                            .props("dense")
+                            .tooltip(
+                                "Save intermediate diagnostic debug crop images to "
+                                "disk on each scheduled run"
+                            )
                         )
 
                     with ui.grid(
                         columns="repeat(auto-fit, minmax(180px, 1fr))"
-                    ).classes("w-full gap-3"):
-                        self.poller_interval = ui.number(
-                            "Interval (seconds)", value=300, min=5, step=10
-                        ).tooltip(
-                            "Time between automatic readouts (e.g. 300 = 5 minutes)"
+                    ).classes("w-full gap-2.5"):
+                        self.poller_interval = (
+                            ui.number("Interval (seconds)", value=300, min=5, step=10)
+                            .props("dense outlined")
+                            .tooltip(
+                                "Time between automatic readouts (e.g. 300 = 5 minutes)"
+                            )
                         )
-                        self.poller_retry_interval = ui.number(
-                            "Retry Interval (seconds)", value=30, min=5, step=5
-                        ).tooltip("Delay before retrying after a failure")
+                        self.poller_retry_interval = (
+                            ui.number(
+                                "Retry Interval (seconds)", value=30, min=5, step=5
+                            )
+                            .props("dense outlined")
+                            .tooltip("Delay before retrying after a failure")
+                        )
 
                 # MQTT Section Card
                 with ui.card().classes(
                     "w-full bg-slate-900/60 border border-white/10 rounded-xl "
-                    "p-4 gap-3 shadow-md"
+                    "p-3.5 gap-2.5 shadow-md"
                 ):
                     with ui.row().classes("w-full items-center justify-between"):
                         with ui.row().classes(
@@ -267,91 +283,127 @@ class ServicesStep(BaseStep):
                         ):
                             ui.icon("sensors", size="sm").classes("text-emerald-400")
                             ui.label("MQTT & Home Assistant Discovery")
-                        self.mqtt_enabled = ui.switch("Enabled").tooltip(
-                            "Enable MQTT telemetry publishing for meter readings"
+                        self.mqtt_enabled = (
+                            ui.switch("Enabled")
+                            .props("dense")
+                            .tooltip(
+                                "Enable MQTT telemetry publishing for meter readings"
+                            )
                         )
 
-                    with ui.row().classes("w-full items-center gap-4 flex-wrap"):
-                        self.mqtt_tls = ui.checkbox(
-                            "TLS Encryption", value=False
-                        ).tooltip(
-                            "Enable TLS/SSL encryption for secure MQTT broker "
-                            "connection"
+                    with ui.row().classes(
+                        "w-full items-center gap-4 flex-wrap text-xs"
+                    ):
+                        self.mqtt_tls = (
+                            ui.checkbox("TLS Encryption", value=False)
+                            .props("dense")
+                            .tooltip(
+                                "Enable TLS/SSL encryption for secure MQTT broker "
+                                "connection"
+                            )
                         )
-                        self.mqtt_retain = ui.checkbox(
-                            "Retain Messages", value=True
-                        ).tooltip(
-                            "Publish telemetry with MQTT retain flag so subscribers "
-                            "receive last known state on connect"
+                        self.mqtt_retain = (
+                            ui.checkbox("Retain Messages", value=True)
+                            .props("dense")
+                            .tooltip(
+                                "Publish telemetry with MQTT retain flag so subscribers "
+                                "receive last known state on connect"
+                            )
                         )
-                        self.mqtt_ha_discovery = ui.checkbox(
-                            "Home Assistant Discovery", value=True
-                        ).tooltip(
-                            "Automatically publish Home Assistant MQTT Auto-Discovery "
-                            "configuration payloads"
+                        self.mqtt_ha_discovery = (
+                            ui.checkbox("Home Assistant Discovery", value=True)
+                            .props("dense")
+                            .tooltip(
+                                "Automatically publish Home Assistant MQTT Auto-Discovery "
+                                "configuration payloads"
+                            )
                         )
 
                     with ui.grid(
                         columns="repeat(auto-fit, minmax(160px, 1fr))"
-                    ).classes("w-full gap-3"):
-                        self.mqtt_broker = ui.input(
-                            "Broker Host", value="localhost"
-                        ).tooltip("MQTT broker IP address or hostname")
-                        self.mqtt_port = ui.number(
-                            "Port", value=1883, min=1, max=65535, step=1
-                        ).tooltip(
-                            "MQTT broker port (e.g. 1883 for standard, 8883 for TLS)"
+                    ).classes("w-full gap-2.5"):
+                        self.mqtt_broker = (
+                            ui.input("Broker Host", value="localhost")
+                            .props("dense outlined")
+                            .tooltip("MQTT broker IP address or hostname")
                         )
-                        self.mqtt_keepalive = ui.number(
-                            "Keepalive (s)", value=60, min=5, step=5
-                        ).tooltip("MQTT keepalive interval in seconds (default: 60)")
+                        self.mqtt_port = (
+                            ui.number("Port", value=1883, min=1, max=65535, step=1)
+                            .props("dense outlined")
+                            .tooltip(
+                                "MQTT broker port (e.g. 1883 for standard, 8883 for TLS)"
+                            )
+                        )
+                        self.mqtt_keepalive = (
+                            ui.number("Keepalive (s)", value=60, min=5, step=5)
+                            .props("dense outlined")
+                            .tooltip("MQTT keepalive interval in seconds (default: 60)")
+                        )
 
                     with ui.grid(
                         columns="repeat(auto-fit, minmax(180px, 1fr))"
-                    ).classes("w-full gap-3"):
-                        self.mqtt_username = ui.input(
-                            "Username", placeholder="Optional username"
-                        ).tooltip("Optional MQTT broker username authentication")
-                        self.mqtt_password = ui.input(
-                            "Password", password=True, placeholder="Optional password"
-                        ).tooltip("Optional MQTT broker password authentication")
+                    ).classes("w-full gap-2.5"):
+                        self.mqtt_username = (
+                            ui.input("Username", placeholder="Optional username")
+                            .props("dense outlined")
+                            .tooltip("Optional MQTT broker username authentication")
+                        )
+                        self.mqtt_password = (
+                            ui.input(
+                                "Password",
+                                password=True,
+                                placeholder="Optional password",
+                            )
+                            .props("dense outlined")
+                            .tooltip("Optional MQTT broker password authentication")
+                        )
 
                     with ui.grid(
                         columns="repeat(auto-fit, minmax(180px, 1fr))"
-                    ).classes("w-full gap-3"):
-                        self.mqtt_topic_prefix = ui.input(
-                            "Topic Prefix", value="watermeter"
-                        ).tooltip("Base MQTT topic prefix (e.g. watermeter)")
-                        self.mqtt_client_id = ui.input(
-                            "Client ID", value="water-meter-digitizer"
-                        ).tooltip("MQTT client identifier sent in connect packet")
+                    ).classes("w-full gap-2.5"):
+                        self.mqtt_topic_prefix = (
+                            ui.input("Topic Prefix", value="watermeter")
+                            .props("dense outlined")
+                            .tooltip("Base MQTT topic prefix (e.g. watermeter)")
+                        )
+                        self.mqtt_client_id = (
+                            ui.input("Client ID", value="water-meter-digitizer")
+                            .props("dense outlined")
+                            .tooltip("MQTT client identifier sent in connect packet")
+                        )
 
                     with ui.grid(
                         columns="repeat(auto-fit, minmax(180px, 1fr))"
-                    ).classes("w-full gap-3"):
-                        self.mqtt_discovery_prefix = ui.input(
-                            "HA Discovery Prefix", value="homeassistant"
-                        ).tooltip(
-                            "Home Assistant MQTT discovery root topic prefix "
-                            "(default: homeassistant)"
+                    ).classes("w-full gap-2.5"):
+                        self.mqtt_discovery_prefix = (
+                            ui.input("HA Discovery Prefix", value="homeassistant")
+                            .props("dense outlined")
+                            .tooltip(
+                                "Home Assistant MQTT discovery root topic prefix "
+                                "(default: homeassistant)"
+                            )
                         )
-                        self.mqtt_device_name = ui.input(
-                            "Device Name", value="Water Meter Digitizer"
-                        ).tooltip(
-                            "Friendly device name displayed in Home Assistant "
-                            "device registry"
+                        self.mqtt_device_name = (
+                            ui.input("Device Name", value="Water Meter Digitizer")
+                            .props("dense outlined")
+                            .tooltip(
+                                "Friendly device name displayed in Home Assistant "
+                                "device registry"
+                            )
                         )
-                        self.mqtt_device_id = ui.input(
-                            "Device ID", value="water_meter_digitizer"
-                        ).tooltip(
-                            "Unique device identifier for Home Assistant "
-                            "entity mapping"
+                        self.mqtt_device_id = (
+                            ui.input("Device ID", value="water_meter_digitizer")
+                            .props("dense outlined")
+                            .tooltip(
+                                "Unique device identifier for Home Assistant "
+                                "entity mapping"
+                            )
                         )
 
                 # History & Storage Card
                 with ui.card().classes(
                     "w-full bg-slate-900/60 border border-white/10 rounded-xl "
-                    "p-4 gap-3 shadow-md"
+                    "p-3.5 gap-2.5 shadow-md"
                 ):
                     with ui.row().classes("w-full items-center justify-between"):
                         with ui.row().classes(
@@ -359,43 +411,59 @@ class ServicesStep(BaseStep):
                         ):
                             ui.icon("history", size="sm").classes("text-blue-400")
                             ui.label("History & Storage Backend")
-                        self.history_enabled = ui.switch("Enabled").tooltip(
-                            "Enable persistent historical timeseries storage "
-                            "for meter readouts"
+                        self.history_enabled = (
+                            ui.switch("Enabled")
+                            .props("dense")
+                            .tooltip(
+                                "Enable persistent historical timeseries storage "
+                                "for meter readouts"
+                            )
                         )
 
-                    with ui.row().classes("w-full items-center gap-4"):
-                        self.history_auto_vacuum = ui.checkbox(
-                            "Auto-Vacuum SQLite", value=True
-                        ).tooltip(
-                            "Enable automatic VACUUM on SQLite database to "
-                            "reclaim free disk space"
+                    with ui.row().classes("w-full items-center gap-4 text-xs"):
+                        self.history_auto_vacuum = (
+                            ui.checkbox("Auto-Vacuum SQLite", value=True)
+                            .props("dense")
+                            .tooltip(
+                                "Enable automatic VACUUM on SQLite database to "
+                                "reclaim free disk space"
+                            )
                         )
 
                     with ui.grid(
                         columns="repeat(auto-fit, minmax(150px, 1fr))"
-                    ).classes("w-full gap-3"):
-                        self.history_backend = ui.select(
-                            ["sqlite", "memory"], label="Backend", value="sqlite"
-                        ).tooltip(
-                            "Storage engine backend: SQLite (persistent file) "
-                            "or Memory (in-RAM)"
+                    ).classes("w-full gap-2.5"):
+                        self.history_backend = (
+                            ui.select(
+                                ["sqlite", "memory"], label="Backend", value="sqlite"
+                            )
+                            .props("dense outlined")
+                            .tooltip(
+                                "Storage engine backend: SQLite (persistent file) "
+                                "or Memory (in-RAM)"
+                            )
                         )
-                        self.history_retention_days = ui.number(
-                            "Retention (Days)", value=30, min=0, step=1
-                        ).tooltip("0 to retain forever")
-                        self.history_max_records = ui.number(
-                            "Max Records", value=50000, min=0, step=1000
-                        ).tooltip("0 to disable record limit")
-                        self.history_prune_interval = ui.number(
-                            "Prune Interval", value=50, min=1, step=5
-                        ).tooltip("Readouts between automated pruning cycles")
+                        self.history_retention_days = (
+                            ui.number("Retention (Days)", value=30, min=0, step=1)
+                            .props("dense outlined")
+                            .tooltip("0 to retain forever")
+                        )
+                        self.history_max_records = (
+                            ui.number("Max Records", value=50000, min=0, step=1000)
+                            .props("dense outlined")
+                            .tooltip("0 to disable record limit")
+                        )
+                        self.history_prune_interval = (
+                            ui.number("Prune Interval", value=50, min=1, step=5)
+                            .props("dense outlined")
+                            .tooltip("Readouts between automated pruning cycles")
+                        )
 
                 # Snapshots & Time Machine Archival Card
                 with (
                     ui.card().classes(
                         "w-full bg-slate-900/60 border border-white/10 rounded-xl "
-                        "p-4 gap-3 shadow-md"
+                        "p-3.5 gap-2.5 shadow-md"
                     ),
                     ui.row().classes("w-full items-center justify-between"),
                     ui.row().classes("items-center gap-2 text-slate-300 font-semibold"),
@@ -405,60 +473,82 @@ class ServicesStep(BaseStep):
 
                     with ui.grid(
                         columns="repeat(auto-fit, minmax(180px, 1fr))"
-                    ).classes("w-full gap-3"):
-                        self.snapshot_mode = ui.select(
-                            [
-                                "smart_tiered",
-                                "change_only",
-                                "roi_strips_only",
-                                "full_frames",
-                                "disabled",
-                            ],
-                            label="Capture Strategy",
-                            value="smart_tiered",
-                        ).tooltip(
-                            "smart_tiered: High-res for recent/flow, ROI strips for older\n"
-                            "change_only: Only capture when flow is active or heartbeat\n"
-                            "roi_strips_only: Ultra-lightweight composite strips\n"
-                            "full_frames: Save complete raw camera frame on every reading"
+                    ).classes("w-full gap-2.5"):
+                        self.snapshot_mode = (
+                            ui.select(
+                                [
+                                    "smart_tiered",
+                                    "change_only",
+                                    "roi_strips_only",
+                                    "full_frames",
+                                    "disabled",
+                                ],
+                                label="Capture Strategy",
+                                value="smart_tiered",
+                            )
+                            .props("dense outlined")
+                            .tooltip(
+                                "smart_tiered: High-res for recent/flow, ROI strips for older\n"
+                                "change_only: Only capture when flow is active or heartbeat\n"
+                                "roi_strips_only: Ultra-lightweight composite strips\n"
+                                "full_frames: Save complete raw camera frame on every reading"
+                            )
                         )
-                        self.snapshot_format = ui.select(
-                            ["webp", "jpeg"], label="Format", value="webp"
-                        ).tooltip(
-                            "Image compression format (WebP recommended for 50-70% size reduction)"
+                        self.snapshot_format = (
+                            ui.select(["webp", "jpeg"], label="Format", value="webp")
+                            .props("dense outlined")
+                            .tooltip(
+                                "Image compression format (WebP recommended for 50-70% size reduction)"
+                            )
                         )
-                        self.snapshot_quality = ui.number(
-                            "Quality (1-100)", value=75, min=1, max=100, step=5
-                        ).tooltip("Compression quality factor")
-                        self.snapshot_max_disk_mb = ui.number(
-                            "Max Disk Cap (MB)", value=500.0, min=10.0, step=50.0
-                        ).tooltip(
-                            "Maximum snapshot storage limit before automated FIFO pruning"
+                        self.snapshot_quality = (
+                            ui.number(
+                                "Quality (1-100)", value=75, min=1, max=100, step=5
+                            )
+                            .props("dense outlined")
+                            .tooltip("Compression quality factor")
+                        )
+                        self.snapshot_max_disk_mb = (
+                            ui.number(
+                                "Max Disk Cap (MB)", value=500.0, min=10.0, step=50.0
+                            )
+                            .props("dense outlined")
+                            .tooltip(
+                                "Maximum snapshot storage limit before automated FIFO pruning"
+                            )
                         )
 
                     with ui.grid(
                         columns="repeat(auto-fit, minmax(200px, 1fr))"
-                    ).classes("w-full gap-3"):
-                        self.snapshot_heartbeat = ui.number(
-                            "Idle Heartbeat (Minutes)", value=15, min=1, step=5
-                        ).tooltip(
-                            "Capture frame at least once every N minutes even if no water flows"
+                    ).classes("w-full gap-2.5"):
+                        self.snapshot_heartbeat = (
+                            ui.number(
+                                "Idle Heartbeat (Minutes)", value=15, min=1, step=5
+                            )
+                            .props("dense outlined")
+                            .tooltip(
+                                "Capture frame at least once every N minutes even if no water flows"
+                            )
                         )
-                        self.snapshot_save_anomaly = ui.checkbox(
-                            "Always Save on Anomaly / Error", value=True
-                        ).tooltip(
-                            "Always archive full camera frame when OCR recognition error or low confidence occurs"
+                        self.snapshot_save_anomaly = (
+                            ui.checkbox("Always Save on Anomaly / Error", value=True)
+                            .props("dense")
+                            .tooltip(
+                                "Always archive full camera frame when OCR recognition error or low confidence occurs"
+                            )
                         )
-                        self.snapshot_storage_dir = ui.input(
-                            "Snapshot Directory", value="/data/snapshots"
-                        ).tooltip(
-                            "Filesystem path where compressed snapshots are stored"
+                        self.snapshot_storage_dir = (
+                            ui.input("Snapshot Directory", value="/data/snapshots")
+                            .props("dense outlined")
+                            .tooltip(
+                                "Filesystem path where compressed snapshots are stored"
+                            )
                         )
 
                 # Zero-Flow & Leak Monitor Card
                 with ui.card().classes(
                     "w-full bg-slate-900/60 border border-white/10 rounded-xl "
-                    "p-4 gap-3 shadow-md"
+                    "p-3.5 gap-2.5 shadow-md"
                 ):
                     with ui.row().classes("w-full items-center justify-between"):
                         with ui.row().classes(
@@ -466,69 +556,97 @@ class ServicesStep(BaseStep):
                         ):
                             ui.icon("water_damage", size="sm").classes("text-cyan-400")
                             ui.label("Zero-Flow Tracking & Leak Monitor")
-                        self.zero_flow_enabled = ui.switch("Enabled").tooltip(
-                            "Detect continuous non-zero flow sustained over time "
-                            "without quiet periods"
+                        self.zero_flow_enabled = (
+                            ui.switch("Enabled")
+                            .props("dense")
+                            .tooltip(
+                                "Detect continuous non-zero flow sustained over time "
+                                "without quiet periods"
+                            )
                         )
 
                     with ui.grid(
                         columns="repeat(auto-fit, minmax(170px, 1fr))"
-                    ).classes("w-full gap-3"):
-                        self.zero_flow_meter_name = ui.select(
-                            ["total"],
-                            label="Target Meter",
-                            value="total",
-                            new_value_mode="add-unique",
-                        ).tooltip(
-                            "Select configured meter to monitor for continuous flow"
+                    ).classes("w-full gap-2.5"):
+                        self.zero_flow_meter_name = (
+                            ui.select(
+                                ["total"],
+                                label="Target Meter",
+                                value="total",
+                                new_value_mode="add-unique",
+                            )
+                            .props("dense outlined")
+                            .tooltip(
+                                "Select configured meter to monitor for continuous flow"
+                            )
                         )
-                        self.zero_flow_value_type = ui.select(
-                            {
-                                "cumulative": "Cumulative Volume (Calculates flow)",
-                                "flow_rate": "Instantaneous Flow Rate (Direct flow)",
-                            },
-                            label="Value Type",
-                            value="cumulative",
-                        ).tooltip(
-                            "Cumulative: app derives flow from volume changes\n"
-                            "Flow Rate: meter reading directly represents flow rate"
+                        self.zero_flow_value_type = (
+                            ui.select(
+                                {
+                                    "cumulative": "Cumulative Volume (Calculates flow)",
+                                    "flow_rate": "Instantaneous Flow Rate (Direct flow)",
+                                },
+                                label="Value Type",
+                                value="cumulative",
+                            )
+                            .props("dense outlined")
+                            .tooltip(
+                                "Cumulative: app derives flow from volume changes\n"
+                                "Flow Rate: meter reading directly represents flow rate"
+                            )
                         )
-                        self.zero_flow_hours = ui.number(
-                            "Continuous Flow Alert (Hours)",
-                            value=2.0,
-                            min=0.1,
-                            step=0.5,
-                        ).tooltip(
-                            "Hours of continuous flow before triggering a leak alert"
+                        self.zero_flow_hours = (
+                            ui.number(
+                                "Continuous Flow Alert (Hours)",
+                                value=2.0,
+                                min=0.1,
+                                step=0.5,
+                            )
+                            .props("dense outlined")
+                            .tooltip(
+                                "Hours of continuous flow before triggering a leak alert"
+                            )
                         )
-                        self.zero_flow_min_volume = ui.number(
-                            "Min Leak Volume", value=0.010, min=0.0001, step=0.005
-                        ).tooltip(
-                            "Minimum cumulative volume required to trigger alert "
-                            "(filters optical jitter)"
+                        self.zero_flow_min_volume = (
+                            ui.number(
+                                "Min Leak Volume", value=0.010, min=0.0001, step=0.005
+                            )
+                            .props("dense outlined")
+                            .tooltip(
+                                "Minimum cumulative volume required to trigger alert "
+                                "(filters optical jitter)"
+                            )
                         )
 
                     with ui.grid(
                         columns="repeat(auto-fit, minmax(170px, 1fr))"
-                    ).classes("w-full gap-3"):
-                        self.zero_flow_threshold = ui.number(
-                            "Flow Threshold", value=0.001, min=0.0001, step=0.0005
-                        ).tooltip(
-                            "Minimum delta (cumulative) or flow rate (m³/h) to count as active flow"
+                    ).classes("w-full gap-2.5"):
+                        self.zero_flow_threshold = (
+                            ui.number(
+                                "Flow Threshold", value=0.001, min=0.0001, step=0.0005
+                            )
+                            .props("dense outlined")
+                            .tooltip(
+                                "Minimum delta (cumulative) or flow rate (m³/h) to count as active flow"
+                            )
                         )
-                        self.zero_flow_debounce_count = ui.number(
-                            "Resolve Debounce Count", value=2, min=1, step=1
-                        ).tooltip(
-                            "Consecutive zero readings required to auto-resolve alert"
+                        self.zero_flow_debounce_count = (
+                            ui.number("Resolve Debounce Count", value=2, min=1, step=1)
+                            .props("dense outlined")
+                            .tooltip(
+                                "Consecutive zero readings required to auto-resolve alert"
+                            )
                         )
-                        self.zero_flow_max_history = ui.number(
-                            "Max History Events", value=50, min=5, step=10
-                        ).tooltip("Maximum historical leak events to retain")
+                        self.zero_flow_max_history = (
+                            ui.number("Max History Events", value=50, min=5, step=10)
+                            .props("dense outlined")
+                            .tooltip("Maximum historical leak events to retain")
+                        )
 
                 # Global Defaults Card
                 with ui.card().classes(
                     "w-full bg-slate-900/60 border border-white/10 rounded-xl "
-                    "p-4 gap-3 shadow-md"
+                    "p-3.5 gap-2.5 shadow-md"
                 ):
                     with ui.row().classes(
                         "w-full items-center gap-2 text-slate-300 font-semibold"
@@ -538,19 +656,25 @@ class ServicesStep(BaseStep):
 
                     with ui.grid(
                         columns="repeat(auto-fit, minmax(220px, 1fr))"
-                    ).classes("w-full gap-3"):
-                        self.data_dir = ui.input(
-                            "Data Directory", value="/data"
-                        ).tooltip(
-                            "Directory path for database, previous values, "
-                            "and debug artifacts"
+                    ).classes("w-full gap-2.5"):
+                        self.data_dir = (
+                            ui.input("Data Directory", value="/data")
+                            .props("dense outlined")
+                            .tooltip(
+                                "Directory path for database, previous values, "
+                                "and debug artifacts"
+                            )
                         )
-                        self.min_confidence_threshold = ui.number(
-                            "Min Confidence Threshold (%)",
-                            value=50.0,
-                            min=0.0,
-                            max=100.0,
-                            step=1.0,
-                        ).tooltip("Reject readings below this confidence score")
+                        self.min_confidence_threshold = (
+                            ui.number(
+                                "Min Confidence Threshold (%)",
+                                value=50.0,
+                                min=0.0,
+                                max=100.0,
+                                step=1.0,
+                            )
+                            .props("dense outlined")
+                            .tooltip("Reject readings below this confidence score")
+                        )
 
             super().add_navigator(stepper, first_step, last_step)

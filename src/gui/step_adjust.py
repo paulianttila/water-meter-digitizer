@@ -654,15 +654,21 @@ class AdjustStep(BaseStep):
 
             # Live Preview, Presets & Quick Actions Toolbar
             with ui.column().classes(
-                "w-full p-3 mb-2 rounded-xl bg-indigo-950/40 border border-indigo-500/30 backdrop-blur-md gap-2"
+                "w-full p-2.5 mb-1.5 rounded-xl bg-indigo-950/40 border border-indigo-500/30 backdrop-blur-md gap-1.5"
             ):
                 with ui.row().classes(
                     "w-full items-center justify-between flex-wrap gap-2"
                 ):
                     with ui.row().classes("items-center gap-3"):
-                        self.live_preview = ui.checkbox(
-                            "Live Preview", value=True, on_change=self._on_param_change
-                        ).classes("text-indigo-200 text-sm font-semibold")
+                        self.live_preview = (
+                            ui.checkbox(
+                                "Live Preview",
+                                value=True,
+                                on_change=self._on_param_change,
+                            )
+                            .props("dense")
+                            .classes("text-indigo-200 text-sm font-semibold")
+                        )
                         ui.label("•").classes("text-indigo-400/50")
                         ui.label("View:").classes("text-xs text-slate-400 font-medium")
                         self.compare_mode = (
@@ -741,13 +747,13 @@ class AdjustStep(BaseStep):
                         "text-xs text-slate-400 hover:text-slate-200 hover:bg-white/10 px-2"
                     )
 
-            with ui.column().classes("w-full gap-3 my-2"):
+            with ui.column().classes("w-full gap-2.5 my-1.5"):
                 # Image Processing Master Card
                 with ui.row().classes(
-                    "w-full items-center justify-between p-3 rounded-xl "
-                    "bg-slate-900/80 border border-white/10 shadow-md gap-3"
+                    "w-full items-center justify-between p-2.5 rounded-xl "
+                    "bg-slate-900/80 border border-white/10 shadow-md gap-2.5"
                 ):
-                    with ui.row().classes("items-center gap-3"):
+                    with ui.row().classes("items-center gap-2.5"):
                         ui.icon("tune", size="22px").classes("text-cyan-400 shrink-0")
                         with ui.column().classes("gap-0"):
                             ui.label("Image Processing").classes(
@@ -762,7 +768,7 @@ class AdjustStep(BaseStep):
                             value=False,
                             on_change=self._on_param_change,
                         )
-                        .props("color=cyan")
+                        .props("dense color=cyan")
                         .tooltip(
                             "Enable or disable all image processing enhancements ([ImageProcessing] section)"
                         )
@@ -777,17 +783,17 @@ class AdjustStep(BaseStep):
 
             # Action Toolbar
             with ui.row().classes(
-                "w-full items-center justify-between mt-2 pt-2 border-t "
+                "w-full items-center justify-between mt-1.5 pt-1.5 border-t "
                 "border-white/10"
             ):
                 ui.button(
                     "Refresh Preview",
                     icon="tune",
                     on_click=self.do_adjust,
-                ).props("unelevated").classes(
+                ).props("unelevated dense").classes(
                     "bg-gradient-to-r from-blue-600 to-indigo-600 "
                     "hover:from-blue-500 hover:to-indigo-500 text-white shadow-md "
-                    "transition-all font-medium"
+                    "transition-all font-medium px-3"
                 ).bind_enabled_from(
                     self, "image", lambda image: image != ""
                 ).tooltip(
@@ -798,9 +804,9 @@ class AdjustStep(BaseStep):
                     "Reset to Original",
                     icon="restart_alt",
                     on_click=self._reset_image,
-                ).props("outline").classes(
+                ).props("outline dense").classes(
                     "text-slate-300 border-white/20 hover:bg-white/10 "
-                    "transition-all font-medium"
+                    "transition-all font-medium px-3"
                 ).bind_enabled_from(
                     self, "image", lambda image: image != ""
                 ).tooltip(

@@ -194,8 +194,8 @@ class FinalStep(BaseStep):
             with (
                 ui.row()
                 .classes(
-                    "w-full px-4 py-3 rounded-xl border transition-all items-center "
-                    "gap-3 mb-2 bg-amber-950/40 border-amber-500/40 text-amber-200"
+                    "w-full px-3.5 py-2 rounded-xl border transition-all items-center "
+                    "gap-2.5 mb-1.5 bg-amber-950/40 border-amber-500/40 text-amber-200"
                 )
                 .props('id="final-step-status-banner"') as self.status_banner
             ):
@@ -209,7 +209,7 @@ class FinalStep(BaseStep):
 
             with (
                 ui.card().classes(
-                    "w-full bg-slate-900/60 border border-white/10 rounded-xl p-3 my-2"
+                    "w-full bg-slate-900/60 border border-white/10 rounded-xl p-2.5 my-1.5"
                 ),
                 ui.row().classes("w-full items-center justify-between gap-2 flex-wrap"),
             ):
@@ -259,8 +259,8 @@ class FinalStep(BaseStep):
                     )
 
             with ui.card().classes(
-                "w-full bg-slate-950/80 border border-white/10 rounded-xl "
-                "p-2 my-2 shadow-inner"
+                "w-full bg-slate-900/90 border border-white/10 rounded-xl "
+                "p-2 my-1.5 shadow-inner"
             ):
                 self.editor = (
                     ui.textarea(on_change=lambda e: self._on_editor_changed(e.value))

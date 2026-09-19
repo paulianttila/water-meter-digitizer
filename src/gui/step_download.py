@@ -70,19 +70,24 @@ class DownloadImageStep(BaseStep):
             with ui.row().classes("w-full items-center gap-2"):
                 self.url = (
                     ui.input(label="URL", placeholder="URL")
+                    .props("dense outlined")
                     .classes("flex-grow")
                     .tooltip("Camera snapshot URL (e.g. http://... or file://...)")
                 )
-                ui.button(icon="download", on_click=self.download).bind_enabled_from(
-                    self.url, "value"
-                ).tooltip("Download image from URL")
+                ui.button(icon="download", on_click=self.download).props(
+                    "dense"
+                ).bind_enabled_from(self.url, "value").tooltip(
+                    "Download image from URL"
+                )
                 self.timeout = (
                     ui.number("Timeout (s)", value=10, min=1, max=60, step=1)
+                    .props("dense outlined")
                     .classes("w-28")
                     .tooltip("Network request timeout in seconds (1-60s)")
                 )
                 self.minsize = (
                     ui.number("Min Size (bytes)", value=10000, min=1000, step=1000)
+                    .props("dense outlined")
                     .classes("w-36")
                     .tooltip("Minimum valid image payload size in bytes")
                 )

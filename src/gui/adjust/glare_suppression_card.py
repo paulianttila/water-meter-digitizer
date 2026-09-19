@@ -16,19 +16,27 @@ def build_glare_suppression_card(step: Any, ui: Any) -> None:
             "w-full bg-slate-900/60 border border-white/10 rounded-xl "
             "shadow-md overflow-hidden"
         ),
-        ui.column().classes("w-full gap-3 p-3"),
+        ui.column().classes("w-full gap-2.5 p-2.5"),
     ):
         with ui.row().classes("w-full items-center gap-4 flex-wrap"):
-            step.glare_enabled = ui.checkbox(
-                "Enable Glare Suppression",
-                value=False,
-                on_change=step._on_param_change,
-            ).tooltip("Suppress specular highlights on glossy meter glass")
-            step.glare_apply_to_cut_images = ui.checkbox(
-                "Apply to Cut Images (ROIs)",
-                value=False,
-                on_change=step._on_param_change,
-            ).tooltip("Apply glare suppression to cropped digit/pointer images")
+            step.glare_enabled = (
+                ui.checkbox(
+                    "Enable Glare Suppression",
+                    value=False,
+                    on_change=step._on_param_change,
+                )
+                .props("dense")
+                .tooltip("Suppress specular highlights on glossy meter glass")
+            )
+            step.glare_apply_to_cut_images = (
+                ui.checkbox(
+                    "Apply to Cut Images (ROIs)",
+                    value=False,
+                    on_change=step._on_param_change,
+                )
+                .props("dense")
+                .tooltip("Apply glare suppression to cropped digit/pointer images")
+            )
             step.glare_mode = (
                 ui.select(
                     [
@@ -41,6 +49,7 @@ def build_glare_suppression_card(step: Any, ui: Any) -> None:
                     value="clahe",
                     on_change=step._on_param_change,
                 )
+                .props("dense outlined")
                 .classes("w-44")
                 .tooltip(
                     "Filter mode: clahe, inpaint, "
@@ -48,9 +57,9 @@ def build_glare_suppression_card(step: Any, ui: Any) -> None:
                 )
             )
 
-        with ui.column().classes("w-full gap-4"):
+        with ui.column().classes("w-full gap-2.5"):
             # CLAHE Clip Limit
-            with ui.row().classes("w-full items-center gap-3 py-1"):
+            with ui.row().classes("w-full items-center gap-3 py-0.5"):
                 ui.label("CLAHE Clip").classes(
                     "w-24 text-xs font-semibold text-slate-300"
                 )
@@ -63,7 +72,7 @@ def build_glare_suppression_card(step: Any, ui: Any) -> None:
                         on_change=step._on_param_change,
                     )
                     .classes("flex-1")
-                    .props("label")
+                    .props("label dense")
                 )
                 ui.label().classes(BADGE_CLASSES).bind_text_from(
                     step.glare_clahe_clip_limit,
@@ -72,7 +81,7 @@ def build_glare_suppression_card(step: Any, ui: Any) -> None:
                 )
 
             # CLAHE Grid Size
-            with ui.row().classes("w-full items-center gap-3 py-1"):
+            with ui.row().classes("w-full items-center gap-3 py-0.5"):
                 ui.label("CLAHE Grid").classes(
                     "w-24 text-xs font-semibold text-slate-300"
                 )
@@ -85,7 +94,7 @@ def build_glare_suppression_card(step: Any, ui: Any) -> None:
                         on_change=step._on_param_change,
                     )
                     .classes("flex-1")
-                    .props("label")
+                    .props("label dense")
                 )
                 ui.label().classes(BADGE_CLASSES).bind_text_from(
                     step.glare_clahe_grid_size,
@@ -94,7 +103,7 @@ def build_glare_suppression_card(step: Any, ui: Any) -> None:
                 )
 
             # Inpaint Threshold
-            with ui.row().classes("w-full items-center gap-3 py-1"):
+            with ui.row().classes("w-full items-center gap-3 py-0.5"):
                 ui.label("Inpaint Thresh").classes(
                     "w-24 text-xs font-semibold text-slate-300"
                 )
@@ -107,7 +116,7 @@ def build_glare_suppression_card(step: Any, ui: Any) -> None:
                         on_change=step._on_param_change,
                     )
                     .classes("flex-1")
-                    .props("label")
+                    .props("label dense")
                 )
                 ui.label().classes(BADGE_CLASSES).bind_text_from(
                     step.glare_inpaint_threshold,
@@ -116,7 +125,7 @@ def build_glare_suppression_card(step: Any, ui: Any) -> None:
                 )
 
             # Inpaint Radius
-            with ui.row().classes("w-full items-center gap-3 py-1"):
+            with ui.row().classes("w-full items-center gap-3 py-0.5"):
                 ui.label("Inpaint Radius").classes(
                     "w-24 text-xs font-semibold text-slate-300"
                 )
@@ -129,7 +138,7 @@ def build_glare_suppression_card(step: Any, ui: Any) -> None:
                         on_change=step._on_param_change,
                     )
                     .classes("flex-1")
-                    .props("label")
+                    .props("label dense")
                 )
                 ui.label().classes(BADGE_CLASSES).bind_text_from(
                     step.glare_inpaint_radius,

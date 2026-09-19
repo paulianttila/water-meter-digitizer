@@ -46,7 +46,7 @@ def build_histogram_card(step: Any, ui: Any) -> None:
             "w-full bg-slate-900/60 border border-white/10 rounded-xl "
             "shadow-md overflow-hidden"
         ),
-        ui.column().classes("w-full gap-3 p-3"),
+        ui.column().classes("w-full gap-2.5 p-2.5"),
     ):
         # Live Histogram Area
         with ui.column().classes(
@@ -68,14 +68,18 @@ def build_histogram_card(step: Any, ui: Any) -> None:
                 "w-full"
             )
 
-        step.autocontrast_enabled = ui.checkbox(
-            "Full Frame AutoContrast",
-            value=False,
-            on_change=step._on_param_change,
-        ).tooltip("Automatically optimize contrast histogram for full frame")
+        step.autocontrast_enabled = (
+            ui.checkbox(
+                "Full Frame AutoContrast",
+                value=False,
+                on_change=step._on_param_change,
+            )
+            .props("dense")
+            .tooltip("Automatically optimize contrast histogram for full frame")
+        )
 
-        with ui.column().classes("w-full gap-4"):
-            with ui.row().classes("w-full items-center gap-3 py-1"):
+        with ui.column().classes("w-full gap-2.5"):
+            with ui.row().classes("w-full items-center gap-3 py-0.5"):
                 ui.label("Cutoff Low").classes(
                     "w-24 text-xs font-semibold text-slate-300"
                 )
@@ -88,7 +92,7 @@ def build_histogram_card(step: Any, ui: Any) -> None:
                         on_change=step._on_param_change,
                     )
                     .classes("flex-1")
-                    .props("label")
+                    .props("label dense")
                 )
                 ui.label().classes(BADGE_CLASSES).bind_text_from(
                     step.autocontrast_cutoff_low,
@@ -96,7 +100,7 @@ def build_histogram_card(step: Any, ui: Any) -> None:
                     lambda v: f"{int(float(v or 0))}%",
                 )
 
-            with ui.row().classes("w-full items-center gap-3 py-1"):
+            with ui.row().classes("w-full items-center gap-3 py-0.5"):
                 ui.label("Cutoff High").classes(
                     "w-24 text-xs font-semibold text-slate-300"
                 )
@@ -109,7 +113,7 @@ def build_histogram_card(step: Any, ui: Any) -> None:
                         on_change=step._on_param_change,
                     )
                     .classes("flex-1")
-                    .props("label")
+                    .props("label dense")
                 )
                 ui.label().classes(BADGE_CLASSES).bind_text_from(
                     step.autocontrast_cutoff_high,
@@ -117,19 +121,23 @@ def build_histogram_card(step: Any, ui: Any) -> None:
                     lambda v: f"{int(float(v or 0))}%",
                 )
 
-        ui.separator().classes("bg-white/10 my-1")
+        ui.separator().classes("bg-white/10 my-0.5")
 
-        step.autocontrast_cut_images_enabled = ui.checkbox(
-            "Cut Images (ROIs) AutoContrast",
-            value=False,
-            on_change=step._on_param_change,
-        ).tooltip(
-            "Apply automatic contrast stretching individually on "
-            "cropped digit/pointer ROI images"
+        step.autocontrast_cut_images_enabled = (
+            ui.checkbox(
+                "Cut Images (ROIs) AutoContrast",
+                value=False,
+                on_change=step._on_param_change,
+            )
+            .props("dense")
+            .tooltip(
+                "Apply automatic contrast stretching individually on "
+                "cropped digit/pointer ROI images"
+            )
         )
 
-        with ui.column().classes("w-full gap-4"):
-            with ui.row().classes("w-full items-center gap-3 py-1"):
+        with ui.column().classes("w-full gap-2.5"):
+            with ui.row().classes("w-full items-center gap-3 py-0.5"):
                 ui.label("ROI Cutoff Low").classes(
                     "w-24 text-xs font-semibold text-slate-300"
                 )
@@ -142,7 +150,7 @@ def build_histogram_card(step: Any, ui: Any) -> None:
                         on_change=step._on_param_change,
                     )
                     .classes("flex-1")
-                    .props("label")
+                    .props("label dense")
                 )
                 ui.label().classes(BADGE_CLASSES).bind_text_from(
                     step.autocontrast_cut_images_cutoff_low,
@@ -150,7 +158,7 @@ def build_histogram_card(step: Any, ui: Any) -> None:
                     lambda v: f"{int(float(v or 0))}%",
                 )
 
-            with ui.row().classes("w-full items-center gap-3 py-1"):
+            with ui.row().classes("w-full items-center gap-3 py-0.5"):
                 ui.label("ROI Cutoff High").classes(
                     "w-24 text-xs font-semibold text-slate-300"
                 )
@@ -163,7 +171,7 @@ def build_histogram_card(step: Any, ui: Any) -> None:
                         on_change=step._on_param_change,
                     )
                     .classes("flex-1")
-                    .props("label")
+                    .props("label dense")
                 )
                 ui.label().classes(BADGE_CLASSES).bind_text_from(
                     step.autocontrast_cut_images_cutoff_high,

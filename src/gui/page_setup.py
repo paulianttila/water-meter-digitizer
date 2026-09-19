@@ -669,9 +669,9 @@ class SetupPage:
                 self.wizard_next_btn.text = "Continue"
                 self.wizard_next_btn.props("icon-right=arrow_forward")
                 self.wizard_next_btn.classes(
-                    "px-5 py-2 rounded-xl text-sm font-semibold bg-gradient-to-r "
+                    "px-4 py-1.5 rounded-lg text-sm font-semibold bg-gradient-to-r "
                     "from-blue-600 to-cyan-600 hover:from-blue-500 "
-                    "hover:to-cyan-500 text-white shadow-lg "
+                    "hover:to-cyan-500 text-white shadow-md "
                     "shadow-cyan-950/40 transition-all",
                     remove="from-emerald-600 to-teal-600 hover:from-emerald-500 "
                     "hover:to-teal-500 shadow-emerald-950/40",
@@ -1044,8 +1044,8 @@ class SetupPage:
             restore_dialog.open()
 
         with ui.row().classes(
-            "w-full justify-between items-center mb-3 p-3 bg-slate-900/60 "
-            "border border-white/10 rounded-2xl shadow-md backdrop-blur-md shrink-0"
+            "w-full justify-between items-center mb-2 px-4 py-2 bg-slate-900/60 "
+            "border border-white/10 rounded-xl shadow-md backdrop-blur-md shrink-0"
         ):
             with ui.row().classes("items-center gap-3"):
                 ui.icon("auto_fix_high", size="md").classes("text-indigo-400")
@@ -1185,9 +1185,9 @@ class SetupPage:
             with (
                 splitter.before,
                 ui.column().classes(
-                    "w-full h-full rounded-2xl bg-slate-950/80 p-3 "
+                    "w-full h-full rounded-xl bg-slate-950/80 p-2.5 "
                     "border border-white/10 shadow-2xl backdrop-blur-md "
-                    "gap-3 overflow-y-auto overflow-x-hidden min-w-0 no-wrap"
+                    "gap-2.5 overflow-y-auto overflow-x-hidden min-w-0 no-wrap"
                 ),
             ):
                 # Original Image Card
@@ -1222,7 +1222,7 @@ class SetupPage:
                     )
                     with ui.row().classes(
                         "w-full min-w-0 shrink-0 justify-between items-center "
-                        "px-2 py-1.5 rounded-lg bg-slate-950/80 border "
+                        "px-2.5 py-1 rounded-lg bg-slate-950/80 border "
                         "border-white/5 text-xs text-slate-400 gap-2"
                     ):
                         self.image_details = ui.label("").classes(
@@ -1311,8 +1311,8 @@ class SetupPage:
 
                 # Persistent Docked Bottom Navigation Bar
                 with ui.row().classes(
-                    "w-full justify-between items-center p-3 mt-2 "
-                    "bg-slate-900/90 border border-white/10 rounded-2xl "
+                    "w-full justify-between items-center px-4 py-2 mt-1.5 "
+                    "bg-slate-900/90 border border-white/10 rounded-xl "
                     "shadow-2xl backdrop-blur-md shrink-0"
                 ):
                     self.wizard_prev_btn = (
@@ -1323,7 +1323,7 @@ class SetupPage:
                         )
                         .props("flat color=grey text-color=white")
                         .classes(
-                            "px-4 py-2 rounded-xl text-sm font-medium "
+                            "px-3.5 py-1.5 rounded-lg text-sm font-medium "
                             "hover:bg-white/10 transition-all"
                         )
                         .tooltip("Return to previous step")
@@ -1335,8 +1335,8 @@ class SetupPage:
                             f"Step 1 of {len(steps_order)}: {steps_order[0]}"
                         ).classes(
                             "text-xs font-semibold text-slate-300 font-mono "
-                            "bg-slate-950/70 border border-white/10 px-3 "
-                            "py-1.5 rounded-xl shadow-inner"
+                            "bg-slate-950/70 border border-white/10 px-2.5 "
+                            "py-1 rounded-lg shadow-inner"
                         )
 
                     self.wizard_next_btn = (
@@ -1346,10 +1346,10 @@ class SetupPage:
                         )
                         .props("unelevated icon-right=arrow_forward")
                         .classes(
-                            "px-5 py-2 rounded-xl text-sm font-semibold "
+                            "px-4 py-1.5 rounded-lg text-sm font-semibold "
                             "bg-gradient-to-r from-blue-600 to-cyan-600 "
                             "hover:from-blue-500 hover:to-cyan-500 "
-                            "text-white shadow-lg shadow-cyan-950/40 "
+                            "text-white shadow-md shadow-cyan-950/40 "
                             "transition-all"
                         )
                         .tooltip("Proceed to next step")

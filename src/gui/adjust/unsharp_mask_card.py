@@ -14,7 +14,7 @@ def build_unsharp_mask_card(step: Any, ui: Any) -> None:
             "w-full bg-slate-900/60 border border-white/10 rounded-xl "
             "shadow-md overflow-hidden"
         ),
-        ui.column().classes("w-full gap-3 p-3"),
+        ui.column().classes("w-full gap-2.5 p-2.5"),
     ):
         with ui.row().classes("w-full items-center justify-between flex-wrap gap-2"):
             step.sharpness_mode = (
@@ -28,6 +28,7 @@ def build_unsharp_mask_card(step: Any, ui: Any) -> None:
                     value="unsharp_mask",
                     on_change=step._on_param_change,
                 )
+                .props("dense outlined")
                 .classes("w-64")
                 .tooltip("Algorithm used for spatial digit edge enhancement")
             )
@@ -35,14 +36,14 @@ def build_unsharp_mask_card(step: Any, ui: Any) -> None:
             with ui.row().classes("items-center gap-2"):
                 ui.label("Focus Metric:").classes("text-xs text-slate-400 font-medium")
                 step.focus_score_badge = ui.label("Calculating...").classes(
-                    "text-xs font-mono font-bold px-2 py-1 rounded bg-slate-800 border border-white/10 text-emerald-400"
+                    "text-xs font-mono font-bold px-2 py-0.5 rounded bg-slate-800 border border-white/10 text-emerald-400"
                 )
 
-        with ui.column().classes("w-full gap-4"):
+        with ui.column().classes("w-full gap-2.5"):
             # Standard Sharpness (visible when standard is selected)
             with (
                 ui.row()
-                .classes("w-full items-center gap-3 py-1")
+                .classes("w-full items-center gap-3 py-0.5")
                 .bind_visibility_from(
                     step.sharpness_mode, "value", lambda v: v == "standard"
                 )
@@ -59,7 +60,7 @@ def build_unsharp_mask_card(step: Any, ui: Any) -> None:
                         on_change=step._on_param_change,
                     )
                     .classes("flex-1")
-                    .props("label")
+                    .props("label dense")
                 )
                 ui.label().classes(BADGE_CLASSES).bind_text_from(
                     step.adjust_sharpness,
@@ -70,7 +71,7 @@ def build_unsharp_mask_card(step: Any, ui: Any) -> None:
             # Unsharp Mask Amount
             with (
                 ui.row()
-                .classes("w-full items-center gap-3 py-1")
+                .classes("w-full items-center gap-3 py-0.5")
                 .bind_visibility_from(
                     step.sharpness_mode,
                     "value",
@@ -89,7 +90,7 @@ def build_unsharp_mask_card(step: Any, ui: Any) -> None:
                         on_change=step._on_param_change,
                     )
                     .classes("flex-1")
-                    .props("label")
+                    .props("label dense")
                 )
                 ui.label().classes(BADGE_CLASSES).bind_text_from(
                     step.unsharp_amount,
@@ -100,7 +101,7 @@ def build_unsharp_mask_card(step: Any, ui: Any) -> None:
             # Unsharp Mask Radius
             with (
                 ui.row()
-                .classes("w-full items-center gap-3 py-1")
+                .classes("w-full items-center gap-3 py-0.5")
                 .bind_visibility_from(
                     step.sharpness_mode,
                     "value",
@@ -119,7 +120,7 @@ def build_unsharp_mask_card(step: Any, ui: Any) -> None:
                         on_change=step._on_param_change,
                     )
                     .classes("flex-1")
-                    .props("label")
+                    .props("label dense")
                 )
                 ui.label().classes(BADGE_CLASSES).bind_text_from(
                     step.unsharp_radius,
@@ -130,7 +131,7 @@ def build_unsharp_mask_card(step: Any, ui: Any) -> None:
             # Unsharp Mask Threshold
             with (
                 ui.row()
-                .classes("w-full items-center gap-3 py-1")
+                .classes("w-full items-center gap-3 py-0.5")
                 .bind_visibility_from(
                     step.sharpness_mode,
                     "value",
@@ -149,7 +150,7 @@ def build_unsharp_mask_card(step: Any, ui: Any) -> None:
                         on_change=step._on_param_change,
                     )
                     .classes("flex-1")
-                    .props("label")
+                    .props("label dense")
                 )
                 ui.label().classes(BADGE_CLASSES).bind_text_from(
                     step.unsharp_threshold,
@@ -157,10 +158,14 @@ def build_unsharp_mask_card(step: Any, ui: Any) -> None:
                     lambda v: f"{int(float(v or 3))}",
                 )
 
-        step.auto_sharpen_cut_images = ui.checkbox(
-            "Sharpen Cut Images (ROIs) Individually",
-            value=False,
-            on_change=step._on_param_change,
-        ).tooltip(
-            "Apply luminance unsharp masking to cropped digit and pointer images before neural inference"
+        step.auto_sharpen_cut_images = (
+            ui.checkbox(
+                "Sharpen Cut Images (ROIs) Individually",
+                value=False,
+                on_change=step._on_param_change,
+            )
+            .props("dense")
+            .tooltip(
+                "Apply luminance unsharp masking to cropped digit and pointer images before neural inference"
+            )
         )
