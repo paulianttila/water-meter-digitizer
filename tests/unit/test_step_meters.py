@@ -135,3 +135,54 @@ def test_meter_step_refresh_digit_names():
         "analog2",
         ".",
     ]
+
+
+def test_digits_holder():
+    from gui.step_meters import DigitsHolder
+
+    change_called = False
+
+    def on_ch():
+        nonlocal change_called
+        change_called = True
+
+    dh = DigitsHolder(value=["d1", "d2"], options=["d1", "d2", "."], on_change=on_ch)
+    assert dh.value == ["d1", "d2"]
+    assert dh.options == ["d1", "d2", "."]
+
+    dh.value = ["d1", ".", "d2"]
+    assert dh.value == ["d1", ".", "d2"]
+    assert change_called is True
+
+    change_called = False
+    dh.update()
+    assert change_called is True
+
+
+def test_meter_render_inline_badges_and_dialog():
+    m = Meter(["digit1", "digit2", "analog1"], "main_meter")
+    # Without badge container (should not crash)
+    m.render_inline_badges()
+
+    with patch("gui.step_meters.ui") as mock_ui:
+        mock_ui.card.return_value.__enter__ = MagicMock()
+        mock_ui.card.return_value.__exit__ = MagicMock()
+        mock_ui.row.return_value.__enter__ = MagicMock()
+        mock_ui.row.return_value.__exit__ = MagicMock()
+        mock_ui.grid.return_value.__enter__ = MagicMock()
+        mock_ui.grid.return_value.__exit__ = MagicMock()
+        mock_ui.element.return_value.__enter__ = MagicMock()
+        mock_ui.element.return_value.__exit__ = MagicMock()
+        mock_ui.column.return_value.__enter__ = MagicMock()
+        mock_ui.column.return_value.__exit__ = MagicMock()
+        mock_ui.dialog.return_value.__enter__ = MagicMock()
+        mock_ui.dialog.return_value.__exit__ = MagicMock()
+
+        m.show_new()
+        m.digits.value = ["digit1", ".", "analog1"]
+        m.update_vals()
+        assert m.meter.value == "{digit1}.{analog1}"
+
+        # Test opening order dialog
+        m.open_order_dialog()
+        mock_ui.dialog.assert_called()
