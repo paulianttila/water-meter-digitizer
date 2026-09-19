@@ -34,6 +34,26 @@ class MeterConfig(BaseModel):
         return re.findall(r"\{(.*?)\}", self.format)
 
 
+INVALID_DIGIT = "?"
+
+
+class CutImageOptions(BaseModel):
+    autocontrast: bool = False
+    cutoff_low: int = 2
+    cutoff_high: int = 45
+    ignore: int | None = 2
+    glare_suppression: bool = False
+    glare_mode: str = "clahe"
+    glare_inpaint_threshold: int = 230
+    glare_inpaint_radius: int = 3
+    glare_clahe_clip_limit: float = 2.0
+    glare_clahe_grid_size: int = 8
+    unsharp: bool = False
+    unsharp_radius: float = 1.0
+    unsharp_amount: float = 1.5
+    unsharp_threshold: int = 3
+
+
 class CutImage(BaseModel):
     model_config = ConfigDict(arbitrary_types_allowed=True)
 

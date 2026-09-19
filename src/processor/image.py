@@ -1,3 +1,4 @@
+import functools
 import logging
 from collections.abc import Callable, Sequence
 from typing import Any
@@ -6,12 +7,13 @@ from PIL.Image import Image
 
 import utils.download
 import utils.image
-from data_classes import CutImage, ImagePosition, RefImage
+from data_classes import CutImage, CutImageOptions, ImagePosition, RefImage
 
 logger = logging.getLogger(__name__)
 
 
 def _conditional_func(func) -> Callable[..., "ImageProcessor"]:
+    @functools.wraps(func)
     def wrapper(self, *args, **kwargs):
         if self.condition is not None and self.condition is False:
             return self
@@ -58,21 +60,20 @@ class ImageProcessor:
         return self
 
     @_conditional_func
-    def set_image_from_base64_str(self, data: str) -> "ImageProcessor":
-        self.image = utils.image.convert_base64_str_to_image(data)
+    def set_image_from_base64_str(self, image_as_str: str) -> "ImageProcessor":
+        self.image = utils.image.convert_base64_str_to_image(image_as_str)
         return self
 
     def get_image(self) -> Image:
-        return self.image.copy()
+        return self.image
 
     def get_picture(self, name: str) -> Image:
-        img = self.pictures.get(name, None)
-        if img is None:
-            raise ValueError(f"No image with name {name} available")
-        return img.copy()
+        if name in self.pictures:
+            return self.pictures[name]
+        raise ValueError(f"No image with name {name} available")
 
-    def get_pictures(self) -> dict:
-        return self.pictures.copy()
+    def get_pictures(self) -> dict[str, Image]:
+        return self.pictures
 
     def get_image_as_base64_str(self) -> str:
         return utils.image.convert_image_base64str(image=self.image)
@@ -80,7 +81,7 @@ class ImageProcessor:
     @_conditional_func
     def save_image(self, name: str, force_save: bool = False) -> "ImageProcessor":
         if self.enable_img_saving or force_save:
-            logger.debug(f"Store image by name {name}")
+            logger.debug("Store image by name %s", name)
             self.pictures[name] = self.image
         return self
 
@@ -92,7 +93,7 @@ class ImageProcessor:
         min_image_size: int = 0,
         allowed_directories: list[str] | tuple[str, ...] | None = None,
     ) -> "ImageProcessor":
-        logger.debug(f"Download image from {url}")
+        logger.debug("Download image from %s", url)
         data = utils.download.load_file_from_url(
             url=url,
             timeout=timeout,
@@ -105,19 +106,19 @@ class ImageProcessor:
 
     @_conditional_func
     def rotate_image(self, angle: float) -> "ImageProcessor":
-        logger.debug(f"Rotate image by {angle} degrees")
+        logger.debug("Rotate image by %s degrees", angle)
         self.image = utils.image.rotate(self.image, angle, keep_org_size=False)
         return self
 
     @_conditional_func
     def crop_image(self, x: int, y: int, w: int, h: int) -> "ImageProcessor":
-        logger.debug(f"Crop image to x:{x}, y:{y}, w:{w}, h:{h}")
+        logger.debug("Crop image to x:%s, y:%s, w:%s, h:%s", x, y, w, h)
         self.image = utils.image.crop_image(self.image, x, y, w, h)
         return self
 
     @_conditional_func
     def resize_image(self, width: int, height: int) -> "ImageProcessor":
-        logger.debug(f"Resize image to width:{width}, height:{height}")
+        logger.debug("Resize image to width:%s, height:%s", width, height)
         self.image = utils.image.resize_image(self.image, width, height)
         return self
 
@@ -131,8 +132,12 @@ class ImageProcessor:
         gamma: float = 1.0,
     ) -> "ImageProcessor":
         logger.debug(
-            f"Adjust image contrast:{contrast}, brightness:{brightness}, "
-            f"sharpness:{sharpness}, color:{color}, gamma:{gamma}"
+            "Adjust image contrast:%s, brightness:%s, sharpness:%s, color:%s, gamma:%s",
+            contrast,
+            brightness,
+            sharpness,
+            color,
+            gamma,
         )
         self.image = utils.image.adjust_image(
             self.image,
@@ -146,7 +151,7 @@ class ImageProcessor:
 
     @_conditional_func
     def adjust_gamma(self, gamma: float = 1.0) -> "ImageProcessor":
-        logger.debug(f"Adjust gamma:{gamma}")
+        logger.debug("Adjust gamma:%s", gamma)
         self.image = utils.image.adjust_gamma(self.image, gamma=gamma)
         return self
 
@@ -158,7 +163,10 @@ class ImageProcessor:
         threshold: int = 3,
     ) -> "ImageProcessor":
         logger.debug(
-            f"Unsharp mask radius:{radius}, amount:{amount}, threshold:{threshold}"
+            "Unsharp mask radius:%s, amount:%s, threshold:%s",
+            radius,
+            amount,
+            threshold,
         )
         self.image = utils.image.unsharp_mask(
             self.image,
@@ -176,8 +184,10 @@ class ImageProcessor:
         ignore: int | None = None,
     ) -> "ImageProcessor":
         logger.debug(
-            f"Auto contrast image cutoff_low:{cutoff_low}, cutoff_high:{cutoff_high}, "
-            f"ignore:{ignore}"
+            "Auto contrast image cutoff_low:%s, cutoff_high:%s, ignore:%s",
+            cutoff_low,
+            cutoff_high,
+            ignore,
         )
         self.image = utils.image.autocontrast_image(
             self.image,
@@ -197,9 +207,12 @@ class ImageProcessor:
         clahe_grid_size: int = 8,
     ) -> "ImageProcessor":
         logger.debug(
-            f"Suppress glare mode:{mode}, inpaint_threshold:{inpaint_threshold}, "
-            f"inpaint_radius:{inpaint_radius}, clahe_clip_limit:{clahe_clip_limit}, "
-            f"clahe_grid_size:{clahe_grid_size}"
+            "Suppress glare mode:%s, inpaint_threshold:%s, inpaint_radius:%s, clahe_clip_limit:%s, clahe_grid_size:%s",
+            mode,
+            inpaint_threshold,
+            inpaint_radius,
+            clahe_clip_limit,
+            clahe_grid_size,
         )
         self.image = utils.image.suppress_glare(
             self.image,
@@ -222,7 +235,7 @@ class ImageProcessor:
         self,
         align_images: Sequence[RefImage],
     ) -> "ImageProcessor":
-        logger.debug(f"Align image to {align_images}")
+        logger.debug("Align image to %s", align_images)
         self.image = utils.image.align(
             self.image,
             list(align_images),
@@ -233,41 +246,34 @@ class ImageProcessor:
     def cut_image(
         self,
         position: ImagePosition,
-        autocontrast: bool = False,
-        cutoff_low: int = 2,
-        cutoff_high: int = 45,
-        ignore: int = 2,
-        glare_suppression: bool = False,
-        glare_mode: str = "clahe",
-        glare_inpaint_threshold: int = 230,
-        glare_inpaint_radius: int = 3,
-        glare_clahe_clip_limit: float = 2.0,
-        glare_clahe_grid_size: int = 8,
-        unsharp: bool = False,
-        unsharp_radius: float = 1.0,
-        unsharp_amount: float = 1.5,
-        unsharp_threshold: int = 3,
+        options: CutImageOptions | None = None,
+        **kwargs: Any,
     ) -> "ImageProcessor":
+        if options is None:
+            options = CutImageOptions(**kwargs)
         image = utils.image.cut_image(self.image, position)
-        if autocontrast:
+        if options.autocontrast:
             image = utils.image.autocontrast_image(
-                image, cutoff_low, cutoff_high, ignore
+                image,
+                options.cutoff_low,
+                options.cutoff_high,
+                options.ignore,
             )
-        if glare_suppression:
+        if options.glare_suppression:
             image = utils.image.suppress_glare(
                 image,
-                mode=glare_mode,
-                inpaint_threshold=glare_inpaint_threshold,
-                inpaint_radius=glare_inpaint_radius,
-                clahe_clip_limit=glare_clahe_clip_limit,
-                clahe_grid_size=glare_clahe_grid_size,
+                mode=options.glare_mode,
+                inpaint_threshold=options.glare_inpaint_threshold,
+                inpaint_radius=options.glare_inpaint_radius,
+                clahe_clip_limit=options.glare_clahe_clip_limit,
+                clahe_grid_size=options.glare_clahe_grid_size,
             )
-        if unsharp:
+        if options.unsharp:
             image = utils.image.unsharp_mask(
                 image,
-                radius=unsharp_radius,
-                amount=unsharp_amount,
-                threshold=unsharp_threshold,
+                radius=options.unsharp_radius,
+                amount=options.unsharp_amount,
+                threshold=options.unsharp_threshold,
             )
         self.cut_images_list.append(CutImage(name=position.name, image=image))
         return self
@@ -276,39 +282,13 @@ class ImageProcessor:
     def cut_images(
         self,
         positions: Sequence[ImagePosition],
-        autocontrast: bool = False,
-        cutoff_low: int = 2,
-        cutoff_high: int = 45,
-        ignore: int = 2,
-        glare_suppression: bool = False,
-        glare_mode: str = "clahe",
-        glare_inpaint_threshold: int = 230,
-        glare_inpaint_radius: int = 3,
-        glare_clahe_clip_limit: float = 2.0,
-        glare_clahe_grid_size: int = 8,
-        unsharp: bool = False,
-        unsharp_radius: float = 1.0,
-        unsharp_amount: float = 1.5,
-        unsharp_threshold: int = 3,
+        options: CutImageOptions | None = None,
+        **kwargs: Any,
     ) -> "ImageProcessor":
+        if options is None:
+            options = CutImageOptions(**kwargs)
         for pos in positions:
-            self.cut_image(
-                position=pos,
-                autocontrast=autocontrast,
-                cutoff_low=cutoff_low,
-                cutoff_high=cutoff_high,
-                ignore=ignore,
-                glare_suppression=glare_suppression,
-                glare_mode=glare_mode,
-                glare_inpaint_threshold=glare_inpaint_threshold,
-                glare_inpaint_radius=glare_inpaint_radius,
-                glare_clahe_clip_limit=glare_clahe_clip_limit,
-                glare_clahe_grid_size=glare_clahe_grid_size,
-                unsharp=unsharp,
-                unsharp_radius=unsharp_radius,
-                unsharp_amount=unsharp_amount,
-                unsharp_threshold=unsharp_threshold,
-            )
+            self.cut_image(position=pos, options=options)
         return self
 
     @_conditional_func

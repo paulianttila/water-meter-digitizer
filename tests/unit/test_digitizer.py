@@ -671,10 +671,10 @@ def test_process_async():
         mock_proc.return_value = MagicMock()
         res = asyncio.run(processor.process_async([], [], []))
         assert res is not None
-        mock_proc.assert_called_once_with([], [], [], None)
+        mock_proc.assert_called_once_with([], [], [], None, None)
 
 
-def test_execute_analog_cnn_uninitialized():
+def test_process_uninitialized():
     processor = DigitizerProcessor()
     with pytest.raises(ValueError, match="No CNN reader initialized"):
-        processor.execute_analog_cnn([])
+        processor.process([], [], [])

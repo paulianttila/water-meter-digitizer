@@ -1,4 +1,4 @@
-INVALID_DIGIT = "?"
+from data_classes import INVALID_DIGIT
 
 
 def fill_value_with_leading_zeros(length: int, value: str) -> str:

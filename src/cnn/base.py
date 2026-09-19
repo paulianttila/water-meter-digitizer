@@ -66,12 +66,17 @@ class CNNBase:
             self.pool = get_interpreter_pool(self.modelfile, max_size=self.pool_size)
             details = self.get_model_details()
             logger.debug(
-                f"Model '{self.modelfile}' details: "
-                f"{details.xsize}x{details.ysize}x{details.channels}, "
-                f"Output: {details.numer_output}"
+                "Model '%s' details: %sx%sx%s, Output: %s",
+                self.modelfile,
+                details.xsize,
+                details.ysize,
+                details.channels,
+                details.numer_output,
             )
         except Exception as e:
-            logger.error(f"Error occurred during model '{self.modelfile}' loading: {e}")
+            logger.error(
+                "Error occurred during model '%s' loading: %s", self.modelfile, e
+            )
 
     @property
     def interpreter(self):
@@ -79,7 +84,6 @@ class CNNBase:
         if self.pool is not None:
             with self.pool.acquire() as inst:
                 return inst.interpreter
-            return None
         return None
 
     @property

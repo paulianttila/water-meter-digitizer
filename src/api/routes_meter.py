@@ -10,6 +10,7 @@ from fastapi.responses import JSONResponse
 import previous_value
 import utils.image
 from configuration import Config
+from data_classes import CutImageOptions
 from decorators.decorators import log_execution_time
 from processor.digitizer import DigitizerProcessor, MeterResult
 from processor.image import (
@@ -327,26 +328,27 @@ def get_meter_data(
         and config.image_processing.auto_sharpen_cut_images
     )
 
+    cut_options = CutImageOptions(
+        autocontrast=autocontrast,
+        cutoff_low=config.image_processing.autocontrast_cut_images.cutoff_low,
+        cutoff_high=config.image_processing.autocontrast_cut_images.cutoff_high,
+        ignore=config.image_processing.autocontrast_cut_images.ignore,
+        glare_suppression=glare_cut,
+        glare_mode=config.image_processing.glare_suppression.mode,
+        glare_inpaint_threshold=config.image_processing.glare_suppression.inpaint_threshold,
+        glare_inpaint_radius=config.image_processing.glare_suppression.inpaint_radius,
+        glare_clahe_clip_limit=config.image_processing.glare_suppression.clahe_clip_limit,
+        glare_clahe_grid_size=config.image_processing.glare_suppression.clahe_grid_size,
+        unsharp=unsharp_cut,
+        unsharp_radius=config.image_processing.unsharp_radius,
+        unsharp_amount=config.image_processing.unsharp_amount,
+        unsharp_threshold=config.image_processing.unsharp_threshold,
+    )
+
     def _extract_rois(positions):
         return (
             image_processor.start_image_cutting()
-            .cut_images(
-                positions,
-                autocontrast=autocontrast,
-                cutoff_low=config.image_processing.autocontrast_cut_images.cutoff_low,
-                cutoff_high=config.image_processing.autocontrast_cut_images.cutoff_high,
-                ignore=config.image_processing.autocontrast_cut_images.ignore,
-                glare_suppression=glare_cut,
-                glare_mode=config.image_processing.glare_suppression.mode,
-                glare_inpaint_threshold=config.image_processing.glare_suppression.inpaint_threshold,
-                glare_inpaint_radius=config.image_processing.glare_suppression.inpaint_radius,
-                glare_clahe_clip_limit=config.image_processing.glare_suppression.clahe_clip_limit,
-                glare_clahe_grid_size=config.image_processing.glare_suppression.clahe_grid_size,
-                unsharp=unsharp_cut,
-                unsharp_radius=config.image_processing.unsharp_radius,
-                unsharp_amount=config.image_processing.unsharp_amount,
-                unsharp_threshold=config.image_processing.unsharp_threshold,
-            )
+            .cut_images(positions, options=cut_options)
             .stop_image_cutting()
             .save_cut_images()
             .get_cut_images()

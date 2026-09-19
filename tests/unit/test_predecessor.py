@@ -23,6 +23,7 @@ from src.processor.digitizer import (
     Meter,
     MeterConfig,
     ReadoutResult,
+    RolloverCorrector,
 )
 
 
@@ -63,9 +64,10 @@ def _digital_results(*values: float, model: str = MODEL_DIGITAL) -> list[Readout
     ],
 )
 def test_wheel_without_predecessor_rounds_half_up(number: float, expected: int) -> None:
-    assert _processor()._evaluate_wheel_counter(number) == expected
+    assert RolloverCorrector.evaluate_wheel_counter(number) == expected
     assert (
-        _processor()._evaluate_wheel_counter(number, predecessor_value=None) == expected
+        RolloverCorrector.evaluate_wheel_counter(number, predecessor_value=None)
+        == expected
     )
 
 
@@ -92,7 +94,7 @@ def test_wheel_carry_down_when_this_past_half_and_predecessor_before_half(
     number: float, predecessor: float, expected: int
 ) -> None:
     assert (
-        _processor()._evaluate_wheel_counter(number, predecessor_value=predecessor)
+        RolloverCorrector.evaluate_wheel_counter(number, predecessor_value=predecessor)
         == expected
     )
 
@@ -118,7 +120,7 @@ def test_wheel_returns_nine_when_this_before_half_and_predecessor_past_half(
     number: float, predecessor: float, expected: int
 ) -> None:
     assert (
-        _processor()._evaluate_wheel_counter(number, predecessor_value=predecessor)
+        RolloverCorrector.evaluate_wheel_counter(number, predecessor_value=predecessor)
         == expected
     )
 
@@ -146,13 +148,13 @@ def test_wheel_same_side_of_half_keeps_rounded_digit(
     number: float, predecessor: float, expected: int
 ) -> None:
     assert (
-        _processor()._evaluate_wheel_counter(number, predecessor_value=predecessor)
+        RolloverCorrector.evaluate_wheel_counter(number, predecessor_value=predecessor)
         == expected
     )
 
 
 def test_wheel_predecessor_digit_argument_is_ignored() -> None:
-    result = _processor()._evaluate_counter(
+    result = RolloverCorrector.evaluate_counter(
         name="analog1",
         number=4.3,
         predecessor_digit=0,
@@ -330,7 +332,7 @@ def test_evaluate_counters_analog_then_digital_does_not_feed_predecessor() -> No
 def test_digital100_without_predecessor_uses_floor(
     number: float, expected: int
 ) -> None:
-    result = _processor()._evaluate_digital_counter(
+    result = RolloverCorrector.evaluate_digital_counter(
         name="digit1",
         number=number,
         predecessor_value=None,
@@ -361,7 +363,7 @@ def test_digital100_without_predecessor_uses_floor(
 def test_digital100_with_predecessor_uses_round_half_up(
     number: float, predecessor: float, expected: int
 ) -> None:
-    result = _processor()._evaluate_digital_counter(
+    result = RolloverCorrector.evaluate_digital_counter(
         name="digit1",
         number=number,
         predecessor_value=predecessor,
@@ -375,7 +377,7 @@ def test_digital100_with_predecessor_uses_round_half_up(
     [float("nan"), -0.1, -1.0, 100.0, 100.1, 150.0],
 )
 def test_digital100_invalid_values(number: float) -> None:
-    result = _processor()._evaluate_digital_counter(
+    result = RolloverCorrector.evaluate_digital_counter(
         name="digit1",
         number=number,
         predecessor_value=5.0,

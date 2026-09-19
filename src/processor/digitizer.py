@@ -139,6 +139,13 @@ class DigitizerProcessor:
         min_confidence_threshold: float | None = None,
         detect_negative_sign: bool | None = None,
     ) -> MeterResult:
+        if self.analog_counter_reader is None and self.digital_counter_reader is None:
+            raise ValueError("No CNN reader initialized")
+
+        self.cnn_analog_results = []
+        self.cnn_digital_results = []
+        self.available_values = {}
+
         if min_confidence_threshold is not None:
             self.min_confidence_threshold = min_confidence_threshold
         if detect_negative_sign is not None:
@@ -156,6 +163,7 @@ class DigitizerProcessor:
         digital_images: list[CutImage],
         meter_configs: list[MeterConfig],
         min_confidence_threshold: float | None = None,
+        detect_negative_sign: bool | None = None,
     ) -> MeterResult:
         """Asynchronously process meter images off the main event loop."""
         import asyncio
@@ -166,25 +174,20 @@ class DigitizerProcessor:
             digital_images,
             meter_configs,
             min_confidence_threshold,
+            detect_negative_sign,
         )
 
     @log_execution_time
     def execute_analog_cnn(self, images: list[CutImage]) -> "DigitizerProcessor":
-        if self.analog_counter_reader is None and self.digital_counter_reader is None:
-            raise ValueError("No CNN reader initialized")
         if self.analog_counter_reader is not None:
             result = []
             model = self._solve_model(
                 self.analog_model, self.analog_counter_reader.get_model_details()
             )
             for item in images:
-                if hasattr(self.analog_counter_reader, "readout_with_confidence"):
-                    value, conf = self.analog_counter_reader.readout_with_confidence(
-                        item.image
-                    )
-                else:
-                    value = self.analog_counter_reader.readout(item.image)
-                    conf = 100.0
+                value, conf = self.analog_counter_reader.readout_with_confidence(
+                    item.image
+                )
                 value = round(value, 1)
                 value = 0 if value == 10 else value
                 result.append(
@@ -207,13 +210,9 @@ class DigitizerProcessor:
                 self.digital_model, self.digital_counter_reader.get_model_details()
             )
             for item in images:
-                if hasattr(self.digital_counter_reader, "readout_with_confidence"):
-                    value, conf = self.digital_counter_reader.readout_with_confidence(
-                        item.image
-                    )
-                else:
-                    value = self.digital_counter_reader.readout(item.image)
-                    conf = 100.0
+                value, conf = self.digital_counter_reader.readout_with_confidence(
+                    item.image
+                )
 
                 if self.detect_negative_sign:
                     is_unreadable = (
@@ -251,7 +250,10 @@ class DigitizerProcessor:
         return self
 
     def evaluate_cnn_results(self) -> "DigitizerProcessor":
-        """Evaluate raw CNN predictions into preliminary discrete digits."""
+        """Evaluate raw CNN predictions into preliminary discrete baseline digits (without predecessor chaining).
+
+        Used to establish unprocessed_value before rollover post-processing.
+        """
         available_values: dict[str, int | str] = {}
 
         for result in self.cnn_analog_results + self.cnn_digital_results:
@@ -278,64 +280,6 @@ class DigitizerProcessor:
         return RolloverCorrector.evaluate_counters(
             values=values,
             min_confidence_threshold=self.min_confidence_threshold,
-        )
-
-    def _evaluate_counter(
-        self,
-        name: str,
-        number: float | int | str,
-        predecessor_digit: int | None,
-        model: str,
-        predecessor_value: float | None = None,
-    ) -> int | str:
-        return RolloverCorrector.evaluate_counter(
-            name=name,
-            number=number,
-            predecessor_digit=predecessor_digit,
-            model=model,
-            predecessor_value=predecessor_value,
-        )
-
-    def _evaluate_analog_counter(
-        self,
-        name: str,
-        number: float,
-        predecessor_digit: int | None = None,
-        predecessor_value: float | None = None,
-        model: str = "",
-    ) -> int:
-        return RolloverCorrector.evaluate_analog_counter(
-            name=name,
-            number=number,
-            predecessor_digit=predecessor_digit,
-            predecessor_value=predecessor_value,
-            model=model,
-        )
-
-    def _evaluate_digital_counter(
-        self,
-        name: str,
-        number: float | int | str,
-        predecessor_digit: int | None = None,
-        predecessor_value: float | None = None,
-        model: str = "",
-    ) -> int | str:
-        return RolloverCorrector.evaluate_digital_counter(
-            name=name,
-            number=number,
-            predecessor_digit=predecessor_digit,
-            predecessor_value=predecessor_value,
-            model=model,
-        )
-
-    def _evaluate_wheel_counter(
-        self,
-        number: float,
-        predecessor_value: float | None = None,
-    ) -> int:
-        return RolloverCorrector.evaluate_wheel_counter(
-            number=number,
-            predecessor_value=predecessor_value,
         )
 
     # ------------------------------------------------------------------
@@ -430,11 +374,6 @@ class DigitizerProcessor:
     ) -> list[ReadoutResult]:
         return [cnn_results[name] for name in meter.config.value_names]
 
-    def _adapt_previous_value_to_match_length(
-        self, number: str, previous_value: str
-    ) -> str:
-        return FormatParser.adapt_previous_value_to_match_length(number, previous_value)
-
     def _append_extended_digit(
         self,
         meter: Meter,
@@ -443,11 +382,6 @@ class DigitizerProcessor:
         last_digit = cnn_results.get(meter.config.value_names[-1])
         last_val = last_digit.value if last_digit else None
         return FormatParser.append_extended_digit(meter.value, last_val)
-
-    def _check_consistency(
-        self, meter: Meter, currentValue: str, previousValue: str
-    ) -> None:
-        ConsistencyValidator.validate_reading(meter.config, currentValue, previousValue)
 
     # ------------------------------------------------------------------
     # Result generation

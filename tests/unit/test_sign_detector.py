@@ -154,7 +154,6 @@ class TestDigitizerProcessorMinusSign:
         assert meter_val == "-042"
 
     def test_rate_consistency_with_negative_reading(self):
-        processor = DigitizerProcessor()
         meter_cfg = MeterConfig(
             name="total",
             format="{digit1}{digit2}",
@@ -162,11 +161,12 @@ class TestDigitizerProcessorMinusSign:
             allow_negative_rates=True,
             max_rate_value=5.0,
         )
-        from processor.digitizer import Meter
+        from processor.consistency_validator import ConsistencyValidator
 
-        meter = Meter(config=meter_cfg, name="total")
         # Negative rate check: previous is -10.0, current is -12.0 (delta = -2.0 <= 5.0)
-        processor._check_consistency(meter, currentValue="-12.0", previousValue="-10.0")
+        ConsistencyValidator.validate_reading(
+            meter_cfg, current_value="-12.0", previous_value="-10.0"
+        )
 
     def test_detect_negative_sign_toggle(self):
         processor = DigitizerProcessor()

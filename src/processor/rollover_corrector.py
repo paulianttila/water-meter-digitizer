@@ -4,9 +4,10 @@ import logging
 import math
 from typing import Any
 
+from data_classes import INVALID_DIGIT
+
 logger = logging.getLogger(__name__)
 
-INVALID_DIGIT = "?"
 MODEL_ANALOG = "analog"
 MODEL_DIGITAL = "digital"
 MODEL_ANALOG100 = "analog100"
