@@ -49,8 +49,41 @@ def test_create_roi_composite_strip():
     strip = create_roi_composite_strip(full_img, dig_crops, ana_crops)
     assert strip is not None
     assert len(strip.shape) == 3
-    assert strip.shape[0] > 0
+    assert strip.shape[0] == 76  # Default strip_height
     assert strip.shape[1] > 0
+
+
+def test_create_roi_composite_strip_proportional_scaling_and_labels():
+    """Verify that different crop dimensions and long ROI labels are handled with dynamic column widths."""
+    full_img = np.zeros((400, 400, 3), dtype=np.uint8)
+    # 1 small crop and 1 large crop
+    small_crop = np.ones((20, 20, 3), dtype=np.uint8) * 150
+    large_crop = np.ones((100, 80, 3), dtype=np.uint8) * 250
+
+    strip = create_roi_composite_strip(
+        full_img,
+        digital_rois=[large_crop],
+        analog_rois=[small_crop],
+        strip_height=80,
+    )
+    assert strip is not None
+    assert strip.shape[0] == 80
+    assert strip.shape[1] > 0
+
+
+def test_create_roi_composite_strip_with_roi_objects():
+    """Verify strip generation with structured ROI objects with custom names."""
+    from data_classes import ImagePosition
+
+    full_img = np.ones((200, 200, 3), dtype=np.uint8) * 128
+    rois = [
+        ImagePosition(name="digit_drum_1_main", x=10, y=10, w=30, h=50),
+        ImagePosition(name="subdial_x001", x=60, y=60, w=40, h=40),
+    ]
+    strip = create_roi_composite_strip(full_img, digital_rois=rois, strip_height=76)
+    assert strip is not None
+    assert strip.shape[0] == 76
+    assert strip.shape[1] > 100  # Wide enough to accommodate both full labels
 
 
 def test_compress_image_to_bytes():

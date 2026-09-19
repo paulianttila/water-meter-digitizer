@@ -626,14 +626,14 @@ class TimeMachineCard:
                                                         f"digital_{k}", 98.5
                                                     )
                                                     with ui.column().classes(
-                                                        "items-center p-1.5 bg-black/40 rounded border border-white/5 min-w-[42px]"
+                                                        "items-center p-1.5 px-2 bg-black/40 rounded border border-white/5 min-w-[48px]"
                                                     ):
                                                         ui.label(str(v)).classes(
                                                             "text-lg font-bold font-mono text-cyan-400"
                                                         )
                                                         ui.label(f"{k}").classes(
-                                                            "text-[10px] text-gray-400"
-                                                        )
+                                                            "text-[10px] text-gray-400 text-center truncate max-w-[100px]"
+                                                        ).tooltip(k)
                                                         ui.label(
                                                             f"{c_val:.0f}%"
                                                         ).classes(
@@ -664,14 +664,14 @@ class TimeMachineCard:
                                             with ui.row().classes("gap-2 flex-wrap"):
                                                 for k, v in ana_res.items():
                                                     with ui.column().classes(
-                                                        "items-center p-1.5 bg-black/40 rounded border border-white/5 min-w-[42px]"
+                                                        "items-center p-1.5 px-2 bg-black/40 rounded border border-white/5 min-w-[48px]"
                                                     ):
                                                         ui.label(str(v)).classes(
                                                             "text-lg font-bold font-mono text-amber-400"
                                                         )
                                                         ui.label(f"{k}").classes(
-                                                            "text-[10px] text-gray-400"
-                                                        )
+                                                            "text-[10px] text-gray-400 text-center truncate max-w-[100px]"
+                                                        ).tooltip(k)
 
                 # Build Scrubber Card contents
                 with scrubber_card:

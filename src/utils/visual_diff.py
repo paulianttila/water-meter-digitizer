@@ -107,9 +107,9 @@ def create_roi_composite_strip(
     image: Any,
     digital_rois: list[Any] | None = None,
     analog_rois: list[Any] | None = None,
-    strip_height: int = 70,
+    strip_height: int = 76,
 ) -> np.ndarray:
-    """Extract, label, and stitch all configured ROI crops into an ultra-compact composite strip (~2KB)."""
+    """Extract, label, and stitch all configured ROI crops into a proportional composite strip (~2-4KB)."""
     if image is None:
         blank = Image.new("RGB", (100, strip_height), (15, 23, 42))
         return cv2.cvtColor(np.array(blank), cv2.COLOR_RGB2BGR)
@@ -121,7 +121,7 @@ def create_roi_composite_strip(
     if digital_rois:
         for idx, roi in enumerate(digital_rois):
             if isinstance(roi, np.ndarray):
-                crops.append((f"dig_{idx}", _to_pil(roi)))
+                crops.append((f"digit_{idx+1}", _to_pil(roi)))
             elif hasattr(roi, "name"):
                 crop_img = utils.image.cut_image(pil_image, roi)
                 crops.append((roi.name, crop_img))
@@ -129,7 +129,7 @@ def create_roi_composite_strip(
     if analog_rois:
         for idx, roi in enumerate(analog_rois):
             if isinstance(roi, np.ndarray):
-                crops.append((f"ana_{idx}", _to_pil(roi)))
+                crops.append((f"analog_{idx+1}", _to_pil(roi)))
             elif hasattr(roi, "name"):
                 crop_img = utils.image.cut_image(pil_image, roi)
                 crops.append((roi.name, crop_img))
@@ -140,34 +140,75 @@ def create_roi_composite_strip(
         )
         return cv2.cvtColor(np.array(resized), cv2.COLOR_RGB2BGR)
 
-    target_crop_height = strip_height - 18
-    resized_crops = []
+    header_height = 16
+    max_crop_area_h = max(20, strip_height - header_height - 6)
+
+    # Compute a single uniform scale factor based on the maximum source crop height
+    max_source_h = max((c.height for _, c in crops), default=1)
+    scale = max_crop_area_h / max(1, max_source_h)
+
+    # Resize all crops proportionally maintaining relative sizes
+    resized_crops: list[tuple[str, Image.Image]] = []
+    for name, crop in crops:
+        crop_w = max(16, round(crop.width * scale))
+        crop_h = max(16, round(crop.height * scale))
+        resized = crop.resize((crop_w, crop_h), Image.Resampling.BILINEAR)
+        resized_crops.append((name, resized))
+
+    # Measure text length for dynamic slot sizing so ROI names are never cut off
+    dummy = Image.new("RGB", (1, 1))
+    measure_draw = ImageDraw.Draw(dummy)
+
+    slots: list[tuple[str, Image.Image, int, int]] = []
     total_width = 8
 
-    for name, crop in crops:
-        aspect = crop.width / max(1, crop.height)
-        crop_w = max(24, int(target_crop_height * aspect))
-        resized = crop.resize((crop_w, target_crop_height), Image.Resampling.BILINEAR)
-        resized_crops.append((name, resized))
-        total_width += crop_w + 6
+    for name, crop in resized_crops:
+        if hasattr(measure_draw, "textlength"):
+            text_w = int(measure_draw.textlength(name))
+        else:
+            bbox = measure_draw.textbbox((0, 0), name)
+            text_w = int(bbox[2] - bbox[0])
+
+        slot_w = max(crop.width, text_w + 8, 28)
+        slots.append((name, crop, slot_w, text_w))
+        total_width += slot_w + 6
 
     composite = Image.new("RGB", (total_width, strip_height), (15, 23, 42))
     draw = ImageDraw.Draw(composite)
 
     cur_x = 4
-    for name, crop in resized_crops:
-        composite.paste(crop, (cur_x, 14))
+    for name, crop, slot_w, text_w in slots:
+        # Horizontally center the crop within its slot
+        crop_x = cur_x + (slot_w - crop.width) // 2
+        # Vertically center the crop within the available crop area below header
+        crop_y = header_height + (max_crop_area_h - crop.height) // 2
+
+        composite.paste(crop, (crop_x, crop_y))
+
+        is_digital = "dig" in name.lower()
+        is_analog = "ana" in name.lower()
+        border_color = (
+            (59, 130, 246)
+            if is_digital
+            else ((245, 158, 11) if is_analog else (16, 185, 129))
+        )
+
         draw.rectangle(
-            [(cur_x, 14), (cur_x + crop.width - 1, 14 + crop.height - 1)],
-            outline=(59, 130, 246) if "dig" in name else (245, 158, 11),
+            [(crop_x, crop_y), (crop_x + crop.width - 1, crop_y + crop.height - 1)],
+            outline=border_color,
             width=1,
         )
+
+        # Horizontally center the full ROI name above the crop
+        text_x = cur_x + (slot_w - text_w) // 2
+        text_y = 2
         draw.text(
-            (cur_x + 1, 2),
-            name[:6],
-            fill=(148, 163, 184),
+            (text_x, text_y),
+            name,
+            fill=(203, 213, 225),
         )
-        cur_x += crop.width + 6
+
+        cur_x += slot_w + 6
 
     return cv2.cvtColor(np.array(composite), cv2.COLOR_RGB2BGR)
 
