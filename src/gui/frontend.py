@@ -235,7 +235,56 @@ GLOBAL_CSS = (
         object-fit: contain !important;
         display: block !important;
     }
+    body.shift-move-active .interactive-image-canvas,
+    body.shift-move-active .nicegui-interactive-image,
+    body.shift-move-active .nicegui-interactive-image img {
+        cursor: move !important;
+    }
+    body.shift-move-active:active .nicegui-interactive-image img {
+        cursor: grabbing !important;
+    }
+    #roi-move-indicator {
+        display: none;
+    }
+    body.shift-move-active #roi-move-indicator {
+        display: inline-flex !important;
+    }
+    .roi-shortcut-bar {
+        background: rgba(15, 23, 42, 0.55) !important;
+        border: 1px solid rgba(255, 255, 255, 0.08) !important;
+        backdrop-filter: blur(8px) !important;
+    }
+    .shortcut-chip-move .shortcut-move-active-tag {
+        display: none;
+    }
+    body.shift-move-active .shortcut-chip-move {
+        background: rgba(245, 158, 11, 0.18) !important;
+        border-color: rgba(245, 158, 11, 0.5) !important;
+        box-shadow: 0 0 10px rgba(245, 158, 11, 0.25) !important;
+    }
+    body.shift-move-active .shortcut-chip-move .shortcut-move-label {
+        color: #fcd34d !important;
+        font-weight: 600 !important;
+    }
+    body.shift-move-active .shortcut-chip-move .shortcut-move-active-tag {
+        display: inline-flex !important;
+    }
+    body.shift-move-active .shortcut-chip-draw {
+        opacity: 0.5 !important;
+    }
 </style>
+
+<script>
+    window.addEventListener('keydown', (e) => {
+        if (e.key === 'Shift') document.body.classList.add('shift-move-active');
+    });
+    window.addEventListener('keyup', (e) => {
+        if (e.key === 'Shift') document.body.classList.remove('shift-move-active');
+    });
+    window.addEventListener('blur', () => {
+        document.body.classList.remove('shift-move-active');
+    });
+</script>
 """
 )
 

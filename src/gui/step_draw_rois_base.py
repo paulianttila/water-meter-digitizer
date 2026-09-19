@@ -73,6 +73,8 @@ class DrawRoisBaseStep(BaseStep):
         self.draw_throttle_sec: float = (
             0.025  # 25ms ~ 40fps throttle for temp SVG updates
         )
+        self.is_moving: bool = False
+        self._move_start_positions: list[tuple[Roi, int, int]] = []
 
     def _sync_select_all_checkbox(self) -> None:
         if hasattr(self, "select_all") and self.select_all is not None:
@@ -100,6 +102,81 @@ class DrawRoisBaseStep(BaseStep):
     def _on_rois_changed(self) -> None:
         """Hook called whenever the list of ROIs is updated (added, removed, deleted, loaded)."""
         pass
+
+    def _find_roi_at(self, x: int, y: int) -> Roi | None:
+        """Find the topmost ROI containing the image coordinate (x, y)."""
+        for roi in reversed(self.rois):
+            if roi.x <= x <= roi.x + roi.w and roi.y <= y <= roi.y + roi.h:
+                return roi
+        return None
+
+    def build_shortcuts_bar(self) -> ui.row:
+        """Build a compact, discoverable quick-shortcuts bar for canvas interactions."""
+        with (
+            ui.row().classes(
+                "roi-shortcut-bar w-full items-center justify-between px-3 py-1.5 rounded-xl "
+                "bg-slate-900/50 border border-white/10 text-xs text-slate-300 gap-2 mb-2"
+            ) as bar,
+            ui.row().classes("items-center gap-2 min-w-0 flex-wrap"),
+        ):
+            with ui.row().classes("items-center gap-1.5 text-slate-400 shrink-0"):
+                ui.icon("tips_and_updates", size="16px").classes(
+                    "text-amber-400 shrink-0"
+                )
+                ui.label("Shortcuts:").classes(
+                    "font-semibold text-slate-300 text-[11px] uppercase tracking-wider"
+                )
+
+            # Draw chip
+            with (
+                ui.row()
+                .classes(
+                    "shortcut-chip-draw items-center gap-1.5 px-2 py-0.5 rounded-md "
+                    "bg-slate-800/80 border border-white/10 text-slate-200 text-xs transition-colors shrink-0 cursor-default"
+                )
+                .tooltip(
+                    "Click and drag on the image canvas to draw a new bounding box or resize the selected ROI."
+                )
+            ):
+                ui.icon("draw", size="14px").classes("text-cyan-400")
+                ui.label("Drag").classes(
+                    "font-mono font-bold text-cyan-300 text-[11px] bg-cyan-950/60 px-1 py-0.2 rounded border border-cyan-500/30"
+                )
+                ui.label("Draw / Resize").classes("text-slate-300 text-[11px]")
+
+            # Move chip
+            with (
+                ui.row()
+                .classes(
+                    "shortcut-chip-move items-center gap-1.5 px-2 py-0.5 rounded-md "
+                    "bg-slate-800/80 border border-white/10 text-slate-200 text-xs transition-all shrink-0 cursor-default"
+                )
+                .tooltip(
+                    "Hold Shift and drag on the canvas to move the selected ROI box without changing its size. "
+                    "Shift-clicking an unselected box auto-selects and moves it."
+                )
+            ):
+                ui.icon("open_with", size="14px").classes(
+                    "text-amber-400 shortcut-move-icon"
+                )
+                with ui.row().classes(
+                    "items-center gap-0.5 font-mono font-bold text-[11px]"
+                ):
+                    ui.label("Shift").classes(
+                        "text-amber-300 bg-amber-950/60 px-1 py-0.2 rounded border border-amber-500/30"
+                    )
+                    ui.label("+").classes("text-slate-400")
+                    ui.label("Drag").classes(
+                        "text-amber-300 bg-amber-950/60 px-1 py-0.2 rounded border border-amber-500/30"
+                    )
+                ui.label("Move").classes(
+                    "text-slate-300 text-[11px] shortcut-move-label"
+                )
+                ui.label("ACTIVE").classes(
+                    "shortcut-move-active-tag text-[9px] font-mono font-bold text-amber-300 "
+                    "bg-amber-500/20 px-1 py-0.2 rounded border border-amber-400/40 animate-pulse ml-0.5"
+                )
+        return bar
 
     def load_rois(self, items: list[ImagePosition | RefImage]) -> None:
         self.rois.clear()
@@ -135,20 +212,55 @@ class DrawRoisBaseStep(BaseStep):
             self.mouse_y = int(e.image_y)
             self.draw_on = True
             self._last_draw_time = 0.0
+            if getattr(e, "shift", False) is True:
+                self.is_moving = True
+                # If no ROI is enabled, auto-select one under cursor if clicked inside
+                if not any(roi.enabled for roi in self.rois):
+                    clicked_roi = self._find_roi_at(self.mouse_x, self.mouse_y)
+                    if clicked_roi:
+                        clicked_roi.enabled = True
+                        self._sync_select_all_checkbox()
+                self._move_start_positions = [
+                    (roi, roi.x, roi.y) for roi in self.rois if roi.enabled
+                ]
+            else:
+                self.is_moving = False
+                self._move_start_positions = []
         elif e.type == "mouseup":
             self.draw_on = False
-            for roi in self.rois:
-                if roi.enabled:
-                    roi.x, roi.y, roi.w, roi.h = self._get_xywh(e)
-            self._show_rois()
-            self.show_temp_draw_in_svg_func("")
+            if self.is_moving:
+                self.is_moving = False
+                if self._move_start_positions:
+                    dx = int(e.image_x) - self.mouse_x
+                    dy = int(e.image_y) - self.mouse_y
+                    for roi, start_x, start_y in self._move_start_positions:
+                        roi.x = max(0, start_x + dx)
+                        roi.y = max(0, start_y + dy)
+                    self._move_start_positions = []
+                self._show_rois()
+                self.show_temp_draw_in_svg_func("")
+                self._on_rois_changed()
+            else:
+                for roi in self.rois:
+                    if roi.enabled:
+                        roi.x, roi.y, roi.w, roi.h = self._get_xywh(e)
+                self._show_rois()
+                self.show_temp_draw_in_svg_func("")
         elif e.type == "mousemove" and self.draw_on:
             now = time.monotonic()
             if now - self._last_draw_time >= self.draw_throttle_sec:
                 self._last_draw_time = now
-                x, y, w, h = self._get_xywh(e)
-                rect = self.draw_roi_func(x, y, w, h, "red", "")
-                self.show_temp_draw_in_svg_func(rect)
+                if self.is_moving:
+                    dx = int(e.image_x) - self.mouse_x
+                    dy = int(e.image_y) - self.mouse_y
+                    for roi, start_x, start_y in self._move_start_positions:
+                        roi.x = max(0, start_x + dx)
+                        roi.y = max(0, start_y + dy)
+                    self._show_rois()
+                else:
+                    x, y, w, h = self._get_xywh(e)
+                    rect = self.draw_roi_func(x, y, w, h, "red", "")
+                    self.show_temp_draw_in_svg_func(rect)
 
     def _get_xywh(self, e: events.MouseEventArguments) -> tuple[int, int, int, int]:
         x, y = self.mouse_x, self.mouse_y

@@ -13,6 +13,7 @@ from .step_draw_rois_base import DrawRoisBaseStep
 HELP_TEXT = (
     "- **Digital Digits**: Add bounding boxes tightly around each "
     "drum or LCD digit (`digit1`, `digit2`, ...).\n"
+    "- **Move**: Hold `Shift` and drag to move the selected ROI box without changing its size.\n"
     "- **Alignment**: Drag boxes on canvas, or use toolbar buttons "
     "(Align Left, Top, Center, Resize All).\n"
     "- **CNN Model**: Choose a `.tflite` model and type (`auto`, "
@@ -182,6 +183,7 @@ class DrawDigitalRoisStep(DrawRoisBaseStep):
     async def show(self, stepper, first_step=False, last_step=False) -> None:
         with ui.step(self.name):
             self.add_help(HELP_TEXT)
+            self.build_shortcuts_bar()
 
             # Alignment & Action Bar
             with (

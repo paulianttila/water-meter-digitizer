@@ -275,12 +275,15 @@ def test_step_draw_refs_show():
 
     with (
         patch("gui.step_draw_refs.ui") as mock_ui,
+        patch("gui.step_draw_rois_base.ui") as mock_base_rois_ui,
         patch("gui.step_base.ui") as mock_base_ui,
     ):
         mock_ui.step.return_value.__enter__ = MagicMock()
         mock_ui.step.return_value.__exit__ = MagicMock()
         mock_ui.row.return_value.__enter__ = MagicMock()
         mock_ui.row.return_value.__exit__ = MagicMock()
+        mock_base_rois_ui.row.return_value.__enter__ = MagicMock()
+        mock_base_rois_ui.row.return_value.__exit__ = MagicMock()
         mock_base_ui.expansion.return_value.__enter__ = MagicMock()
         mock_base_ui.expansion.return_value.__exit__ = MagicMock()
         mock_base_ui.column.return_value.__enter__ = MagicMock()
@@ -312,6 +315,7 @@ def test_step_draw_digital_and_analog_show():
     with (
         patch("gui.step_draw_digital_rois.ui") as mock_ui_d,
         patch("gui.step_draw_analog_rois.ui") as mock_ui_a,
+        patch("gui.step_draw_rois_base.ui") as mock_base_rois_ui,
         patch("gui.step_base.ui") as mock_base_ui,
         patch.object(digital_step, "_get_cnn_models", return_value={"m1": "m1.tflite"}),
         patch.object(analog_step, "_get_cnn_models", return_value={"a1": "a1.tflite"}),
@@ -334,6 +338,8 @@ def test_step_draw_digital_and_analog_show():
         mock_ui_a.column.return_value.__enter__ = MagicMock()
         mock_ui_a.column.return_value.__exit__ = MagicMock()
 
+        mock_base_rois_ui.row.return_value.__enter__ = MagicMock()
+        mock_base_rois_ui.row.return_value.__exit__ = MagicMock()
         mock_base_ui.expansion.return_value.__enter__ = MagicMock()
         mock_base_ui.expansion.return_value.__exit__ = MagicMock()
         mock_base_ui.column.return_value.__enter__ = MagicMock()

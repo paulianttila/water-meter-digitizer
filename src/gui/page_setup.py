@@ -131,8 +131,6 @@ class SetupPage:
                 if now - last_mouse_pos_update >= 0.040:
                     last_mouse_pos_update = now
                     self.mouse_position.text = f"X: {e.image_x:.0f}, Y: {e.image_y:.0f}"
-            elif e.type == "mousedown" and e.alt:
-                ui.notify("Ctrl key down with move")
             elif e.type == "mousedown":
                 self.selected_position.text = f"X: {e.image_x:.0f}, Y: {e.image_y:.0f}"
 
@@ -1216,11 +1214,11 @@ class SetupPage:
                     self.interactive_image = ui.interactive_image(
                         size=(640, 480),
                         on_mouse=mouse_handler,
-                        events=["mousedown", "mouseup", "mousemove", "shiftKey"],
+                        events=["mousedown", "mouseup", "mousemove"],
                         cross=True,
                     ).classes(
                         "w-full max-w-full min-w-0 shrink-0 rounded-lg "
-                        "bg-slate-950 shadow-inner"
+                        "bg-slate-950 shadow-inner interactive-image-canvas"
                     )
                     with ui.row().classes(
                         "w-full min-w-0 shrink-0 justify-between items-center "
@@ -1230,6 +1228,17 @@ class SetupPage:
                         self.image_details = ui.label("").classes(
                             "font-mono text-cyan-400 font-semibold truncate"
                         )
+                        with (
+                            ui.element("div")
+                            .props('id="roi-move-indicator"')
+                            .classes(
+                                "items-center gap-1 px-2 py-0.5 rounded bg-amber-500/20 "
+                                "border border-amber-500/40 text-[10px] font-mono font-bold "
+                                "text-amber-300 animate-pulse shrink-0"
+                            )
+                        ):
+                            ui.icon("open_with", size="12px").classes("text-amber-400")
+                            ui.label("MOVE MODE")
                         self.mouse_position = ui.label("").classes(
                             "font-mono text-slate-400 truncate"
                         )

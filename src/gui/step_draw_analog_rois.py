@@ -13,6 +13,7 @@ from .step_draw_rois_base import DrawRoisBaseStep
 HELP_TEXT = (
     "- **Analog Dials**: Add bounding boxes tightly around each "
     "analog dial needle (`analog1`, `analog2`, ...).\n"
+    "- **Move**: Hold `Shift` and drag to move the selected ROI box without changing its size.\n"
     "- **Alignment**: Drag boxes on canvas, or use alignment toolbar "
     "buttons to standardize dial dimensions.\n"
     "- **CNN Model**: Choose a `.tflite` model and type (`auto`, "
@@ -171,6 +172,7 @@ class DrawAnalogRoisStep(DrawRoisBaseStep):
     async def show(self, stepper, first_step=False, last_step=False) -> None:
         with ui.step(self.name):
             self.add_help(HELP_TEXT)
+            self.build_shortcuts_bar()
 
             # Alignment & Action Bar
             with (

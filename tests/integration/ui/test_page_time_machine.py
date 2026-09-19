@@ -1,5 +1,7 @@
 """Playwright UI integration tests for the Time Machine historical scrubber and inspector."""
 
+import urllib.request
+
 import pytest
 from playwright.sync_api import Page, expect
 
@@ -7,6 +9,14 @@ from playwright.sync_api import Page, expect
 @pytest.mark.ui
 def test_time_machine_navigation_and_controls(page: Page, live_server_url: str):
     """Test Time Machine tab layout, playback controls, and comparison cards."""
+    # Ensure multiple meter readings are performed so snapshots exist for playback
+    try:
+        for _ in range(2):
+            with urllib.request.urlopen(f"{live_server_url}/meter", timeout=5):
+                pass
+    except Exception:
+        pass
+
     page.goto(f"{live_server_url}/gui", wait_until="domcontentloaded")
 
     # 1. Switch to Meter page -> Time Machine tab

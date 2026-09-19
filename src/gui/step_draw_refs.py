@@ -12,6 +12,7 @@ HELP_TEXT = (
     "- **Alignment Requirement**: Affine alignment requires exactly 3 reference points. "
     "If fewer or more than 3 points are defined, alignment will be skipped.\n"
     "- **Drawing**: Click `+` then drag a box on the canvas.\n"
+    "- **Move**: Hold `Shift` and drag to move the selected ROI box without changing its size.\n"
     "- **Visibility**: Toggle colored checkboxes to show/hide boxes."
 )
 
@@ -105,6 +106,7 @@ class DrawRefsStep(DrawRoisBaseStep):
     async def show(self, stepper, first_step=False, last_step=False) -> None:
         with ui.step(self.name):
             self.add_help(HELP_TEXT)
+            self.build_shortcuts_bar()
 
             self.warning_container = ui.row().classes("w-full mb-3")
             self._update_ref_warning()
