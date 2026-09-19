@@ -1,4 +1,5 @@
 import logging
+import time
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
@@ -68,6 +69,10 @@ class DrawRoisBaseStep(BaseStep):
         self.cutoff_high: float = 0.0
         self.select_all: ui.checkbox | None = None
         self._updating_select_all: bool = False
+        self._last_draw_time: float = 0.0
+        self.draw_throttle_sec: float = (
+            0.025  # 25ms ~ 40fps throttle for temp SVG updates
+        )
 
     def _sync_select_all_checkbox(self) -> None:
         if hasattr(self, "select_all") and self.select_all is not None:
@@ -129,16 +134,21 @@ class DrawRoisBaseStep(BaseStep):
             self.mouse_x = int(e.image_x)
             self.mouse_y = int(e.image_y)
             self.draw_on = True
+            self._last_draw_time = 0.0
         elif e.type == "mouseup":
             self.draw_on = False
             for roi in self.rois:
                 if roi.enabled:
                     roi.x, roi.y, roi.w, roi.h = self._get_xywh(e)
             self._show_rois()
+            self.show_temp_draw_in_svg_func("")
         elif e.type == "mousemove" and self.draw_on:
-            x, y, w, h = self._get_xywh(e)
-            rect = self.draw_roi_func(x, y, w, h, "red", "")
-            self.show_temp_draw_in_svg_func(rect)
+            now = time.monotonic()
+            if now - self._last_draw_time >= self.draw_throttle_sec:
+                self._last_draw_time = now
+                x, y, w, h = self._get_xywh(e)
+                rect = self.draw_roi_func(x, y, w, h, "red", "")
+                self.show_temp_draw_in_svg_func(rect)
 
     def _get_xywh(self, e: events.MouseEventArguments) -> tuple[int, int, int, int]:
         x, y = self.mouse_x, self.mouse_y

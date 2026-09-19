@@ -183,7 +183,7 @@ class ConfigPage:
                             "text-h5 font-['Outfit']"
                         )
                         ui.button(icon="close", on_click=dialog.close).props(
-                            "flat round dense"
+                            "flat round dense aria-label='Close dialog'"
                         )
                     ui.code(j, language="json").classes(
                         "w-full max-h-[70vh] overflow-auto rounded-lg "
@@ -325,7 +325,7 @@ class ConfigPage:
                                 "line-by-line diffs"
                             ).classes("text-xs text-slate-400")
                     ui.button(icon="close", on_click=history_dialog.close).props(
-                        "flat round dense"
+                        "flat round dense aria-label='Close dialog'"
                     )
 
                 # Snapshot creator bar

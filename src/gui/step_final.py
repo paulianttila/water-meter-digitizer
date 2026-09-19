@@ -162,7 +162,7 @@ class FinalStep(BaseStep):
                         "font-semibold text-slate-200"
                     )
                     ui.button(icon="close", on_click=dialog.close).props(
-                        "flat round dense"
+                        "flat round dense aria-label='Close dialog'"
                     )
                 ui.code(j, language="json").classes(
                     "w-full max-h-[70vh] overflow-auto text-xs rounded-xl"

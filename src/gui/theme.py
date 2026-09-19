@@ -1,5 +1,3 @@
-import json
-
 from nicegui import ui
 
 # --- Card & Container Styles ---
@@ -20,23 +18,23 @@ TOOLBAR_ROW = (
 # --- Status & Classification Badges ---
 BADGE_SUCCESS = (
     "bg-emerald-950/60 text-emerald-300 border border-emerald-500/30 "
-    "text-[10px] px-2 py-0.5 rounded-full font-medium"
+    "text-xs px-2.5 py-0.5 rounded-full font-medium"
 )
 BADGE_INFO = (
     "bg-cyan-950/60 text-cyan-300 border border-cyan-500/30 "
-    "text-[10px] px-2 py-0.5 rounded-full font-medium"
+    "text-xs px-2.5 py-0.5 rounded-full font-medium"
 )
 BADGE_WARNING = (
     "bg-amber-950/60 text-amber-300 border border-amber-500/30 "
-    "text-[10px] px-2 py-0.5 rounded-full font-medium"
+    "text-xs px-2.5 py-0.5 rounded-full font-medium"
 )
 BADGE_ERROR = (
     "bg-rose-950/60 text-rose-300 border border-rose-500/30 "
-    "text-[10px] px-2 py-0.5 rounded-full font-medium"
+    "text-xs px-2.5 py-0.5 rounded-full font-medium"
 )
 BADGE_PURPLE = (
     "bg-purple-950/60 text-purple-300 border border-purple-500/30 "
-    "text-[10px] px-2 py-0.5 rounded-full font-medium"
+    "text-xs px-2.5 py-0.5 rounded-full font-medium"
 )
 
 # --- Config History & Snapshot Tags ---
@@ -60,50 +58,7 @@ HEX_ROI_ANALOG = "#f59e0b"
 
 
 def copy_to_clipboard(text: str, notify_message: str = "") -> None:
-    """Copy text to clipboard with automatic fallback for non-secure HTTP (e.g. LAN IP) contexts."""
-    escaped_json = json.dumps(text)
-    ui.run_javascript(f"""
-        (function(text) {{
-            function fallbackCopy(val) {{
-                try {{
-                    var t = document.createElement("textarea");
-                    t.value = val;
-                    t.style.position = "fixed";
-                    t.style.left = "-999999px";
-                    t.style.top = "-999999px";
-                    document.body.appendChild(t);
-                    t.focus();
-                    t.select();
-                    var successful = false;
-                    try {{
-                        successful = document.execCommand('copy');
-                    }} catch (err) {{
-                        console.error('execCommand copy failed', err);
-                    }}
-                    document.body.removeChild(t);
-                    if (successful) return;
-                }} catch (e) {{
-                    console.error('fallback copy failed', e);
-                }}
-            }}
-
-            if (navigator.clipboard && window.isSecureContext) {{
-                navigator.clipboard.writeText(text).catch(function(err) {{
-                    console.warn('navigator.clipboard failed, falling back:', err);
-                    fallbackCopy(text);
-                }});
-                return;
-            }}
-
-            if (navigator.clipboard) {{
-                navigator.clipboard.writeText(text).catch(function(err) {{
-                    fallbackCopy(text);
-                }});
-                return;
-            }}
-
-            fallbackCopy(text);
-        }})({escaped_json});
-    """)
+    """Copy text to clipboard using NiceGUI clipboard service."""
+    ui.clipboard.write(text)
     if notify_message:
         ui.notify(notify_message, type="positive")

@@ -46,7 +46,7 @@ def test_theme_constants():
 def test_theme_copy_to_clipboard():
     with patch("gui.theme.ui") as mock_ui:
         theme.copy_to_clipboard("test snippet", notify_message="Copied successfully")
-        mock_ui.run_javascript.assert_called_once()
+        mock_ui.clipboard.write.assert_called_once_with("test snippet")
         mock_ui.notify.assert_called_once_with("Copied successfully", type="positive")
 
 

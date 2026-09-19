@@ -318,12 +318,14 @@ class TimeMachineCard:
                 # Mount static controls once
                 with controls_container:
                     ui.button(icon="skip_previous", on_click=step_prev).props(
-                        "dense flat color=cyan"
+                        "dense flat color=cyan aria-label='Older Frame'"
                     ).tooltip("Older Frame (Step Back / Left)")
 
                     play_btn = (
                         ui.button(icon="play_arrow", on_click=toggle_play)
-                        .props("dense flat color=cyan")
+                        .props(
+                            "dense flat color=cyan aria-label='Play/Pause Time-lapse'"
+                        )
                         .tooltip("Play Time-lapse Scrubber")
                     )
 
@@ -333,7 +335,7 @@ class TimeMachineCard:
                     countdown_badge.set_visibility(False)
 
                     ui.button(icon="skip_next", on_click=step_next).props(
-                        "dense flat color=cyan"
+                        "dense flat color=cyan aria-label='Newer Frame'"
                     ).tooltip("Newer Frame (Step Forward / Right)")
 
                     ui.button(

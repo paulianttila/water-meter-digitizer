@@ -431,3 +431,70 @@ def test_adjust_step_preview_error_fallback(sample_pil_image: Image.Image) -> No
         step._update_preview_canvas()
         cb.assert_called_with(b64_orig)
         assert step.image == b64_orig
+
+
+def test_adjust_step_async_update_preview_offload(
+    sample_pil_image: Image.Image,
+) -> None:
+    """Verify _async_update_preview_canvas offloads _do_adjust via asyncio.to_thread."""
+    cb = MagicMock()
+    step = AdjustStep(name="Adjust", set_image_callback=cb)
+    b64_orig = img_utils.convert_image_base64str(sample_pil_image)
+    step.org_image = b64_orig
+    step.compare_mode = MagicMock(value="Single")
+
+    async def run_test():
+        with patch.object(
+            step, "_do_adjust", return_value="adjusted_result"
+        ) as mock_do:
+            await step._async_update_preview_canvas()
+            mock_do.assert_called_once_with(b64_orig)
+            cb.assert_called_once_with("adjusted_result")
+            assert step.image == "adjusted_result"
+
+    asyncio.run(run_test())
+
+
+def test_adjust_step_async_auto_enhance_offload(
+    sample_pil_image: Image.Image,
+) -> None:
+    """Verify _async_apply_auto_enhance offloads auto_tune_image to worker thread."""
+    cb = MagicMock()
+    step = AdjustStep(name="Adjust", set_image_callback=cb)
+    step.org_image = img_utils.convert_image_base64str(sample_pil_image)
+    step.adjust_enabled = MagicMock()
+    step.adjust_gamma = MagicMock()
+    step.adjust_contrast = MagicMock()
+    step.adjust_brightness = MagicMock()
+    step.sharpness_mode = MagicMock()
+    step.unsharp_amount = MagicMock()
+    step.unsharp_radius = MagicMock()
+    step.unsharp_threshold = MagicMock()
+
+    mock_res = {
+        "gamma": 1.1,
+        "contrast": 1.2,
+        "brightness": 1.0,
+        "unsharp_amount": 1.8,
+        "unsharp_radius": 1.2,
+        "unsharp_threshold": 4,
+        "focus_score": 250.0,
+    }
+
+    async def run_test():
+        with (
+            patch(
+                "processor.image.ImageProcessor.get_image",
+                return_value=np.zeros((10, 10, 3)),
+            ),
+            patch("utils.image.auto_tune_image", return_value=mock_res) as mock_tune,
+            patch("nicegui.ui.notify"),
+            patch.object(step, "_on_param_change"),
+        ):
+            await step._async_apply_auto_enhance()
+            mock_tune.assert_called_once()
+            assert step.adjust_gamma.value == 1.1
+            assert step.adjust_contrast.value == 1.2
+            assert step.sharpness_mode.value == "unsharp_mask"
+
+    asyncio.run(run_test())

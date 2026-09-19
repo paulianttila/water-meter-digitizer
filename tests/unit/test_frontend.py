@@ -64,20 +64,41 @@ def test_frontend_show_callback():
         mock_ui.tab_panels.return_value.__exit__ = MagicMock()
         mock_ui.tab_panel.return_value.__enter__ = MagicMock()
         mock_ui.tab_panel.return_value.__exit__ = MagicMock()
-        mock_ui.tabs.return_value.__enter__ = MagicMock()
-        mock_ui.tabs.return_value.__exit__ = MagicMock()
+        mock_tabs = mock_ui.tabs.return_value
+        mock_tabs.props.return_value = mock_tabs
+        mock_tabs.classes.return_value = mock_tabs
+        mock_tabs.__enter__.return_value = mock_tabs
+        mock_tabs.__exit__ = MagicMock()
 
         frontend.init(app, callbacks)
         assert captured_show is not None
 
-        # Execute show callback
+        # Execute show callback (initial render only mounts active Meter tab)
         asyncio.run(captured_show())
 
         MockMeterPage.return_value.show.assert_called_once()
-        MockServicesPage.return_value.show.assert_called_once()
-        MockSetupPage.return_value.show.assert_called_once()
-        MockConfigPage.return_value.show.assert_called_once()
-        MockPreviousValuesPage.return_value.show.assert_called_once()
-        MockApiConsolePage.return_value.show.assert_called_once()
-        MockHelpPage.return_value.show.assert_called_once()
-        MockAboutPage.return_value.show.assert_called_once()
+        MockServicesPage.return_value.show.assert_not_called()
+        MockSetupPage.return_value.show.assert_not_called()
+        MockConfigPage.return_value.show.assert_not_called()
+        MockPreviousValuesPage.return_value.show.assert_not_called()
+        MockApiConsolePage.return_value.show.assert_not_called()
+        MockHelpPage.return_value.show.assert_not_called()
+        MockAboutPage.return_value.show.assert_not_called()
+
+        # Retrieve tab change listener and simulate activating tabs lazily
+        on_tab_change = mock_ui.tabs.return_value.on_value_change.call_args[0][0]
+        tab_targets = [
+            ("services", MockServicesPage),
+            ("setup", MockSetupPage),
+            ("config", MockConfigPage),
+            ("baselines", MockPreviousValuesPage),
+            ("api_console", MockApiConsolePage),
+            ("help", MockHelpPage),
+            ("about", MockAboutPage),
+        ]
+        for tab_id, mock_page in tab_targets:
+            asyncio.run(on_tab_change(tab_id))
+            mock_page.return_value.show.assert_called_once()
+            # Calling again does not re-mount / re-execute show (keep-alive)
+            asyncio.run(on_tab_change(tab_id))
+            mock_page.return_value.show.assert_called_once()

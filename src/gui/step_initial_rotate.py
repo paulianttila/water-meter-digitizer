@@ -107,8 +107,10 @@ class InitialRotateStep(BaseStep):
                     "Rotate image 90° right"
                 )
             self.angle_label = ui.label("")
-            ui.button(icon="restore", on_click=self._reset_image).bind_enabled_from(
-                self, "image", lambda image: image != ""
-            ).tooltip("Restore original image")
+            ui.button(icon="restore", on_click=self._reset_image).props(
+                "aria-label='Restore original image'"
+            ).bind_enabled_from(self, "image", lambda image: image != "").tooltip(
+                "Restore original image"
+            )
 
             super().add_navigator(stepper, first_step, last_step)

@@ -98,10 +98,15 @@ def test_draw_rois_base_mouse_events_and_roi_ops():
         step.mouse_event(ev_down)
         assert step.draw_on is True
 
-        # Simulate Mouse Move
+        # Simulate Mouse Move (first move triggers temp draw)
         ev_move = MagicMock(type="mousemove", image_x=35, image_y=45)
         step.mouse_event(ev_move)
-        show_temp.assert_called()
+        assert show_temp.call_count == 1
+
+        # Rapid consecutive mouse move within throttle window is throttled
+        ev_move_fast = MagicMock(type="mousemove", image_x=36, image_y=46)
+        step.mouse_event(ev_move_fast)
+        assert show_temp.call_count == 1
 
         # Simulate Mouse Up
         ev_up = MagicMock(type="mouseup", image_x=40, image_y=50)

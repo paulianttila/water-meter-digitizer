@@ -32,6 +32,9 @@ class MeterPage:
 
     async def show(self) -> None:
         """Render the Meter Dashboard page."""
+        freshness_container: ui.row | None = None
+        freshness_ts_label: ui.label | None = None
+        freshness_badge: ui.badge | None = None
 
         async def do_fetch() -> None:
             if self.spinner:
@@ -57,22 +60,18 @@ class MeterPage:
             update_freshness_header()
 
         def update_freshness_header() -> None:
-            freshness_container.clear()
-            with freshness_container:
+            if freshness_container and freshness_ts_label and freshness_badge:
                 if self.last_fetch_time:
                     ts_str = self.last_fetch_time.strftime("%H:%M:%S")
-                    with ui.row().classes("items-center gap-1.5 text-xs font-mono"):
-                        ui.icon("fiber_manual_record", size="10px").classes(
-                            "text-emerald-400 animate-pulse"
-                        )
-                        ui.label(f"Updated: {ts_str}").classes("text-slate-300")
-                        if self.last_pipeline_ms > 0:
-                            ui.badge(
-                                f"⚡ {self.last_pipeline_ms:.0f}ms",
-                                color="dark",
-                            ).classes(
-                                "text-[10px] font-mono border border-white/10 text-cyan-300"
-                            )
+                    freshness_ts_label.text = f"Updated: {ts_str}"
+                    if self.last_pipeline_ms > 0:
+                        freshness_badge.text = f"⚡ {self.last_pipeline_ms:.0f}ms"
+                        freshness_badge.visible = True
+                    else:
+                        freshness_badge.visible = False
+                    freshness_container.visible = True
+                else:
+                    freshness_container.visible = False
 
         def on_auto_refresh_change(e: Any) -> None:
             self.auto_refresh_seconds = int(e.value)
@@ -127,7 +126,7 @@ class MeterPage:
                             f"{'Digital Counter' if is_digital else 'Analog Dial'} - {name}"
                         ).classes("font-['Outfit'] font-bold text-sm text-gray-100")
                     ui.button(icon="close", on_click=crop_modal.close).props(
-                        "flat round dense size=sm"
+                        "flat round dense size=sm aria-label='Close dialog'"
                     )
 
                 with ui.column().classes("w-full items-center gap-3"):
@@ -359,7 +358,7 @@ class MeterPage:
                                         "Visual alignment markers and digitization region bounding boxes"
                                     ).classes("text-xs text-gray-400")
                             ui.button(icon="close", on_click=roi_modal.close).props(
-                                "flat round dense text-xs"
+                                "flat round dense text-xs aria-label='Close dialog'"
                             )
 
                         # Color-Coded Legend Row
@@ -668,7 +667,18 @@ class MeterPage:
                 self.spinner = ui.spinner("dots", size="md", color="cyan")
                 self.spinner.visible = False
 
-            freshness_container = ui.row().classes("items-center gap-2")
+            with ui.row().classes(
+                "items-center gap-1.5 text-xs font-mono"
+            ) as freshness_container:
+                freshness_container.visible = False
+                ui.icon("fiber_manual_record", size="10px").classes(
+                    "text-emerald-400 animate-pulse"
+                )
+                freshness_ts_label = ui.label("").classes("text-slate-300")
+                freshness_badge = ui.badge("", color="dark").classes(
+                    "text-[10px] font-mono border border-white/10 text-cyan-300"
+                )
+                freshness_badge.visible = False
 
             with ui.row().classes("items-center gap-2.5 flex-wrap"):
                 ui.label("Auto:").classes("text-xs font-semibold text-gray-400")

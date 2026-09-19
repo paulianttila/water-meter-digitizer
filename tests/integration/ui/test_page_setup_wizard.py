@@ -159,3 +159,55 @@ def test_setup_wizard_start_clean_dialog(page: Page, live_server_url: str):
     cancel_btn = page.get_by_role("button", name="Cancel")
     expect(cancel_btn).to_be_visible()
     cancel_btn.click()
+
+
+@pytest.mark.ui
+def test_setup_wizard_tall_step_scrollability(page: Page, live_server_url: str):
+    """Verify that tall wizard steps (like Step 4 Adjust image) are scrollable
+    and that navigation buttons (Back/Continue) remain accessible and functional
+    in restricted viewports.
+    """
+    page.set_viewport_size({"width": 1024, "height": 600})
+    page.goto(f"{live_server_url}/gui", wait_until="domcontentloaded")
+    page.get_by_role("tab", name="Setup").click()
+    expect(page.get_by_text("Step 1 of 9: Download image")).to_be_visible(timeout=10000)
+
+    continue_btn = page.get_by_role("button", name="Continue")
+    back_btn = page.get_by_role("button", name="Back", exact=True)
+
+    # Advance to Step 4 (Adjust image) which has many sub-cards and exceeds 600px height
+    continue_btn.click()
+    expect(page.get_by_text("Step 2 of 9: Initial rotate")).to_be_visible(timeout=5000)
+    continue_btn.click()
+    expect(page.get_by_text("Step 3 of 9: Draw reference points")).to_be_visible(
+        timeout=5000
+    )
+    continue_btn.click()
+    expect(page.get_by_text("Step 4 of 9: Adjust image")).to_be_visible(timeout=5000)
+
+    # Verify that the page content overflows the 600px viewport and is scrollable
+    scroll_info = page.evaluate("""() => {
+            return {
+                bodyScrollHeight: document.body.scrollHeight,
+                windowHeight: window.innerHeight,
+                isScrollable: document.body.scrollHeight > window.innerHeight
+            };
+        }""")
+    assert scroll_info["isScrollable"] is True
+    assert scroll_info["bodyScrollHeight"] > scroll_info["windowHeight"]
+
+    # Scroll the Continue button into view and click it
+    continue_btn.scroll_into_view_if_needed()
+    expect(continue_btn).to_be_visible()
+    continue_btn.click()
+
+    # Verify advance to Step 5
+    expect(
+        page.get_by_text("Step 5 of 9: Draw digital region of interest")
+    ).to_be_visible(timeout=5000)
+
+    # Scroll Back button into view and navigate back to Step 4
+    back_btn.scroll_into_view_if_needed()
+    expect(back_btn).to_be_visible()
+    back_btn.click()
+    expect(page.get_by_text("Step 4 of 9: Adjust image")).to_be_visible(timeout=5000)

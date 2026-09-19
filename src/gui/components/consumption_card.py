@@ -229,12 +229,12 @@ class ConsumptionCard:
                             )
 
                         ui.button(icon="download", on_click=on_export_csv).props(
-                            "flat dense round color=cyan"
+                            "flat dense round color=cyan aria-label='Export CSV'"
                         ).tooltip("Export CSV Data")
 
                         with (
                             ui.button(icon="more_vert").props(
-                                "flat round dense color=gray"
+                                "flat round dense color=gray aria-label='More options'"
                             ),
                             ui.menu().classes("bg-slate-900 border border-white/10"),
                         ):

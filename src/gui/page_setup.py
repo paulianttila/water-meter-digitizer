@@ -2,6 +2,7 @@ import base64
 import contextlib
 import logging
 import os
+import time
 from hashlib import sha256
 from pathlib import Path
 
@@ -121,9 +122,15 @@ class SetupPage:
             self.interactive_image.update()
             update_svg()
 
+        last_mouse_pos_update = 0.0
+
         def mouse_handler(e: events.MouseEventArguments) -> None:
+            nonlocal last_mouse_pos_update
             if e.type == "mousemove":
-                self.mouse_position.text = f"X: {e.image_x:.0f}, Y: {e.image_y:.0f}"
+                now = time.monotonic()
+                if now - last_mouse_pos_update >= 0.040:
+                    last_mouse_pos_update = now
+                    self.mouse_position.text = f"X: {e.image_x:.0f}, Y: {e.image_y:.0f}"
             elif e.type == "mousedown" and e.alt:
                 ui.notify("Ctrl key down with move")
             elif e.type == "mousedown":
@@ -1156,7 +1163,7 @@ class SetupPage:
 
         with (
             ui.splitter(value=42, limits=(20, 80))
-            .classes("w-full flex-1 min-h-0 h-full")
+            .classes("w-full flex-1 min-h-0")
             .props(
                 'separator-class="bg-white/10 hover:bg-indigo-500/70 '
                 'transition-all duration-200 cursor-col-resize" '
@@ -1268,13 +1275,11 @@ class SetupPage:
             with (
                 splitter.after,
                 ui.element("div").classes(
-                    "w-full h-full flex flex-col justify-between min-h-0"
+                    "w-full h-full flex flex-col justify-between min-h-0 overflow-y-auto pr-1"
                 ),
             ):
                 with (
-                    ui.element("div").classes(
-                        "w-full flex-1 min-h-0 overflow-y-auto pr-1"
-                    ),
+                    ui.element("div").classes("w-full"),
                     ui.stepper(on_value_change=lambda x: handle_stepper_change(x.value))
                     .props("vertical")
                     .classes(
