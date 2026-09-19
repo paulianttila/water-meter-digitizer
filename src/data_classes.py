@@ -1,7 +1,8 @@
 import re
+from typing import Any
 
 from PIL.Image import Image
-from pydantic import BaseModel, ConfigDict
+from pydantic import BaseModel, ConfigDict, Field
 
 
 class ImagePosition(BaseModel):
@@ -116,3 +117,73 @@ class HealthResponse(BaseModel):
     cache: CacheHealth
     models: ModelsHealth
     system: SystemHealth
+
+
+class DictAccessMixin:
+    """Mixin allowing Pydantic models to support dictionary subscripting and .get() for legacy interoperability."""
+
+    def get(self, key: str, default: Any = None) -> Any:
+        return getattr(self, key, default)
+
+    def __getitem__(self, key: str) -> Any:
+        if hasattr(self, key):
+            return getattr(self, key)
+        raise KeyError(key)
+
+    def __contains__(self, key: str) -> bool:
+        return hasattr(self, key)
+
+
+class PollerStatus(BaseModel, DictAccessMixin):
+    enabled: bool = False
+    running: bool = False
+    is_polling: bool = False
+    interval_seconds: int = 300
+    last_run: str | None = None
+    next_run: str | None = None
+    total_runs: int = 0
+    successful_runs: int = 0
+    failed_runs: int = 0
+    last_error: str = ""
+
+
+class MQTTStatus(BaseModel, DictAccessMixin):
+    enabled: bool = False
+    connected: bool = False
+    broker: str = "localhost"
+    port: int = 1883
+    topic_prefix: str = "watermeter"
+    homeassistant_discovery: bool = True
+    client_id: str = "water-meter-digitizer"
+    last_published_topics: list[str] = []
+    last_published_readout: str | None = None
+
+
+class ConfigBackupInfo(BaseModel, DictAccessMixin):
+    name: str
+    created_at: str = ""
+    size_bytes: int = 0
+    tag: str = ""
+    is_auto: bool = True
+
+
+class TimelineFrame(BaseModel, DictAccessMixin):
+    id: int | None = None
+    timestamp: str = ""
+    meters: dict[str, Any] = Field(default_factory=dict)
+    digital_results: dict[str, Any] = Field(default_factory=dict)
+    analog_results: dict[str, Any] = Field(default_factory=dict)
+    error: str = ""
+    frame_type: str | None = None
+    has_frame: bool = False
+    flow_detected: bool = False
+    confidence_scores: dict[str, float] = Field(default_factory=dict)
+
+
+class VisualDiffMetrics(BaseModel, DictAccessMixin):
+    reading_id: int
+    compare_id: int | None = None
+    ssim_similarity: float = 1.0
+    is_anomaly: bool = False
+    diff_image_url: str = ""
+    error: str = ""

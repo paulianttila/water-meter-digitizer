@@ -1,6 +1,9 @@
-from fastapi import APIRouter, Request
+from typing import Annotated
+
+from fastapi import APIRouter, Depends
 from fastapi.responses import HTMLResponse
 
+from context import AppContext, get_app_context
 from data_classes import HealthResponse
 from decorators.decorators import log_execution_time
 from utils.diagnostics import collect_health_status, get_allowed_asset_directories
@@ -19,8 +22,8 @@ def healthcheck():
 
 @router.get("/health", response_model=HealthResponse)
 @log_execution_time
-def get_health(request: Request) -> HealthResponse:
-    config = getattr(request.app.state, "config", None)
-    version = getattr(request.app.state, "version", __version__)
-    data = collect_health_status(request.app.state, config, version)
+def get_health(
+    ctx: Annotated[AppContext, Depends(get_app_context)],
+) -> HealthResponse:
+    data = collect_health_status(ctx, ctx.config, ctx.version or __version__)
     return HealthResponse(**data)

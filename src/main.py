@@ -25,6 +25,7 @@ from api.routes_mock_camera import router as mock_camera_router
 from api.routes_services import router as services_router
 from api.routes_system import router as system_router
 from configuration import Config, ensure_config_initialized
+from context import AppContext
 from decorators.decorators import log_execution_time
 from leak.tracker import ZeroFlowTracker
 from mqtt.client import MQTTService
@@ -62,6 +63,23 @@ logger = logging.getLogger(__name__)
 BASE_DIR = Path(__file__).resolve().parent
 
 
+def _sync_app_context() -> None:
+    """Synchronize app.state.context with active application state."""
+    app.state.context = AppContext(
+        config=getattr(app.state, "config", config),
+        config_file=getattr(app.state, "config_file", config_file),
+        config_version=getattr(app.state, "config_version", 1),
+        storage=getattr(app.state, "storage", None),
+        cache=getattr(app.state, "image_cache", None),
+        zero_flow_tracker=getattr(app.state, "zero_flow_tracker", None),
+        mqtt_service=getattr(app.state, "mqtt_service", None),
+        poller=getattr(app.state, "poller", None),
+        version=getattr(app.state, "version", VERSION),
+        start_time=getattr(app.state, "start_time", 0.0),
+        started_at=getattr(app.state, "started_at", ""),
+    )
+
+
 def start_services() -> None:
     """Start MQTT service and background poller based on active config."""
     stop_services()
@@ -85,6 +103,7 @@ def start_services() -> None:
     if config.poller.enabled:
         poller.start()
     app.state.poller = poller
+    _sync_app_context()
 
 
 def stop_services() -> None:
@@ -96,6 +115,7 @@ def stop_services() -> None:
     mqtt_svc = getattr(app.state, "mqtt_service", None)
     if mqtt_svc is not None:
         mqtt_svc.stop()
+    _sync_app_context()
 
 
 @asynccontextmanager
@@ -176,6 +196,8 @@ app.state.poller = BackgroundPoller(
     mqtt_service=app.state.mqtt_service,
 )
 app.state.init_config_fn = lambda: init_config()
+_sync_app_context()
+
 
 # Mount static files
 app.mount(

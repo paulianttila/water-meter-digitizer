@@ -30,11 +30,19 @@ class ServicesStatusCard:
             self._render_content()
 
     def update_data(
-        self, poller_data: dict[str, Any], mqtt_data: dict[str, Any]
+        self,
+        poller_data: dict[str, Any] | Any,
+        mqtt_data: dict[str, Any] | Any,
     ) -> None:
         """Update services data and refresh card."""
-        self._poller_data = poller_data
-        self._mqtt_data = mqtt_data
+        self._poller_data = (
+            poller_data.model_dump()
+            if hasattr(poller_data, "model_dump")
+            else poller_data
+        )
+        self._mqtt_data = (
+            mqtt_data.model_dump() if hasattr(mqtt_data, "model_dump") else mqtt_data
+        )
         if self.container is not None:
             self.container.clear()
             with self.container:

@@ -28,9 +28,14 @@ class LeakMonitorCard:
         with ui.column().classes("w-full gap-4") as self.container:
             self._render_content()
 
-    def update_data(self, data: dict[str, Any]) -> None:
+    def update_data(self, data: dict[str, Any] | Any) -> None:
         """Update tracker state data and refresh view."""
-        self._data = data
+        if hasattr(data, "to_dict"):
+            self._data = data.to_dict()
+        elif hasattr(data, "model_dump"):
+            self._data = data.model_dump()
+        else:
+            self._data = data
         if self.container is not None:
             self.container.clear()
             with self.container:
