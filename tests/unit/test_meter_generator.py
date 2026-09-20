@@ -46,6 +46,23 @@ def test_generator_lcd_digits_overlay():
     assert img.size == (640, 480)
 
 
+def test_generator_meter_bg_themes():
+    generator = MeterImageGenerator()
+    themes = ["white", "grey", "blue", "brass", "dark", "aged", "silver", "gold"]
+    for theme_name in themes:
+        img = generator.generate(value="00123.4567", meter_bg=theme_name)
+        assert isinstance(img, Image.Image)
+        assert img.size == (640, 480)
+
+    # Verify dark background has different pixel characteristics from white
+    img_white = generator.generate(value="00000.0000", meter_bg="white")
+    img_dark = generator.generate(value="00000.0000", meter_bg="dark")
+    # Dial face area (320, 80) is above the LCD window
+    p_white = img_white.getpixel((320, 80))
+    p_dark = img_dark.getpixel((320, 80))
+    assert sum(p_white) > sum(p_dark)
+
+
 def test_generator_synthetic_template():
     img, cfg = MeterImageGenerator.create_synthetic_template(640, 480)
 
@@ -96,6 +113,8 @@ def test_generator_cli_execution(tmp_path, monkeypatch):
         "meter-generator",
         "--value",
         "00789.1234",
+        "--meter-bg",
+        "brass",
         "--output",
         out_file,
     ]
@@ -125,7 +144,7 @@ def test_mock_camera_endpoint():
     client = TestClient(app)
 
     # 1. Fixed value frame
-    resp = client.get("/api/mock_camera?value=00789.1234")
+    resp = client.get("/api/mock_camera?value=00789.1234&meter_bg=dark")
     assert resp.status_code == 200
     assert resp.headers["content-type"] == "image/jpeg"
     assert resp.headers.get("x-mock-meter-value") == "00789.1234"
@@ -151,7 +170,7 @@ def test_mock_camera_endpoint():
 
     # 4. Custom overrides and colors
     resp_custom = client.get(
-        "/api/mock_camera?value=00123.4567&lcd_color=amber&lcd_bg=dark&needle_color=black&digit1=5&analog1=9"
+        "/api/mock_camera?value=00123.4567&lcd_color=amber&lcd_bg=dark&meter_bg=blue&needle_color=black&digit1=5&analog1=9"
     )
     assert resp_custom.status_code == 200
 

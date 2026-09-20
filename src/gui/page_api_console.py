@@ -78,6 +78,7 @@ class ApiConsolePage:
         self.mock_contrast = 1.0
         self.mock_lcd_color = "black"
         self.mock_lcd_bg = "grey"
+        self.mock_meter_bg = "white"
         self.mock_needle_color = "red"
         self.mock_width = 640
         self.mock_height = 480
@@ -112,6 +113,7 @@ class ApiConsolePage:
         self.mock_contrast_slider: ui.slider | None = None
         self.mock_lcd_color_select: ui.select | None = None
         self.mock_lcd_bg_select: ui.select | None = None
+        self.mock_meter_bg_select: ui.select | None = None
         self.mock_needle_color_select: ui.select | None = None
         self.mock_res_select: ui.select | None = None
         self.mock_width_input: ui.number | None = None
@@ -411,6 +413,8 @@ class ApiConsolePage:
             params["lcd_color"] = self.mock_lcd_color
         if self.mock_lcd_bg != "grey":
             params["lcd_bg"] = self.mock_lcd_bg
+        if self.mock_meter_bg != "white":
+            params["meter_bg"] = self.mock_meter_bg
         if self.mock_needle_color != "red":
             params["needle_color"] = self.mock_needle_color
         if self.mock_width != 640:
@@ -484,6 +488,7 @@ class ApiConsolePage:
                     contrast=self.mock_contrast,
                     lcd_color=self.mock_lcd_color,
                     lcd_bg=self.mock_lcd_bg,
+                    meter_bg=self.mock_meter_bg,
                     needle_color=self.mock_needle_color,
                     width=self.mock_width,
                     height=self.mock_height,
@@ -604,6 +609,10 @@ class ApiConsolePage:
                 self.mock_lcd_bg = qs["lcd_bg"][0]
                 if self.mock_lcd_bg_select:
                     self.mock_lcd_bg_select.value = self.mock_lcd_bg
+            if qs.get("meter_bg"):
+                self.mock_meter_bg = qs["meter_bg"][0]
+                if self.mock_meter_bg_select:
+                    self.mock_meter_bg_select.value = self.mock_meter_bg
             if qs.get("needle_color"):
                 self.mock_needle_color = qs["needle_color"][0]
                 if self.mock_needle_color_select:
@@ -653,6 +662,7 @@ class ApiConsolePage:
         self.mock_contrast = cfg.get("contrast", 1.0)
         self.mock_lcd_color = cfg.get("lcd_color", "black")
         self.mock_lcd_bg = cfg.get("lcd_bg", "grey")
+        self.mock_meter_bg = cfg.get("meter_bg", "white")
         self.mock_needle_color = cfg.get("needle_color", "red")
         self.mock_width = cfg.get("width", 640)
         self.mock_height = cfg.get("height", 480)
@@ -682,6 +692,14 @@ class ApiConsolePage:
             self.mock_bright_slider.value = self.mock_brightness
         if self.mock_contrast_slider:
             self.mock_contrast_slider.value = self.mock_contrast
+        if self.mock_lcd_color_select:
+            self.mock_lcd_color_select.value = self.mock_lcd_color
+        if self.mock_lcd_bg_select:
+            self.mock_lcd_bg_select.value = self.mock_lcd_bg
+        if self.mock_meter_bg_select:
+            self.mock_meter_bg_select.value = self.mock_meter_bg
+        if self.mock_needle_color_select:
+            self.mock_needle_color_select.value = self.mock_needle_color
         for i, val in enumerate(self.mock_digit_overrides):
             if i < len(self.mock_digit_inputs) and self.mock_digit_inputs[i]:
                 self.mock_digit_inputs[i].value = val
@@ -838,6 +856,7 @@ class ApiConsolePage:
         self.mock_contrast = 1.0
         self.mock_lcd_color = "black"
         self.mock_lcd_bg = "grey"
+        self.mock_meter_bg = "white"
         self.mock_needle_color = "red"
         self.mock_width = 640
         self.mock_height = 480
@@ -872,6 +891,8 @@ class ApiConsolePage:
             self.mock_lcd_color_select.value = "black"
         if self.mock_lcd_bg_select:
             self.mock_lcd_bg_select.value = "grey"
+        if self.mock_meter_bg_select:
+            self.mock_meter_bg_select.value = "white"
         if self.mock_needle_color_select:
             self.mock_needle_color_select.value = "red"
         if self.mock_res_select:
@@ -1566,7 +1587,7 @@ class ApiConsolePage:
                                 ),
                                 ui.column().classes("w-full gap-3 p-1"),
                             ):
-                                with ui.grid(columns=3).classes("w-full gap-2"):
+                                with ui.grid(columns=4).classes("w-full gap-2"):
 
                                     async def _on_lcd_c(e: Any) -> None:
                                         self.mock_lcd_color = e.value
@@ -1604,6 +1625,28 @@ class ApiConsolePage:
                                             value=self.mock_lcd_bg,
                                             on_change=_on_lcd_bg,
                                             label="Digit BG",
+                                        )
+                                        .props("outlined dense options-dense")
+                                        .classes("text-xs")
+                                    )
+
+                                    async def _on_meter_bg(e: Any) -> None:
+                                        self.mock_meter_bg = e.value
+                                        await self._on_mock_param_change()
+
+                                    self.mock_meter_bg_select = (
+                                        ui.select(
+                                            options=[
+                                                "white",
+                                                "grey",
+                                                "blue",
+                                                "brass",
+                                                "dark",
+                                                "aged",
+                                            ],
+                                            value=self.mock_meter_bg,
+                                            on_change=_on_meter_bg,
+                                            label="Meter BG",
                                         )
                                         .props("outlined dense options-dense")
                                         .classes("text-xs")

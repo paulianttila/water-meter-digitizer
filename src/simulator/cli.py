@@ -61,6 +61,12 @@ def main() -> None:
         help="LCD background color (grey, green, amber, dark, blue)",
     )
     parser.add_argument(
+        "--meter-bg",
+        type=str,
+        default="white",
+        help="Meter background/dial color (white, grey, blue, brass, dark, aged)",
+    )
+    parser.add_argument(
         "--needle-color",
         type=str,
         default="red",
@@ -94,6 +100,7 @@ def main() -> None:
         blur=args.blur,
         lcd_color=args.lcd_color,
         lcd_bg=args.lcd_bg,
+        meter_bg=args.meter_bg,
         needle_color=args.needle_color,
     )
     img.save(args.output)

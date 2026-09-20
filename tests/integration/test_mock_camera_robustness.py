@@ -58,16 +58,19 @@ def test_mock_camera_lcd_themes_and_overrides():
     generator = MeterImageGenerator()
 
     themes = [
-        ("amber", "dark", "red"),
-        ("green", "grey", "black"),
-        ("black", "green", "blue"),
+        ("amber", "dark", "brass", "red"),
+        ("green", "grey", "white", "black"),
+        ("black", "green", "blue", "blue"),
+        ("blue", "blue", "aged", "red"),
+        ("dark", "dark", "dark", "red"),
     ]
 
-    for lcd_c, lcd_bg, needle_c in themes:
+    for lcd_c, lcd_bg, meter_bg, needle_c in themes:
         img = generator.generate(
             value="00555.2222",
             lcd_color=lcd_c,
             lcd_bg=lcd_bg,
+            meter_bg=meter_bg,
             needle_color=needle_c,
             custom_digital_values={"digit1": 8.0},
             custom_analog_values={"analog1": 4.0},

@@ -50,6 +50,63 @@ COLOR_THEMES = {
     "blue": {"active": (20, 40, 90), "ghost": (195, 210, 230), "bg": (210, 225, 245)},
 }
 
+METER_BG_THEMES: dict[str, dict[str, Any]] = {
+    "white": {
+        "dial": (250, 252, 255),
+        "casing": (244, 246, 249),
+        "canvas": (222, 225, 230),
+        "dial_sub": (252, 252, 254),
+        "text": (45, 50, 60),
+        "text_sub": (75, 85, 95),
+        "border": (170, 175, 185),
+    },
+    "grey": {
+        "dial": (222, 226, 232),
+        "casing": (205, 210, 218),
+        "canvas": (195, 200, 208),
+        "dial_sub": (228, 232, 238),
+        "text": (35, 40, 50),
+        "text_sub": (65, 75, 85),
+        "border": (150, 155, 165),
+    },
+    "blue": {
+        "dial": (228, 238, 248),
+        "casing": (195, 215, 238),
+        "canvas": (190, 205, 220),
+        "dial_sub": (235, 242, 252),
+        "text": (25, 45, 75),
+        "text_sub": (55, 75, 105),
+        "border": (145, 175, 205),
+    },
+    "brass": {
+        "dial": (246, 238, 215),
+        "casing": (228, 208, 168),
+        "canvas": (205, 192, 162),
+        "dial_sub": (250, 244, 226),
+        "text": (50, 42, 28),
+        "text_sub": (80, 70, 50),
+        "border": (180, 155, 110),
+    },
+    "dark": {
+        "dial": (32, 36, 44),
+        "casing": (22, 26, 32),
+        "canvas": (15, 18, 24),
+        "dial_sub": (40, 45, 55),
+        "text": (225, 230, 240),
+        "text_sub": (170, 180, 195),
+        "border": (70, 78, 90),
+    },
+    "aged": {
+        "dial": (242, 236, 220),
+        "casing": (230, 222, 202),
+        "canvas": (212, 205, 188),
+        "dial_sub": (245, 240, 228),
+        "text": (55, 48, 38),
+        "text_sub": (85, 76, 62),
+        "border": (175, 165, 145),
+    },
+}
+
 
 class MeterImageGenerator:
     """Procedural rounded water meter image generator."""
@@ -75,6 +132,7 @@ class MeterImageGenerator:
         blur: float = 0.0,
         lcd_color: str = "black",
         lcd_bg: str = "grey",
+        meter_bg: str = "white",
         needle_color: str = "red",
         width: int = 640,
         height: int = 480,
@@ -92,7 +150,7 @@ class MeterImageGenerator:
         canvas = (
             base_image.copy().convert("RGB")
             if base_image is not None
-            else self._draw_meter_base(base_w, base_h, lcd_bg=lcd_bg)
+            else self._draw_meter_base(base_w, base_h, lcd_bg=lcd_bg, meter_bg=meter_bg)
         )
 
         # 3. Draw 5 LCD Digital Counter Drums
@@ -212,9 +270,11 @@ class MeterImageGenerator:
         width: int = 640,
         height: int = 480,
         lcd_bg: str = "grey",
+        meter_bg: str = "white",
     ) -> Image:
         """Draw complete circular water meter housing, LCD window, and dial faces."""
-        img = PIL.Image.new("RGB", (width, height), (222, 225, 230))
+        theme = self._resolve_meter_bg_theme(meter_bg)
+        img = PIL.Image.new("RGB", (width, height), theme["canvas"])
         draw = PIL.ImageDraw.Draw(img)
 
         center_x = width // 2
@@ -229,8 +289,8 @@ class MeterImageGenerator:
                 center_x + radius,
                 center_y + radius,
             ),
-            fill=(244, 246, 249),
-            outline=(50, 55, 65),
+            fill=theme["casing"],
+            outline=(50, 55, 65) if meter_bg.lower() != "dark" else (10, 12, 16),
             width=9,
         )
 
@@ -243,7 +303,7 @@ class MeterImageGenerator:
                 center_x + inner_r,
                 center_y + inner_r,
             ),
-            outline=(170, 175, 185),
+            outline=theme["border"],
             width=2,
         )
 
@@ -255,7 +315,7 @@ class MeterImageGenerator:
                 center_x + inner_r - 2,
                 center_y + inner_r - 2,
             ),
-            fill=(250, 252, 255),
+            fill=theme["dial"],
         )
 
         # Text labels and water meter rating with custom font sizes
@@ -264,17 +324,20 @@ class MeterImageGenerator:
         font = PIL.ImageFont.load_default(size=14)
         font_small = PIL.ImageFont.load_default(size=10)
 
+        text_col = theme["text"]
+        text_sub_col = theme["text_sub"]
+
         draw.text(
             (center_x, center_y - 148),
             "AQUA-DIGITIZER",
-            fill=(45, 50, 60),
+            fill=text_col,
             font=font_title,
             anchor="mm",
         )
         draw.text(
             (center_x, center_y - 130),
             "m3  Qn 1.5",
-            fill=(75, 85, 95),
+            fill=text_sub_col,
             font=font_sub,
             anchor="mm",
         )
@@ -303,17 +366,18 @@ class MeterImageGenerator:
 
         # 2. Realistic Reference Markers (Model text, Unit mark, Serial Number)
         # Ref0: Model info (Left)
-        draw.text((120, 227), "MOD", fill=(45, 50, 60), font=font)
-        draw.text((118, 239), "AQ-20", fill=(30, 35, 45), font=font)
+        draw.text((120, 227), "MOD", fill=text_col, font=font)
+        draw.text((118, 239), "AQ-20", fill=text_sub_col, font=font)
 
         # Ref1: m³ Volume unit & pressure rating (Top-Right, shifted 50px down to y=170)
-        draw.text((475, 173), "m3", fill=(25, 30, 40), font=font_title)
-        draw.text((472, 200), "PN16", fill=(65, 70, 80), font=font)
+        draw.text((475, 173), "m3", fill=text_col, font=font_title)
+        draw.text((472, 200), "PN16", fill=text_sub_col, font=font)
 
         # Ref2: Serial Number & Barcode (Bottom-Center, shifted 10px up to y=410)
+        barcode_col = text_col
         for bx in range(280, 298, 3):
-            draw.line((bx, 414, bx, 434), fill=(35, 40, 50), width=2)
-        draw.text((303, 417), "SN:89421", fill=(25, 30, 40), font=font)
+            draw.line((bx, 414, bx, 434), fill=barcode_col, width=2)
+        draw.text((303, 417), "SN:89421", fill=text_col, font=font)
 
         # 3. 4 Analog Dial Faces with 0-9 Graduations and Multiplier Markers
         dial_configs = [
@@ -329,8 +393,8 @@ class MeterImageGenerator:
             ax, ay = cx - dial_size // 2, cy - dial_size // 2
             draw.ellipse(
                 (ax, ay, ax + dial_size, ay + dial_size),
-                fill=(252, 252, 254),
-                outline=(115, 120, 130),
+                fill=theme["dial_sub"],
+                outline=theme["border"],
                 width=2,
             )
 
@@ -339,7 +403,7 @@ class MeterImageGenerator:
             draw.text(
                 (cx - tw // 2, ay - 12),
                 mult,
-                fill=(180, 30, 30),
+                fill=(210, 40, 40) if meter_bg.lower() == "dark" else (180, 30, 30),
                 font=font_small,
             )
 
@@ -351,13 +415,13 @@ class MeterImageGenerator:
                 ty2 = cy + int(dial_r * math.sin(angle_rad))
                 draw.line(
                     (tx1, ty1, tx2, ty2),
-                    fill=(35, 40, 50),
+                    fill=text_col,
                     width=2 if t % 2 == 0 else 1,
                 )
                 if t % 2 == 0:
                     nx = cx + int((dial_r - 11) * math.cos(angle_rad)) - 3
                     ny = cy + int((dial_r - 11) * math.sin(angle_rad)) - 4
-                    draw.text((nx, ny), str(t), fill=(55, 60, 70), font=font)
+                    draw.text((nx, ny), str(t), fill=text_col, font=font)
 
         return img
 
@@ -605,6 +669,21 @@ class MeterImageGenerator:
     # -------------------------------------------------------------------------
     # Color Resolvers
     # -------------------------------------------------------------------------
+
+    def _resolve_meter_bg_theme(self, meter_bg: str) -> dict[str, Any]:
+        key = (meter_bg or "white").lower().strip()
+        alias_map = {
+            "silver": "grey",
+            "gray": "grey",
+            "gold": "brass",
+            "yellow": "brass",
+            "black": "dark",
+            "cream": "aged",
+            "vintage": "aged",
+            "light": "white",
+        }
+        resolved = alias_map.get(key, key)
+        return METER_BG_THEMES.get(resolved, METER_BG_THEMES["white"])
 
     def _resolve_lcd_theme(self, lcd_color: str, lcd_bg: str) -> dict[str, Any]:
         key = lcd_color.lower()
