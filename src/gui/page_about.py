@@ -7,6 +7,7 @@ import nicegui
 from nicegui import ui
 
 from callbacks import Callbacks
+from gui.base_page import BasePage
 from gui.theme import CARD_DEFAULT, FONT_MONO_VALUE, ROW_ACTIONS, ROW_HEADER
 from main import VERSION
 from utils.diagnostics import get_process_memory_info, get_system_info
@@ -14,11 +15,11 @@ from utils.diagnostics import get_process_memory_info, get_system_info
 logger = logging.getLogger(__name__)
 
 
-class AboutPage:
+class AboutPage(BasePage):
     """About & System Diagnostics Page."""
 
     def __init__(self, callbacks: Callbacks | None = None) -> None:
-        self.callbacks = callbacks
+        super().__init__(callbacks)
 
     def _get_diagnostics_data(self) -> dict[str, Any]:
         """Collect full diagnostics information for telemetry."""
@@ -44,7 +45,7 @@ class AboutPage:
             "health": health_data,
         }
 
-    def show(self) -> None:
+    async def show(self) -> None:
         diag = self._get_diagnostics_data()
         health = diag.get("health", {})
         uptime_info = health.get("uptime", {})

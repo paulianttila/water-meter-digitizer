@@ -25,6 +25,7 @@ from gui.api_console.registry import (
     STANDARD_RESOLUTIONS,
     generate_curl_command,
 )
+from gui.base_page import BasePage
 from gui.components import render_page_header
 from gui.components.engine_test_dialog import run_engine_test_dialog
 from gui.theme import (
@@ -45,11 +46,11 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
-class ApiConsolePage:
+class ApiConsolePage(BasePage):
     """Page allowing users to interactively test REST endpoints and studio mock camera feeds."""
 
     def __init__(self, callbacks: Callbacks | None = None, port: int = 3000) -> None:
-        self.callbacks = callbacks
+        super().__init__(callbacks)
         self.port = port
         self.selected_endpoint = ENDPOINTS[0]["url"]
         self.selected_method = ENDPOINTS[0]["method"]
@@ -999,7 +1000,7 @@ class ApiConsolePage:
         except Exception as ex:
             ui.notify(f"Failed to update [ImageSource] URL: {ex}", type="negative")
 
-    def show(self) -> None:
+    async def show(self) -> None:
         with ui.column().classes(
             "w-full h-full flex flex-col gap-3 p-4 overflow-hidden"
         ):

@@ -12,6 +12,7 @@ import utils.image as ImageUtils
 from callbacks import Callbacks
 from configuration import CNNParams, Config
 from data_classes import ImagePosition, MeterConfig, RefImage
+from gui.base_page import BasePage
 from gui.components import open_config_history_dialog, open_confirm_dialog
 
 from .step_adjust import AdjustStep
@@ -61,9 +62,9 @@ steps_order = [
 ]
 
 
-class SetupPage:
+class SetupPage(BasePage):
     def __init__(self, callbacks: Callbacks) -> None:
-        self.callbacks = callbacks
+        super().__init__(callbacks)
 
         self.interactive_image: ui.interactive_image
         self.image_details: ui.label

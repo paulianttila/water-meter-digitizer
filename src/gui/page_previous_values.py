@@ -9,14 +9,15 @@ from typing import Any
 from nicegui import ui
 
 from callbacks import Callbacks
+from gui.base_page import BasePage
 from gui.components import open_code_inspect_dialog, page_header
 
 
-class PreviousValuesPage:
+class PreviousValuesPage(BasePage):
     """Page allowing users to inspect and calibrate baseline meter values."""
 
     def __init__(self, callbacks: Callbacks) -> None:
-        self.callbacks = callbacks
+        super().__init__(callbacks)
         self.cards_container: ui.column | None = None
         self.table_container: ui.column | None = None
         self.meter_select: ui.select | None = None
@@ -405,7 +406,7 @@ class PreviousValuesPage:
             max_width="max-w-2xl",
         )
 
-    def show(self) -> None:
+    async def show(self) -> None:
         with ui.column().classes("w-full max-w-5xl gap-4 p-4"):
             # Header
             with page_header(

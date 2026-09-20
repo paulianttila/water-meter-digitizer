@@ -1,5 +1,6 @@
 """Unit tests for ConfigPage, format_diff_html, section parsing, and configuration management."""
 
+import asyncio
 from unittest.mock import MagicMock, patch
 
 from gui.components import format_diff_html
@@ -103,7 +104,7 @@ def test_page_config_init_and_show():
     assert page.txt == "[TakeImage]\nUrl = http://mock/capture\n"
     assert page.view_mode == "editor"
 
-    with patch("gui.page_config.ui") as mock_ui:
+    with patch("gui.page_config.ui") as mock_ui, patch("gui.components.page_header.ui"):
         mock_ui.element.return_value.__enter__ = MagicMock()
         mock_ui.element.return_value.__exit__ = MagicMock()
         mock_ui.row.return_value.__enter__ = MagicMock()
@@ -115,7 +116,7 @@ def test_page_config_init_and_show():
         mock_ui.card.return_value.__enter__ = MagicMock()
         mock_ui.card.return_value.__exit__ = MagicMock()
 
-        page.show()
+        asyncio.run(page.show())
 
 
 def test_page_config_editor_actions():
@@ -129,6 +130,7 @@ def test_page_config_editor_actions():
 
     with (
         patch("gui.page_config.ui") as mock_ui,
+        patch("gui.components.page_header.ui"),
         patch("gui.page_config.theme_copy_to_clipboard") as mock_clipboard,
     ):
         mock_ui.element.return_value.__enter__ = MagicMock()
@@ -164,7 +166,7 @@ def test_page_config_editor_actions():
 
         mock_ui.button.side_effect = fake_button
 
-        page.show()
+        asyncio.run(page.show())
 
         # Verify Copy button triggered theme_copy_to_clipboard
         if "Copy" in button_handlers:

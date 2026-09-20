@@ -7,6 +7,7 @@ from nicegui import ui
 
 from callbacks import Callbacks
 from configuration import Config
+from gui.base_page import BasePage
 from gui.components import (
     open_code_inspect_dialog,
     open_config_history_dialog,
@@ -458,14 +459,14 @@ def get_section_icon(name: str) -> str:
     return "settings"
 
 
-class ConfigPage:
+class ConfigPage(BasePage):
     def __init__(self, callbacks: Callbacks) -> None:
-        self.callbacks = callbacks
+        super().__init__(callbacks)
         self.txt = self.callbacks.load_config_file()
         self.new_config_saved = False
         self.view_mode = "editor"  # "editor" or "inspector"
 
-    def show(self) -> None:
+    async def show(self) -> None:
         def check_buttons() -> None:
             is_dirty = editor.value != self.txt
             button_save.enabled = is_dirty

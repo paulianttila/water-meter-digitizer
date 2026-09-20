@@ -6,6 +6,7 @@ from nicegui import ui
 
 import gui.theme as theme
 from callbacks import Callbacks
+from gui.base_page import BasePage
 from gui.components import page_header
 from main import VERSION
 from utils.diagnostics import get_process_memory_info, get_system_info
@@ -13,11 +14,11 @@ from utils.diagnostics import get_process_memory_info, get_system_info
 logger = logging.getLogger(__name__)
 
 
-class HelpPage:
+class HelpPage(BasePage):
     """Comprehensive Help, Documentation, and Support Center."""
 
     def __init__(self, callbacks: Callbacks | None = None) -> None:
-        self.callbacks = callbacks
+        super().__init__(callbacks)
 
     def _generate_support_bundle(self) -> str:
         """Generate a structured Markdown diagnostics bundle for GitHub issues or troubleshooting."""
@@ -72,7 +73,7 @@ class HelpPage:
         )
         return "\n".join(bundle_lines)
 
-    def show(self) -> None:
+    async def show(self) -> None:
         with (
             ui.dialog() as support_dialog,
             ui.card().classes(f"{theme.DIALOG_CARD} max-w-3xl flex-col"),

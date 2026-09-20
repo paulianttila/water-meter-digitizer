@@ -26,7 +26,10 @@ def test_previous_values_page_show_and_refresh():
 
     page = PreviousValuesPage(callbacks)
 
-    with patch("gui.page_previous_values.ui") as mock_ui:
+    with (
+        patch("gui.page_previous_values.ui") as mock_ui,
+        patch("gui.components.page_header.ui"),
+    ):
         mock_ui.column.return_value.__enter__ = MagicMock()
         mock_ui.column.return_value.__exit__ = MagicMock()
         mock_ui.card.return_value.__enter__ = MagicMock()
@@ -36,7 +39,7 @@ def test_previous_values_page_show_and_refresh():
         mock_ui.element.return_value.__enter__ = MagicMock()
         mock_ui.element.return_value.__exit__ = MagicMock()
 
-        page.show()
+        asyncio.run(page.show())
         assert page.table_container is not None
         assert page.cards_container is not None
 

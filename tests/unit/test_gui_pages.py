@@ -1,3 +1,4 @@
+import asyncio
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -18,20 +19,24 @@ def mock_callbacks():
             "started_at": "2026-09-14T10:00:00",
         },
         "camera": {
-            "reachable": True,
-            "latency_ms": 12.5,
-            "status_code": 200,
-            "url": "http://cam.local/jpg",
+            "source": "http://192.168.1.50/capture",
+            "connected": True,
+            "latency_ms": 42.5,
         },
-        "memory": {"rss_mb": 45.2, "peak_rss_mb": 50.1},
+        "memory": {"rss_mb": 145.2, "peak_rss_mb": 180.5, "percent": 12.4},
+        "cache": {"hits": 120, "misses": 5, "size": 30, "max_size": 100},
         "models": {
-            "digital": {"path": "model/digital.tflite", "exists": True},
-            "analog": {"path": "model/analog.tflite", "exists": True},
-            "avg_inference_ms": 14.2,
+            "digital": {"name": "dig100.tflite", "loaded": True},
+            "analog": {"name": "ana100.tflite", "loaded": True},
+        },
+        "system": {
+            "cpu_percent": 15.2,
+            "threads_count": 8,
+            "python_version": "3.11.13",
+            "platform": "Darwin-25.0.0",
         },
     }
     cb.get_health_data.return_value = health_payload
-    cb._get_health_data.return_value = health_payload
     return cb
 
 
@@ -52,8 +57,8 @@ def test_theme_copy_to_clipboard():
 
 def test_page_about_show():
     page = AboutPage()
-    with patch("gui.page_about.ui"):
-        page.show()
+    with patch("gui.page_about.ui"), patch("gui.components.page_header.ui"):
+        asyncio.run(page.show())
 
 
 def test_page_about_with_callbacks(mock_callbacks):
@@ -63,8 +68,8 @@ def test_page_about_with_callbacks(mock_callbacks):
     assert "python" in diag
     assert "memory" in diag
     assert "health" in diag
-    with patch("gui.page_about.ui"):
-        page.show()
+    with patch("gui.page_about.ui"), patch("gui.components.page_header.ui"):
+        asyncio.run(page.show())
 
 
 def test_page_about_with_failing_health_callback():
@@ -73,16 +78,16 @@ def test_page_about_with_failing_health_callback():
     page = AboutPage(callbacks=mock_cb)
     diag = page._get_diagnostics_data()
     assert "error" in diag["health"]
-    with patch("gui.page_about.ui"):
-        page.show()
+    with patch("gui.page_about.ui"), patch("gui.components.page_header.ui"):
+        asyncio.run(page.show())
 
 
 def test_page_help_show():
     page = HelpPage()
     bundle = page._generate_support_bundle()
     assert "Support Diagnostic Bundle" in bundle
-    with patch("gui.page_help.ui"):
-        page.show()
+    with patch("gui.page_help.ui"), patch("gui.components.page_header.ui"):
+        asyncio.run(page.show())
 
 
 def test_page_help_with_callbacks(mock_callbacks):
@@ -90,8 +95,8 @@ def test_page_help_with_callbacks(mock_callbacks):
     bundle = page._generate_support_bundle()
     assert "Support Diagnostic Bundle" in bundle
     assert "System Status" in bundle
-    with patch("gui.page_help.ui"):
-        page.show()
+    with patch("gui.page_help.ui"), patch("gui.components.page_header.ui"):
+        asyncio.run(page.show())
 
 
 def test_page_help_with_failing_health_callback():
@@ -100,5 +105,5 @@ def test_page_help_with_failing_health_callback():
     page = HelpPage(callbacks=mock_cb)
     bundle = page._generate_support_bundle()
     assert "Support Diagnostic Bundle" in bundle
-    with patch("gui.page_help.ui"):
-        page.show()
+    with patch("gui.page_help.ui"), patch("gui.components.page_header.ui"):
+        asyncio.run(page.show())

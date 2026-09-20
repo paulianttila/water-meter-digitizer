@@ -6,6 +6,7 @@ import logging
 from nicegui import ui
 
 from callbacks import Callbacks
+from gui.base_page import BasePage
 from gui.components import (
     DiagnosticsCard,
     LeakMonitorCard,
@@ -17,11 +18,11 @@ from gui.components import (
 logger = logging.getLogger(__name__)
 
 
-class ServicesPage:
+class ServicesPage(BasePage):
     """Page rendering System Diagnostics, Zero-Flow Leak Monitor, Poller, and MQTT services."""
 
     def __init__(self, callbacks: Callbacks) -> None:
-        self.callbacks = callbacks
+        super().__init__(callbacks)
         self.diagnostics_card = DiagnosticsCard(self.callbacks)
         self.leak_card = LeakMonitorCard(self.callbacks)
         self.services_card = ServicesStatusCard(self.callbacks)

@@ -9,6 +9,7 @@ from typing import Any
 from nicegui import ui
 
 from callbacks import Callbacks
+from gui.base_page import BasePage
 from gui.components import (
     ConsumptionCard,
     HistoryTableCard,
@@ -34,11 +35,11 @@ from gui.theme import (
 logger = logging.getLogger(__name__)
 
 
-class MeterPage:
+class MeterPage(BasePage):
     """Page rendering live water meter deductions, multi-stage pipeline captures, digit crops, and analytics."""
 
     def __init__(self, callbacks: Callbacks) -> None:
-        self.callbacks = callbacks
+        super().__init__(callbacks)
         self.consumption_card = ConsumptionCard(self.callbacks)
         self.history_card = HistoryTableCard(self.callbacks)
         self.time_machine_card = TimeMachineCard(self.callbacks)
