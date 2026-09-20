@@ -66,7 +66,12 @@ def format_diff_html(diff_lines: list[str]) -> str:
 
 def parse_ini_sections(text: str) -> list[dict[str, Any]]:
     """Parse raw INI text into structured section dictionaries for visual inspection."""
-    parser = configparser.ConfigParser(interpolation=None)
+    parser = configparser.ConfigParser(
+        interpolation=None,
+        default_section="",
+        inline_comment_prefixes=("#", ";"),
+    )
+    parser.optionxform = str  # type: ignore[method-assign,assignment]
     try:
         parser.read_string(text)
     except Exception:
@@ -108,6 +113,8 @@ def get_section_icon(name: str) -> str:
         return "description"
     if "influx" in name_lower or "history" in name_lower or "historic" in name_lower:
         return "show_chart"
+    if "default" in name_lower:
+        return "tune"
     return "settings"
 
 

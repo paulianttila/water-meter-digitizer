@@ -32,9 +32,12 @@ def test_format_diff_html_scenarios():
 
 
 def test_parse_ini_sections_and_icons():
-    ini_content = """
+    ini_content = """[DEFAULT]
+LogLevel = INFO
+DataDir = /data
+
 [TakeImage]
-Url = http://192.168.1.10/capture
+Url = http://192.168.1.10/capture # camera capture URL
 Rotate = 90
 
 [Meters]
@@ -45,13 +48,20 @@ Host = 192.168.1.5
 Port = 1883
 """
     sections = parse_ini_sections(ini_content)
-    assert len(sections) == 3
-    assert sections[0]["name"] == "TakeImage"
-    assert sections[0]["items"]["rotate"] == "90"
-    assert sections[1]["name"] == "Meters"
-    assert sections[2]["name"] == "MQTT"
+    assert len(sections) == 4
+    assert sections[0]["name"] == "DEFAULT"
+    assert sections[0]["items"] == {"LogLevel": "INFO", "DataDir": "/data"}
+    assert sections[1]["name"] == "TakeImage"
+    assert sections[1]["items"]["Url"] == "http://192.168.1.10/capture"
+    assert sections[1]["items"]["Rotate"] == "90"
+    assert "LogLevel" not in sections[1]["items"]
+    assert sections[2]["name"] == "Meters"
+    assert sections[2]["items"] == {"Names": "total, sub1"}
+    assert sections[3]["name"] == "MQTT"
+    assert sections[3]["items"] == {"Host": "192.168.1.5", "Port": "1883"}
 
     # Test icons
+    assert get_section_icon("DEFAULT") == "tune"
     assert get_section_icon("TakeImage") == "camera_alt"
     assert get_section_icon("Alignment") == "crop_free"
     assert get_section_icon("AnalogReadout") == "speed"
