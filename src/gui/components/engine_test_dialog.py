@@ -16,6 +16,7 @@ from nicegui import ui
 
 from callbacks import Callbacks
 from configuration import Config
+from gui.components.page_header import card_header
 from gui.theme import (
     DIALOG_CARD,
     DIALOG_FOOTER_ROW,
@@ -168,12 +169,12 @@ def show_engine_test_modal(
         .style("max-width: 95vw; width: 900px;"),
     ):
         # Header Row
-        with ui.row().classes(DIALOG_HEADER_ROW):
-            with ui.row().classes(ROW_ACTIONS):
-                ui.icon("analytics", color="cyan", size="sm")
-                ui.label("Digitizer Recognition Test Result").classes(
-                    "text-base font-bold text-slate-100"
-                )
+        with card_header(
+            title="Digitizer Recognition Test Result",
+            icon="analytics",
+            color="cyan",
+            classes=DIALOG_HEADER_ROW,
+        ):
             ui.button(icon="close", on_click=dialog.close).props(
                 "flat round dense aria-label='Close dialog'"
             )

@@ -7,6 +7,7 @@ from nicegui import ui
 
 from callbacks import Callbacks
 from gui.components.async_data_loader import async_fetch_and_render
+from gui.components.page_header import card_header
 from gui.theme import (
     BADGE_ERROR,
     BADGE_INFO,
@@ -14,10 +15,8 @@ from gui.theme import (
     BADGE_WARNING,
     CARD_DEFAULT,
     FONT_MONO_VALUE,
-    HEADING_SECTION,
     HEADING_SUBSECTION,
     PANEL_INNER,
-    ROW_ACTIONS,
     ROW_HEADER,
     ROW_ITEMS_CENTER,
     TEXT_MONO_MUTED,
@@ -119,18 +118,17 @@ class ServicesStatusCard:
 
         with ui.card().classes(f"{CARD_DEFAULT} gap-4"):
             # Header Row
-            with ui.row().classes(ROW_HEADER):
-                with ui.row().classes(ROW_ACTIONS):
-                    ui.icon("hub", color="cyan").classes("text-xl")
-                    ui.label("Services & Integrations").classes(HEADING_SECTION)
-
-                with ui.row().classes(ROW_ACTIONS):
-                    ui.button(
-                        icon="refresh",
-                        on_click=self.fetch_and_update,
-                    ).props(
-                        "flat round dense color=cyan text-xs"
-                    ).tooltip("Refresh Services Status")
+            with card_header(
+                title="Services & Integrations",
+                icon="hub",
+                color="cyan",
+            ):
+                ui.button(
+                    icon="refresh",
+                    on_click=self.fetch_and_update,
+                ).props(
+                    "flat round dense color=cyan text-xs"
+                ).tooltip("Refresh Services Status")
 
             # 2 Main Columns: Poller Scheduler & MQTT Broker
             with ui.grid(columns=2).classes("w-full gap-4 grid-cols-1 md:grid-cols-2"):

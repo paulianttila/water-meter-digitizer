@@ -7,12 +7,12 @@ from typing import Any
 from nicegui import ui
 
 from callbacks import Callbacks
+from gui.components.page_header import card_header
 from gui.theme import (
     DIALOG_CARD,
     DIALOG_HEADER_ROW,
     HEADING_SECTION,
     HEADING_SUBSECTION,
-    ROW_ACTIONS,
     ROW_HEADER,
 )
 from storage.base import ReadingRecord
@@ -741,21 +741,19 @@ class HistoryTableCard:
                 f"{DIALOG_CARD} min-w-[340px] md:min-w-[680px] max-w-4xl"
             ),
         ):
-            with ui.row().classes(DIALOG_HEADER_ROW):
-                with ui.row().classes(ROW_ACTIONS):
-                    ui.icon("manage_search", size="sm").classes("text-cyan-400")
-                    ui.label(f"Reading Record #{rec_id}").classes(
-                        f"{HEADING_SECTION} text-lg text-white"
+            with card_header(
+                title=f"Reading Record #{rec_id}",
+                icon="manage_search",
+                color="cyan",
+                classes=DIALOG_HEADER_ROW,
+                title_classes=f"{HEADING_SECTION} text-lg text-white",
+            ):
+                if record.flow_detected:
+                    ui.badge("💧 Flow Detected", color="blue").classes(
+                        "text-xs font-bold"
                     )
-                    if record.flow_detected:
-                        ui.badge("💧 Flow Detected", color="blue").classes(
-                            "text-xs font-bold"
-                        )
-                    if record.error:
-                        ui.badge("⚠️ Error", color="negative").classes(
-                            "text-xs font-bold"
-                        )
-
+                if record.error:
+                    ui.badge("⚠️ Error", color="negative").classes("text-xs font-bold")
                 ui.button(icon="close", on_click=dialog.close).props(
                     "flat round dense color=gray aria-label='Close dialog'"
                 )

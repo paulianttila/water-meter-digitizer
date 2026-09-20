@@ -14,6 +14,7 @@ from gui.components import (
     HistoryTableCard,
     TimeMachineCard,
     async_fetch_and_render,
+    card_header,
 )
 from gui.theme import (
     BADGE_ERROR,
@@ -25,7 +26,6 @@ from gui.theme import (
     DIALOG_HEADER_ROW,
     FONT_MONO_VALUE,
     HEADING_SECTION,
-    ROW_ACTIONS,
     ROW_HEADER,
     ROW_ITEMS_CENTER,
     STAT_VALUE_LARGE,
@@ -126,14 +126,13 @@ class MeterPage:
                 ui.dialog() as crop_modal,
                 ui.card().classes(f"{DIALOG_CARD} min-w-[320px] max-w-md p-6"),
             ):
-                with ui.row().classes(DIALOG_HEADER_ROW):
-                    with ui.row().classes(ROW_ACTIONS):
-                        ui.icon("pin" if is_digital else "speed", color="cyan").classes(
-                            "text-lg"
-                        )
-                        ui.label(
-                            f"{'Digital Counter' if is_digital else 'Analog Dial'} - {name}"
-                        ).classes(f"{HEADING_SECTION} text-sm")
+                with card_header(
+                    title=f"{'Digital Counter' if is_digital else 'Analog Dial'} - {name}",
+                    icon="pin" if is_digital else "speed",
+                    color="cyan",
+                    classes=DIALOG_HEADER_ROW,
+                    title_classes=f"{HEADING_SECTION} text-sm",
+                ):
                     ui.button(icon="close", on_click=crop_modal.close).props(
                         "flat round dense size=sm aria-label='Close dialog'"
                     )
@@ -351,16 +350,13 @@ class MeterPage:
                         ui.dialog() as roi_modal,
                         ui.card().classes(f"{DIALOG_CARD} max-w-4xl"),
                     ):
-                        with ui.row().classes(DIALOG_HEADER_ROW):
-                            with ui.row().classes(ROW_ACTIONS):
-                                ui.icon("crop_free", color="cyan").classes("text-xl")
-                                with ui.column().classes("gap-0"):
-                                    ui.label("ROI & Reference Marks Inspector").classes(
-                                        HEADING_SECTION
-                                    )
-                                    ui.label(
-                                        "Visual alignment markers and digitization region bounding boxes"
-                                    ).classes("text-xs text-gray-400")
+                        with card_header(
+                            title="ROI & Reference Marks Inspector",
+                            subtitle="Visual alignment markers and digitization region bounding boxes",
+                            icon="crop_free",
+                            color="cyan",
+                            classes=DIALOG_HEADER_ROW,
+                        ):
                             ui.button(icon="close", on_click=roi_modal.close).props(
                                 "flat round dense text-xs aria-label='Close dialog'"
                             )

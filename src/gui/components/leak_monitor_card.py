@@ -7,6 +7,7 @@ from nicegui import ui
 
 from callbacks import Callbacks
 from gui.components.async_data_loader import async_fetch_and_render
+from gui.components.page_header import card_header
 from gui.theme import (
     BADGE_ERROR,
     BADGE_INFO,
@@ -17,7 +18,6 @@ from gui.theme import (
     HEADING_SECTION,
     HEADING_SUBSECTION,
     PANEL_INNER,
-    ROW_ACTIONS,
     ROW_HEADER,
     TEXT_MONO_MUTED,
 )
@@ -109,27 +109,26 @@ class LeakMonitorCard:
 
         with ui.card().classes(f"{CARD_DEFAULT} gap-4"):
             # Header Row
-            with ui.row().classes(ROW_HEADER):
-                with ui.row().classes(ROW_ACTIONS):
-                    ui.icon("water_damage", color="amber").classes("text-xl")
-                    ui.label("Leak & Zero-Flow Monitor").classes(HEADING_SECTION)
-                    with ui.element("span").classes(badge_cls):
-                        ui.label(state_label)
-
-                with ui.row().classes(ROW_ACTIONS):
-                    ui.button(
-                        "Reset Leak State",
-                        icon="restart_alt",
-                        on_click=self.reset_leak_state,
-                    ).props("unelevated color=negative size=sm").classes(
-                        "text-xs font-semibold"
-                    )
-                    ui.button(
-                        icon="refresh",
-                        on_click=self.fetch_and_update,
-                    ).props(
-                        "flat round dense color=cyan text-xs"
-                    ).tooltip("Refresh Leak Monitor")
+            with card_header(
+                title="Leak & Zero-Flow Monitor",
+                icon="water_damage",
+                color="amber",
+                badge_text=state_label,
+                badge_cls=badge_cls,
+            ):
+                ui.button(
+                    "Reset Leak State",
+                    icon="restart_alt",
+                    on_click=self.reset_leak_state,
+                ).props("unelevated color=negative size=sm").classes(
+                    "text-xs font-semibold"
+                )
+                ui.button(
+                    icon="refresh",
+                    on_click=self.fetch_and_update,
+                ).props(
+                    "flat round dense color=cyan text-xs"
+                ).tooltip("Refresh Leak Monitor")
 
             # Telemetry Metrics Grid
             with ui.grid(columns=4).classes(

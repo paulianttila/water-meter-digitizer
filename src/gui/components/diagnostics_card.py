@@ -6,6 +6,7 @@ from nicegui import ui
 
 from callbacks import Callbacks
 from gui.components.async_data_loader import async_fetch_and_render
+from gui.components.page_header import card_header
 from gui.theme import (
     BADGE_ERROR,
     BADGE_INFO,
@@ -16,7 +17,6 @@ from gui.theme import (
     HEADING_SECTION,
     HEADING_SUBSECTION,
     PANEL_INNER,
-    ROW_ACTIONS,
     ROW_HEADER,
     TEXT_MONO_MUTED,
 )
@@ -89,23 +89,22 @@ class DiagnosticsCard:
 
         with ui.card().classes(f"{CARD_DEFAULT} gap-4"):
             # Header Row
-            with ui.row().classes(ROW_HEADER):
-                with ui.row().classes(ROW_ACTIONS):
-                    ui.icon("health_and_safety", color="cyan").classes("text-xl")
-                    ui.label("System Diagnostics & Health").classes(HEADING_SECTION)
-                    with ui.element("span").classes(status_badge_cls):
-                        ui.label(status_text)
-
-                with ui.row().classes(ROW_ACTIONS):
-                    ui.label(f"Uptime: {uptime_info.get('uptime_human', '—')}").classes(
-                        "text-xs font-mono text-gray-400"
-                    )
-                    ui.button(
-                        icon="refresh",
-                        on_click=self.fetch_and_update,
-                    ).props(
-                        "flat round dense color=cyan text-xs"
-                    ).tooltip("Refresh Diagnostics")
+            with card_header(
+                title="System Diagnostics & Health",
+                icon="health_and_safety",
+                color="cyan",
+                badge_text=status_text,
+                badge_cls=status_badge_cls,
+            ):
+                ui.label(f"Uptime: {uptime_info.get('uptime_human', '—')}").classes(
+                    "text-xs font-mono text-gray-400"
+                )
+                ui.button(
+                    icon="refresh",
+                    on_click=self.fetch_and_update,
+                ).props(
+                    "flat round dense color=cyan text-xs"
+                ).tooltip("Refresh Diagnostics")
 
             # 4 Grid Sub-Panels: Camera, Memory & System, Image Cache, LiteRT Pool
             with ui.grid(columns=4).classes(

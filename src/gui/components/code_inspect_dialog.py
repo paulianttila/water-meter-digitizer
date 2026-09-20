@@ -2,10 +2,10 @@
 
 from nicegui import ui
 
+from gui.components.page_header import card_header
 from gui.theme import (
     DIALOG_CARD,
     DIALOG_HEADER_ROW,
-    ROW_ACTIONS,
     ROW_HEADER,
     copy_to_clipboard,
 )
@@ -27,13 +27,13 @@ def open_code_inspect_dialog(
         .classes(f"column no-wrap {DIALOG_CARD} {max_width} gap-3")
         .style("max-width: 95vw; width: 900px;"),
     ):
-        with ui.row().classes(DIALOG_HEADER_ROW):
-            with ui.row().classes(ROW_ACTIONS):
-                ui.icon(icon, color="cyan", size="sm")
-                with ui.column().classes("gap-0"):
-                    ui.label(title).classes("text-base font-bold text-slate-100")
-                    if subtitle:
-                        ui.label(subtitle).classes("text-xs text-slate-400")
+        with card_header(
+            title=title,
+            subtitle=subtitle,
+            icon=icon,
+            color="cyan",
+            classes=DIALOG_HEADER_ROW,
+        ):
             ui.button(icon="close", on_click=dialog.close).props(
                 "flat round dense aria-label='Close dialog'"
             )
