@@ -107,3 +107,23 @@ def test_page_help_with_failing_health_callback():
     assert "Support Diagnostic Bundle" in bundle
     with patch("gui.page_help.ui"), patch("gui.components.page_header.ui"):
         asyncio.run(page.show())
+
+
+def test_page_help_load_markdown_files():
+    from gui.page_help import _load_help
+
+    expected_files = [
+        "pipeline_architecture.md",
+        "wizard_steps.md",
+        "calibration_tips.md",
+        "canvas_keyboard_shortcuts.md",
+        "roi_best_practices.md",
+        "api_reference.md",
+        "mqtt_integration.md",
+        "home_assistant.md",
+    ]
+    for filename in expected_files:
+        content = _load_help(filename)
+        assert len(content) > 0, f"Help file {filename} should not be empty"
+
+    assert _load_help("non_existent_file.md") == ""

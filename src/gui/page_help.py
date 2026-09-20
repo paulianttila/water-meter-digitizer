@@ -1,5 +1,6 @@
 import json
 import logging
+from pathlib import Path
 from typing import Any
 
 from nicegui import ui
@@ -12,6 +13,14 @@ from main import VERSION
 from utils.diagnostics import get_process_memory_info, get_system_info
 
 logger = logging.getLogger(__name__)
+
+HELP_DIR = Path(__file__).parent.parent / "web" / "static" / "help"
+
+
+def _load_help(filename: str) -> str:
+    """Load markdown help content from static files."""
+    path = HELP_DIR / filename
+    return path.read_text(encoding="utf-8") if path.exists() else ""
 
 
 class HelpPage(BasePage):
@@ -198,7 +207,7 @@ class HelpPage(BasePage):
                 "w-full flex-1 bg-transparent p-0 overflow-y-auto"
             ):
                 # -------------------------------------------------------------
-                # TAB 1: Setup Workflow & Pipeline (Option A 2-Column Split Hub)
+                # TAB 1: Setup Workflow & Pipeline
                 # -------------------------------------------------------------
                 with ui.tab_panel(tab_workflow).classes(
                     "w-full h-full p-0 flex flex-col gap-4"
@@ -207,170 +216,36 @@ class HelpPage(BasePage):
                     with ui.card().classes(
                         "w-full p-4 bg-slate-900/70 border border-emerald-500/20 rounded-xl flex flex-col gap-2.5 shrink-0"
                     ):
-                        with ui.row().classes("items-center justify-between"):
-                            with ui.row().classes("items-center gap-2"):
-                                ui.icon("account_tree", color="emerald").classes(
-                                    "text-lg"
-                                )
-                                ui.label(
-                                    "End-to-End Runtime Pipeline Architecture"
-                                ).classes(
-                                    "text-xs font-bold text-emerald-400 tracking-wider uppercase"
-                                )
-                            ui.label("6 Autonomous Processing Stages").classes(
-                                "text-[11px] text-gray-400 font-medium"
+                        with ui.row().classes("items-center gap-2"):
+                            ui.icon("account_tree", color="emerald").classes("text-lg")
+                            ui.label("Runtime Architecture").classes(
+                                "text-xs font-bold text-emerald-400 tracking-wider uppercase"
                             )
-
-                        pipeline_stages = [
-                            (
-                                "1. Capture",
-                                "camera_alt",
-                                "HTTP/RTSP snapshot or local file",
-                            ),
-                            (
-                                "2. Alignment",
-                                "transform",
-                                "Affine warp via 3 reference markers",
-                            ),
-                            (
-                                "3. Adjustment",
-                                "tune",
-                                "Contrast, brightness & sharpness filters",
-                            ),
-                            (
-                                "4. Inference",
-                                "memory",
-                                "LiteRT quantized CNN classification",
-                            ),
-                            (
-                                "5. Consistency",
-                                "rule",
-                                "Predecessor odometer rollover deduction",
-                            ),
-                            (
-                                "6. Export",
-                                "cloud_upload",
-                                "MQTT, Home Assistant & SQLite storage",
-                            ),
-                        ]
-
-                        with ui.element("div").classes(
-                            "grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2"
-                        ):
-                            for title, icon, desc in pipeline_stages:
-                                with ui.element("div").classes(
-                                    "p-2.5 rounded-lg bg-slate-800/50 border border-white/5 flex flex-col items-center text-center gap-1"
-                                ):
-                                    ui.icon(icon, color="emerald").classes("text-base")
-                                    ui.label(title).classes(
-                                        "text-xs font-bold text-white"
-                                    )
-                                    ui.label(desc).classes(
-                                        "text-[11px] text-gray-400 leading-tight"
-                                    )
+                        ui.markdown(_load_help("pipeline_architecture.md")).classes(
+                            "text-xs text-gray-300 w-full"
+                        )
 
                     # 2-Column Split: Wizard Steps (Left) + Quick Reference Cheat-Sheet (Right)
                     with ui.element("div").classes(
                         "grid grid-cols-1 lg:grid-cols-3 gap-4 items-start"
                     ):
                         # Left Column (2/3 width): 9-Step Linear Progression
-                        with ui.column().classes("lg:col-span-2 gap-3 w-full"):
-                            with ui.row().classes("items-center justify-between px-1"):
-                                with ui.row().classes("items-center gap-2"):
-                                    ui.icon(
-                                        "format_list_numbered", color="cyan"
-                                    ).classes("text-lg")
-                                    ui.label("9-Step Setup Wizard Progression").classes(
-                                        "text-sm font-bold text-white font-['Outfit']"
-                                    )
-                                ui.label(
-                                    "Complete sequentially from Step 1 to 9"
-                                ).classes("text-xs text-gray-400")
-
-                            wizard_steps = [
-                                (
-                                    "1",
-                                    "Download Image",
-                                    "camera_alt",
-                                    "Enter camera snapshot URL (HTTP, HTTPS, or file://), timeout, and minimum byte size. Test network reachability live.",
-                                ),
-                                (
-                                    "2",
-                                    "Initial Rotate",
-                                    "rotate_90_degrees_ccw",
-                                    "Rotate coarse 90° increments (0°, 90°, 180°, 270°) so meter numbers and circular dials are oriented naturally upright.",
-                                ),
-                                (
-                                    "3",
-                                    "Reference Markers",
-                                    "add_location_alt",
-                                    "Mark exactly 3 high-contrast visual anchors (screws, dial center pins, logo corners) forming a wide triangle for affine alignment.",
-                                ),
-                                (
-                                    "4",
-                                    "Image Adjustments",
-                                    "tune",
-                                    "Fine-tune rotation angle (e.g. 0.5°), test affine alignment, and configure contrast, sharpness, and AutoContrast preprocessing.",
-                                ),
-                                (
-                                    "5",
-                                    "Digital ROIs",
-                                    "pin",
-                                    "Draw tight bounding boxes around mechanical roller digits (D1-D5), select CNN models, and test classification inference.",
-                                ),
-                                (
-                                    "6",
-                                    "Analog ROIs",
-                                    "query_builder",
-                                    "Draw bounding boxes around circular needle dials (A1-A4), select CNN models, and test continuous angle detection.",
-                                ),
-                                (
-                                    "7",
-                                    "Meters Definition",
-                                    "speed",
-                                    "Define composite meters (e.g. total = {D1}{D2}{D3}.{A1}{A2}{A3}{A4}), physical flow rate limits, and starting baseline values.",
-                                ),
-                                (
-                                    "8",
-                                    "Services & Poller",
-                                    "settings_suggest",
-                                    "Configure background poller interval, MQTT telemetry topics, Home Assistant auto-discovery, and zero-flow leak tracker.",
-                                ),
-                                (
-                                    "9",
-                                    "Final Review & Save",
-                                    "check_circle",
-                                    "Inspect compiled INI configuration, save reference template images, and apply settings live to the running digitizer.",
-                                ),
-                            ]
-
-                            for (
-                                step_num,
-                                step_title,
-                                step_icon,
-                                step_desc,
-                            ) in wizard_steps:
-                                with ui.element("div").classes(
-                                    "p-3 rounded-xl bg-slate-900/60 border border-white/10 flex gap-3 items-start"
-                                ):
-                                    with ui.element("div").classes(
-                                        "w-7 h-7 rounded-lg bg-cyan-500/15 border border-cyan-500/30 "
-                                        "flex items-center justify-center shrink-0 font-bold text-xs text-cyan-300"
-                                    ):
-                                        ui.label(step_num)
-                                    with ui.column().classes("gap-0.5 flex-1"):
-                                        with ui.row().classes("items-center gap-1.5"):
-                                            ui.icon(step_icon, color="cyan").classes(
-                                                "text-sm"
-                                            )
-                                            ui.label(
-                                                f"Step {step_num}: {step_title}"
-                                            ).classes(
-                                                "font-semibold text-sm text-white"
-                                            )
-                                        ui.label(step_desc).classes(
-                                            "text-xs text-gray-400 leading-relaxed"
-                                        )
+                        with (
+                            ui.column().classes("lg:col-span-2 gap-3 w-full"),
+                            ui.card().classes(
+                                "w-full p-4 bg-slate-900/60 border border-white/10 rounded-xl flex flex-col gap-3"
+                            ),
+                        ):
+                            with ui.row().classes("items-center gap-2"):
+                                ui.icon("format_list_numbered", color="cyan").classes(
+                                    "text-lg"
+                                )
+                                ui.label("Setup Wizard Progression").classes(
+                                    "text-sm font-bold text-white font-['Outfit']"
+                                )
+                            ui.markdown(_load_help("wizard_steps.md")).classes(
+                                "text-xs text-gray-300 w-full leading-relaxed"
+                            )
 
                         # Right Column (1/3 width): Quick Reference Cheat-Sheet
                         with ui.column().classes("lg:col-span-1 gap-3 w-full"):
@@ -382,53 +257,14 @@ class HelpPage(BasePage):
                                     ui.icon("check_circle", color="emerald").classes(
                                         "text-base"
                                     )
-                                    ui.label("Marker Rules (Step 3)").classes(
+                                    ui.label("Marker Rules").classes(
                                         "text-xs font-bold text-emerald-400 uppercase tracking-wider"
                                     )
-                                rules = [
-                                    "Exactly 3 reference points required",
-                                    "Form a wide non-collinear triangle",
-                                    "Choose static screws or dial center pins",
-                                    "Never use moving digits or dials",
-                                    "Avoid reflective glare hotspots",
-                                ]
-                                for rule in rules:
-                                    with ui.row().classes("items-center gap-2"):
-                                        ui.icon(
-                                            "fiber_manual_record", color="emerald"
-                                        ).classes("text-[8px]")
-                                        ui.label(rule).classes("text-xs text-gray-300")
+                                ui.markdown(_load_help("calibration_tips.md")).classes(
+                                    "text-xs text-gray-300"
+                                )
 
-                            # Cheat Sheet Card 2: Canvas Shortcuts
-                            with ui.card().classes(
-                                "w-full p-4 bg-slate-900/80 border border-purple-500/20 rounded-xl flex flex-col gap-2.5"
-                            ):
-                                with ui.row().classes("items-center gap-2"):
-                                    ui.icon("touch_app", color="purple").classes(
-                                        "text-base"
-                                    )
-                                    ui.label("Canvas Shortcuts").classes(
-                                        "text-xs font-bold text-purple-400 uppercase tracking-wider"
-                                    )
-                                shortcuts = [
-                                    ("Drag", "Draw new bounding box"),
-                                    ("Click Box", "Select for editing"),
-                                    ("Arrow Keys", "Nudge position by 1px"),
-                                    ("Shift + Arrow", "Fast nudge by 10px"),
-                                    ("Align Buttons", "Equalize left/top/size"),
-                                ]
-                                for key_comb, action in shortcuts:
-                                    with ui.row().classes(
-                                        "items-center justify-between w-full text-xs"
-                                    ):
-                                        ui.label(key_comb).classes(
-                                            "font-mono px-1.5 py-0.5 rounded bg-white/10 text-purple-300 font-semibold text-[11px]"
-                                        )
-                                        ui.label(action).classes(
-                                            "text-gray-400 text-right"
-                                        )
-
-                            # Cheat Sheet Card 3: Deep Documentation Links
+                            # Cheat Sheet Card 2: Deep Documentation Links
                             with ui.card().classes(
                                 "w-full p-4 bg-slate-900/80 border border-cyan-500/20 rounded-xl flex flex-col gap-2.5"
                             ):
@@ -485,49 +321,12 @@ class HelpPage(BasePage):
                             ui.icon("center_focus_strong", color="emerald").classes(
                                 "text-xl"
                             )
-                            ui.label(
-                                "Reference Marker Alignment Best Practices"
-                            ).classes("text-base font-bold text-white font-['Outfit']")
-
-                        practices = [
-                            (
-                                "Static & Rigid Landmarks",
-                                "lock",
-                                "Select permanent meter landmarks such as dial screws, casing rivets, or fixed logo corners. Never use moving dials or rotating needles.",
-                            ),
-                            (
-                                "Wide Non-Collinear Triangle",
-                                "change_history",
-                                "Spread the 3 points widely across the image (top-left, top-right, bottom-center). A wide triangle maximizes affine alignment stability.",
-                            ),
-                            (
-                                "Consistent Illumination",
-                                "wb_sunny",
-                                "Avoid placing reference markers inside regions prone to specular LED glare or flash hotspots that shift pixel centroids.",
-                            ),
-                            (
-                                "Subpixel Stability Inspection",
-                                "zoom_in",
-                                "Use the 200% zoom crop view in Step 4 to verify that reference crosshairs remain aligned across repeated snapshots.",
-                            ),
-                        ]
-
-                        for title, icon, desc in practices:
-                            with ui.element("div").classes(
-                                "p-3 rounded-xl bg-slate-800/50 border border-white/5 flex gap-3 items-start"
-                            ):
-                                with ui.element("div").classes(
-                                    "w-8 h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/20 "
-                                    "flex items-center justify-center shrink-0 mt-0.5"
-                                ):
-                                    ui.icon(icon, color="emerald").classes("text-base")
-                                with ui.column().classes("gap-0.5 flex-1"):
-                                    ui.label(title).classes(
-                                        "font-semibold text-sm text-white"
-                                    )
-                                    ui.label(desc).classes(
-                                        "text-xs text-gray-400 leading-relaxed"
-                                    )
+                            ui.label("Alignment Best Practices").classes(
+                                "text-base font-bold text-white font-['Outfit']"
+                            )
+                        ui.markdown(_load_help("calibration_tips.md")).classes(
+                            "text-xs text-gray-300 leading-relaxed"
+                        )
 
                     # Right Column: Canvas Controls & Model Guide
                     with ui.column().classes("w-full gap-4"):
@@ -536,80 +335,24 @@ class HelpPage(BasePage):
                         ):
                             with ui.row().classes("items-center gap-2"):
                                 ui.icon("touch_app", color="purple").classes("text-xl")
-                                ui.label("Interactive Canvas & ROI Controls").classes(
+                                ui.label("Canvas Controls").classes(
                                     "text-base font-bold text-white font-['Outfit']"
                                 )
-
-                            controls = [
-                                (
-                                    "Draw Bounding Box",
-                                    "crop",
-                                    "Click and drag on the interactive image canvas to define a new ROI box.",
-                                ),
-                                (
-                                    "Select & Move",
-                                    "open_with",
-                                    "Click inside an existing box to select it. Drag or use Arrow keys to nudge position.",
-                                ),
-                                (
-                                    "Batch Alignment",
-                                    "align_horizontal_left",
-                                    "Use the Align Left, Top, Width, and Height toolbar buttons to standardize ROIs across multiple digits.",
-                                ),
-                                (
-                                    "Real-time Coordinates",
-                                    "pin_drop",
-                                    "Hovering over the canvas displays real-time pixel X and Y coordinates in the status footer.",
-                                ),
-                            ]
-
-                            for title, icon, desc in controls:
-                                with ui.element("div").classes(
-                                    "p-3 rounded-xl bg-slate-800/50 border border-white/5 flex gap-3 items-start"
-                                ):
-                                    with ui.element("div").classes(
-                                        "w-8 h-8 rounded-lg bg-purple-500/10 border border-purple-500/20 "
-                                        "flex items-center justify-center shrink-0 mt-0.5"
-                                    ):
-                                        ui.icon(icon, color="purple").classes(
-                                            "text-base"
-                                        )
-                                    with ui.column().classes("gap-0.5 flex-1"):
-                                        ui.label(title).classes(
-                                            "font-semibold text-sm text-white"
-                                        )
-                                        ui.label(desc).classes(
-                                            "text-xs text-gray-400 leading-relaxed"
-                                        )
+                            ui.markdown(
+                                _load_help("canvas_keyboard_shortcuts.md")
+                            ).classes("text-xs text-gray-300 leading-relaxed")
 
                         with ui.card().classes(
                             "w-full p-4 bg-slate-900/60 border border-white/10 rounded-xl flex flex-col gap-2.5"
                         ):
                             with ui.row().classes("items-center gap-2"):
                                 ui.icon("memory", color="cyan").classes("text-base")
-                                ui.label("Neural Network Model Types").classes(
+                                ui.label("Neural Network Models").classes(
                                     "text-xs font-bold text-cyan-400 uppercase tracking-wider"
                                 )
-                            model_types = [
-                                (
-                                    "auto",
-                                    "Automatically selects between digital drum and analog dial classification based on step context.",
-                                ),
-                                (
-                                    "digital / digital100",
-                                    "Quantized CNN for mechanical drum odometer digits (0-9) and 100-class fractional transitions.",
-                                ),
-                                (
-                                    "analog",
-                                    "CNN interpreter predicting continuous needle angles (0.0-9.9) for circular dials.",
-                                ),
-                            ]
-                            for m_type, m_desc in model_types:
-                                with ui.row().classes("items-start gap-2 text-xs"):
-                                    ui.label(m_type).classes(
-                                        "font-mono font-bold text-cyan-300 min-w-[80px]"
-                                    )
-                                    ui.label(m_desc).classes("text-gray-400 flex-1")
+                            ui.markdown(_load_help("roi_best_practices.md")).classes(
+                                "text-xs text-gray-300 leading-relaxed"
+                            )
 
                 # -------------------------------------------------------------
                 # TAB 3: Integrations & API Specs
@@ -617,53 +360,18 @@ class HelpPage(BasePage):
                 with ui.tab_panel(tab_integrations).classes(
                     "w-full h-full p-0 flex flex-col gap-4"
                 ):
-                    # 4 Top Feature Cards
-                    with ui.element("div").classes(
-                        "grid grid-cols-1 md:grid-cols-2 gap-3"
+                    # Top Integrations Summary Card
+                    with ui.card().classes(
+                        "w-full p-4 bg-slate-900/60 border border-white/10 rounded-xl flex flex-col gap-3"
                     ):
-                        integrations = [
-                            (
-                                "Home Assistant Auto-Discovery",
-                                "home",
-                                "amber",
-                                "Publishes MQTT sensor discovery topics under homeassistant/sensor/watermeter/. Emits state, unit (m³), and diagnostic entities.",
-                            ),
-                            (
-                                "MQTT Live Telemetry",
-                                "sensors",
-                                "cyan",
-                                "Streams real-time meter readings, raw readouts, operational health status, flow rates, and zero-flow leak alarms.",
-                            ),
-                            (
-                                "Consumption History & Analytics",
-                                "analytics",
-                                "purple",
-                                "Query aggregated hourly, daily, and weekly water usage intervals via /history/consumption, /history/readings, or /meter.",
-                            ),
-                            (
-                                "REST API Triggers & Controls",
-                                "api",
-                                "emerald",
-                                "Trigger instant digitizations via POST /readout, force scheduled poller cycles via POST /poller/trigger, or reset leaks via POST /leak/reset.",
-                            ),
-                        ]
-
-                        for title, icon, color, desc in integrations:
-                            with ui.element("div").classes(
-                                "p-3 rounded-xl bg-slate-900/60 border border-white/10 flex gap-3 items-start"
-                            ):
-                                with ui.element("div").classes(
-                                    f"w-8 h-8 rounded-lg bg-{color}-500/10 border border-{color}-500/20 "
-                                    f"flex items-center justify-center shrink-0 mt-0.5"
-                                ):
-                                    ui.icon(icon, color=color).classes("text-base")
-                                with ui.column().classes("gap-0.5 flex-1"):
-                                    ui.label(title).classes(
-                                        "font-semibold text-sm text-white"
-                                    )
-                                    ui.label(desc).classes(
-                                        "text-xs text-gray-400 leading-relaxed"
-                                    )
+                        with ui.row().classes("items-center gap-2"):
+                            ui.icon("home", color="amber").classes("text-lg")
+                            ui.label("Smart Home & Automations").classes(
+                                "text-sm font-bold text-white font-['Outfit']"
+                            )
+                        ui.markdown(_load_help("home_assistant.md")).classes(
+                            "text-xs text-gray-300 leading-relaxed"
+                        )
 
                     # MQTT Schema Reference Table Card
                     with ui.card().classes(
@@ -672,65 +380,14 @@ class HelpPage(BasePage):
                         with ui.row().classes("items-center justify-between"):
                             with ui.row().classes("items-center gap-2"):
                                 ui.icon("hub", color="cyan").classes("text-lg")
-                                ui.label("MQTT Topics & Telemetry Schema").classes(
+                                ui.label("MQTT Topics & Telemetry").classes(
                                     "text-sm font-bold text-white font-['Outfit']"
                                 )
                             ui.label("Prefix configured in [MQTT] section").classes(
                                 "text-xs text-gray-400"
                             )
-
-                        mqtt_rows = [
-                            (
-                                "&lt;prefix&gt;/value",
-                                "Float string",
-                                "Processed & validated meter reading",
-                                "00442.0134",
-                            ),
-                            (
-                                "&lt;prefix&gt;/raw",
-                                "String",
-                                "Raw uncorrected digit readout",
-                                "00442.0134",
-                            ),
-                            (
-                                "&lt;prefix&gt;/status",
-                                "String",
-                                "Processing status and outcome",
-                                "Success",
-                            ),
-                            (
-                                "&lt;prefix&gt;/leak_detected",
-                                "Boolean string",
-                                "Zero-flow continuous leak flag",
-                                "false",
-                            ),
-                            (
-                                "&lt;prefix&gt;/rate",
-                                "Float string",
-                                "Computed flow rate per time delta",
-                                "0.0025",
-                            ),
-                        ]
-                        rows_html = "".join(
-                            f'<tr class="hover:bg-white/5 transition-colors border-b border-white/5">'
-                            f'<td class="p-2 font-mono text-cyan-400 font-bold">{topic}</td>'
-                            f'<td class="p-2 text-gray-300">{p_type}</td>'
-                            f'<td class="p-2 text-gray-400">{desc}</td>'
-                            f'<td class="p-2 font-mono text-emerald-400">{ex}</td>'
-                            f"</tr>"
-                            for topic, p_type, desc, ex in mqtt_rows
-                        )
-                        ui.html(
-                            f'<div class="overflow-x-auto w-full">'
-                            f'<table class="w-full text-xs text-left border-collapse">'
-                            f'<thead><tr class="border-b border-white/10 text-gray-400 font-semibold">'
-                            f'<th class="p-2">Topic Suffix</th>'
-                            f'<th class="p-2">Payload Type</th>'
-                            f'<th class="p-2">Description</th>'
-                            f'<th class="p-2">Example Value</th>'
-                            f"</tr></thead>"
-                            f"<tbody>{rows_html}</tbody>"
-                            f"</table></div>"
+                        ui.markdown(_load_help("mqtt_integration.md")).classes(
+                            "text-xs text-gray-300 leading-relaxed"
                         )
 
                     # REST Endpoints Table Card
@@ -748,50 +405,6 @@ class HelpPage(BasePage):
                             ).classes(
                                 "text-xs font-semibold text-cyan-400 hover:underline"
                             )
-
-                        rest_rows = [
-                            (
-                                "POST /readout",
-                                "Trigger immediate image acquisition and digitization pipeline",
-                                '{"value": "00442.0134", "status": "Success"}',
-                            ),
-                            (
-                                "GET /meter",
-                                "Retrieve current meter readout and neural confidence breakdown",
-                                '{"main": "00442.0134", "confidence": 98.4}',
-                            ),
-                            (
-                                "POST /poller/trigger",
-                                "Force immediate poller cycle execution in background",
-                                '{"status": "triggered"}',
-                            ),
-                            (
-                                "POST /leak/reset",
-                                "Acknowledge and reset zero-flow leak state",
-                                '{"enabled": true, "state": "OK"}',
-                            ),
-                            (
-                                "GET /healthcheck",
-                                "Lightweight system diagnostics probe for Docker & orchestrators",
-                                '{"status": "healthy"}',
-                            ),
-                        ]
-                        rest_rows_html = "".join(
-                            f'<tr class="hover:bg-white/5 transition-colors border-b border-white/5">'
-                            f'<td class="p-2 font-mono text-emerald-400 font-bold">{ep}</td>'
-                            f'<td class="p-2 text-gray-300">{desc}</td>'
-                            f'<td class="p-2 font-mono text-gray-400 truncate max-w-xs">{resp}</td>'
-                            f"</tr>"
-                            for ep, desc, resp in rest_rows
-                        )
-                        ui.html(
-                            f'<div class="overflow-x-auto w-full">'
-                            f'<table class="w-full text-xs text-left border-collapse">'
-                            f'<thead><tr class="border-b border-white/10 text-gray-400 font-semibold">'
-                            f'<th class="p-2">Method & Endpoint</th>'
-                            f'<th class="p-2">Function</th>'
-                            f'<th class="p-2">Sample Response</th>'
-                            f"</tr></thead>"
-                            f"<tbody>{rest_rows_html}</tbody>"
-                            f"</table></div>"
+                        ui.markdown(_load_help("api_reference.md")).classes(
+                            "text-xs text-gray-300 leading-relaxed"
                         )
