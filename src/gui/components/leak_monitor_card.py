@@ -6,6 +6,7 @@ from typing import Any
 from nicegui import ui
 
 from callbacks import Callbacks
+from gui.components.async_data_loader import async_fetch_and_render
 from gui.theme import (
     BADGE_ERROR,
     BADGE_INFO,
@@ -43,11 +44,12 @@ class LeakMonitorCard:
 
     async def fetch_and_update(self) -> None:
         """Fetch fresh leak status asynchronously from backend."""
-        try:
-            data = await asyncio.to_thread(self.callbacks.get_leak_status)
-            self.update_data(data)
-        except Exception as e:
-            ui.notify(f"Failed to fetch leak status: {e}", type="negative")
+        await async_fetch_and_render(
+            fetch_fn=self.callbacks.get_leak_status,
+            render_fn=self.update_data,
+            error_message="Failed to fetch leak status",
+            suppress_errors=True,
+        )
 
     async def reset_leak_state(self) -> None:
         """Trigger leak state reset and refresh card."""

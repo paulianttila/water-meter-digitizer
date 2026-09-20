@@ -6,6 +6,7 @@ from typing import Any
 from nicegui import ui
 
 from callbacks import Callbacks
+from gui.components.async_data_loader import async_fetch_and_render
 from gui.theme import (
     BADGE_ERROR,
     BADGE_INFO,
@@ -48,16 +49,20 @@ class ServicesStatusCard:
             with self.container:
                 self._render_content()
 
+    async def _fetch_status_data(self) -> tuple[Any, Any]:
+        return await asyncio.gather(
+            asyncio.to_thread(self.callbacks.get_poller_status),
+            asyncio.to_thread(self.callbacks.get_mqtt_status),
+        )
+
     async def fetch_and_update(self) -> None:
         """Fetch fresh poller and MQTT data asynchronously."""
-        try:
-            p_data, m_data = await asyncio.gather(
-                asyncio.to_thread(self.callbacks.get_poller_status),
-                asyncio.to_thread(self.callbacks.get_mqtt_status),
-            )
-            self.update_data(p_data, m_data)
-        except Exception as e:
-            ui.notify(f"Failed to fetch services status: {e}", type="negative")
+        await async_fetch_and_render(
+            fetch_fn=self._fetch_status_data,
+            render_fn=lambda data: self.update_data(data[0], data[1]),
+            error_message="Failed to fetch services status",
+            suppress_errors=True,
+        )
 
     async def trigger_poller(self) -> None:
         """Trigger background poller readout immediately."""

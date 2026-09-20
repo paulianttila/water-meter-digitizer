@@ -9,9 +9,12 @@ from typing import Any
 from nicegui import ui
 
 from callbacks import Callbacks
-from gui.components.consumption_card import ConsumptionCard
-from gui.components.history_table_card import HistoryTableCard
-from gui.components.time_machine_card import TimeMachineCard
+from gui.components import (
+    ConsumptionCard,
+    HistoryTableCard,
+    TimeMachineCard,
+    async_fetch_and_render,
+)
 from gui.theme import BADGE_ERROR, BADGE_SUCCESS, BADGE_WARNING
 
 logger = logging.getLogger(__name__)
@@ -40,26 +43,18 @@ class MeterPage:
         freshness_badge: ui.badge | None = None
 
         async def do_fetch() -> None:
-            if self.spinner:
-                self.spinner.visible = True
-            value_container.clear()
             t0 = time.perf_counter()
-            try:
-                await fetch_data()
+            data = await async_fetch_and_render(
+                fetch_fn=lambda: self.callbacks.get_meter_data(saveimages=True),
+                render_fn=render_meter_data,
+                container=value_container,
+                spinner=self.spinner,
+                error_message="Error occurred",
+                suppress_errors=True,
+            )
+            if data is not None:
                 self.last_fetch_time = datetime.now()
                 self.last_pipeline_ms = (time.perf_counter() - t0) * 1000.0
-            except Exception as e:
-                ui.notify(
-                    f"Error occurred: {e}",
-                    position="bottom",
-                    close_button="OK",
-                    type="negative",
-                    multi_line=True,
-                    icon="error",
-                    timeout=0,
-                )
-            if self.spinner:
-                self.spinner.visible = False
             update_freshness_header()
 
         def update_freshness_header() -> None:
@@ -170,11 +165,7 @@ class MeterPage:
 
             crop_modal.open()
 
-        async def fetch_data() -> None:
-            result = await asyncio.to_thread(
-                self.callbacks.get_meter_data, saveimages=True
-            )
-
+        def render_meter_data(result: Any) -> None:
             # Check leak / flow telemetry
             leak_status: dict[str, Any] = {}
             try:

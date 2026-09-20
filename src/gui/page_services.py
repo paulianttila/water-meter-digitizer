@@ -6,10 +6,13 @@ import logging
 from nicegui import ui
 
 from callbacks import Callbacks
-from gui.components import page_header
-from gui.components.diagnostics_card import DiagnosticsCard
-from gui.components.leak_monitor_card import LeakMonitorCard
-from gui.components.services_status_card import ServicesStatusCard
+from gui.components import (
+    DiagnosticsCard,
+    LeakMonitorCard,
+    ServicesStatusCard,
+    async_fetch_and_render,
+    page_header,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -54,29 +57,34 @@ class ServicesPage:
 
     async def fetch_all_telemetry(self) -> None:
         """Fetch fresh telemetry for all diagnostics, leak tracker, and service cards."""
-        if self.spinner:
-            self.spinner.visible = True
 
-        try:
-            h_data = await asyncio.to_thread(self.callbacks.get_health_data)
-            self.diagnostics_card.update_data(h_data)
-        except Exception:
-            logger.warning("Failed to fetch health data telemetry", exc_info=True)
+        async def _fetch_and_update_all() -> None:
+            try:
+                h_data = await asyncio.to_thread(self.callbacks.get_health_data)
+                self.diagnostics_card.update_data(h_data)
+            except Exception:
+                logger.warning("Failed to fetch health data telemetry", exc_info=True)
 
-        try:
-            l_data = await asyncio.to_thread(self.callbacks.get_leak_status)
-            self.leak_card.update_data(l_data)
-        except Exception:
-            logger.warning("Failed to fetch leak status telemetry", exc_info=True)
+            try:
+                l_data = await asyncio.to_thread(self.callbacks.get_leak_status)
+                self.leak_card.update_data(l_data)
+            except Exception:
+                logger.warning("Failed to fetch leak status telemetry", exc_info=True)
 
-        try:
-            p_data, m_data = await asyncio.gather(
-                asyncio.to_thread(self.callbacks.get_poller_status),
-                asyncio.to_thread(self.callbacks.get_mqtt_status),
-            )
-            self.services_card.update_data(p_data, m_data)
-        except Exception:
-            logger.warning("Failed to fetch poller/MQTT telemetry", exc_info=True)
+            try:
+                p_data, m_data = await asyncio.gather(
+                    asyncio.to_thread(self.callbacks.get_poller_status),
+                    asyncio.to_thread(self.callbacks.get_mqtt_status),
+                )
+                self.services_card.update_data(p_data, m_data)
+            except Exception:
+                logger.warning("Failed to fetch poller/MQTT telemetry", exc_info=True)
 
-        if self.spinner:
-            self.spinner.visible = False
+        await async_fetch_and_render(
+            fetch_fn=_fetch_and_update_all,
+            render_fn=lambda _: None,
+            spinner=self.spinner,
+            error_message="Failed to fetch telemetry",
+            notify_on_error=False,
+            suppress_errors=True,
+        )
