@@ -787,7 +787,3 @@ class MeterImageGenerator:
         )
 
         return img, cfg
-
-
-# Alias for backward compatibility and semantic clarity
-SyntheticWaterMeterGenerator = MeterImageGenerator
