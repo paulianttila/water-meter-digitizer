@@ -60,12 +60,20 @@ class CallbacksImpl(Callbacks):
         self._get_previous_values = get_previous_values_fn
         self._set_previous_value = set_previous_value_fn
 
-    def get_meter_data(self, url: str = "", saveimages: bool = False) -> MeterResult:
+    def get_meter_data(
+        self,
+        url: str = "",
+        saveimages: bool = False,
+        config: Config | None = None,
+    ) -> MeterResult:
         if not url:
-            cfg = self.get_config()
+            cfg = config or self.get_config()
             if cfg and getattr(cfg, "image_source", None):
                 url = cfg.image_source.url
-        return self._get_meter_data(url=url, saveimages=saveimages)
+        try:
+            return self._get_meter_data(url=url, saveimages=saveimages, config=config)
+        except TypeError:
+            return self._get_meter_data(url=url, saveimages=saveimages)
 
     def get_image_as_base64_str(self, image_name: str) -> str:
         return self._get_image_base64(image_name)

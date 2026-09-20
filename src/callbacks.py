@@ -15,7 +15,12 @@ from processor.digitizer import MeterResult
 
 @runtime_checkable
 class Callbacks(Protocol):
-    def get_meter_data(self, url: str = "", saveimages: bool = False) -> MeterResult:
+    def get_meter_data(
+        self,
+        url: str = "",
+        saveimages: bool = False,
+        config: Config | None = None,
+    ) -> MeterResult:
         """Get meter data"""
         ...
 

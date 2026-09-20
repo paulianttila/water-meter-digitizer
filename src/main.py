@@ -378,8 +378,11 @@ def init_gui(app_instance: FastAPI) -> None:
         }
 
     callbacks = CallbacksImpl(
-        get_meter_data_fn=lambda url="", saveimages=False: get_meter_data(
-            url=url, saveimages=saveimages, app_instance=app_instance
+        get_meter_data_fn=lambda url="", saveimages=False, config=None: get_meter_data(
+            url=url,
+            saveimages=saveimages,
+            app_instance=app_instance,
+            config=config,
         ),
         get_image_base64_fn=get_image_as_base64_str,
         get_config_fn=lambda: getattr(app_instance.state, "config", config),

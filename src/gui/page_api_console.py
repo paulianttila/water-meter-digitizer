@@ -26,6 +26,7 @@ from gui.theme import (
     BADGE_SUCCESS,
     BADGE_WARNING,
 )
+from simulator.meter_generator import MeterImageGenerator
 
 if TYPE_CHECKING:
     from callbacks import Callbacks
@@ -85,6 +86,7 @@ class ApiConsolePage:
         self.mock_res_preset = "640x480"
         self.mock_digit_overrides: list[str] = ["", "", "", "", ""]
         self.mock_analog_overrides: list[str] = ["", "", "", ""]
+        self.mock_test_config_mode: str = "dedicated"  # "dedicated" or "active"
         self.mock_auto_refresh = True
         self.mock_streaming = False
         self.mock_stream_timer: ui.timer | None = None
@@ -115,6 +117,7 @@ class ApiConsolePage:
         self.mock_lcd_bg_select: ui.select | None = None
         self.mock_meter_bg_select: ui.select | None = None
         self.mock_needle_color_select: ui.select | None = None
+        self.mock_test_config_select: ui.select | None = None
         self.mock_res_select: ui.select | None = None
         self.mock_width_input: ui.number | None = None
         self.mock_height_input: ui.number | None = None
@@ -711,7 +714,7 @@ class ApiConsolePage:
         ui.notify(f"Applied scenario: {preset['name']}", type="positive")
 
     async def _test_in_digitizer_engine(self) -> None:
-        """Run active digitizer engine against the generated mock camera image."""
+        """Run digitizer engine against the generated mock camera image."""
         if not self.callbacks:
             ui.notify(
                 "Callbacks unavailable in standalone testing mode",
@@ -724,8 +727,18 @@ class ApiConsolePage:
 
         try:
             start_t = time.perf_counter()
+            test_config = None
+            if self.mock_test_config_mode == "dedicated":
+                base_cfg = self.callbacks.get_config()
+                test_config = MeterImageGenerator.create_mock_meter_config(
+                    width=self.mock_width,
+                    height=self.mock_height,
+                    base_config=base_cfg,
+                    url=mock_url,
+                )
+
             result = await asyncio.to_thread(
-                self.callbacks.get_meter_data, mock_url, False
+                self.callbacks.get_meter_data, mock_url, False, test_config
             )
             dur_ms = round((time.perf_counter() - start_t) * 1000, 1)
 
@@ -760,8 +773,13 @@ class ApiConsolePage:
                             "text-2xl font-mono font-bold text-cyan-300"
                         )
                     with ui.column().classes("gap-1 items-end"):
-                        ui.badge(f"⚡ {dur_ms} ms", color="indigo")
-                        ui.label("Pipeline Latency").classes(
+                        with ui.row().classes("items-center gap-1.5"):
+                            if self.mock_test_config_mode == "dedicated":
+                                ui.badge("🤖 Dedicated Mock Config", color="cyan")
+                            else:
+                                ui.badge("⚙️ Active config.ini", color="amber")
+                            ui.badge(f"⚡ {dur_ms} ms", color="indigo")
+                        ui.label("Pipeline Latency & Config").classes(
                             "text-[10px] text-slate-400"
                         )
 
@@ -1230,6 +1248,26 @@ class ApiConsolePage:
                                 )
 
                             with ui.row().classes("items-center gap-2 flex-wrap"):
+
+                                async def _on_test_cfg_change(e: Any) -> None:
+                                    self.mock_test_config_mode = e.value
+
+                                self.mock_test_config_select = (
+                                    ui.select(
+                                        options={
+                                            "dedicated": "Dedicated Mock Config",
+                                            "active": "Active config.ini",
+                                        },
+                                        value=self.mock_test_config_mode,
+                                        on_change=_on_test_cfg_change,
+                                    )
+                                    .props("outlined dense options-dense")
+                                    .classes("text-xs min-w-[175px]")
+                                    .tooltip(
+                                        "Choose whether to test against an auto-generated config matching the mock meter geometry or current active config.ini"
+                                    )
+                                )
+
                                 ui.button(
                                     "Test in Engine",
                                     icon="speed",
@@ -1239,7 +1277,7 @@ class ApiConsolePage:
                                 ).classes(
                                     "text-xs font-semibold text-white"
                                 ).tooltip(
-                                    "Run active digitizer engine recognition cycle on this mock frame"
+                                    "Run digitizer engine recognition cycle on this mock frame using selected config"
                                 )
 
                                 ui.button(

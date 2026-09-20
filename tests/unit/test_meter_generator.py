@@ -75,6 +75,24 @@ def test_generator_synthetic_template():
     assert cfg.meter_configs[0].name == "total"
 
 
+def test_generator_create_mock_meter_config():
+    cfg = MeterImageGenerator.create_mock_meter_config(
+        width=800,
+        height=600,
+        url="http://localhost:3000/api/mock_camera",
+    )
+
+    assert len(cfg.digital_readout.cut_images) == 5
+    assert len(cfg.analog_readout.cut_images) == 4
+    assert cfg.digital_readout.enabled is True
+    assert cfg.analog_readout.enabled is True
+    assert cfg.crop.enabled is False
+    assert cfg.resize.enabled is False
+    assert cfg.image_source.url == "http://localhost:3000/api/mock_camera"
+    assert len(cfg.meter_configs) == 1
+    assert cfg.meter_configs[0].name == "total"
+
+
 def test_generator_perturbations():
     generator = MeterImageGenerator()
     base_img = Image.new("RGB", (200, 200), (128, 128, 128))

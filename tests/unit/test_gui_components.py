@@ -3,6 +3,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from configuration import Config
 from gui.components.consumption_card import ConsumptionCard
 from gui.components.diagnostics_card import DiagnosticsCard
 from gui.components.history_table_card import HistoryTableCard
@@ -445,6 +446,7 @@ def test_api_console_test_in_engine(mock_callbacks):
         MagicMock(name="analog1", value="9.1", confidence=98.5),
     ]
     mock_callbacks.get_meter_data.return_value = mock_result
+    mock_callbacks.get_config.return_value = Config()
 
     with (
         patch("gui.page_api_console.ui.dialog") as mock_dialog,
@@ -453,8 +455,22 @@ def test_api_console_test_in_engine(mock_callbacks):
     ):
         mock_dialog.return_value.__enter__ = MagicMock()
         mock_dialog.return_value.__exit__ = MagicMock()
+
+        # 1. Dedicated mock config mode (default)
+        assert page.mock_test_config_mode == "dedicated"
         asyncio.run(page._test_in_digitizer_engine())
-        mock_callbacks.get_meter_data.assert_called_once()
+        assert mock_callbacks.get_meter_data.call_count == 1
+        call_args = mock_callbacks.get_meter_data.call_args
+        # Should have passed a generated Config object
+        assert isinstance(call_args[0][2], Config)
+        assert len(call_args[0][2].digital_readout.cut_images) == 5
+
+        # 2. Active config mode
+        page.mock_test_config_mode = "active"
+        asyncio.run(page._test_in_digitizer_engine())
+        assert mock_callbacks.get_meter_data.call_count == 2
+        call_args2 = mock_callbacks.get_meter_data.call_args
+        assert call_args2[0][2] is None
 
 
 def test_consumption_card(mock_callbacks):

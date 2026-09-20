@@ -227,10 +227,12 @@ def get_meter_data(
     saveimages: bool = False,
     request: Request | None = None,
     app_instance: Any = None,
+    config: Config | None = None,
 ) -> MeterResult:
     """Execute complete meter reading pipeline (fetch, CNN, evaluate, publish)."""
     app = app_instance or get_current_app(request)
-    config: Config = getattr(app.state, "config", Config()) if app else Config()
+    if config is None:
+        config = getattr(app.state, "config", Config()) if app else Config()
 
     url = url or config.image_source.url
     if not url:

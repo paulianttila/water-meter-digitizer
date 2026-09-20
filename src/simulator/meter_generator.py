@@ -866,3 +866,106 @@ class MeterImageGenerator:
         )
 
         return img, cfg
+
+    @classmethod
+    def create_mock_meter_config(
+        cls,
+        width: int = 640,
+        height: int = 480,
+        base_config: Config | None = None,
+        url: str = "",
+    ) -> Config:
+        """Create a dedicated Config matching the procedural mock meter dimensions and ROIs."""
+        base = base_config or Config()
+        scale_x = width / 640.0
+        scale_y = height / 480.0
+
+        def _scale_pos(
+            x: int | float, y: int | float, w: int | float, h: int | float
+        ) -> tuple[int, int, int, int]:
+            return (
+                round(x * scale_x),
+                round(y * scale_y),
+                round(w * scale_x),
+                round(h * scale_y),
+            )
+
+        base_win_w = 264
+        base_win_x = 320 - base_win_w // 2
+        base_win_y = 240 - 100
+        base_dw, base_dh = 39, 66
+        base_gap = 10
+        base_start_dx = base_win_x + 14
+        base_dy = base_win_y + 10
+
+        cut_digits = []
+        for i in range(5):
+            bx = base_start_dx + i * (base_dw + base_gap)
+            by = base_dy
+            sx, sy, sw, sh = _scale_pos(bx, by, base_dw, base_dh)
+            cut_digits.append(ImagePosition(name=f"digit{i+1}", x=sx, y=sy, w=sw, h=sh))
+
+        base_dial_size = 76
+        dial_centers = [
+            ("analog1", 430, 300),
+            ("analog2", 360, 365),
+            ("analog3", 280, 365),
+            ("analog4", 210, 300),
+        ]
+        cut_analogs = []
+        for name, cx, cy in dial_centers:
+            bx = cx - base_dial_size // 2
+            by = cy - base_dial_size // 2
+            sx, sy, sw, sh = _scale_pos(bx, by, base_dial_size, base_dial_size)
+            cut_analogs.append(ImagePosition(name=name, x=sx, y=sy, w=sw, h=sh))
+
+        dig_update: dict[str, Any] = {"cut_images": cut_digits, "enabled": True}
+        if not base.digital_readout.model_file:
+            dig_update["model_file"] = (
+                "config/neuralnets/digital/class11/dig-class11_1600_s2.tflite"
+            )
+        if not base.digital_readout.model:
+            dig_update["model"] = "digital"
+
+        ana_update: dict[str, Any] = {"cut_images": cut_analogs, "enabled": True}
+        if not base.analog_readout.model_file:
+            ana_update["model_file"] = (
+                "config/neuralnets/analog/continuous/ana-cont_1901_s0.tflite"
+            )
+        if not base.analog_readout.model:
+            ana_update["model"] = "analog"
+
+        img_src_update: dict[str, Any] = {}
+        if url:
+            img_src_update["url"] = url
+
+        return base.model_copy(
+            update={
+                "digital_readout": base.digital_readout.model_copy(update=dig_update),
+                "analog_readout": base.analog_readout.model_copy(update=ana_update),
+                "alignment": base.alignment.model_copy(
+                    update={
+                        "ref_images": [],
+                        "rotate_angle": 0.0,
+                        "post_rotate_angle": 0.0,
+                    }
+                ),
+                "crop": base.crop.model_copy(update={"enabled": False}),
+                "resize": base.resize.model_copy(update={"enabled": False}),
+                "image_source": (
+                    base.image_source.model_copy(update=img_src_update)
+                    if img_src_update
+                    else base.image_source
+                ),
+                "meter_configs": [
+                    MeterConfig(
+                        name="total",
+                        format="{digit1}{digit2}{digit3}{digit4}{digit5}.{analog1}{analog2}{analog3}{analog4}",
+                        consistency_enabled=False,
+                        allow_negative_rates=True,
+                        use_previous_value=False,
+                        unit="m³",
+                    )
+                ],
+            }
+        )
