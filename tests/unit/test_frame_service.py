@@ -14,7 +14,7 @@ def test_frame_service_timeline_and_empty_storage():
     service_none = FrameService(storage=None)
     assert service_none.get_timeline() == []
     assert service_none.get_frame_data_uri(1) is None
-    assert "error" in service_none.get_frame_diff(1)
+    assert service_none.get_frame_diff(1).error != ""
     assert service_none.get_frame_diff_data_uri(1) is None
 
     mock_storage = MagicMock()
@@ -39,10 +39,10 @@ def test_frame_service_timeline_and_empty_storage():
         limit=5, offset=0, anomalies_only=False, frames_only=False
     )
     assert len(timeline) == 1
-    assert timeline[0]["id"] == 42
-    assert timeline[0]["has_frame"] is True
-    assert timeline[0]["timestamp"] == "2026-05-01T10:30:00"
-    assert timeline[0]["meters"]["total"]["value"] == 500.25
+    assert timeline[0].id == 42
+    assert timeline[0].has_frame is True
+    assert timeline[0].timestamp == "2026-05-01T10:30:00"
+    assert timeline[0].meters["total"]["value"] == 500.25
 
 
 def test_frame_service_frame_data_uri_encodings():
@@ -85,14 +85,14 @@ def test_frame_service_diff_and_heatmaps():
 
     # Self comparison
     diff_self = service.get_frame_diff(1, compare_id=None)
-    assert diff_self["ssim_similarity"] == 1.0
-    assert diff_self["is_anomaly"] is False
-    assert diff_self["reading_id"] == 1
+    assert diff_self.ssim_similarity == 1.0
+    assert diff_self.is_anomaly is False
+    assert diff_self.reading_id == 1
 
     # Cross comparison
     diff_cross = service.get_frame_diff(1, compare_id=2)
-    assert "ssim_similarity" in diff_cross
-    assert diff_cross["compare_id"] == 2
+    assert diff_cross.ssim_similarity is not None
+    assert diff_cross.compare_id == 2
 
     # Heatmap data URI
     diff_uri = service.get_frame_diff_data_uri(1, compare_id=2)
@@ -101,7 +101,7 @@ def test_frame_service_diff_and_heatmaps():
 
     # Non-existent reading
     diff_err = service.get_frame_diff(999)
-    assert "error" in diff_err
+    assert diff_err.error != ""
     assert service.get_frame_diff_data_uri(999) is None
 
     # Corrupted image bytes
@@ -110,5 +110,5 @@ def test_frame_service_diff_and_heatmaps():
         "image/jpeg",
     )
     diff_corrupt = service.get_frame_diff(1, compare_id=2)
-    assert "error" in diff_corrupt
+    assert diff_corrupt.error != ""
     assert service.get_frame_diff_data_uri(1, compare_id=2) is None

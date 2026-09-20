@@ -4,6 +4,8 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
+from data_classes import DictAccessMixin
+
 
 class LeakState(StrEnum):
     OK = "OK"
@@ -16,7 +18,7 @@ class ValueType(StrEnum):
     FLOW_RATE = "flow_rate"
 
 
-class LeakEvent(BaseModel):
+class LeakEvent(BaseModel, DictAccessMixin):
     event_id: str
     meter_name: str
     start_time: datetime
@@ -34,11 +36,11 @@ class LeakEvent(BaseModel):
         return res
 
 
-class ZeroFlowStatus(BaseModel):
-    enabled: bool
-    meter_name: str
+class ZeroFlowStatus(BaseModel, DictAccessMixin):
+    enabled: bool = False
+    meter_name: str = "total"
     value_type: ValueType = ValueType.CUMULATIVE
-    state: LeakState
+    state: LeakState = LeakState.OK
     last_zero_flow_time: datetime | None = None
     last_reading_time: datetime | None = None
     current_flow_duration_seconds: float = 0.0
@@ -48,10 +50,20 @@ class ZeroFlowStatus(BaseModel):
     active_event: LeakEvent | None = None
     recent_events: list[LeakEvent] = Field(default_factory=list)
 
+    @property
+    def flow_active(self) -> bool:
+        return self.state != LeakState.OK
+
+    @property
+    def continuous_flow_seconds(self) -> float:
+        return self.current_flow_duration_seconds
+
     def to_dict(self) -> dict[str, Any]:
         return {
             "enabled": self.enabled,
             "meter_name": self.meter_name,
+            "flow_active": self.flow_active,
+            "continuous_flow_seconds": self.continuous_flow_seconds,
             "value_type": (
                 self.value_type.value
                 if isinstance(self.value_type, ValueType)

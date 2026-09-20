@@ -73,7 +73,9 @@ def test_callbacks_impl_methods():
     mock_use_cfg.assert_called_once()
 
     assert callbacks.get_storage() == mock_storage
-    assert callbacks.list_config_backups() == [{"name": "b1.bak"}]
+    backups = callbacks.list_config_backups()
+    assert len(backups) == 1
+    assert backups[0].name == "b1.bak"
 
     callbacks.restore_config_backup("b1.bak")
     mock_restore.assert_called_once_with("b1.bak")
@@ -83,12 +85,13 @@ def test_callbacks_impl_methods():
     assert callbacks.delete_config_backup("b1.bak") is True
     assert callbacks.diff_config_backup("b1.bak") == ["+ line\n"]
 
-    assert callbacks.get_health_data() == {"status": "healthy"}
-    assert callbacks.get_leak_status() == {"enabled": True, "state": "OK"}
-    assert callbacks.reset_leak_status() == {"enabled": True, "state": "OK"}
-    assert callbacks.get_poller_status() == {"enabled": True, "running": True}
+    assert callbacks.get_health_data().status == "healthy"
+    assert callbacks.get_leak_status().enabled is True
+    assert callbacks.get_leak_status().state == "OK"
+    assert callbacks.reset_leak_status().enabled is True
+    assert callbacks.get_poller_status().running is True
     assert callbacks.trigger_poller() == {"status": "success"}
-    assert callbacks.get_mqtt_status() == {"enabled": True, "connected": True}
+    assert callbacks.get_mqtt_status().connected is True
     assert callbacks.get_previous_values() == {
         "total": {"value": "100.0", "time": "2026.01.01 12:00:00"}
     }
@@ -120,12 +123,13 @@ def test_callbacks_impl_fallbacks():
         diff_backup_fn=lambda name: [],
     )
 
-    assert callbacks.get_health_data() == {"status": "unknown"}
-    assert callbacks.get_leak_status() == {"enabled": False, "state": "OK"}
-    assert callbacks.reset_leak_status() == {"enabled": False, "state": "OK"}
-    assert callbacks.get_poller_status() == {"enabled": False, "running": False}
+    assert callbacks.get_health_data().status == "unknown"
+    assert callbacks.get_leak_status().enabled is False
+    assert callbacks.get_leak_status().state == "OK"
+    assert callbacks.reset_leak_status().enabled is False
+    assert callbacks.get_poller_status().running is False
     assert callbacks.trigger_poller()["status"] == "error"
-    assert callbacks.get_mqtt_status() == {"enabled": False, "connected": False}
+    assert callbacks.get_mqtt_status().connected is False
     assert callbacks.get_previous_values() == {}
     assert callbacks.set_previous_value("total", "10.0")["status"] == "error"
     assert callbacks.get_config_version() == 1
@@ -241,22 +245,22 @@ def test_callbacks_impl_timeline_and_diffs():
         limit=10, offset=0, anomalies_only=False, frames_only=False
     )
     assert len(timeline) == 1
-    assert timeline[0]["id"] == 1
-    assert timeline[0]["has_frame"] is True
+    assert timeline[0].id == 1
+    assert timeline[0].has_frame is True
 
     # Frame diff with compare_id
     diff_res = callbacks.get_frame_diff(1, compare_id=2)
-    assert "ssim_similarity" in diff_res
-    assert diff_res["reading_id"] == 1
-    assert diff_res["compare_id"] == 2
+    assert diff_res.ssim_similarity is not None
+    assert diff_res.reading_id == 1
+    assert diff_res.compare_id == 2
 
     # Frame diff with self
     diff_self = callbacks.get_frame_diff(1, compare_id=None)
-    assert diff_self["ssim_similarity"] == 1.0
+    assert diff_self.ssim_similarity == 1.0
 
     # Frame diff with missing frame
     diff_err = callbacks.get_frame_diff(99)
-    assert "error" in diff_err
+    assert diff_err.error != ""
 
     # Frame diff data URI
     diff_uri = callbacks.get_frame_diff_data_uri(1, compare_id=2)

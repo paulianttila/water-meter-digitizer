@@ -6,6 +6,15 @@ from typing import TYPE_CHECKING, Any
 
 from callbacks import Callbacks
 from configuration import Config
+from data_classes import (
+    ConfigBackupInfo,
+    HealthResponse,
+    MQTTStatus,
+    PollerStatus,
+    TimelineFrame,
+    VisualDiffMetrics,
+)
+from leak.models import LeakState, ZeroFlowStatus
 from processor.digitizer import MeterResult
 from storage.frame_service import FrameService
 
@@ -27,19 +36,21 @@ class CallbacksImpl(Callbacks):
         save_config_file_fn: Callable[[str], None],
         use_config_fn: Callable[[], None],
         get_storage_fn: Callable[[], Any],
-        list_backups_fn: Callable[[], list[dict[str, Any]]],
+        list_backups_fn: Callable[[], list[ConfigBackupInfo] | list[dict[str, Any]]],
         restore_backup_fn: Callable[[str], None],
         undo_backup_fn: Callable[[], str | None],
         create_snapshot_fn: Callable[[str], str | None],
         delete_backup_fn: Callable[[str], bool],
         diff_backup_fn: Callable[[str], list[str]],
         load_backup_fn: Callable[[str], str] | None = None,
-        get_health_data_fn: Callable[[], dict[str, Any]] | None = None,
-        get_leak_status_fn: Callable[[], dict[str, Any]] | None = None,
-        reset_leak_status_fn: Callable[[], dict[str, Any]] | None = None,
-        get_poller_status_fn: Callable[[], dict[str, Any]] | None = None,
+        get_health_data_fn: Callable[[], HealthResponse | dict[str, Any]] | None = None,
+        get_leak_status_fn: Callable[[], ZeroFlowStatus | dict[str, Any]] | None = None,
+        reset_leak_status_fn: (
+            Callable[[], ZeroFlowStatus | dict[str, Any]] | None
+        ) = None,
+        get_poller_status_fn: Callable[[], PollerStatus | dict[str, Any]] | None = None,
         trigger_poller_fn: Callable[[], dict[str, Any]] | None = None,
-        get_mqtt_status_fn: Callable[[], dict[str, Any]] | None = None,
+        get_mqtt_status_fn: Callable[[], MQTTStatus | dict[str, Any]] | None = None,
         get_previous_values_fn: Callable[[], dict[str, dict[str, str]]] | None = None,
         set_previous_value_fn: Callable[[str, str], dict[str, Any]] | None = None,
         get_config_version_fn: Callable[[], int] | None = None,
@@ -108,8 +119,17 @@ class CallbacksImpl(Callbacks):
     def get_storage(self) -> Any:
         return self._get_storage()
 
-    def list_config_backups(self) -> list[dict[str, Any]]:
-        return self._list_backups()
+    def list_config_backups(self) -> list[ConfigBackupInfo]:
+        raw = self._list_backups()
+        if not raw:
+            return []
+        res: list[ConfigBackupInfo] = []
+        for item in raw:
+            if isinstance(item, ConfigBackupInfo):
+                res.append(item)
+            elif isinstance(item, dict):
+                res.append(ConfigBackupInfo.model_validate(item))
+        return res
 
     def restore_config_backup(self, backup_name: str) -> None:
         return self._restore_backup(backup_name)
@@ -131,35 +151,55 @@ class CallbacksImpl(Callbacks):
             return self._load_backup(backup_name)
         return ""
 
-    def get_health_data(self) -> dict[str, Any]:
+    def get_health_data(self) -> HealthResponse:
         if self._get_health_data is not None:
-            return self._get_health_data()
-        return {"status": "unknown"}
+            raw = self._get_health_data()
+            if isinstance(raw, HealthResponse):
+                return raw
+            if isinstance(raw, dict):
+                return HealthResponse.model_validate(raw)
+        return HealthResponse(status="unknown")
 
-    def get_leak_status(self) -> dict[str, Any]:
+    def get_leak_status(self) -> ZeroFlowStatus:
         if self._get_leak_status is not None:
-            return self._get_leak_status()
-        return {"enabled": False, "state": "OK"}
+            raw = self._get_leak_status()
+            if isinstance(raw, ZeroFlowStatus):
+                return raw
+            if isinstance(raw, dict):
+                return ZeroFlowStatus.model_validate(raw)
+        return ZeroFlowStatus(enabled=False, state=LeakState.OK)
 
-    def reset_leak_status(self) -> dict[str, Any]:
+    def reset_leak_status(self) -> ZeroFlowStatus:
         if self._reset_leak_status is not None:
-            return self._reset_leak_status()
-        return {"enabled": False, "state": "OK"}
+            raw = self._reset_leak_status()
+            if isinstance(raw, ZeroFlowStatus):
+                return raw
+            if isinstance(raw, dict):
+                return ZeroFlowStatus.model_validate(raw)
+        return ZeroFlowStatus(enabled=False, state=LeakState.OK)
 
-    def get_poller_status(self) -> dict[str, Any]:
+    def get_poller_status(self) -> PollerStatus:
         if self._get_poller_status is not None:
-            return self._get_poller_status()
-        return {"enabled": False, "running": False}
+            raw = self._get_poller_status()
+            if isinstance(raw, PollerStatus):
+                return raw
+            if isinstance(raw, dict):
+                return PollerStatus.model_validate(raw)
+        return PollerStatus(enabled=False, running=False)
 
     def trigger_poller(self) -> dict[str, Any]:
         if self._trigger_poller is not None:
             return self._trigger_poller()
         return {"status": "error", "message": "Poller trigger not configured"}
 
-    def get_mqtt_status(self) -> dict[str, Any]:
+    def get_mqtt_status(self) -> MQTTStatus:
         if self._get_mqtt_status is not None:
-            return self._get_mqtt_status()
-        return {"enabled": False, "connected": False}
+            raw = self._get_mqtt_status()
+            if isinstance(raw, MQTTStatus):
+                return raw
+            if isinstance(raw, dict):
+                return MQTTStatus.model_validate(raw)
+        return MQTTStatus(enabled=False, connected=False)
 
     def get_previous_values(self) -> dict[str, dict[str, str]]:
         if self._get_previous_values is not None:
@@ -177,7 +217,7 @@ class CallbacksImpl(Callbacks):
         offset: int = 0,
         anomalies_only: bool = False,
         frames_only: bool = False,
-    ) -> list[dict[str, Any]]:
+    ) -> list[TimelineFrame]:
         return self._frame_service.get_timeline(
             limit=limit,
             offset=offset,
@@ -190,7 +230,7 @@ class CallbacksImpl(Callbacks):
 
     def get_frame_diff(
         self, reading_id: int, compare_id: int | None = None
-    ) -> dict[str, Any]:
+    ) -> VisualDiffMetrics:
         return self._frame_service.get_frame_diff(reading_id, compare_id)
 
     def get_frame_diff_data_uri(

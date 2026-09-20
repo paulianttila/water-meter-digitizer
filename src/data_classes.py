@@ -129,16 +129,6 @@ class SystemHealth(BaseModel):
     platform: str = ""
 
 
-class HealthResponse(BaseModel):
-    status: str = "healthy"  # "healthy", "degraded", or "unhealthy"
-    uptime: UptimeHealth
-    camera: CameraHealth
-    memory: MemoryHealth
-    cache: CacheHealth
-    models: ModelsHealth
-    system: SystemHealth
-
-
 class DictAccessMixin:
     """Mixin allowing Pydantic models to support dictionary subscripting and .get() for legacy interoperability."""
 
@@ -152,6 +142,20 @@ class DictAccessMixin:
 
     def __contains__(self, key: str) -> bool:
         return hasattr(self, key)
+
+
+class HealthResponse(BaseModel, DictAccessMixin):
+    status: str = "healthy"  # "healthy", "degraded", or "unhealthy"
+    uptime: UptimeHealth = Field(default_factory=UptimeHealth)
+    camera: CameraHealth = Field(default_factory=CameraHealth)
+    memory: MemoryHealth = Field(default_factory=MemoryHealth)
+    cache: CacheHealth = Field(default_factory=CacheHealth)
+    models: ModelsHealth = Field(
+        default_factory=lambda: ModelsHealth(
+            digital=ModelHealth(), analog=ModelHealth()
+        )
+    )
+    system: SystemHealth = Field(default_factory=SystemHealth)
 
 
 class PollerStatus(BaseModel, DictAccessMixin):
@@ -175,13 +179,14 @@ class MQTTStatus(BaseModel, DictAccessMixin):
     topic_prefix: str = "watermeter"
     homeassistant_discovery: bool = True
     client_id: str = "water-meter-digitizer"
-    last_published_topics: list[str] = []
+    last_published_topics: list[str] = Field(default_factory=list)
     last_published_readout: str | None = None
 
 
 class ConfigBackupInfo(BaseModel, DictAccessMixin):
     name: str
     created_at: str = ""
+    formatted_time: str = ""
     size_bytes: int = 0
     tag: str = ""
     is_auto: bool = True
@@ -201,7 +206,7 @@ class TimelineFrame(BaseModel, DictAccessMixin):
 
 
 class VisualDiffMetrics(BaseModel, DictAccessMixin):
-    reading_id: int
+    reading_id: int = 0
     compare_id: int | None = None
     ssim_similarity: float = 1.0
     is_anomaly: bool = False

@@ -52,7 +52,7 @@ class Callbacks(Protocol):
         """Get history storage backend"""
         ...
 
-    def list_config_backups(self) -> list[ConfigBackupInfo] | list[dict[str, Any]]:
+    def list_config_backups(self) -> list[ConfigBackupInfo]:
         """List available configuration backups"""
         ...
 
@@ -80,19 +80,19 @@ class Callbacks(Protocol):
         """Load text content of a configuration backup"""
         ...
 
-    def get_health_data(self) -> HealthResponse | dict[str, Any]:
+    def get_health_data(self) -> HealthResponse:
         """Get system health and diagnostics metrics"""
         ...
 
-    def get_leak_status(self) -> ZeroFlowStatus | dict[str, Any]:
+    def get_leak_status(self) -> ZeroFlowStatus:
         """Get zero-flow leak monitor status and history"""
         ...
 
-    def reset_leak_status(self) -> ZeroFlowStatus | dict[str, Any]:
+    def reset_leak_status(self) -> ZeroFlowStatus:
         """Reset and acknowledge zero-flow leak state"""
         ...
 
-    def get_poller_status(self) -> PollerStatus | dict[str, Any]:
+    def get_poller_status(self) -> PollerStatus:
         """Get background poller status and schedule"""
         ...
 
@@ -100,7 +100,7 @@ class Callbacks(Protocol):
         """Trigger background poller readout immediately"""
         ...
 
-    def get_mqtt_status(self) -> MQTTStatus | dict[str, Any]:
+    def get_mqtt_status(self) -> MQTTStatus:
         """Get MQTT client and Home Assistant connection status"""
         ...
 
@@ -118,7 +118,7 @@ class Callbacks(Protocol):
         offset: int = 0,
         anomalies_only: bool = False,
         frames_only: bool = False,
-    ) -> list[TimelineFrame] | list[dict[str, Any]]:
+    ) -> list[TimelineFrame]:
         """Get historical timeline frames and anomalies"""
         ...
 
@@ -128,7 +128,7 @@ class Callbacks(Protocol):
 
     def get_frame_diff(
         self, reading_id: int, compare_id: int | None = None
-    ) -> VisualDiffMetrics | dict[str, Any]:
+    ) -> VisualDiffMetrics:
         """Get visual diff metrics and heatmap for a specific timeline frame"""
         ...
 

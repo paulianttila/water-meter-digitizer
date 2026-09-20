@@ -5,11 +5,12 @@ from __future__ import annotations
 import base64
 import logging
 from collections.abc import Callable
-from typing import TYPE_CHECKING, Any
+from typing import TYPE_CHECKING
 
 import cv2
 import numpy as np
 
+from data_classes import TimelineFrame, VisualDiffMetrics
 from utils.visual_diff import (
     calculate_image_ssim,
     compress_image_to_bytes,
@@ -48,8 +49,8 @@ class FrameService:
         offset: int = 0,
         anomalies_only: bool = False,
         frames_only: bool = False,
-    ) -> list[dict[str, Any]]:
-        """Retrieve timeline records as serialized dictionary objects."""
+    ) -> list[TimelineFrame]:
+        """Retrieve timeline records as TimelineFrame model objects."""
         storage = self._get_storage()
         if storage is None:
             logger.warning("FrameService.get_timeline: storage backend is None")
@@ -69,15 +70,15 @@ class FrameService:
             frames_only,
         )
         return [
-            {
-                "id": r.id,
-                "timestamp": r.timestamp.isoformat(),
-                "meters": {k: v.model_dump() for k, v in r.meters.items()},
-                "digital_results": r.digital_results,
-                "analog_results": r.analog_results,
-                "error": r.error,
-                "frame_type": r.frame_type,
-                "has_frame": bool(
+            TimelineFrame(
+                id=r.id,
+                timestamp=r.timestamp.isoformat(),
+                meters={k: v.model_dump() for k, v in r.meters.items()},
+                digital_results=r.digital_results,
+                analog_results=r.analog_results,
+                error=r.error or "",
+                frame_type=r.frame_type,
+                has_frame=bool(
                     r.frame_type
                     or r.frame_path
                     or (
@@ -85,9 +86,9 @@ class FrameService:
                         and storage.get_frame_bytes(r.id)[0] is not None
                     )
                 ),
-                "flow_detected": r.flow_detected,
-                "confidence_scores": r.confidence_scores,
-            }
+                flow_detected=r.flow_detected,
+                confidence_scores=r.confidence_scores,
+            )
             for r in records
         ]
 
@@ -124,14 +125,22 @@ class FrameService:
 
     def get_frame_diff(
         self, reading_id: int, compare_id: int | None = None
-    ) -> dict[str, Any]:
+    ) -> VisualDiffMetrics:
         """Compute SSIM similarity between two frames."""
         storage = self._get_storage()
         if storage is None:
-            return {"error": "Storage not available"}
+            return VisualDiffMetrics(
+                reading_id=reading_id,
+                compare_id=compare_id,
+                error="Storage not available",
+            )
         cur_bytes, _ = storage.get_frame_bytes(reading_id)
         if not cur_bytes:
-            return {"error": "Frame not found"}
+            return VisualDiffMetrics(
+                reading_id=reading_id,
+                compare_id=compare_id,
+                error="Frame not found",
+            )
         comp_bytes = None
         if compare_id is not None:
             comp_bytes, _ = storage.get_frame_bytes(compare_id)
@@ -141,16 +150,20 @@ class FrameService:
         cur_img = cv2.imdecode(np.frombuffer(cur_bytes, np.uint8), cv2.IMREAD_COLOR)
         comp_img = cv2.imdecode(np.frombuffer(comp_bytes, np.uint8), cv2.IMREAD_COLOR)
         if cur_img is None or comp_img is None:
-            return {"error": "Failed decoding images"}
+            return VisualDiffMetrics(
+                reading_id=reading_id,
+                compare_id=compare_id,
+                error="Failed decoding images",
+            )
 
         ssim_score = calculate_image_ssim(cur_img, comp_img)
-        return {
-            "reading_id": reading_id,
-            "compare_id": compare_id,
-            "ssim_similarity": ssim_score,
-            "is_anomaly": ssim_score < 0.85,
-            "diff_image_url": f"/history/frame/{reading_id}/diff_image?compare_id={compare_id or reading_id}",
-        }
+        return VisualDiffMetrics(
+            reading_id=reading_id,
+            compare_id=compare_id,
+            ssim_similarity=ssim_score,
+            is_anomaly=ssim_score < 0.85,
+            diff_image_url=f"/history/frame/{reading_id}/diff_image?compare_id={compare_id or reading_id}",
+        )
 
     def get_frame_diff_data_uri(
         self, reading_id: int, compare_id: int | None = None
