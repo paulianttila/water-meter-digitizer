@@ -89,7 +89,10 @@ class HistoryTableCard:
                 "field": "flow",
                 "align": "center",
                 "sortable": True,
-                "headerClasses": "text-gray-400 font-semibold text-xs",
+                "classes": "whitespace-nowrap min-w-[95px]",
+                "headerClasses": "text-gray-400 font-semibold text-xs whitespace-nowrap min-w-[95px]",
+                "style": "min-width: 95px; width: 95px;",
+                "headerStyle": "min-width: 95px; width: 95px;",
             },
             {
                 "name": "quality",
@@ -97,7 +100,10 @@ class HistoryTableCard:
                 "field": "quality",
                 "align": "center",
                 "sortable": True,
-                "headerClasses": "text-gray-400 font-semibold text-xs",
+                "classes": "whitespace-nowrap min-w-[125px]",
+                "headerClasses": "text-gray-400 font-semibold text-xs whitespace-nowrap min-w-[125px]",
+                "style": "min-width: 125px; width: 125px;",
+                "headerStyle": "min-width: 125px; width: 125px;",
             },
             {
                 "name": "actions",
@@ -492,11 +498,11 @@ class HistoryTableCard:
                 self.table.add_slot(
                     "body-cell-flow",
                     """
-                    <q-td :props="props">
-                        <span v-if="props.value" class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-500/10 text-blue-400 border border-blue-500/30">
+                    <q-td :props="props" class="whitespace-nowrap">
+                        <span v-if="props.value" class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-blue-500/10 text-blue-400 border border-blue-500/30 whitespace-nowrap">
                             💧 Active
                         </span>
-                        <span v-else class="text-[10px] text-slate-500 font-mono">
+                        <span v-else class="inline-flex items-center text-[10px] text-slate-500 font-mono whitespace-nowrap">
                             ⏸️ Idle
                         </span>
                     </q-td>
@@ -507,17 +513,17 @@ class HistoryTableCard:
                 self.table.add_slot(
                     "body-cell-quality",
                     """
-                    <q-td :props="props">
-                        <span v-if="props.value === 'GOOD'" class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30">
+                    <q-td :props="props" class="whitespace-nowrap">
+                        <span v-if="props.value === 'GOOD'" class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 whitespace-nowrap">
                             {{ props.row.confidence }}% &bull; {{ props.value }}
                         </span>
-                        <span v-else-if="props.value === 'ERROR'" class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/10 text-rose-400 border border-rose-500/30">
+                        <span v-else-if="props.value === 'ERROR'" class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-rose-500/10 text-rose-400 border border-rose-500/30 whitespace-nowrap">
                             {{ props.value }}
                         </span>
-                        <span v-else-if="props.value === 'WARNING'" class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/10 text-amber-400 border border-amber-500/30">
+                        <span v-else-if="props.value === 'WARNING'" class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-amber-500/10 text-amber-400 border border-amber-500/30 whitespace-nowrap">
                             {{ props.row.confidence }}% &bull; {{ props.value }}
                         </span>
-                        <span v-else class="px-2 py-0.5 rounded-full text-[10px] font-bold bg-cyan-500/10 text-cyan-400 border border-cyan-500/30">
+                        <span v-else class="inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-bold bg-cyan-500/10 text-cyan-400 border border-cyan-500/30 whitespace-nowrap">
                             {{ props.row.confidence }}% &bull; {{ props.value }}
                         </span>
                     </q-td>

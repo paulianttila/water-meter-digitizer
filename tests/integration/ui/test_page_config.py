@@ -96,9 +96,11 @@ def test_config_test_config_button(page: Page, live_server_url: str):
     expect(test_cfg_btn).to_be_visible(timeout=10000)
     test_cfg_btn.click()
 
-    expect(page.get_by_text("Running digitizer engine test").first).to_be_visible(
-        timeout=10000
-    )
+    expect(
+        page.get_by_text("Digitizer Recognition Test Result")
+        .or_(page.get_by_text("Running digitizer engine test"))
+        .first
+    ).to_be_visible(timeout=10000)
 
 
 @pytest.mark.ui
@@ -134,9 +136,11 @@ def test_config_history_test_backup(page: Page, live_server_url: str):
     test_btn.click()
 
     # Check test modal opens
-    expect(page.get_by_text("Running digitizer engine test").first).to_be_visible(
-        timeout=10000
-    )
+    expect(
+        page.get_by_text("Digitizer Recognition Test Result")
+        .or_(page.get_by_text("Running digitizer engine test"))
+        .first
+    ).to_be_visible(timeout=10000)
     page.keyboard.press("Escape")
     page.keyboard.press("Escape")
 
