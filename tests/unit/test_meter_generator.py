@@ -239,3 +239,39 @@ def test_create_synthetic_template_scaling():
     assert cfg_scaled.alignment.ref_images[0].x == round(
         cfg_base.alignment.ref_images[0].x * ratio_x
     )
+
+
+def test_meter_generator_glare_injection():
+    import numpy as np
+
+    generator = MeterImageGenerator()
+    img_no_glare = generator.generate(
+        value="00452.91241", width=640, height=480, glare=False
+    )
+    img_glare_pixel = generator.generate(
+        value="00452.91241",
+        width=640,
+        height=480,
+        glare=True,
+        glare_pos=(320, 240),
+        glare_intensity=1.5,
+    )
+    img_glare_norm = generator.generate(
+        value="00452.91241",
+        width=640,
+        height=480,
+        glare=True,
+        glare_pos=(0.5, 0.5),
+        glare_intensity=1.5,
+    )
+
+    arr_no_glare = np.array(img_no_glare, dtype=np.float32)
+    arr_glare_pixel = np.array(img_glare_pixel, dtype=np.float32)
+    arr_glare_norm = np.array(img_glare_norm, dtype=np.float32)
+
+    # Hotspot center region (320, 240) must be significantly brighter with glare
+    assert np.mean(arr_glare_pixel[235:245, 315:325]) > np.mean(
+        arr_no_glare[235:245, 315:325]
+    )
+    # Normalized (0.5, 0.5) and absolute (320, 240) on 640x480 should be identical
+    np.testing.assert_allclose(arr_glare_pixel, arr_glare_norm, atol=1.0)

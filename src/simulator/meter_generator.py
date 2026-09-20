@@ -165,15 +165,20 @@ class MeterImageGenerator:
         target_w = max(32, int(width))
         target_h = max(32, int(height))
         scaled_glare_pos = glare_pos
+        if glare_pos is not None:
+            gx, gy = glare_pos
+            if 0.0 <= gx <= 1.0 and 0.0 <= gy <= 1.0:
+                scaled_glare_pos = (gx, gy)
+            elif canvas.size != (target_w, target_h):
+                scaled_glare_pos = (
+                    gx * (target_w / float(base_w)),
+                    gy * (target_h / float(base_h)),
+                )
+
         if canvas.size != (target_w, target_h):
             canvas = canvas.resize(
                 (target_w, target_h), resample=PIL.Image.Resampling.LANCZOS
             )
-            if glare_pos is not None:
-                scaled_glare_pos = (
-                    glare_pos[0] * (target_w / float(base_w)),
-                    glare_pos[1] * (target_h / float(base_h)),
-                )
 
         # 6. Apply Optical Perturbations at Target Resolution
         canvas = self.apply_perturbations(
@@ -762,8 +767,18 @@ class MeterImageGenerator:
     ) -> Image:
         """Overlay a specular glare hotspot."""
         w, h = image.size
-        glare_x = int((pos[0] if pos else 0.45) * w)
-        glare_y = int((pos[1] if pos else 0.35) * h)
+        if pos is not None:
+            gx, gy = pos
+            if 0.0 <= gx <= 1.0 and 0.0 <= gy <= 1.0:
+                glare_x = int(gx * w)
+                glare_y = int(gy * h)
+            else:
+                glare_x = int(gx)
+                glare_y = int(gy)
+        else:
+            glare_x = int(0.45 * w)
+            glare_y = int(0.35 * h)
+
         radius = int(min(w, h) * 0.22)
 
         y, x = np.ogrid[:h, :w]
