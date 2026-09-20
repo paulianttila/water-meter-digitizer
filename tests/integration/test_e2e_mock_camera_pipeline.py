@@ -8,7 +8,7 @@ import pytest
 import requests
 
 from processor.image import ImageProcessor
-from testing.meter_generator import MeterImageGenerator
+from simulator.meter_generator import MeterImageGenerator
 
 
 def test_e2e_mock_camera_direct_endpoint_and_headers():

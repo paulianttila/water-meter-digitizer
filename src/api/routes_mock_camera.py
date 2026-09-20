@@ -10,7 +10,7 @@ import threading
 from fastapi import APIRouter, Request, Response
 from fastapi.responses import JSONResponse
 
-from testing.meter_generator import MeterImageGenerator
+from simulator.meter_generator import MeterImageGenerator
 
 logger = logging.getLogger(__name__)
 

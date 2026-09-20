@@ -35,7 +35,7 @@ src/                    # Application source (Python path root in container)
 ├── mqtt/               # MQTT client service + Home Assistant discovery
 ├── leak/               # Zero-flow continuous leak detection engine
 ├── poller/             # Background polling scheduler
-├── testing/            # Mock camera meter generator for synthetic test frames
+├── simulator/          # Mock camera meter generator for synthetic frames & simulation
 ├── utils/              # Shared helpers (image, cache, math, security, visual_diff)
 ├── decorators/         # Cross-cutting decorators (e.g. log_execution_time)
 └── web/static/         # Static assets served by FastAPI

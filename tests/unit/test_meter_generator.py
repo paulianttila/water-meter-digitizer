@@ -6,8 +6,8 @@ from fastapi.testclient import TestClient
 from PIL import Image
 
 from main import app
-from testing.cli import main as cli_main
-from testing.meter_generator import MeterImageGenerator
+from simulator.cli import main as cli_main
+from simulator.meter_generator import MeterImageGenerator
 
 
 def test_generator_initialization_and_default_generate():

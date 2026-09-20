@@ -3,7 +3,7 @@
 import argparse
 import logging
 
-from testing.meter_generator import MeterImageGenerator
+from simulator.meter_generator import MeterImageGenerator
 
 logger = logging.getLogger(__name__)
 

@@ -7,7 +7,7 @@ from processor.digitizer import (
     ReadoutResult,
 )
 from processor.sign_detector import detect_minus_sign
-from testing.meter_generator import MeterImageGenerator
+from simulator.meter_generator import MeterImageGenerator
 
 
 def _create_synthetic_minus_image(
