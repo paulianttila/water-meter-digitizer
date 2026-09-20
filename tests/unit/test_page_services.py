@@ -22,7 +22,7 @@ def test_services_page_show_and_fetch():
     page.leak_card = MagicMock()
     page.services_card = MagicMock()
 
-    with patch("gui.page_services.ui"):
+    with patch("gui.page_services.ui"), patch("gui.components.page_header.ui"):
         asyncio.run(page.show())
 
         page.diagnostics_card.render.assert_called_once()

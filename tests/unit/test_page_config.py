@@ -2,9 +2,9 @@
 
 from unittest.mock import MagicMock, patch
 
+from gui.components import format_diff_html
 from gui.page_config import (
     ConfigPage,
-    format_diff_html,
     get_section_icon,
     parse_ini_sections,
 )

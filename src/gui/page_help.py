@@ -6,6 +6,7 @@ from nicegui import ui
 
 import gui.theme as theme
 from callbacks import Callbacks
+from gui.components import page_header
 from main import VERSION
 from utils.diagnostics import get_process_memory_info, get_system_info
 
@@ -144,48 +145,38 @@ class HelpPage:
             "w-full h-full flex flex-col gap-3 p-4 overflow-hidden"
         ):
             # Header Hero Bar
-            with ui.row().classes("w-full justify-between items-center shrink-0 mb-1"):
-                with ui.row().classes("items-center gap-3"):
-                    with ui.element("div").classes(
-                        "w-10 h-10 rounded-xl bg-cyan-500/10 border border-cyan-500/30 "
-                        "flex items-center justify-center shadow-lg shadow-cyan-500/10"
-                    ):
-                        ui.icon("help_outline", color="cyan").classes("text-2xl")
-                    with ui.column().classes("gap-0"):
-                        ui.label("Help & Documentation").classes(
-                            "text-h4 font-['Outfit'] font-bold text-white leading-none"
-                        )
-                        ui.label(
-                            "Guides, calibration best practices, and integration specifications"
-                        ).classes("text-xs text-gray-400 mt-1")
+            with page_header(
+                title="Help & Documentation",
+                subtitle="Guides, calibration best practices, and integration specifications",
+                icon="help_outline",
+                color="cyan",
+                classes="w-full justify-between items-center shrink-0 mb-1",
+            ):
+                ui.link(
+                    "Wiki Documentation",
+                    "https://github.com/paulianttila/water-meter-digitizer/wiki",
+                    new_tab=True,
+                ).classes(
+                    "text-xs font-semibold text-gray-300 hover:text-white px-3 py-1.5 "
+                    "rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 transition-colors flex items-center gap-1.5"
+                )
 
-                with ui.row().classes("items-center gap-2"):
-                    ui.link(
-                        "Wiki Documentation",
-                        "https://github.com/paulianttila/water-meter-digitizer/wiki",
-                        new_tab=True,
-                    ).classes(
-                        "text-xs font-semibold text-gray-300 hover:text-white px-3 py-1.5 "
-                        "rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 transition-colors flex items-center gap-1.5"
+                with (
+                    ui.button(
+                        "Support Bundle",
+                        icon="bug_report",
+                        on_click=_open_support_dialog,
+                    )
+                    .props("outline dense size=sm color=cyan")
+                    .classes("font-semibold")
+                ):
+                    ui.tooltip(
+                        "View, download, or copy diagnostics report formatted for GitHub issues"
                     )
 
-                    with (
-                        ui.button(
-                            "Support Bundle",
-                            icon="bug_report",
-                            on_click=_open_support_dialog,
-                        )
-                        .props("outline dense size=sm color=cyan")
-                        .classes("font-semibold")
-                    ):
-                        ui.tooltip(
-                            "View, download, or copy diagnostics report formatted for GitHub issues"
-                        )
-
-                    ui.label("Documentation v" + VERSION).classes(
-                        "text-xs font-semibold text-cyan-400 bg-cyan-500/10 "
-                        "border border-cyan-500/30 px-3 py-1 rounded-full"
-                    )
+                ui.label("Documentation v" + VERSION).classes(
+                    "font-mono text-xs text-cyan-400 bg-cyan-500/10 border border-cyan-500/30 px-3 py-1.5 rounded-full font-semibold hidden md:block"
+                )
 
             # 3 Navigation Tabs
             with (

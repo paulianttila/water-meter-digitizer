@@ -25,6 +25,7 @@ from gui.api_console.registry import (
     STANDARD_RESOLUTIONS,
     generate_curl_command,
 )
+from gui.components import render_page_header
 from gui.components.engine_test_dialog import run_engine_test_dialog
 from gui.theme import (
     BADGE_ERROR,
@@ -989,22 +990,13 @@ class ApiConsolePage:
         with ui.column().classes(
             "w-full h-full flex flex-col gap-3 p-4 overflow-hidden"
         ):
-            with (
-                ui.row().classes("w-full justify-between items-center shrink-0 mb-1"),
-                ui.row().classes("items-center gap-3"),
-            ):
-                with ui.element("div").classes(
-                    "w-10 h-10 rounded-xl bg-cyan-500/10 border border-cyan-500/30 "
-                    "flex items-center justify-center shadow-lg shadow-cyan-500/10"
-                ):
-                    ui.icon("terminal", color="cyan").classes("text-2xl")
-                with ui.column().classes("gap-0"):
-                    ui.label("REST API Console & Studio").classes(
-                        "text-h4 font-['Outfit']"
-                    )
-                    ui.label(
-                        "Interactive endpoint debugger, REST tester & procedural mock camera studio"
-                    ).classes("text-xs text-gray-400")
+            render_page_header(
+                title="REST API Console & Studio",
+                subtitle="Interactive endpoint debugger, REST tester & procedural mock camera studio",
+                icon="terminal",
+                color="cyan",
+                classes="w-full justify-between items-center shrink-0 mb-1",
+            )
 
             # Main Tabs Container (Fills full view)
             with (

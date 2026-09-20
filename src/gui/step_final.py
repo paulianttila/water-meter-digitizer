@@ -6,7 +6,12 @@ from nicegui import ui
 
 from callbacks import Callbacks
 from configuration import Config
-from gui.components.engine_test_dialog import run_engine_test_dialog
+from gui.components import (
+    ValidationBanner,
+    open_code_inspect_dialog,
+    open_confirm_dialog,
+    run_engine_test_dialog,
+)
 
 from .step_base import BaseStep
 
@@ -44,37 +49,10 @@ class FinalStep(BaseStep):
         self.editor: ui.textarea
         self.new_config_saved = False
         self.txt = ""
-        self.status_banner: ui.row | None = None
-        self.status_icon: ui.icon | None = None
-        self.status_label: ui.label | None = None
+        self.status_banner = ValidationBanner()
 
     def update_status_banner(self) -> None:
-        if (
-            self.status_banner is None
-            or self.status_label is None
-            or self.status_icon is None
-        ):
-            return
-        if self.new_config_saved:
-            self.status_banner.classes(
-                "bg-emerald-950/40 border-emerald-500/40 text-emerald-200",
-                remove="bg-amber-950/40 border-amber-500/40 text-amber-200",
-            )
-            self.status_icon.props("name=check_circle color=emerald")
-            self.status_label.text = (
-                "Configuration and reference templates successfully saved to disk. "
-                "Click 'Take In Use' to apply changes immediately to running services."
-            )
-        else:
-            self.status_banner.classes(
-                "bg-amber-950/40 border-amber-500/40 text-amber-200",
-                remove="bg-emerald-950/40 border-emerald-500/40 text-emerald-200",
-            )
-            self.status_icon.props("name=pending_actions color=amber")
-            self.status_label.text = (
-                "Configuration not yet saved. Review the generated configuration below "
-                "and click 'Save Config' when ready to write files to disk."
-            )
+        self.status_banner.update(self.new_config_saved)
 
     def _on_editor_changed(self, value: str) -> None:
         if self.new_config_saved and value != self.txt:
@@ -89,50 +67,20 @@ class FinalStep(BaseStep):
 
     def _prompt_hot_reload(self) -> None:
         try:
-            with (
-                ui.dialog() as reload_dialog,
-                ui.card().classes(
-                    "bg-slate-900 border border-white/10 rounded-2xl p-5 "
-                    "max-w-md w-full gap-4"
-                ),
-            ):
-                with ui.row().classes("items-center gap-3"):
-                    with ui.element("div").classes(
-                        "w-10 h-10 rounded-xl bg-blue-500/20 "
-                        "border border-blue-500/30 flex items-center "
-                        "justify-center text-blue-400"
-                    ):
-                        ui.icon("autorenew", size="md")
-                    with ui.column().classes("gap-0"):
-                        ui.label("Configuration Saved").classes(
-                            "text-base font-bold text-slate-100"
-                        )
-                        ui.label("Take new configuration in use?").classes(
-                            "text-xs text-slate-400"
-                        )
-                ui.label(
+            open_confirm_dialog(
+                title="Configuration Saved",
+                subtitle="Take new configuration in use?",
+                message=(
                     "Configuration and reference templates have been saved to disk. "
                     "Would you like to hot-reload running services now with the new configuration?"
-                ).classes("text-sm text-slate-300 leading-relaxed")
-
-                def on_hot_reload() -> None:
-                    reload_dialog.close()
-                    self._use_config()
-
-                with ui.row().classes("w-full justify-end items-center gap-2 mt-2"):
-                    ui.button("Later", on_click=reload_dialog.close).props(
-                        "flat dense"
-                    ).classes("text-slate-400 hover:text-slate-200")
-                    ui.button(
-                        "Hot Reload Now",
-                        icon="autorenew",
-                        on_click=on_hot_reload,
-                    ).props("unelevated dense").classes(
-                        "bg-gradient-to-r from-blue-600 to-indigo-600 "
-                        "hover:from-blue-500 hover:to-indigo-500 text-white "
-                        "px-4 py-1.5 rounded-xl font-medium shadow-md shadow-blue-950/50"
-                    )
-            reload_dialog.open()
+                ),
+                confirm_label="Hot Reload Now",
+                confirm_icon="autorenew",
+                cancel_label="Later",
+                color_scheme="blue",
+                icon="autorenew",
+                on_confirm=self._use_config,
+            )
         except Exception as e:
             logger.debug(f"Could not open hot reload dialog: {e}")
 
@@ -151,33 +99,19 @@ class FinalStep(BaseStep):
             config = Config()
             config.load_from_string(self.editor.value)
             j = config.model_dump_json(indent=4)
-            with (
-                ui.dialog() as dialog,
-                ui.card().classes(
-                    "bg-slate-900 border border-white/10 rounded-2xl p-4 "
-                    "max-w-4xl w-full"
-                ),
-            ):
-                with ui.row().classes(
-                    "w-full items-center justify-between pb-2 border-b "
-                    "border-white/10"
-                ):
-                    ui.label("Compiled Config (JSON)").classes(
-                        "font-semibold text-slate-200"
-                    )
-                    ui.button(icon="close", on_click=dialog.close).props(
-                        "flat round dense aria-label='Close dialog'"
-                    )
-                ui.code(j, language="json").classes(
-                    "w-full max-h-[70vh] overflow-auto text-xs rounded-xl"
-                )
-            dialog.open()
+            open_code_inspect_dialog(
+                title="Compiled Config (JSON)",
+                code_content=j,
+                language="json",
+            )
         except Exception as e:
             ui.notify(f"Syntax error: {e}", type="negative")
 
     def _use_config(self) -> None:
         self.callbacks.use_config()
         self.new_config_saved = False
+        self.update_status_banner()
+        ui.notify("Config taken in use", type="positive")
         self.update_status_banner()
         ui.notify("Config taken in use", type="positive")
 
@@ -218,21 +152,9 @@ class FinalStep(BaseStep):
         with ui.step(self.name):
             self.add_help(HELP_TEXT)
 
-            with (
-                ui.row()
-                .classes(
-                    "w-full px-3.5 py-2 rounded-xl border transition-all items-center "
-                    "gap-2.5 mb-1.5 bg-amber-950/40 border-amber-500/40 text-amber-200"
-                )
-                .props('id="final-step-status-banner"') as self.status_banner
-            ):
-                self.status_icon = ui.icon("pending_actions", color="amber").classes(
-                    "text-xl shrink-0"
-                )
-                self.status_label = ui.label(
-                    "Configuration not yet saved. Review the generated configuration below "
-                    "and click 'Save Config' when ready to write files to disk."
-                ).classes("text-xs font-semibold leading-normal flex-1")
+            banner_row = self.status_banner.render(initial_saved=self.new_config_saved)
+            banner_row.props('id="final-step-status-banner"')
+            banner_row.classes(add="mb-1.5")
 
             with (
                 ui.card().classes(

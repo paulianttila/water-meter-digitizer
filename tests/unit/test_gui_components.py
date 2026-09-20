@@ -753,3 +753,106 @@ def test_services_status_card_with_error(mock_callbacks):
         card._poller_data["last_error"]
         == "Could not open model file: Model allocation is null"
     )
+
+
+def test_page_header_components():
+    from gui.components.page_header import page_header, render_page_header
+
+    # Test render_page_header
+    row = render_page_header("Test Title", "Test Subtitle", icon="tune", color="cyan")
+    assert row is not None
+
+    # Test page_header context manager
+    with page_header("Ctx Title", "Ctx Subtitle") as actions:
+        assert actions is not None
+
+
+def test_code_inspect_dialog():
+    from gui.components.code_inspect_dialog import open_code_inspect_dialog
+
+    dialog = open_code_inspect_dialog(
+        title="Inspect JSON",
+        code_content='{"key": "value"}',
+        language="json",
+        subtitle="Subtitle text",
+        caption="/test/path.json",
+    )
+    assert dialog is not None
+
+
+def test_confirm_dialog():
+    from gui.components.confirm_dialog import open_confirm_dialog
+
+    called = []
+
+    def on_confirm(checked=None):
+        called.append(checked)
+
+    dialog = open_confirm_dialog(
+        title="Are you sure?",
+        message="This is a test action.",
+        confirm_label="Proceed",
+        color_scheme="rose",
+        checkbox_label="Safety backup",
+        checkbox_default=True,
+        on_confirm=on_confirm,
+    )
+    assert dialog is not None
+
+
+def test_validation_banner():
+    from gui.components.validation_banner import ValidationBanner
+
+    banner = ValidationBanner(saved_text="Saved!", unsaved_text="Unsaved!")
+    row = banner.render(initial_saved=False)
+    assert row is not None
+    assert banner.is_saved is False
+
+    banner.update(is_saved=True)
+    assert banner.is_saved is True
+    assert banner.label.text == "Saved!"
+
+    banner.update(is_saved=False, custom_message="Custom unsaved")
+    assert banner.is_saved is False
+    assert banner.label.text == "Custom unsaved"
+
+
+def test_config_history_dialog(mock_callbacks):
+    from gui.components.config_history_dialog import (
+        format_diff_html,
+        open_config_history_dialog,
+    )
+
+    mock_callbacks.list_config_backups.return_value = [
+        {
+            "name": "config_20260920.ini",
+            "tag": "Pre-calibration",
+            "formatted_time": "2026-09-20 12:00",
+            "size_bytes": 2048,
+            "is_auto": False,
+        }
+    ]
+    mock_callbacks.diff_config_backup.return_value = [
+        "--- a",
+        "+++ b",
+        "+line1",
+        "-line2",
+    ]
+
+    diff_html = format_diff_html(["--- a", "+++ b", "+added", "-removed"])
+    assert "added" in diff_html
+    assert "removed" in diff_html
+
+    empty_diff = format_diff_html([])
+    assert "Identical to current configuration" in empty_diff
+
+    dialog = open_config_history_dialog(
+        callbacks=mock_callbacks,
+        title="History Dialog",
+        show_snapshot_creator=True,
+        on_restore=MagicMock(),
+        on_test=MagicMock(),
+        allow_diff=True,
+        allow_delete=True,
+    )
+    assert dialog is not None

@@ -6,6 +6,7 @@ import contextlib
 from nicegui import ui
 
 from callbacks import Callbacks
+from gui.components import page_header
 from gui.components.diagnostics_card import DiagnosticsCard
 from gui.components.leak_monitor_card import LeakMonitorCard
 from gui.components.services_status_card import ServicesStatusCard
@@ -23,11 +24,15 @@ class ServicesPage:
 
     async def show(self) -> None:
         """Render the Services and Diagnostics page."""
-        with ui.row().classes("w-full justify-between items-center mb-2"):
-            with ui.row().classes("items-center gap-3"):
-                ui.label("Services & System Diagnostics").classes("text-h4")
-                self.spinner = ui.spinner("dots", size="md", color="cyan")
-                self.spinner.visible = False
+        with page_header(
+            title="Services & System Diagnostics",
+            subtitle="Manage background daemons, logs, and live metrics",
+            icon="dns",
+            color="emerald",
+            classes="w-full justify-between items-center mb-2",
+        ):
+            self.spinner = ui.spinner("dots", size="md", color="cyan")
+            self.spinner.visible = False
 
             ui.button(
                 "Refresh All", icon="refresh", on_click=self.fetch_all_telemetry

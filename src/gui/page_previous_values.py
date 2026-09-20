@@ -9,6 +9,7 @@ from typing import Any
 from nicegui import ui
 
 from callbacks import Callbacks
+from gui.components import open_code_inspect_dialog, page_header
 
 
 class PreviousValuesPage:
@@ -395,78 +396,43 @@ class PreviousValuesPage:
             lines.append("")
         raw_text = "\n".join(lines).strip()
 
-        with (
-            ui.dialog() as dialog,
-            ui.card().classes(
-                "w-full max-w-2xl p-5 bg-slate-900 border border-white/10 rounded-2xl gap-3"
-            ),
-        ):
-            with ui.row().classes(
-                "w-full justify-between items-center pb-2 border-b border-white/10"
-            ):
-                with ui.row().classes("items-center gap-2"):
-                    ui.icon("description", color="cyan", size="sm")
-                    ui.label("Raw prevalue.ini Inspector").classes(
-                        "text-base font-bold text-slate-100"
-                    )
-                ui.button(icon="close", on_click=dialog.close).props("flat round dense")
-
-            ui.code(raw_text, language="ini").classes(
-                "w-full max-h-[60vh] overflow-auto rounded-lg bg-slate-950 p-4 border border-white/5 font-mono text-xs"
-            )
-
-            with ui.row().classes("w-full justify-between items-center pt-2"):
-                ui.label("/config/prevalue.ini").classes(
-                    "text-xs font-mono text-slate-400"
-                )
-                ui.button(
-                    "Copy Text",
-                    icon="content_copy",
-                    on_click=lambda: ui.run_javascript(
-                        f"navigator.clipboard.writeText({raw_text!r})"
-                    ),
-                ).props("outline dense size=sm color=cyan")
-
-        dialog.open()
+        open_code_inspect_dialog(
+            title="Raw prevalue.ini Inspector",
+            code_content=raw_text,
+            language="ini",
+            caption="/config/prevalue.ini",
+            icon="description",
+            max_width="max-w-2xl",
+        )
 
     def show(self) -> None:
         with ui.column().classes("w-full max-w-5xl gap-4 p-4"):
             # Header
-            with ui.row().classes("w-full justify-between items-center"):
-                with ui.row().classes("items-center gap-3"):
-                    with ui.element("div").classes(
-                        "w-10 h-10 rounded-xl bg-cyan-500/10 border border-cyan-500/30 "
-                        "flex items-center justify-center shadow-lg shadow-cyan-500/10"
-                    ):
-                        ui.icon("tune", color="cyan").classes("text-2xl")
-                    with ui.column().classes("gap-0"):
-                        ui.label("Baseline & Previous Values Manager").classes(
-                            "text-h5 font-['Outfit']"
-                        )
-                        ui.label(
-                            "Inspect, compare, and calibrate meter baselines with live synchronization"
-                        ).classes("text-xs text-gray-400")
-
-                with ui.row().classes("items-center gap-2"):
-                    ui.button(
-                        "Export CSV",
-                        icon="download",
-                        on_click=self._export_csv,
-                    ).props("flat dense color=grey-4 size=sm").tooltip(
-                        "Download all meter baselines as CSV"
-                    )
-                    ui.button(
-                        "Inspect Raw",
-                        icon="visibility",
-                        on_click=self._open_raw_prevalue_modal,
-                    ).props("flat dense color=grey-4 size=sm").tooltip(
-                        "Inspect raw prevalue.ini text structure"
-                    )
-                    ui.button(
-                        "Refresh",
-                        icon="refresh",
-                        on_click=self.refresh_table,
-                    ).props("outline dense color=cyan size=sm").classes("text-xs")
+            with page_header(
+                title="Baseline & Previous Values Manager",
+                subtitle="Inspect, compare, and calibrate meter baselines with live synchronization",
+                icon="tune",
+                color="cyan",
+            ):
+                ui.button(
+                    "Export CSV",
+                    icon="download",
+                    on_click=self._export_csv,
+                ).props("flat dense color=grey-4 size=sm").tooltip(
+                    "Download all meter baselines as CSV"
+                )
+                ui.button(
+                    "Inspect Raw",
+                    icon="visibility",
+                    on_click=self._open_raw_prevalue_modal,
+                ).props("flat dense color=grey-4 size=sm").tooltip(
+                    "Inspect raw prevalue.ini text structure"
+                )
+                ui.button(
+                    "Refresh",
+                    icon="refresh",
+                    on_click=self.refresh_table,
+                ).props("outline dense color=cyan size=sm").classes("text-xs")
 
             # Hero Meter Telemetry Cards Container
             self.cards_container = ui.column().classes("w-full gap-3")

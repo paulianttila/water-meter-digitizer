@@ -113,17 +113,19 @@ def test_step_final_show_and_json_preview():
         save_refs_func=MagicMock(),
     )
 
-    with patch("gui.step_final.ui") as mock_ui, patch("gui.step_base.ui"):
-        mock_dialog = MagicMock()
-        mock_ui.dialog.return_value.__enter__.return_value = mock_dialog
-
+    with (
+        patch("gui.step_final.open_code_inspect_dialog") as mock_inspect,
+        patch("gui.step_final.ui") as mock_ui,
+        patch("gui.step_base.ui"),
+        patch("gui.components.validation_banner.ui"),
+    ):
         asyncio.run(step.show(MagicMock(), first_step=False, last_step=True))
         mock_ui.step.assert_called_once_with("Final")
 
         # Show JSON config dialog
         step.editor.value = "[DEFAULT]\n"
         step._show_config()
-        mock_dialog.open.assert_called_once()
+        mock_inspect.assert_called_once()
 
         # Show config with syntax error
         step.editor.value = "invalid ini [[["

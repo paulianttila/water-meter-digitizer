@@ -61,22 +61,12 @@ def test_final_step_show_config():
     # Valid config JSON preview
     config = Config()
     step.editor = MagicMock(value=config.save_to_string())
-    with (
-        patch("gui.step_final.ui.dialog") as mock_dialog,
-        patch("gui.step_final.ui.card"),
-        patch("gui.step_final.ui.row"),
-        patch("gui.step_final.ui.label"),
-        patch("gui.step_final.ui.button"),
-        patch("gui.step_final.ui.code") as mock_code,
-    ):
-        dialog_inst = MagicMock()
-        mock_dialog.return_value.__enter__.return_value = dialog_inst
-
+    with patch("gui.step_final.open_code_inspect_dialog") as mock_inspect:
         step._show_config()
-        assert mock_code.called
-        json_text = mock_code.call_args[0][0]
-        assert '"image_source"' in json_text
-        assert dialog_inst.open.called
+        assert mock_inspect.called
+        kwargs = mock_inspect.call_args.kwargs
+        assert kwargs.get("title") == "Compiled Config (JSON)"
+        assert '"image_source"' in kwargs.get("code_content", "")
 
     # Invalid config error handling
     step.editor = MagicMock(value="invalid [ini format ::::")
