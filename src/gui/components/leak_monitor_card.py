@@ -127,7 +127,7 @@ class LeakMonitorCard:
                     icon="refresh",
                     on_click=self.fetch_and_update,
                 ).props(
-                    "flat round dense color=cyan text-xs"
+                    "flat round dense color=cyan text-xs aria-label='Refresh Leak Monitor'"
                 ).tooltip("Refresh Leak Monitor")
 
             # Telemetry Metrics Grid

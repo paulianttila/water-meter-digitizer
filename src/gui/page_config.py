@@ -1023,7 +1023,9 @@ class ConfigPage:
                 ui.button(
                     icon="close",
                     on_click=lambda: diag_banner.set_visibility(False),
-                ).props("flat round dense size=xs text-color=grey-4")
+                ).props(
+                    "flat round dense size=xs text-color=grey-4 aria-label='Dismiss validation banner'"
+                )
 
             # Main Content Containers
             # 1. Raw INI Editor Container

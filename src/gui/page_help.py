@@ -87,7 +87,7 @@ class HelpPage:
                         f"{theme.HEADING_SECTION} text-white"
                     )
                 ui.button(icon="close", on_click=support_dialog.close).props(
-                    "flat round dense size=sm color=gray"
+                    "flat round dense size=sm color=gray aria-label='Close dialog'"
                 )
 
             ui.label(

@@ -199,14 +199,14 @@ class DrawDigitalRoisStep(DrawRoisBaseStep):
                     ui.button(
                         icon="format_align_left",
                         on_click=self._align_left,
-                    ).props("flat dense").bind_enabled_from(
+                    ).props("flat dense aria-label='Align Left'").bind_enabled_from(
                         self, "rois", lambda rois: len(rois) > 0
                     ).tooltip(
                         "Align Left"
                     )
                     ui.button(
                         icon="vertical_align_top", on_click=self._align_top
-                    ).props("flat dense").bind_enabled_from(
+                    ).props("flat dense aria-label='Align Top'").bind_enabled_from(
                         self, "rois", lambda rois: len(rois) > 0
                     ).tooltip(
                         "Align Top"
@@ -214,7 +214,7 @@ class DrawDigitalRoisStep(DrawRoisBaseStep):
                     ui.button(
                         icon="vertical_align_bottom",
                         on_click=self._align_bottom,
-                    ).props("flat dense").bind_enabled_from(
+                    ).props("flat dense aria-label='Align Bottom'").bind_enabled_from(
                         self, "rois", lambda rois: len(rois) > 0
                     ).tooltip(
                         "Align Bottom"
@@ -222,7 +222,7 @@ class DrawDigitalRoisStep(DrawRoisBaseStep):
                     ui.button(
                         icon="format_align_right",
                         on_click=self._align_right,
-                    ).props("flat dense").bind_enabled_from(
+                    ).props("flat dense aria-label='Align Right'").bind_enabled_from(
                         self, "rois", lambda rois: len(rois) > 0
                     ).tooltip(
                         "Align Right"
@@ -230,7 +230,7 @@ class DrawDigitalRoisStep(DrawRoisBaseStep):
                     ui.button(
                         icon="vertical_align_center",
                         on_click=self._align_center,
-                    ).props("flat dense").bind_enabled_from(
+                    ).props("flat dense aria-label='Align Center'").bind_enabled_from(
                         self, "rois", lambda rois: len(rois) > 0
                     ).tooltip(
                         "Align Center"
@@ -238,13 +238,15 @@ class DrawDigitalRoisStep(DrawRoisBaseStep):
                     ui.button(
                         icon="horizontal_distribute",
                         on_click=self._distribute_horizontally,
-                    ).props("flat dense").bind_enabled_from(
+                    ).props(
+                        "flat dense aria-label='Distribute Horizontally'"
+                    ).bind_enabled_from(
                         self, "rois", lambda rois: len(rois) > 1
                     ).tooltip(
                         "Distribute Horizontally"
                     )
                     ui.button(icon="aspect_ratio", on_click=self._resize_all).props(
-                        "flat dense"
+                        "flat dense aria-label='Resize All to First ROI Size'"
                     ).bind_enabled_from(
                         self, "rois", lambda rois: len(rois) > 0
                     ).tooltip(

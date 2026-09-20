@@ -92,17 +92,17 @@ class InitialRotateStep(BaseStep):
             self.add_help(HELP_TEXT)
             with ui.row().classes("items-center gap-2"):
                 ui.button(icon="rotate_left", on_click=self._rotate_left).props(
-                    "dense"
+                    "dense aria-label='Rotate image 90° left'"
                 ).bind_enabled_from(self, "image", lambda image: image != "").tooltip(
                     "Rotate image 90° left"
                 )
                 ui.button(icon="flip_camera_android", on_click=self._rotate_180).props(
-                    "dense"
+                    "dense aria-label='Rotate image 180°'"
                 ).bind_enabled_from(self, "image", lambda image: image != "").tooltip(
                     "Rotate image 180°"
                 )
                 ui.button(icon="rotate_right", on_click=self._rotate_right).props(
-                    "dense"
+                    "dense aria-label='Rotate image 90° right'"
                 ).bind_enabled_from(self, "image", lambda image: image != "").tooltip(
                     "Rotate image 90° right"
                 )

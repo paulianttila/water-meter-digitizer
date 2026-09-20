@@ -263,7 +263,9 @@ class MeterPage:
 
                                 ui.button(
                                     icon="content_copy", on_click=copy_value
-                                ).props("flat round dense size=xs color=gray").tooltip(
+                                ).props(
+                                    "flat round dense size=xs color=gray aria-label='Copy reading to clipboard'"
+                                ).tooltip(
                                     "Copy reading to clipboard"
                                 )
 
@@ -722,13 +724,13 @@ class MeterPage:
                     icon="bolt",
                     on_click=trigger_background_poll,
                 ).props(
-                    "flat round dense color=amber size=sm"
+                    "flat round dense color=amber size=sm aria-label='Trigger background poll'"
                 ).tooltip("Trigger Poller Execution")
 
                 ui.button(
                     icon="open_in_new",
                 ).props(
-                    'flat round dense color=cyan size=sm href="/meter" target="_blank"'
+                    'flat round dense color=cyan size=sm href="/meter" target="_blank" aria-label="Open /meter REST API"'
                 ).tooltip("Open /meter REST API")
 
         with (

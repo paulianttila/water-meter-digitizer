@@ -155,7 +155,7 @@ class MockConfigDialog:
                         status_text, color=status_color
                     ).classes("text-xs")
                     ui.button(icon="close", on_click=self.dialog.close).props(
-                        "flat round dense"
+                        "flat round dense aria-label='Close dialog'"
                     )
 
             # Dialog Tab Bar

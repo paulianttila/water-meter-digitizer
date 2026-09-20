@@ -449,7 +449,7 @@ def init(fastapi_app: FastAPI, callbacks: Callbacks) -> None:
                             icon="close",
                             on_click=lambda: reload_banner.set_visibility(False),
                         ).props(
-                            "dense flat round size=sm text-color=amber-200"
+                            "dense flat round size=sm text-color=amber-200 aria-label='Dismiss reload warning'"
                         ).tooltip(
                             "Dismiss warning"
                         )

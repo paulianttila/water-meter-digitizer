@@ -127,7 +127,7 @@ class ServicesStatusCard:
                     icon="refresh",
                     on_click=self.fetch_and_update,
                 ).props(
-                    "flat round dense color=cyan text-xs"
+                    "flat round dense color=cyan text-xs aria-label='Refresh Services Status'"
                 ).tooltip("Refresh Services Status")
 
             # 2 Main Columns: Poller Scheduler & MQTT Broker

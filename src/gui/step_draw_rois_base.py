@@ -601,7 +601,9 @@ class DrawRoisBaseStep(BaseStep):
             ui.button(
                 icon="delete_outline",
                 on_click=lambda r=roi, el=row_elem: self._delete_roi(r, el),
-            ).props("flat color=negative dense size=sm").classes(
+            ).props(
+                "flat color=negative dense size=sm aria-label='Delete region'"
+            ).classes(
                 "rounded-lg hover:bg-red-500/20 shrink-0"
             ).tooltip(
                 "Delete this region"

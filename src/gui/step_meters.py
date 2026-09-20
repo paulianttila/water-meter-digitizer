@@ -160,7 +160,7 @@ class Meter:
                             "Add, remove, and drag items to set the reading sequence"
                         ).classes("text-xs text-slate-400")
                 ui.button(icon="close", on_click=order_dialog.close).props(
-                    "flat round dense text-color=slate-400"
+                    "flat round dense text-color=slate-400 aria-label='Close dialog'"
                 )
 
             # Dialog preview row
@@ -300,7 +300,7 @@ class Meter:
                                     icon="add",
                                     on_click=lambda o=opt: add_item(o),
                                 ).props(
-                                    "flat round dense text-color=indigo-400 size=sm"
+                                    f"flat round dense text-color=indigo-400 size=sm aria-label='Add {opt} to sequence'"
                                 ).classes(
                                     "shrink-0"
                                 ).tooltip(
@@ -350,7 +350,7 @@ class Meter:
                                     icon="close",
                                     on_click=lambda i=idx: remove_item(i),
                                 ).props(
-                                    "flat round dense text-color=negative size=sm"
+                                    f"flat round dense text-color=negative size=sm aria-label='Remove {item_name}'"
                                 ).classes(
                                     "shrink-0"
                                 ).tooltip(
@@ -406,7 +406,9 @@ class Meter:
                         ui.button(
                             icon="delete",
                             on_click=lambda: self.on_delete(self),  # type: ignore
-                        ).props("flat round dense text-color=negative").tooltip(
+                        ).props(
+                            "flat round dense text-color=negative aria-label='Delete this meter'"
+                        ).tooltip(
                             "Delete this meter"
                         )
 

@@ -103,7 +103,7 @@ class DiagnosticsCard:
                     icon="refresh",
                     on_click=self.fetch_and_update,
                 ).props(
-                    "flat round dense color=cyan text-xs"
+                    "flat round dense color=cyan text-xs aria-label='Refresh Diagnostics'"
                 ).tooltip("Refresh Diagnostics")
 
             # 4 Grid Sub-Panels: Camera, Memory & System, Image Cache, LiteRT Pool
