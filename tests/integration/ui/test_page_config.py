@@ -47,6 +47,7 @@ def test_config_history_dialog(page: Page, live_server_url: str):
     """Verify opening and closing the configuration history modal."""
     page.goto(f"{live_server_url}/gui", wait_until="domcontentloaded")
     page.get_by_role("tab", name="Config").click()
+    expect(page.get_by_text("Configuration Editor")).to_be_visible(timeout=10000)
 
     # 1. Open Snapshots dialog
     history_btn = page.get_by_role("button", name="Snapshots & Diffs")
@@ -68,6 +69,7 @@ def test_config_hot_reload_shows_refresh_warning(page: Page, live_server_url: st
     """Verify hot-reload triggers warning banner with Refresh Page action."""
     page.goto(f"{live_server_url}/gui", wait_until="domcontentloaded")
     page.get_by_role("tab", name="Config").click()
+    expect(page.get_by_text("Configuration Editor")).to_be_visible(timeout=10000)
 
     # 1. Trigger hot-reload from toolbar
     hot_reload_btn = page.get_by_role("button", name="Hot-Reload")
@@ -88,6 +90,7 @@ def test_config_test_config_button(page: Page, live_server_url: str):
     """Verify Test Config button in Configuration Editor is visible and clickable."""
     page.goto(f"{live_server_url}/gui", wait_until="domcontentloaded")
     page.get_by_role("tab", name="Config").click()
+    expect(page.get_by_text("Configuration Editor")).to_be_visible(timeout=10000)
 
     test_cfg_btn = page.get_by_role("button", name="Test Config")
     expect(test_cfg_btn).to_be_visible(timeout=10000)
@@ -96,3 +99,43 @@ def test_config_test_config_button(page: Page, live_server_url: str):
     expect(page.get_by_text("Running digitizer engine test").first).to_be_visible(
         timeout=10000
     )
+
+
+@pytest.mark.ui
+def test_config_history_test_backup(page: Page, live_server_url: str):
+    """Verify testing a backup snapshot from the history dialog."""
+    page.goto(f"{live_server_url}/gui", wait_until="domcontentloaded")
+    page.get_by_role("tab", name="Config").click()
+    expect(page.get_by_text("Configuration Editor")).to_be_visible(timeout=10000)
+
+    # Open history dialog
+    history_btn = page.get_by_role("button", name="Snapshots & Diffs")
+    expect(history_btn).to_be_visible(timeout=10000)
+    history_btn.click()
+
+    # Create a snapshot
+    tag_input = page.get_by_placeholder(
+        "Snapshot label / description (e.g. Pre-calibration)"
+    )
+    expect(tag_input).to_be_visible(timeout=5000)
+    tag_input.fill("Playwright Test Snapshot")
+
+    take_btn = page.get_by_role("button", name="Take Snapshot")
+    expect(take_btn).to_be_visible()
+    take_btn.click()
+
+    # Wait for snapshot row to appear with Test button
+    dialog = page.get_by_role("dialog")
+    expect(dialog.get_by_text("Playwright Test Snapshot").first).to_be_visible(
+        timeout=5000
+    )
+    test_btn = dialog.get_by_role("button", name="Test", exact=True).first
+    expect(test_btn).to_be_visible()
+    test_btn.click()
+
+    # Check test modal opens
+    expect(page.get_by_text("Running digitizer engine test").first).to_be_visible(
+        timeout=10000
+    )
+    page.keyboard.press("Escape")
+    page.keyboard.press("Escape")

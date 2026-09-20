@@ -232,3 +232,27 @@ class ConfigHistoryManager:
             )
         )
         return diff
+
+    @classmethod
+    def get_backup_content(
+        cls,
+        backup_name_or_path: str,
+        config_file: str = "",
+    ) -> str:
+        """Retrieve the raw text content of a backup file."""
+        target_path = Path(backup_name_or_path)
+        if not target_path.is_absolute() and config_file:
+            backup_dir = cls.get_backup_dir(config_file)
+            candidate = backup_dir / backup_name_or_path
+            if candidate.exists():
+                target_path = candidate
+            else:
+                candidate = Path(config_file).parent / backup_name_or_path
+                if candidate.exists():
+                    target_path = candidate
+
+        if not target_path.exists() or not target_path.is_file():
+            raise FileNotFoundError(f"Backup file '{backup_name_or_path}' not found")
+
+        with open(target_path, encoding="utf-8", errors="replace") as f:
+            return f.read()

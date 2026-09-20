@@ -526,6 +526,49 @@ class ConfigPage:
                                             )
                                         )
 
+                                        def make_test_backup_handler(
+                                            target_name: str,
+                                            target_tag: str,
+                                        ):
+                                            async def do_test():
+                                                try:
+                                                    content = self.callbacks.load_config_backup(
+                                                        target_name
+                                                    )
+                                                    if not content:
+                                                        ui.notify(
+                                                            f"Could not load backup '{target_name}'",
+                                                            type="negative",
+                                                        )
+                                                        return
+                                                    b_cfg = Config()
+                                                    b_cfg.load_from_string(content)
+                                                    await run_engine_test_dialog(
+                                                        config=b_cfg,
+                                                        callbacks=self.callbacks,
+                                                        title_tag=f"Snapshot: {target_tag}",
+                                                    )
+                                                except Exception as e:
+                                                    ui.notify(
+                                                        f"Test failed: {e}",
+                                                        type="negative",
+                                                    )
+
+                                            return do_test
+
+                                        ui.button(
+                                            "Test",
+                                            icon="play_arrow",
+                                            on_click=make_test_backup_handler(
+                                                b_name, b_tag
+                                            ),
+                                        ).props("flat dense").classes(
+                                            "text-xs text-emerald-400 "
+                                            "hover:bg-emerald-500/10 px-2 py-1"
+                                        ).tooltip(
+                                            "Test this backup configuration against digitizer engine with live camera result"
+                                        )
+
                                         def make_restore_handler(
                                             target_name: str,
                                             target_time: str,

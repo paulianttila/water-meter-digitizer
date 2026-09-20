@@ -299,6 +299,15 @@ def diff_config_backup(backup_name: str) -> list[str]:
         )
 
 
+def load_config_backup(backup_name: str) -> str:
+    from config_history import ConfigHistoryManager
+
+    with _config_lock:
+        return ConfigHistoryManager.get_backup_content(
+            backup_name, config_file=config_file
+        )
+
+
 def init_gui(app_instance: FastAPI) -> None:
     """Initialize NiceGUI interface with delegated backend callbacks."""
     import gui.frontend as frontend
@@ -396,6 +405,7 @@ def init_gui(app_instance: FastAPI) -> None:
         create_snapshot_fn=create_config_snapshot,
         delete_backup_fn=delete_config_backup,
         diff_backup_fn=diff_config_backup,
+        load_backup_fn=load_config_backup,
         get_health_data_fn=_get_health_data,
         get_leak_status_fn=_get_leak_status,
         reset_leak_status_fn=_reset_leak_status,

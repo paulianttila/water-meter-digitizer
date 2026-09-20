@@ -76,6 +76,10 @@ class Callbacks(Protocol):
         """Get line-by-line diff between current config and a backup"""
         ...
 
+    def load_config_backup(self, backup_name: str) -> str:
+        """Load text content of a configuration backup"""
+        ...
+
     def get_health_data(self) -> HealthResponse | dict[str, Any]:
         """Get system health and diagnostics metrics"""
         ...

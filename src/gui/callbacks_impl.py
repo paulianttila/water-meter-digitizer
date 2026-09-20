@@ -27,6 +27,7 @@ class CallbacksImpl(Callbacks):
         create_snapshot_fn: Callable[[str], str | None],
         delete_backup_fn: Callable[[str], bool],
         diff_backup_fn: Callable[[str], list[str]],
+        load_backup_fn: Callable[[str], str] | None = None,
         get_health_data_fn: Callable[[], dict[str, Any]] | None = None,
         get_leak_status_fn: Callable[[], dict[str, Any]] | None = None,
         reset_leak_status_fn: Callable[[], dict[str, Any]] | None = None,
@@ -51,6 +52,7 @@ class CallbacksImpl(Callbacks):
         self._create_snapshot = create_snapshot_fn
         self._delete_backup = delete_backup_fn
         self._diff_backup = diff_backup_fn
+        self._load_backup = load_backup_fn
         self._get_health_data = get_health_data_fn
         self._get_leak_status = get_leak_status_fn
         self._reset_leak_status = reset_leak_status_fn
@@ -115,6 +117,11 @@ class CallbacksImpl(Callbacks):
 
     def diff_config_backup(self, backup_name: str) -> list[str]:
         return self._diff_backup(backup_name)
+
+    def load_config_backup(self, backup_name: str) -> str:
+        if self._load_backup is not None:
+            return self._load_backup(backup_name)
+        return ""
 
     def get_health_data(self) -> dict[str, Any]:
         if self._get_health_data is not None:

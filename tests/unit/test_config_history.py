@@ -146,3 +146,34 @@ def test_edge_cases_and_missing_files(temp_config_dir):
     legacy_file2 = cfg_dir / "config.ini_20260202_110000.bak"
     legacy_file2.write_text("[DEFAULT]\nLogLevel = TRACE\n")
     assert ConfigHistoryManager.delete_backup(str(cfg_file), legacy_file2.name) is True
+
+
+def test_get_backup_content(temp_config_dir):
+    cfg_dir, cfg_file = temp_config_dir
+
+    backup_path = ConfigHistoryManager.create_backup(str(cfg_file), tag="Test Tag")
+    assert backup_path is not None
+    b_name = Path(backup_path).name
+
+    # Read by filename
+    content = ConfigHistoryManager.get_backup_content(b_name, config_file=str(cfg_file))
+    assert "[DEFAULT]\nLogLevel = INFO\n" in content
+    assert "[ImageSource]\nURL = http://camera/image.jpg\n" in content
+
+    # Read by absolute path
+    content_by_path = ConfigHistoryManager.get_backup_content(backup_path)
+    assert content_by_path == content
+
+    # Read legacy backup
+    legacy_file = cfg_dir / "config.ini_20260303_100000.bak"
+    legacy_file.write_text("[DEFAULT]\nLogLevel = DEBUG\n")
+    legacy_content = ConfigHistoryManager.get_backup_content(
+        legacy_file.name, config_file=str(cfg_file)
+    )
+    assert legacy_content == "[DEFAULT]\nLogLevel = DEBUG\n"
+
+    # Non-existent file
+    with pytest.raises(FileNotFoundError):
+        ConfigHistoryManager.get_backup_content(
+            "non_existent.bak", config_file=str(cfg_file)
+        )
