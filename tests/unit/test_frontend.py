@@ -102,3 +102,22 @@ def test_frontend_show_callback():
             # Calling again does not re-mount / re-execute show (keep-alive)
             asyncio.run(on_tab_change(tab_id))
             mock_page.return_value.show.assert_called_once()
+
+
+def test_build_head_html_includes_static_assets():
+    """Verify _build_head_html combines favicons, fonts, CSS files, and JS files."""
+    head_html = frontend._build_head_html()
+
+    # Favicon and Fonts
+    assert "favicon.svg" in head_html
+    assert "fonts.googleapis.com" in head_html
+
+    # CSS contents
+    assert "--bg-primary" in head_html
+    assert "nicegui-interactive-image" in head_html
+    assert "gui-badge-status" in head_html
+    assert "::-webkit-scrollbar" in head_html
+
+    # JS contents
+    assert "initNiceGUIStatusMonitor" in head_html
+    assert "shift-move-active" in head_html
