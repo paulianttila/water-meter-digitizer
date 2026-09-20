@@ -7,6 +7,7 @@ import base64
 import contextlib
 import io
 import json
+import logging
 import time
 import urllib.parse
 from typing import TYPE_CHECKING, Any
@@ -760,40 +761,47 @@ class ApiConsolePage:
 
     def _open_mock_config_dialog(self) -> None:
         """Open the modal dialog to view and customize dedicated mock camera configuration."""
-        mock_url = self.get_mock_url(relative=False)
+        try:
+            mock_url = self.get_mock_url(relative=False)
 
-        if self.mock_custom_config_active and self.mock_custom_config:
-            cfg_to_edit = self.mock_custom_config
-            is_custom = True
-        else:
-            base_cfg = self.callbacks.get_config() if self.callbacks else None
-            cfg_to_edit = MeterImageGenerator.create_mock_meter_config(
+            if self.mock_custom_config_active and self.mock_custom_config:
+                cfg_to_edit = self.mock_custom_config
+                is_custom = True
+            elif self.mock_test_config_mode == "active" and self.callbacks:
+                cfg_to_edit = self.callbacks.get_config()
+                is_custom = False
+            else:
+                base_cfg = self.callbacks.get_config() if self.callbacks else None
+                cfg_to_edit = MeterImageGenerator.create_mock_meter_config(
+                    width=self.mock_width,
+                    height=self.mock_height,
+                    base_config=base_cfg,
+                    url=mock_url,
+                )
+                is_custom = False
+
+            def on_applied(cfg: Config, is_custom_flag: bool = True) -> None:
+                self.mock_custom_config = cfg if is_custom_flag else None
+                self.mock_custom_config_active = is_custom_flag
+                if self.mock_custom_config_badge:
+                    self.mock_custom_config_badge.set_visibility(is_custom_flag)
+                if self.mock_test_config_select:
+                    self.mock_test_config_select.value = "dedicated"
+                    self.mock_test_config_mode = "dedicated"
+
+            dialog = MockConfigDialog(
+                current_config=cfg_to_edit,
                 width=self.mock_width,
                 height=self.mock_height,
-                base_config=base_cfg,
-                url=mock_url,
+                mock_url=mock_url,
+                callbacks=self.callbacks,
+                on_apply=on_applied,
+                is_custom=is_custom,
             )
-            is_custom = False
-
-        def on_applied(cfg: Config, is_custom_flag: bool = True) -> None:
-            self.mock_custom_config = cfg if is_custom_flag else None
-            self.mock_custom_config_active = is_custom_flag
-            if self.mock_custom_config_badge:
-                self.mock_custom_config_badge.set_visibility(is_custom_flag)
-            if self.mock_test_config_select:
-                self.mock_test_config_select.value = "dedicated"
-                self.mock_test_config_mode = "dedicated"
-
-        dialog = MockConfigDialog(
-            current_config=cfg_to_edit,
-            width=self.mock_width,
-            height=self.mock_height,
-            mock_url=mock_url,
-            callbacks=self.callbacks,
-            on_apply=on_applied,
-            is_custom=is_custom,
-        )
-        dialog.open()
+            dialog.open()
+        except Exception as ex:
+            logging.exception("Failed to open MockConfigDialog: %s", ex)
+            ui.notify(f"Could not open config dialog: {ex}", type="negative")
 
     async def _test_in_digitizer_engine(self) -> None:
         """Run digitizer engine against the generated mock camera image."""

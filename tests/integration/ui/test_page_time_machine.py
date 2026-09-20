@@ -17,7 +17,7 @@ def test_time_machine_navigation_and_controls(page: Page, live_server_url: str):
     except Exception:
         pass
 
-    page.goto(f"{live_server_url}/gui", wait_until="domcontentloaded")
+    page.goto(f"{live_server_url}/", wait_until="domcontentloaded")
 
     # 1. Switch to Meter page -> Time Machine tab
     meter_tab = page.get_by_role("tab", name="Meter")

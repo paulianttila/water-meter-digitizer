@@ -162,7 +162,7 @@ class MockConfigDialog:
             with (
                 ui.tab_panels(tabs, value=tab_struct)
                 .classes("w-full bg-transparent flex-1 overflow-y-auto")
-                .style("max-height: 58vh")
+                .style("max-height: 72vh")
             ):
                 # -------------------------------------------------------------
                 # Panel 1: Structured Settings
@@ -398,7 +398,7 @@ class MockConfigDialog:
                 with ui.tab_panel(tab_rois).classes("gap-4 p-2 flex flex-col"):
                     # Visual ROI Overlay Card
                     with ui.card().classes(
-                        "w-full p-3 bg-slate-950/80 border border-white/10 rounded-xl flex flex-col items-center gap-2"
+                        "w-full p-3 bg-slate-950/80 border border-white/10 rounded-xl flex flex-col gap-2"
                     ):
                         with ui.row().classes("w-full justify-between items-center"):
                             with ui.row().classes("items-center gap-2"):
@@ -410,11 +410,17 @@ class MockConfigDialog:
                                 ui.badge("🟦 Digital ROIs", color="cyan").props("dense")
                                 ui.badge("🟧 Analog ROIs", color="amber").props("dense")
 
-                        self.roi_preview_image = ui.image(
-                            self._generate_roi_preview_data_uri()
-                        ).classes(
-                            "max-h-56 max-w-full rounded-lg border border-white/10 object-contain shadow-md"
-                        )
+                        with ui.element("div").classes(
+                            "w-full flex items-center justify-center bg-slate-950 rounded-lg p-2 overflow-hidden border border-white/10"
+                        ):
+                            self.roi_preview_image = (
+                                ui.image(self._generate_roi_preview_data_uri())
+                                .props('fit="contain"')
+                                .classes(
+                                    "w-full max-h-[460px] object-contain rounded-lg shadow"
+                                )
+                                .style("max-width: 100%; height: auto;")
+                            )
 
                     with ui.row().classes("items-center justify-between"):
                         ui.label(
@@ -505,10 +511,13 @@ class MockConfigDialog:
     # -------------------------------------------------------------------------
 
     def _find_model_key(
-        self, model_dict: dict[str, tuple[str, str]], file_path: str
+        self, model_dict: dict[str, tuple[str, str]], file_path: str | None
     ) -> str:
+        if not file_path:
+            return next(iter(model_dict.keys()))
+        file_path_str = str(file_path).lower()
         for k, (path, _) in model_dict.items():
-            if path.lower() in file_path.lower() or file_path.lower() in path.lower():
+            if path.lower() in file_path_str or file_path_str in path.lower():
                 return k
         return next(iter(model_dict.keys()))
 

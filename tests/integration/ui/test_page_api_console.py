@@ -61,6 +61,20 @@ def test_api_console_and_mock_camera_studio_ui(page: Page, live_server_url: str)
         timeout=5000
     )
 
+    # 8b. Test Tune Config button opens Dedicated Mock Meter Configuration dialog
+    tune_config_btn = page.get_by_role("button", name="Tune Config")
+    expect(tune_config_btn).to_be_visible()
+    tune_config_btn.click()
+    expect(page.get_by_text("Dedicated Mock Meter Configuration")).to_be_visible(
+        timeout=5000
+    )
+    cancel_btn = page.get_by_role("button", name="Cancel")
+    expect(cancel_btn).to_be_visible()
+    cancel_btn.click()
+    expect(page.get_by_text("Dedicated Mock Meter Configuration")).not_to_be_visible(
+        timeout=5000
+    )
+
     # 9. Switch to Swagger UI sub-tab
     swagger_subtab = page.get_by_role("tab", name="Swagger UI")
     expect(swagger_subtab).to_be_visible()
