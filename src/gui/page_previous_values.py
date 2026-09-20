@@ -476,7 +476,7 @@ class PreviousValuesPage:
 
                     self.value_input = (
                         ui.input(label="New Baseline Value (e.g. 123.4560)")
-                        .props("outlined dense type=number step=any")
+                        .props("outlined dense type=number step=any debounce=300")
                         .classes("flex-1 text-sm font-mono bg-slate-950/60")
                     )
 

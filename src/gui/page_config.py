@@ -847,7 +847,9 @@ class ConfigPage:
                                                         else 0
                                                     ),
                                                 ),
-                                            ).props("dense outlined").classes(
+                                            ).props(
+                                                "dense outlined debounce=500"
+                                            ).classes(
                                                 "w-32 text-xs bg-slate-900 text-cyan-400 font-mono"
                                             )
                                         elif f_type == "float":
@@ -869,7 +871,9 @@ class ConfigPage:
                                                         else 0.0
                                                     ),
                                                 ),
-                                            ).props("dense outlined").classes(
+                                            ).props(
+                                                "dense outlined debounce=500"
+                                            ).classes(
                                                 "w-32 text-xs bg-slate-900 text-cyan-400 font-mono"
                                             )
                                         else:
@@ -878,7 +882,9 @@ class ConfigPage:
                                                 on_change=lambda e, s=s_name, key=k: on_field_change(
                                                     s, key, e.value
                                                 ),
-                                            ).props("dense outlined").classes(
+                                            ).props(
+                                                "dense outlined debounce=300"
+                                            ).classes(
                                                 "w-72 max-w-full text-xs bg-slate-900 text-cyan-400 font-mono"
                                             )
 
@@ -1053,7 +1059,7 @@ class ConfigPage:
                             placeholder="Filter sections or parameters (e.g. MQTT, LogLevel, Mode)...",
                             on_change=lambda: refresh_visual_inspector(),
                         )
-                        .props("dense outlined clearable rounded")
+                        .props("dense outlined clearable rounded debounce=250")
                         .classes("w-full bg-slate-900/90 text-xs text-slate-200")
                     )
                 inspector_cards_container = ui.column().classes(

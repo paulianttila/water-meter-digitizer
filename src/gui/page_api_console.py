@@ -1476,7 +1476,7 @@ class ApiConsolePage:
                                             value=self.mock_value,
                                             on_change=_on_val_change,
                                         )
-                                        .props("outlined dense")
+                                        .props("outlined dense debounce=300")
                                         .classes("font-mono text-xs")
                                     )
 
@@ -1499,7 +1499,7 @@ class ApiConsolePage:
                                             step=0.001,
                                             on_change=_on_rate_change,
                                         )
-                                        .props("outlined dense")
+                                        .props("outlined dense debounce=500")
                                         .classes("w-44 text-xs")
                                     )
                                     self.mock_rate_input.enabled = self.mock_mode in (
@@ -1545,7 +1545,7 @@ class ApiConsolePage:
                                         value=self.mock_rotate,
                                         on_change=_on_rot_change,
                                     )
-                                    .props("color=cyan dense")
+                                    .props("color=cyan dense debounce=500")
                                     .classes("w-full")
                                 )
 
@@ -1578,7 +1578,7 @@ class ApiConsolePage:
                                             value=self.mock_glare_pos,
                                             on_change=_on_gpos_change,
                                         )
-                                        .props("outlined dense")
+                                        .props("outlined dense debounce=300")
                                         .classes("w-32 font-mono text-xs")
                                     )
 
@@ -1603,7 +1603,7 @@ class ApiConsolePage:
                                                 value=self.mock_noise,
                                                 on_change=_on_noise_change,
                                             )
-                                            .props("color=teal dense")
+                                            .props("color=teal dense debounce=500")
                                             .classes("w-full")
                                         )
 
@@ -1626,7 +1626,7 @@ class ApiConsolePage:
                                                 value=self.mock_blur,
                                                 on_change=_on_blur_change,
                                             )
-                                            .props("color=teal dense")
+                                            .props("color=teal dense debounce=500")
                                             .classes("w-full")
                                         )
 
@@ -1651,7 +1651,7 @@ class ApiConsolePage:
                                                 value=self.mock_brightness,
                                                 on_change=_on_bright_change,
                                             )
-                                            .props("color=amber dense")
+                                            .props("color=amber dense debounce=500")
                                             .classes("w-full")
                                         )
 
@@ -1674,7 +1674,7 @@ class ApiConsolePage:
                                                 value=self.mock_contrast,
                                                 on_change=_on_contrast_change,
                                             )
-                                            .props("color=amber dense")
+                                            .props("color=amber dense debounce=500")
                                             .classes("w-full")
                                         )
 
