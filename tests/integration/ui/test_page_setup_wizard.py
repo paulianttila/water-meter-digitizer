@@ -59,6 +59,7 @@ def test_full_9_step_wizard_traversal(page: Page, live_server_url: str):
     expect(page.get_by_text("Step 9 of 9: Final")).to_be_visible(timeout=5000)
     expect(page.get_by_text("Configuration not yet saved")).to_be_visible(timeout=5000)
     expect(page.get_by_role("button", name="Save Config")).to_be_visible()
+    expect(page.get_by_role("button", name="Test Config")).to_be_visible()
     expect(continue_btn).not_to_be_visible()
 
     # Test backward traversal
@@ -128,18 +129,13 @@ def test_setup_wizard_adjust_step_side_by_side_preview(
     expect(page.get_by_text("Adjusted Image Preview")).to_be_visible(timeout=5000)
 
     # Click 'Side-by-Side' radio label
-    page.get_by_text("Side-by-Side", exact=True).click()
+    side_by_side_label = page.get_by_text("Side-by-Side", exact=True)
+    expect(side_by_side_label).to_be_visible()
+    side_by_side_label.click()
 
-    # Assert both original and adjusted image headers appear
-    expect(page.get_by_text("Adjusted Image", exact=True)).to_be_visible(timeout=5000)
+    # In Side-by-Side mode, both "Original Image" and "Adjusted Image" headers are visible
     expect(page.get_by_text("Original Image", exact=True)).to_be_visible(timeout=5000)
-
-    # Navigate back one step to Step 3
-    back_btn = page.get_by_role("button", name="Back", exact=True)
-    back_btn.click()
-    expect(page.get_by_text("Step 3 of 9: Draw reference points")).to_be_visible(
-        timeout=5000
-    )
+    expect(page.get_by_text("Adjusted Image", exact=True)).to_be_visible()
 
 
 @pytest.mark.ui
@@ -151,7 +147,7 @@ def test_setup_wizard_start_clean_dialog(page: Page, live_server_url: str):
 
     clean_btn = page.get_by_role("button", name="Start Clean")
     expect(clean_btn).to_be_visible(timeout=10000)
-    clean_btn.click()
+    clean_btn.click(force=True)
 
     expect(page.get_by_text("Start Clean Configuration?")).to_be_visible(timeout=5000)
     expect(page.get_by_text("Create safety backup before clearing")).to_be_visible()

@@ -81,3 +81,18 @@ def test_config_hot_reload_shows_refresh_warning(page: Page, live_server_url: st
         page.get_by_text("Configuration has been hot-reloaded into runtime")
     ).to_be_visible()
     expect(page.get_by_role("button", name="Refresh Page")).to_be_visible()
+
+
+@pytest.mark.ui
+def test_config_test_config_button(page: Page, live_server_url: str):
+    """Verify Test Config button in Configuration Editor is visible and clickable."""
+    page.goto(f"{live_server_url}/gui", wait_until="domcontentloaded")
+    page.get_by_role("tab", name="Config").click()
+
+    test_cfg_btn = page.get_by_role("button", name="Test Config")
+    expect(test_cfg_btn).to_be_visible(timeout=10000)
+    test_cfg_btn.click()
+
+    expect(page.get_by_text("Running digitizer engine test").first).to_be_visible(
+        timeout=10000
+    )

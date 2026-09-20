@@ -6,6 +6,7 @@ from nicegui import ui
 
 from callbacks import Callbacks
 from configuration import Config
+from gui.components.engine_test_dialog import run_engine_test_dialog
 from gui.theme import (
     BADGE_AUTO_CLS,
     BADGE_SNAP_CLS,
@@ -237,6 +238,20 @@ class ConfigPage:
                 ui.notify(f"Syntax error: {e}", type="negative")
                 button_save.disable()
                 return False
+
+        async def test_config() -> None:
+            try:
+                config = Config()
+                config.load_from_string(editor.value)
+            except Exception as e:
+                ui.notify(f"Cannot test invalid configuration: {e}", type="negative")
+                return
+
+            await run_engine_test_dialog(
+                config=config,
+                callbacks=self.callbacks,
+                title_tag="Config Editor",
+            )
 
         def undo_config() -> None:
             backups = self.callbacks.list_config_backups()
@@ -734,6 +749,11 @@ class ConfigPage:
                     ui.button("Validate", icon="verified", on_click=syntax_check).props(
                         "outline color=cyan size=sm"
                     ).tooltip("Validate INI syntax and configuration structure")
+                    ui.button(
+                        "Test Config", icon="play_arrow", on_click=test_config
+                    ).props("outline color=emerald size=sm").tooltip(
+                        "Test configuration against digitizer engine and inspect recognition results"
+                    )
                     button_save = (
                         ui.button("Save File", icon="save", on_click=save_config)
                         .props("unelevated color=primary size=sm")

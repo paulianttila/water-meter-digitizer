@@ -25,6 +25,7 @@ from gui.api_console.registry import (
     STANDARD_RESOLUTIONS,
     generate_curl_command,
 )
+from gui.components.engine_test_dialog import run_engine_test_dialog
 from gui.theme import (
     BADGE_ERROR,
     BADGE_INFO,
@@ -813,223 +814,32 @@ class ApiConsolePage:
             return
 
         mock_url = self.get_mock_url(relative=False)
-        ui.notify("Running digitizer engine on mock frame...", type="info")
-
-        try:
-            start_t = time.perf_counter()
-            test_config = None
-            if self.mock_test_config_mode == "dedicated":
-                if self.mock_custom_config_active and self.mock_custom_config:
-                    test_config = self.mock_custom_config
-                else:
-                    base_cfg = self.callbacks.get_config()
-                    test_config = MeterImageGenerator.create_mock_meter_config(
-                        width=self.mock_width,
-                        height=self.mock_height,
-                        base_config=base_cfg,
-                        url=mock_url,
-                    )
-
-            result = await asyncio.to_thread(
-                self.callbacks.get_meter_data, mock_url, False, test_config
-            )
-            dur_ms = round((time.perf_counter() - start_t) * 1000, 1)
-
-            # Generate visual ROI overlay for the modal
-            roi_overlay_b64 = ""
-            try:
-                active_cfg = test_config or (
-                    self.callbacks.get_config() if self.callbacks else Config()
+        test_config = None
+        if self.mock_test_config_mode == "dedicated":
+            if self.mock_custom_config_active and self.mock_custom_config:
+                test_config = self.mock_custom_config
+                title_tag = "🤖 Dedicated (Customized)"
+            else:
+                base_cfg = self.callbacks.get_config()
+                test_config = MeterImageGenerator.create_mock_meter_config(
+                    width=self.mock_width,
+                    height=self.mock_height,
+                    base_config=base_cfg,
+                    url=mock_url,
                 )
-                if self._raw_mock_bytes:
-                    pil_img = PIL.Image.open(io.BytesIO(self._raw_mock_bytes)).convert(
-                        "RGB"
-                    )
-                    roi_pil = (
-                        ImageProcessor()
-                        .set_image(pil_img)
-                        .draw_meter_rois(active_cfg)
-                        .get_image()
-                    )
-                    buf = io.BytesIO()
-                    roi_pil.save(buf, format="JPEG", quality=85)
-                    roi_overlay_b64 = f"data:image/jpeg;base64,{base64.b64encode(buf.getvalue()).decode('ascii')}"
-            except Exception:
-                roi_overlay_b64 = ""
+                title_tag = "🤖 Dedicated Mock Config"
+        else:
+            test_config = self.callbacks.get_config()
+            title_tag = "⚙️ Active config.ini"
 
-            # Extract primary meter reading
-            meters = getattr(result, "meters", []) or []
-            primary_m = meters[0] if meters else None
-            m_val = (
-                getattr(primary_m, "value", None)
-                if primary_m
-                else getattr(result, "value", "N/A")
-            )
-            if m_val is None:
-                m_val = getattr(result, "value", "N/A")
-            m_unit = getattr(primary_m, "unit", "") if primary_m else ""
-            m_qual = getattr(primary_m, "quality", "good") if primary_m else "good"
-            m_conf = getattr(primary_m, "confidence", 100.0) if primary_m else 100.0
-
-            # Extract individual readout items
-            dig_results = getattr(result, "digital_results", {}) or {}
-            ana_results = getattr(result, "analog_results", {}) or {}
-            conf_scores = getattr(result, "confidence_scores", {}) or {}
-
-            readout_items: list[dict[str, Any]] = []
-            for name, val in dig_results.items():
-                readout_items.append(
-                    {
-                        "name": name,
-                        "value": val,
-                        "confidence": conf_scores.get(name, 100.0),
-                        "is_digit": True,
-                    }
-                )
-            for name, val in ana_results.items():
-                readout_items.append(
-                    {
-                        "name": name,
-                        "value": val,
-                        "confidence": conf_scores.get(name, 100.0),
-                        "is_digit": False,
-                    }
-                )
-            # Fallback for mock objects having readouts list
-            if not readout_items and hasattr(result, "readouts"):
-                for r in getattr(result, "readouts", []) or []:
-                    r_name = getattr(r, "name", "roi")
-                    readout_items.append(
-                        {
-                            "name": r_name,
-                            "value": getattr(r, "value", "—"),
-                            "confidence": getattr(r, "confidence", 0.0),
-                            "is_digit": "digit" in r_name.lower(),
-                        }
-                    )
-
-            # Open diagnosis modal
-            with (
-                ui.dialog() as dialog,
-                ui.card().classes(
-                    "w-full max-w-4xl p-6 bg-slate-900 border border-white/10 rounded-2xl gap-3 max-h-[92vh] overflow-y-auto shadow-2xl text-slate-100"
-                ),
-            ):
-                with ui.row().classes(
-                    "w-full justify-between items-center pb-2 border-b border-white/10"
-                ):
-                    with ui.row().classes("items-center gap-2"):
-                        ui.icon("analytics", color="cyan", size="sm")
-                        ui.label("Digitizer Recognition Test Result").classes(
-                            "text-base font-bold text-slate-100"
-                        )
-                    ui.button(icon="close", on_click=dialog.close).props(
-                        "flat round dense"
-                    )
-
-                with ui.row().classes(
-                    "w-full justify-between items-center p-3 rounded-xl bg-slate-950/70 border border-white/5"
-                ):
-                    with ui.column().classes("gap-0"):
-                        ui.label("PRIMARY METER READING").classes(
-                            "text-[10px] text-slate-400 font-semibold uppercase"
-                        )
-                        with ui.row().classes("items-baseline gap-1.5"):
-                            ui.label(str(m_val)).classes(
-                                "text-2xl font-mono font-bold text-cyan-300"
-                            )
-                            if m_unit:
-                                ui.label(m_unit).classes(
-                                    "text-xs font-semibold text-slate-400"
-                                )
-                    with ui.column().classes("gap-1 items-end"):
-                        with ui.row().classes("items-center gap-1.5"):
-                            if self.mock_test_config_mode == "dedicated":
-                                if self.mock_custom_config_active:
-                                    ui.badge("🤖 Dedicated (Customized)", color="teal")
-                                else:
-                                    ui.badge("🤖 Dedicated Mock Config", color="cyan")
-                            else:
-                                ui.badge("⚙️ Active config.ini", color="amber")
-                            ui.badge(f"⚡ {dur_ms} ms", color="indigo")
-                        with ui.row().classes("items-center gap-1.5"):
-                            q_color = (
-                                "emerald"
-                                if m_qual == "good"
-                                else "amber" if m_qual == "warning" else "rose"
-                            )
-                            ui.badge(f"Quality: {m_qual}", color=q_color).props("dense")
-                            ui.badge(f"{m_conf:.1f}% Conf", color="cyan").props("dense")
-
-                # Visual ROI Bounding Box Overlay Card
-                if roi_overlay_b64:
-                    with ui.card().classes(
-                        "w-full p-3 bg-slate-950/70 border border-white/5 rounded-xl flex flex-col gap-2"
-                    ):
-                        with ui.row().classes("w-full justify-between items-center"):
-                            with ui.row().classes("items-center gap-2"):
-                                ui.icon("crop", color="cyan", size="xs")
-                                ui.label("ROI Extraction Overlay").classes(
-                                    "text-xs font-bold text-slate-200 uppercase tracking-wide"
-                                )
-                            with ui.row().classes("items-center gap-2"):
-                                ui.badge("🟦 Digital ROIs", color="cyan").props("dense")
-                                ui.badge("🟧 Analog ROIs", color="amber").props("dense")
-                        with ui.element("div").classes(
-                            "w-full flex items-center justify-center bg-slate-950 rounded-lg p-2 overflow-hidden border border-white/10"
-                        ):
-                            ui.image(roi_overlay_b64).props('fit="contain"').classes(
-                                "w-full max-h-[460px] object-contain rounded-lg shadow"
-                            ).style("max-width: 100%; height: auto;")
-
-                # Breakdown of readouts
-                with ui.column().classes("w-full gap-2 pt-1"):
-                    ui.label("Individual ROI Classifications").classes(
-                        "text-xs font-semibold text-slate-300"
-                    )
-                    if not readout_items:
-                        ui.label("No individual readout items returned.").classes(
-                            "text-xs text-slate-400 italic"
-                        )
-                    else:
-                        with ui.grid().classes(
-                            "w-full grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-2"
-                        ):
-                            for item in readout_items:
-                                r_name = item["name"]
-                                r_val = item["value"]
-                                r_conf = item["confidence"]
-                                is_dig = item["is_digit"]
-                                tag_c = (
-                                    "border-cyan-500/30 text-cyan-300"
-                                    if is_dig
-                                    else "border-amber-500/30 text-amber-300"
-                                )
-
-                                with ui.card().classes(
-                                    f"p-2 bg-slate-950/60 border {tag_c} rounded-lg flex flex-col gap-1 text-xs"
-                                ):
-                                    with ui.row().classes(
-                                        "w-full justify-between items-center"
-                                    ):
-                                        ui.label(r_name).classes(
-                                            "font-semibold text-slate-200 uppercase"
-                                        )
-                                        ui.label(f"{r_conf:.1f}%").classes(
-                                            "text-[10px] text-slate-400"
-                                        )
-                                    ui.label(str(r_val)).classes(
-                                        "font-mono font-bold text-sm text-white"
-                                    )
-
-                with ui.row().classes("w-full justify-end pt-2"):
-                    ui.button("Close", on_click=dialog.close).props(
-                        "flat dense"
-                    ).classes("text-slate-300 px-3")
-
-            dialog.open()
-        except Exception as ex:
-            ui.notify(f"Engine test failed: {ex}", type="negative")
+        await run_engine_test_dialog(
+            config=test_config,
+            callbacks=self.callbacks,
+            image_bytes=self._raw_mock_bytes,
+            url=mock_url,
+            title_tag=title_tag,
+            parent_spinner=self.mock_spinner,
+        )
 
     async def _toggle_mock_show_rois(self, e: Any) -> None:
         """Toggle visual ROI overlay on mock preview canvas."""

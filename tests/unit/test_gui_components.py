@@ -462,16 +462,26 @@ def test_api_console_test_in_engine(mock_callbacks):
         asyncio.run(page._test_in_digitizer_engine())
         assert mock_callbacks.get_meter_data.call_count == 1
         call_args = mock_callbacks.get_meter_data.call_args
+        cfg_arg = (
+            call_args.kwargs.get("config")
+            if "config" in call_args.kwargs
+            else call_args[0][2]
+        )
         # Should have passed a generated Config object
-        assert isinstance(call_args[0][2], Config)
-        assert len(call_args[0][2].digital_readout.cut_images) == 5
+        assert isinstance(cfg_arg, Config)
+        assert len(cfg_arg.digital_readout.cut_images) == 5
 
         # 2. Active config mode
         page.mock_test_config_mode = "active"
         asyncio.run(page._test_in_digitizer_engine())
         assert mock_callbacks.get_meter_data.call_count == 2
         call_args2 = mock_callbacks.get_meter_data.call_args
-        assert call_args2[0][2] is None
+        cfg_arg2 = (
+            call_args2.kwargs.get("config")
+            if "config" in call_args2.kwargs
+            else call_args2[0][2]
+        )
+        assert isinstance(cfg_arg2, Config)
 
         # 3. Dedicated mock config with custom overrides active
         page.mock_test_config_mode = "dedicated"
@@ -482,8 +492,13 @@ def test_api_console_test_in_engine(mock_callbacks):
         asyncio.run(page._test_in_digitizer_engine())
         assert mock_callbacks.get_meter_data.call_count == 3
         call_args3 = mock_callbacks.get_meter_data.call_args
-        assert call_args3[0][2] is custom_cfg
-        assert call_args3[0][2].meter_configs[0].name == "customized_mock"
+        cfg_arg3 = (
+            call_args3.kwargs.get("config")
+            if "config" in call_args3.kwargs
+            else call_args3[0][2]
+        )
+        assert cfg_arg3 is custom_cfg
+        assert cfg_arg3.meter_configs[0].name == "customized_mock"
 
 
 def test_api_console_open_mock_config_dialog(mock_callbacks):
