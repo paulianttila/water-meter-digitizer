@@ -151,9 +151,11 @@ def show_engine_test_modal(
 
     with (
         ui.dialog() as dialog,
-        ui.card().classes(
-            "w-full max-w-4xl p-6 bg-slate-900 border border-white/10 rounded-2xl gap-3 max-h-[92vh] overflow-y-auto shadow-2xl text-slate-100"
-        ),
+        ui.card()
+        .classes(
+            "column no-wrap w-full max-w-4xl p-6 bg-slate-900 border border-white/10 rounded-2xl gap-3 max-h-[92vh] overflow-y-auto shadow-2xl text-slate-100"
+        )
+        .style("max-width: 95vw; width: 900px;"),
     ):
         # Header Row
         with ui.row().classes(

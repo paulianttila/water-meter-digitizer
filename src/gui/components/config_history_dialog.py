@@ -78,9 +78,11 @@ def open_config_history_dialog(
     """Open unified configuration history & backup management dialog."""
     with (
         ui.dialog() as history_dialog,
-        ui.card().classes(
-            f"w-full {max_width} p-6 bg-slate-900 border border-white/10 rounded-2xl gap-4"
-        ),
+        ui.card()
+        .classes(
+            f"column no-wrap w-full {max_width} p-6 bg-slate-900 border border-white/10 rounded-2xl gap-4"
+        )
+        .style("max-width: 95vw; width: 1000px;"),
     ):
         with ui.row().classes(
             "w-full justify-between items-center pb-3 border-b border-white/10"

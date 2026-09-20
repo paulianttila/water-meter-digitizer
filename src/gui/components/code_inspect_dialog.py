@@ -17,9 +17,11 @@ def open_code_inspect_dialog(
     """Open a modal showing syntax-highlighted code/JSON/INI with a one-click copy button."""
     with (
         ui.dialog() as dialog,
-        ui.card().classes(
-            f"w-full {max_width} p-5 bg-slate-900 border border-white/10 rounded-2xl gap-3"
-        ),
+        ui.card()
+        .classes(
+            f"column no-wrap w-full {max_width} p-5 bg-slate-900 border border-white/10 rounded-2xl gap-3"
+        )
+        .style("max-width: 95vw; width: 900px;"),
     ):
         with ui.row().classes(
             "w-full justify-between items-center pb-2 border-b border-white/10"

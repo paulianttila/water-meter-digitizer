@@ -68,6 +68,27 @@ def test_api_console_and_mock_camera_studio_ui(page: Page, live_server_url: str)
     expect(page.get_by_text("Dedicated Mock Meter Configuration")).to_be_visible(
         timeout=5000
     )
+    reset_sync_btn = page.get_by_role("button", name="Reset to Canvas Sync")
+    expect(reset_sync_btn).to_be_visible()
+
+    # Test Raw INI Editor tab
+    raw_tab = page.get_by_role("tab", name="Raw INI Editor")
+    expect(raw_tab).to_be_visible()
+    raw_tab.click()
+    expect(page.get_by_text("Direct INI Configuration Payload")).to_be_visible()
+    expect(reset_sync_btn).to_be_visible()
+
+    for vp_w, vp_h in [(1280, 800), (950, 700), (750, 600)]:
+        page.set_viewport_size({"width": vp_w, "height": vp_h})
+        page.wait_for_timeout(300)
+        card_box = page.locator(".q-dialog .q-card").first.bounding_box()
+        btn_box = reset_sync_btn.bounding_box()
+        assert card_box is not None
+        assert btn_box is not None
+        # Assert Reset to Canvas Sync button is fully contained within the dialog card horizontally
+        assert btn_box["x"] >= card_box["x"] - 5
+        assert btn_box["x"] + btn_box["width"] <= card_box["x"] + card_box["width"] + 5
+
     cancel_btn = page.get_by_role("button", name="Cancel")
     expect(cancel_btn).to_be_visible()
     cancel_btn.click()

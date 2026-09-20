@@ -115,32 +115,32 @@ class MockConfigDialog:
         """Construct and display the modal dialog."""
         with (
             ui.dialog() as self.dialog,
-            ui.card().classes(
-                "w-full max-w-4xl max-h-[90vh] p-6 bg-slate-900 border border-white/10 rounded-2xl flex flex-col gap-4 text-slate-100 shadow-2xl overflow-hidden"
-            ),
+            ui.card()
+            .classes(
+                "column no-wrap w-[94vw] max-w-5xl max-h-[90vh] p-6 bg-slate-900 border border-white/10 rounded-2xl gap-4 text-slate-100 shadow-2xl overflow-hidden"
+            )
+            .style("max-width: 95vw; width: 1000px;"),
         ):
             # Dialog Header
             with ui.row().classes(
-                "w-full justify-between items-center pb-3 border-b border-white/10"
+                "w-full justify-between items-center pb-3 border-b border-white/10 shrink-0 gap-3"
             ):
-                with ui.row().classes("items-center gap-2.5"):
-                    ui.icon("tune", color="cyan", size="md")
-                    with ui.column().classes("gap-0"):
+                with ui.row().classes("items-center gap-2.5 min-w-0 flex-1"):
+                    ui.icon("tune", color="cyan", size="md").classes("shrink-0")
+                    with ui.column().classes("gap-0 min-w-0"):
                         ui.label("Dedicated Mock Meter Configuration").classes(
-                            "text-base font-bold text-slate-100"
+                            "text-base font-bold text-slate-100 truncate"
                         )
                         ui.label(
                             "Fine-tune neural networks, meter formulas, and image filters for mock camera testing"
-                        ).classes("text-xs text-slate-400")
+                        ).classes("text-xs text-slate-400 truncate")
 
-                with ui.row().classes("items-center gap-2"):
+                with ui.row().classes("items-center gap-2 shrink-0"):
                     ui.badge(f"{self.width}x{self.height}", color="indigo").classes(
                         "text-xs font-mono"
                     )
                     status_text = (
-                        "🟡 Custom Overrides Active"
-                        if self.is_custom
-                        else "🟢 Auto-Synced with Canvas"
+                        "Custom Overrides" if self.is_custom else "Canvas Synced"
                     )
                     status_color = "amber" if self.is_custom else "emerald"
                     self.status_badge = ui.badge(
@@ -468,7 +468,7 @@ class MockConfigDialog:
 
             # Dialog Footer Actions
             with ui.row().classes(
-                "w-full justify-between items-center pt-3 border-t border-white/10 flex-wrap gap-2"
+                "w-full justify-between items-center pt-3 border-t border-white/10 flex-wrap gap-2 shrink-0"
             ):
                 with ui.row().classes("items-center gap-2"):
                     ui.button(
@@ -599,7 +599,7 @@ class MockConfigDialog:
         self.is_custom = True
         self._sync_structured_to_config()
         if self.status_badge:
-            self.status_badge.text = "🟡 Custom Overrides Active"
+            self.status_badge.text = "Custom Overrides"
             self.status_badge.props("color=amber")
 
     def _validate_ini_editor(self) -> bool:
@@ -621,7 +621,7 @@ class MockConfigDialog:
                 )
                 self.validation_label.text = "✓ Configuration syntax is valid!"
             if self.status_badge:
-                self.status_badge.text = "🟡 Custom Overrides Active"
+                self.status_badge.text = "Custom Overrides"
                 self.status_badge.props("color=amber")
             return True
         except Exception as ex:
@@ -645,7 +645,7 @@ class MockConfigDialog:
         self.is_custom = False
 
         if self.status_badge:
-            self.status_badge.text = "🟢 Auto-Synced with Canvas"
+            self.status_badge.text = "Canvas Synced"
             self.status_badge.props("color=emerald")
 
         if self.raw_ini_editor:
