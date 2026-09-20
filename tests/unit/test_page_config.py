@@ -173,3 +173,87 @@ def test_page_config_editor_actions():
                 page.txt,
                 notify_message="Configuration copied to clipboard",
             )
+
+
+def test_get_field_schema():
+    from gui.page_config import get_field_schema
+
+    # Choice / select
+    assert get_field_schema("DEFAULT", "LogLevel", "INFO")["type"] == "select"
+    assert "DEBUG" in get_field_schema("DEFAULT", "LogLevel", "INFO")["options"]
+    assert get_field_schema("Alignment", "RotationAngle", "180")["type"] == "select"
+    assert get_field_schema("Digits", "Model", "digital100")["type"] == "select"
+    assert get_field_schema("Snapshots", "Mode", "smart_tiered")["type"] == "select"
+    assert get_field_schema("History", "Backend", "sqlite")["type"] == "select"
+    assert (
+        get_field_schema("ZeroFlowMonitor", "ValueType", "cumulative")["type"]
+        == "select"
+    )
+
+    # Booleans
+    assert get_field_schema("Snapshots", "Enabled", "true")["type"] == "boolean"
+    assert (
+        get_field_schema("Meter.total", "ConsistencyEnabled", "true")["type"]
+        == "boolean"
+    )
+    assert (
+        get_field_schema("ImageProcessing", "Grayscale", "false")["type"] == "boolean"
+    )
+    assert get_field_schema("Custom", "MyFlagEnabled", "false")["type"] == "boolean"
+
+    # Numeric
+    assert get_field_schema("ImageSource", "Timeout", "10")["type"] == "int"
+    assert get_field_schema("Alignment.ref0", "X", "100")["type"] == "int"
+    assert get_field_schema("ImageProcessing", "Contrast", "1.2")["type"] == "float"
+    assert (
+        get_field_schema("DEFAULT", "MinConfidenceThreshold", "50.0")["type"] == "float"
+    )
+
+    # Text
+    assert (
+        get_field_schema("ImageSource", "URL", "http://camera/image.jpg")["type"]
+        == "text"
+    )
+    assert get_field_schema("Meter.total", "Format", "{digit1}")["type"] == "text"
+
+
+def test_update_ini_value():
+    from gui.page_config import update_ini_value
+
+    sample = """[DEFAULT]
+LogLevel = INFO                                                           # App log level
+ConfigDir = /config
+
+[ImageSource]
+URL = file://${ConfigDir}/original.jpg
+Timeout = 10
+
+[Alignment.ref0]
+X = 50
+Y = 60
+"""
+
+    # 1. Update existing key with comment
+    res1 = update_ini_value(sample, "DEFAULT", "LogLevel", "DEBUG")
+    assert (
+        "LogLevel = DEBUG                                                           # App log level"
+        in res1
+    )
+    assert "Timeout = 10" in res1
+
+    # 2. Update existing key without comment
+    res2 = update_ini_value(res1, "ImageSource", "Timeout", "30")
+    assert "Timeout = 30" in res2
+
+    # 3. Update sub-section key
+    res3 = update_ini_value(res2, "Alignment.ref0", "X", "120")
+    assert "X = 120" in res3
+
+    # 4. Add missing key to existing section
+    res4 = update_ini_value(res3, "ImageSource", "MinSize", "20000")
+    assert "MinSize = 20000" in res4
+
+    # 5. Add key to brand new section
+    res5 = update_ini_value(res4, "NewSection", "NewKey", "NewVal")
+    assert "[NewSection]" in res5
+    assert "NewKey = NewVal" in res5

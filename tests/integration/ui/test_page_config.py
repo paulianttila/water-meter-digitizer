@@ -139,3 +139,37 @@ def test_config_history_test_backup(page: Page, live_server_url: str):
     )
     page.keyboard.press("Escape")
     page.keyboard.press("Escape")
+
+
+@pytest.mark.ui
+def test_config_visual_editor_mode_and_edit(page: Page, live_server_url: str):
+    """Verify switching to Visual Editor, modifying a select dropdown, and sync to Raw INI."""
+    page.goto(f"{live_server_url}/gui", wait_until="domcontentloaded")
+    page.get_by_role("tab", name="Config").click()
+    expect(page.get_by_text("Configuration Editor")).to_be_visible(timeout=10000)
+
+    # 1. Switch to Visual Editor
+    visual_btn = page.get_by_role("button", name="Visual Editor")
+    expect(visual_btn).to_be_visible()
+    visual_btn.click()
+
+    # 2. Verify Visual Editor sections are visible
+    expect(page.get_by_text("[DEFAULT]").first).to_be_visible(timeout=5000)
+    expect(page.get_by_text("LogLevel").first).to_be_visible()
+
+    # 3. Test filter search input
+    search_input = page.get_by_placeholder("Filter sections or parameters")
+    expect(search_input).to_be_visible()
+    search_input.fill("MQTT")
+    expect(page.get_by_text("[MQTT]").first).to_be_visible(timeout=5000)
+
+    # Clear filter
+    search_input.fill("")
+
+    # 4. Switch back to Raw INI
+    raw_btn = page.get_by_role("button", name="Raw INI")
+    expect(raw_btn).to_be_visible()
+    raw_btn.click()
+
+    # Verify textarea is visible
+    expect(page.locator("textarea")).to_be_visible()

@@ -1,5 +1,6 @@
 import configparser
 import html
+import re
 from typing import Any
 
 from nicegui import ui
@@ -62,6 +63,384 @@ def format_diff_html(diff_lines: list[str]) -> str:
         "border border-white/10 font-mono text-[11px] leading-relaxed select-text "
         f'whitespace-pre-wrap">{inner}</div>'
     )
+
+
+FIELD_SCHEMAS: dict[tuple[str, str], dict[str, Any]] = {
+    # [DEFAULT]
+    ("default", "loglevel"): {
+        "type": "select",
+        "options": ["DEBUG", "INFO", "WARNING", "ERROR"],
+        "description": "Log level for the application",
+    },
+    ("default", "minconfidencethreshold"): {
+        "type": "float",
+        "min": 0.0,
+        "max": 100.0,
+        "step": 1.0,
+        "description": "Minimum CNN prediction confidence %",
+    },
+    # [ImageSource]
+    ("imagesource", "timeout"): {
+        "type": "int",
+        "min": 1,
+        "max": 300,
+        "step": 1,
+        "description": "Image fetch timeout in seconds",
+    },
+    ("imagesource", "minsize"): {
+        "type": "int",
+        "min": 0,
+        "step": 1000,
+        "description": "Minimum image file size in bytes",
+    },
+    # [Alignment]
+    ("alignment", "rotationangle"): {
+        "type": "select",
+        "options": ["0", "90", "180", "270"],
+        "description": "Initial coarse rotation angle (deg)",
+    },
+    ("alignment", "postrotationangle"): {
+        "type": "float",
+        "min": -180.0,
+        "max": 180.0,
+        "step": 0.1,
+        "description": "Fine-tuning rotation angle after alignment",
+    },
+    # [Digits], [Analog]
+    ("digits", "model"): {
+        "type": "select",
+        "options": ["digital100", "digital", "analog100", "analog", "auto"],
+        "description": "CNN inference model for digits",
+    },
+    ("analog", "model"): {
+        "type": "select",
+        "options": ["analog100", "analog", "digital100", "digital", "auto"],
+        "description": "CNN inference model for analog needles",
+    },
+    # [ImageProcessing]
+    ("imageprocessing", "contrast"): {
+        "type": "float",
+        "min": 0.0,
+        "max": 5.0,
+        "step": 0.1,
+    },
+    ("imageprocessing", "brightness"): {
+        "type": "float",
+        "min": 0.0,
+        "max": 5.0,
+        "step": 0.1,
+    },
+    ("imageprocessing", "color"): {
+        "type": "float",
+        "min": 0.0,
+        "max": 5.0,
+        "step": 0.1,
+    },
+    ("imageprocessing", "sharpness"): {
+        "type": "float",
+        "min": 0.0,
+        "max": 5.0,
+        "step": 0.1,
+    },
+    ("imageprocessing", "gamma"): {
+        "type": "float",
+        "min": 0.1,
+        "max": 5.0,
+        "step": 0.1,
+    },
+    ("imageprocessing", "grayscale"): {"type": "boolean"},
+    ("imageprocessing", "sharpnessmode"): {
+        "type": "select",
+        "options": ["standard", "unsharp_mask", "auto"],
+        "description": "Sharpening filter mode",
+    },
+    ("imageprocessing", "unsharpradius"): {
+        "type": "float",
+        "min": 0.1,
+        "max": 10.0,
+        "step": 0.1,
+    },
+    ("imageprocessing", "unsharpamount"): {
+        "type": "float",
+        "min": 0.1,
+        "max": 10.0,
+        "step": 0.1,
+    },
+    ("imageprocessing", "unsharpthreshold"): {
+        "type": "int",
+        "min": 0,
+        "max": 255,
+        "step": 1,
+    },
+    ("imageprocessing", "glaresuppressionmode"): {
+        "type": "select",
+        "options": ["clahe", "inpaint", "illumination_normalize", "combined"],
+        "description": "Hotspot glare mitigation mode",
+    },
+    ("imageprocessing", "glareinpaintthreshold"): {
+        "type": "int",
+        "min": 0,
+        "max": 255,
+        "step": 1,
+    },
+    ("imageprocessing", "glareinpaintradius"): {
+        "type": "int",
+        "min": 1,
+        "max": 50,
+        "step": 1,
+    },
+    ("imageprocessing", "glareclahecliplimit"): {
+        "type": "float",
+        "min": 0.1,
+        "max": 10.0,
+        "step": 0.5,
+    },
+    ("imageprocessing", "glareclahegridsize"): {
+        "type": "int",
+        "min": 2,
+        "max": 64,
+        "step": 1,
+    },
+    # [History]
+    ("history", "backend"): {
+        "type": "select",
+        "options": ["sqlite", "memory"],
+        "description": "Storage backend engine",
+    },
+    ("history", "maxmemorymb"): {
+        "type": "float",
+        "min": 1.0,
+        "step": 5.0,
+    },
+    ("history", "maxrecords"): {
+        "type": "int",
+        "min": 100,
+        "step": 1000,
+    },
+    ("history", "retentiondays"): {
+        "type": "int",
+        "min": 1,
+        "step": 1,
+    },
+    ("history", "pruneinterval"): {
+        "type": "int",
+        "min": 1,
+        "step": 10,
+    },
+    # [Snapshots]
+    ("snapshots", "mode"): {
+        "type": "select",
+        "options": [
+            "smart_tiered",
+            "change_only",
+            "roi_strips_only",
+            "full_frames",
+            "disabled",
+        ],
+        "description": "Storage tiering policy",
+    },
+    ("snapshots", "format"): {
+        "type": "select",
+        "options": ["webp", "jpeg"],
+        "description": "Image encoding format",
+    },
+    ("snapshots", "quality"): {
+        "type": "int",
+        "min": 1,
+        "max": 100,
+        "step": 5,
+        "description": "Encoding quality (1-100)",
+    },
+    ("snapshots", "maxdiskmb"): {
+        "type": "float",
+        "min": 10.0,
+        "step": 50.0,
+        "description": "Max disk storage quota in MB",
+    },
+    ("snapshots", "recentfullframedays"): {
+        "type": "int",
+        "min": 0,
+        "step": 1,
+    },
+    ("snapshots", "roistripretentiondays"): {
+        "type": "int",
+        "min": 0,
+        "step": 1,
+    },
+    ("snapshots", "idleheartbeatminutes"): {
+        "type": "int",
+        "min": 1,
+        "step": 1,
+    },
+    # [Poller]
+    ("poller", "intervalseconds"): {
+        "type": "int",
+        "min": 1,
+        "step": 10,
+        "description": "Polling interval in seconds",
+    },
+    ("poller", "retryintervalseconds"): {
+        "type": "int",
+        "min": 1,
+        "step": 5,
+    },
+    # [MQTT]
+    ("mqtt", "port"): {
+        "type": "int",
+        "min": 1,
+        "max": 65535,
+        "step": 1,
+        "description": "MQTT broker TCP port",
+    },
+    ("mqtt", "keepalive"): {
+        "type": "int",
+        "min": 5,
+        "max": 3600,
+        "step": 5,
+    },
+    # [ZeroFlowMonitor]
+    ("zeroflowmonitor", "valuetype"): {
+        "type": "select",
+        "options": ["cumulative", "flow_rate"],
+        "description": "Zero-flow calculation mode",
+    },
+    ("zeroflowmonitor", "continuousflowhours"): {
+        "type": "float",
+        "min": 0.1,
+        "step": 0.5,
+        "description": "Continuous flow hours before leak alert",
+    },
+    ("zeroflowmonitor", "minleakvolume"): {
+        "type": "float",
+        "min": 0.001,
+        "step": 0.005,
+        "description": "Minimum consumption delta to trigger leak",
+    },
+    ("zeroflowmonitor", "flowthreshold"): {
+        "type": "float",
+        "min": 0.0001,
+        "step": 0.001,
+    },
+    ("zeroflowmonitor", "resolvedebouncecount"): {
+        "type": "int",
+        "min": 1,
+        "step": 1,
+    },
+    ("zeroflowmonitor", "maxhistoryevents"): {
+        "type": "int",
+        "min": 5,
+        "step": 10,
+    },
+}
+
+
+def get_field_schema(section: str, key: str, value: str) -> dict[str, Any]:
+    """Resolve field schema (type, options, bounds) for section parameter."""
+    sec_k = section.lower()
+    k_lower = key.lower()
+    val_clean = value.strip()
+
+    # Exact section + key match
+    if (sec_k, k_lower) in FIELD_SCHEMAS:
+        return FIELD_SCHEMAS[(sec_k, k_lower)]
+
+    # Meter.<name> format fields
+    if sec_k.startswith("meter."):
+        if k_lower in (
+            "consistencyenabled",
+            "allownegativerates",
+            "usepreviousvalue",
+            "useextendedresolution",
+            "detectnegativesign",
+        ):
+            return {"type": "boolean"}
+        if k_lower == "maxratevalue":
+            return {"type": "float", "min": 0.0, "step": 0.1}
+        if k_lower == "prevaluefromfilemaxage":
+            return {"type": "int", "min": 0, "step": 60}
+
+    # Boolean detection by key name or boolean value string
+    if (
+        k_lower.endswith("enabled")
+        or k_lower.startswith("is")
+        or k_lower
+        in (
+            "autovacuum",
+            "grayscale",
+            "tls",
+            "retain",
+            "homeassistantdiscovery",
+            "runonstartup",
+            "saveimages",
+            "alwayssaveonanomaly",
+            "applytocutimages",
+            "autocontrastcutimagesenabled",
+            "autosharpencutimages",
+        )
+        or val_clean.lower() in ("true", "false")
+    ):
+        return {"type": "boolean"}
+
+    # Coordinate fields (X, Y, W, H)
+    if k_lower in ("x", "y", "w", "h"):
+        return {"type": "int", "min": 0, "step": 1}
+
+    # Integer detection
+    if re.match(r"^-?\d+$", val_clean):
+        return {"type": "int", "step": 1}
+
+    # Float detection
+    if re.match(r"^-?\d+\.\d+$", val_clean):
+        return {"type": "float", "step": 0.1}
+
+    return {"type": "text"}
+
+
+def update_ini_value(ini_text: str, section: str, key: str, new_value: str) -> str:
+    """Update a specific key in a specific section within raw INI text, preserving comments and formatting."""
+    lines = ini_text.splitlines()
+    in_target_section = False
+    section_pattern = re.compile(r"^\s*\[([^\]]+)\]\s*$")
+    key_pattern = re.compile(
+        r"^(\s*" + re.escape(key) + r"\s*[:=]\s*)(.*)$", re.IGNORECASE
+    )
+
+    found_key = False
+    section_start_idx = -1
+    section_end_idx = len(lines)
+
+    for i, line in enumerate(lines):
+        sec_match = section_pattern.match(line)
+        if sec_match:
+            sec_name = sec_match.group(1).strip()
+            if sec_name.lower() == section.lower():
+                in_target_section = True
+                section_start_idx = i
+                continue
+            elif in_target_section:
+                section_end_idx = i
+                in_target_section = False
+                break
+
+        if in_target_section:
+            k_match = key_pattern.match(line)
+            if k_match:
+                prefix = k_match.group(1)
+                old_val_part = k_match.group(2)
+                comment_match = re.search(r"(\s+[#;].*)$", old_val_part)
+                comment_part = comment_match.group(1) if comment_match else ""
+                lines[i] = f"{prefix}{new_value}{comment_part}"
+                found_key = True
+                break
+
+    if not found_key:
+        if section_start_idx != -1:
+            lines.insert(section_end_idx, f"{key} = {new_value}")
+        else:
+            lines.append(f"\n[{section}]")
+            lines.append(f"{key} = {new_value}")
+
+    return "\n".join(lines)
 
 
 def parse_ini_sections(text: str) -> list[dict[str, Any]]:
@@ -713,14 +1092,45 @@ class ConfigPage:
                     )
                 return
 
+            query = (search_filter.value or "").strip().lower()
+
+            def on_field_change(sec_name: str, key_name: str, new_val: Any) -> None:
+                if isinstance(new_val, bool):
+                    val_str = "true" if new_val else "false"
+                elif new_val is None:
+                    val_str = ""
+                else:
+                    val_str = str(new_val).strip()
+                editor.value = update_ini_value(
+                    editor.value, sec_name, key_name, val_str
+                )
+                check_buttons()
+
+            rendered_count = 0
             with inspector_cards_container:
                 for sec in sections:
                     s_name = sec["name"]
                     s_items = sec["items"]
                     s_icon = get_section_icon(s_name)
 
+                    matching_items = {}
+                    for k, v in s_items.items():
+                        if (
+                            not query
+                            or query in s_name.lower()
+                            or query in k.lower()
+                            or query in str(v).lower()
+                        ):
+                            matching_items[k] = v
+
+                    if query and not matching_items and query not in s_name.lower():
+                        continue
+
+                    rendered_count += 1
+                    items_to_render = matching_items if query else s_items
+
                     with ui.card().classes(
-                        "w-full p-4 bg-slate-900/90 border border-white/10 rounded-xl flex flex-col gap-2"
+                        "w-full p-4 bg-slate-900/90 border border-white/10 rounded-xl flex flex-col gap-2 shadow-sm"
                     ):
                         with ui.row().classes(
                             "w-full justify-between items-center pb-2 border-b border-white/5"
@@ -737,15 +1147,138 @@ class ConfigPage:
                                 "text-[11px] px-2 py-0.5 rounded-full bg-white/5 text-slate-400 border border-white/10"
                             )
 
-                        with ui.column().classes("w-full gap-1.5 pt-1"):
-                            for k, v in s_items.items():
+                        with ui.column().classes("w-full gap-2 pt-1"):
+                            for k, v in items_to_render.items():
+                                schema = get_field_schema(s_name, k, str(v))
+                                f_type = schema.get("type", "text")
+                                f_desc = schema.get("description", "")
+
                                 with ui.row().classes(
-                                    "w-full justify-between items-center text-xs py-1 px-2 rounded bg-slate-950/60 border border-white/5 font-mono"
+                                    "w-full justify-between items-center text-xs py-1.5 px-3 rounded-lg bg-slate-950/60 border border-white/5 font-mono gap-3"
                                 ):
-                                    ui.label(k).classes("text-slate-300 font-semibold")
-                                    ui.label(str(v)).classes(
-                                        "text-cyan-400 truncate max-w-md select-all"
-                                    )
+                                    with ui.column().classes(
+                                        "gap-0 min-w-[160px] max-w-sm shrink-0"
+                                    ):
+                                        ui.label(k).classes(
+                                            "text-slate-200 font-semibold text-xs"
+                                        )
+                                        if f_desc:
+                                            ui.label(f_desc).classes(
+                                                "text-[10px] text-slate-400 font-normal truncate max-w-xs"
+                                            )
+
+                                    with ui.row().classes(
+                                        "items-center justify-end flex-1"
+                                    ):
+                                        if f_type == "select":
+                                            opts = list(schema.get("options", []))
+                                            cur_val = str(v).strip()
+                                            matching_opt = next(
+                                                (
+                                                    o
+                                                    for o in opts
+                                                    if o.lower() == cur_val.lower()
+                                                ),
+                                                None,
+                                            )
+                                            val_to_use = (
+                                                matching_opt
+                                                if matching_opt is not None
+                                                else cur_val
+                                            )
+                                            if val_to_use not in opts:
+                                                opts.append(val_to_use)
+                                            ui.select(
+                                                options=opts,
+                                                value=val_to_use,
+                                                on_change=lambda e, s=s_name, key=k: on_field_change(
+                                                    s, key, e.value
+                                                ),
+                                            ).props(
+                                                "dense outlined options-dense"
+                                            ).classes(
+                                                "w-44 text-xs bg-slate-900 text-cyan-400"
+                                            )
+                                        elif f_type == "boolean":
+                                            is_checked = str(v).strip().lower() in (
+                                                "true",
+                                                "1",
+                                                "yes",
+                                                "on",
+                                            )
+                                            ui.switch(
+                                                value=is_checked,
+                                                on_change=lambda e, s=s_name, key=k: on_field_change(
+                                                    s, key, e.value
+                                                ),
+                                            ).props("dense color=cyan").classes(
+                                                "scale-90"
+                                            )
+                                        elif f_type == "int":
+                                            try:
+                                                int_val = int(str(v).strip())
+                                            except ValueError:
+                                                int_val = 0
+                                            ui.number(
+                                                value=int_val,
+                                                min=schema.get("min"),
+                                                max=schema.get("max"),
+                                                step=schema.get("step", 1),
+                                                on_change=lambda e, s=s_name, key=k: on_field_change(
+                                                    s,
+                                                    key,
+                                                    (
+                                                        int(e.value)
+                                                        if e.value is not None
+                                                        else 0
+                                                    ),
+                                                ),
+                                            ).props("dense outlined").classes(
+                                                "w-32 text-xs bg-slate-900 text-cyan-400 font-mono"
+                                            )
+                                        elif f_type == "float":
+                                            try:
+                                                float_val = float(str(v).strip())
+                                            except ValueError:
+                                                float_val = 0.0
+                                            ui.number(
+                                                value=float_val,
+                                                min=schema.get("min"),
+                                                max=schema.get("max"),
+                                                step=schema.get("step", 0.1),
+                                                on_change=lambda e, s=s_name, key=k: on_field_change(
+                                                    s,
+                                                    key,
+                                                    (
+                                                        float(e.value)
+                                                        if e.value is not None
+                                                        else 0.0
+                                                    ),
+                                                ),
+                                            ).props("dense outlined").classes(
+                                                "w-32 text-xs bg-slate-900 text-cyan-400 font-mono"
+                                            )
+                                        else:
+                                            ui.input(
+                                                value=str(v),
+                                                on_change=lambda e, s=s_name, key=k: on_field_change(
+                                                    s, key, e.value
+                                                ),
+                                            ).props("dense outlined").classes(
+                                                "w-72 max-w-full text-xs bg-slate-900 text-cyan-400 font-mono"
+                                            )
+
+            if query and rendered_count == 0:
+                with (
+                    inspector_cards_container,
+                    ui.column().classes(
+                        "w-full py-8 items-center justify-center text-slate-400 gap-1"
+                    ),
+                ):
+                    ui.icon("search_off", size="lg")
+                    ui.label(f'No configuration parameters match "{query}"').classes(
+                        "text-xs"
+                    )
 
         with ui.column().classes(
             "w-full h-full flex flex-col gap-2.5 p-4 overflow-hidden"
@@ -774,11 +1307,17 @@ class ConfigPage:
                             icon="code",
                             on_click=lambda: switch_view("editor"),
                         ).props("unelevated dense size=sm color=cyan-8")
-                        btn_mode_inspector = ui.button(
-                            "Visual Explorer",
-                            icon="dashboard_customize",
-                            on_click=lambda: switch_view("inspector"),
-                        ).props("flat dense size=sm color=grey-4")
+                        btn_mode_inspector = (
+                            ui.button(
+                                "Visual Editor",
+                                icon="tune",
+                                on_click=lambda: switch_view("inspector"),
+                            )
+                            .props("flat dense size=sm color=grey-4")
+                            .tooltip(
+                                "Switch to visual parameter editor with choice dropdowns and toggles"
+                            )
+                        )
 
                     ui.label("config.ini").classes(
                         "font-mono text-xs text-cyan-400 bg-cyan-500/10 "
@@ -892,13 +1431,24 @@ class ConfigPage:
                     .props("borderless")
                 )
 
-            # 2. Visual Section Inspector Container
+            # 2. Visual Section Editor Container
             with (
                 ui.column()
                 .classes("w-full flex-1 overflow-y-auto pr-1 gap-3")
                 .props('id="inspector-container"') as inspector_container
             ):
                 inspector_container.visible = False
+                with ui.row().classes(
+                    "w-full max-w-5xl items-center justify-between gap-3 shrink-0"
+                ):
+                    search_filter = (
+                        ui.input(
+                            placeholder="Filter sections or parameters (e.g. MQTT, LogLevel, Mode)...",
+                            on_change=lambda: refresh_visual_inspector(),
+                        )
+                        .props("dense outlined clearable rounded")
+                        .classes("w-full bg-slate-900/90 text-xs text-slate-200")
+                    )
                 inspector_cards_container = ui.column().classes(
                     "w-full gap-3 max-w-5xl"
                 )
