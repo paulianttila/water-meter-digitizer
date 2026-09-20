@@ -310,8 +310,8 @@ def load_config_backup(backup_name: str) -> str:
 
 def init_gui(app_instance: FastAPI) -> None:
     """Initialize NiceGUI interface with delegated backend callbacks."""
-    import gui.frontend as frontend
     from gui.callbacks_impl import CallbacksImpl
+    from storage.frame_service import FrameService
 
     def _get_health_data() -> dict[str, Any]:
         from utils.diagnostics import collect_health_status
@@ -386,6 +386,10 @@ def init_gui(app_instance: FastAPI) -> None:
             "error": "",
         }
 
+    frame_service = FrameService(
+        storage=lambda: getattr(app_instance.state, "storage", None)
+    )
+
     callbacks = CallbacksImpl(
         get_meter_data_fn=lambda url="", saveimages=False, config=None: get_meter_data(
             url=url,
@@ -415,7 +419,10 @@ def init_gui(app_instance: FastAPI) -> None:
         get_previous_values_fn=_get_previous_values,
         set_previous_value_fn=_set_previous_value,
         get_config_version_fn=lambda: getattr(app_instance.state, "config_version", 1),
+        frame_service=frame_service,
     )
+    import gui.frontend as frontend
+
     frontend.init(app_instance, callbacks)
 
 

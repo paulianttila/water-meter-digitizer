@@ -1,10 +1,16 @@
+from __future__ import annotations
+
 import logging
 from collections.abc import Callable
-from typing import Any
+from typing import TYPE_CHECKING, Any
 
 from callbacks import Callbacks
 from configuration import Config
 from processor.digitizer import MeterResult
+from storage.frame_service import FrameService
+
+if TYPE_CHECKING:
+    pass
 
 logger = logging.getLogger(__name__)
 
@@ -37,6 +43,7 @@ class CallbacksImpl(Callbacks):
         get_previous_values_fn: Callable[[], dict[str, dict[str, str]]] | None = None,
         set_previous_value_fn: Callable[[str, str], dict[str, Any]] | None = None,
         get_config_version_fn: Callable[[], int] | None = None,
+        frame_service: FrameService | None = None,
     ) -> None:
         self._get_meter_data = get_meter_data_fn
         self._get_image_base64 = get_image_base64_fn
@@ -61,6 +68,7 @@ class CallbacksImpl(Callbacks):
         self._get_mqtt_status = get_mqtt_status_fn
         self._get_previous_values = get_previous_values_fn
         self._set_previous_value = set_previous_value_fn
+        self._frame_service = frame_service or FrameService(storage=self.get_storage)
 
     def get_meter_data(
         self,
@@ -170,148 +178,22 @@ class CallbacksImpl(Callbacks):
         anomalies_only: bool = False,
         frames_only: bool = False,
     ) -> list[dict[str, Any]]:
-        storage = self.get_storage()
-        if storage is None:
-            logger.warning("CallbacksImpl.get_timeline: storage backend is None")
-            return []
-        records = storage.get_timeline(
+        return self._frame_service.get_timeline(
             limit=limit,
             offset=offset,
             anomalies_only=anomalies_only,
             frames_only=frames_only,
         )
-        logger.debug(
-            "CallbacksImpl.get_timeline: retrieved %d records (limit=%s, offset=%s, anomalies_only=%s, frames_only=%s)",
-            len(records),
-            limit,
-            offset,
-            anomalies_only,
-            frames_only,
-        )
-        return [
-            {
-                "id": r.id,
-                "timestamp": r.timestamp.isoformat(),
-                "meters": {k: v.model_dump() for k, v in r.meters.items()},
-                "digital_results": r.digital_results,
-                "analog_results": r.analog_results,
-                "error": r.error,
-                "frame_type": r.frame_type,
-                "has_frame": bool(
-                    r.frame_type
-                    or r.frame_path
-                    or (
-                        r.id is not None
-                        and storage.get_frame_bytes(r.id)[0] is not None
-                    )
-                ),
-                "flow_detected": r.flow_detected,
-                "confidence_scores": r.confidence_scores,
-            }
-            for r in records
-        ]
 
     def get_frame_data_uri(self, reading_id: int) -> str | None:
-        logger.debug(
-            "CallbacksImpl.get_frame_data_uri requested for reading_id=%s", reading_id
-        )
-        storage = self.get_storage()
-        if storage is None:
-            logger.debug(
-                "CallbacksImpl.get_frame_data_uri: storage is None for reading_id=%s",
-                reading_id,
-            )
-            return None
-        data, mime = storage.get_frame_bytes(reading_id)
-        if not data:
-            logger.debug(
-                "CallbacksImpl.get_frame_data_uri: storage returned no frame data for reading_id=%s",
-                reading_id,
-            )
-            return None
-        import base64
-
-        b64 = base64.b64encode(data).decode("ascii")
-        mime_type = mime or ("image/webp" if data.startswith(b"RIFF") else "image/jpeg")
-        logger.debug(
-            "CallbacksImpl.get_frame_data_uri: successfully generated data URI for reading_id=%s (%d raw bytes, mime=%s, b64_len=%d)",
-            reading_id,
-            len(data),
-            mime_type,
-            len(b64),
-        )
-        return f"data:{mime_type};base64,{b64}"
+        return self._frame_service.get_frame_data_uri(reading_id)
 
     def get_frame_diff(
         self, reading_id: int, compare_id: int | None = None
     ) -> dict[str, Any]:
-        storage = self.get_storage()
-        if storage is None:
-            return {"error": "Storage not available"}
-        cur_bytes, _ = storage.get_frame_bytes(reading_id)
-        if not cur_bytes:
-            return {"error": "Frame not found"}
-        comp_bytes = None
-        if compare_id is not None:
-            comp_bytes, _ = storage.get_frame_bytes(compare_id)
-        if not comp_bytes:
-            comp_bytes = cur_bytes
-
-        import cv2
-        import numpy as np
-
-        from utils.visual_diff import calculate_image_ssim
-
-        cur_img = cv2.imdecode(np.frombuffer(cur_bytes, np.uint8), cv2.IMREAD_COLOR)
-        comp_img = cv2.imdecode(np.frombuffer(comp_bytes, np.uint8), cv2.IMREAD_COLOR)
-        if cur_img is None or comp_img is None:
-            return {"error": "Failed decoding images"}
-
-        ssim_score = calculate_image_ssim(cur_img, comp_img)
-        return {
-            "reading_id": reading_id,
-            "compare_id": compare_id,
-            "ssim_similarity": ssim_score,
-            "is_anomaly": ssim_score < 0.85,
-            "diff_image_url": f"/history/frame/{reading_id}/diff_image?compare_id={compare_id or reading_id}",
-        }
+        return self._frame_service.get_frame_diff(reading_id, compare_id)
 
     def get_frame_diff_data_uri(
         self, reading_id: int, compare_id: int | None = None
     ) -> str | None:
-        logger.debug(
-            "CallbacksImpl.get_frame_diff_data_uri: reading_id=%s, compare_id=%s",
-            reading_id,
-            compare_id,
-        )
-        storage = self.get_storage()
-        if storage is None:
-            return None
-        cur_bytes, _ = storage.get_frame_bytes(reading_id)
-        if not cur_bytes:
-            return None
-        comp_bytes = None
-        if compare_id is not None and compare_id != reading_id:
-            comp_bytes, _ = storage.get_frame_bytes(compare_id)
-        if not comp_bytes:
-            comp_bytes = cur_bytes
-
-        import base64
-
-        import cv2
-        import numpy as np
-
-        from utils.visual_diff import (
-            compress_image_to_bytes,
-            generate_difference_heatmap,
-        )
-
-        cur_img = cv2.imdecode(np.frombuffer(cur_bytes, np.uint8), cv2.IMREAD_COLOR)
-        comp_img = cv2.imdecode(np.frombuffer(comp_bytes, np.uint8), cv2.IMREAD_COLOR)
-        if cur_img is None or comp_img is None:
-            return None
-
-        heatmap = generate_difference_heatmap(cur_img, comp_img)
-        diff_bytes = compress_image_to_bytes(heatmap, format_type="jpeg", quality=80)
-        b64 = base64.b64encode(diff_bytes).decode("ascii")
-        return f"data:image/jpeg;base64,{b64}"
+        return self._frame_service.get_frame_diff_data_uri(reading_id, compare_id)

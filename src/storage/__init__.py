@@ -7,6 +7,7 @@ from .base import (
     StorageBackend,
     StorageSummary,
 )
+from .frame_service import FrameService
 from .memory import MemoryStorageBackend
 from .sql import SQLAlchemyStorageBackend
 
@@ -63,6 +64,7 @@ def get_storage_backend(config: Any) -> StorageBackend:
 
 __all__ = [
     "ConsumptionRecord",
+    "FrameService",
     "MemoryStorageBackend",
     "MeterReading",
     "ReadingRecord",
