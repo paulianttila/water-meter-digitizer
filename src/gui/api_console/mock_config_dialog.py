@@ -5,6 +5,7 @@ from __future__ import annotations
 import base64
 import configparser
 import io
+import logging
 from collections.abc import Callable
 from typing import TYPE_CHECKING
 
@@ -19,6 +20,8 @@ from simulator.meter_generator import MeterImageGenerator
 
 if TYPE_CHECKING:
     from callbacks import Callbacks
+
+logger = logging.getLogger(__name__)
 
 DIGITAL_MODELS: dict[str, tuple[str, str]] = {
     "Class 11 (Standard Discrete 0-9 & Blank)": (
@@ -109,6 +112,7 @@ class MockConfigDialog:
             b64_str = base64.b64encode(buf.getvalue()).decode("ascii")
             return f"data:image/jpeg;base64,{b64_str}"
         except Exception:
+            logger.debug("Failed to generate ROI preview data URI", exc_info=True)
             return ""
 
     def open(self) -> None:

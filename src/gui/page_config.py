@@ -1,4 +1,5 @@
 import configparser
+import logging
 import re
 from typing import Any
 
@@ -16,6 +17,8 @@ from gui.components import (
 from gui.theme import (
     copy_to_clipboard as theme_copy_to_clipboard,
 )
+
+logger = logging.getLogger(__name__)
 
 FIELD_SCHEMAS: dict[tuple[str, str], dict[str, Any]] = {
     # [DEFAULT]
@@ -406,6 +409,7 @@ def parse_ini_sections(text: str) -> list[dict[str, Any]]:
     try:
         parser.read_string(text)
     except Exception:
+        logger.warning("Failed to parse INI sections", exc_info=True)
         return []
 
     sections = []
@@ -484,6 +488,7 @@ class ConfigPage:
                 backups = self.callbacks.list_config_backups()
                 button_undo.enabled = len(backups) > 0
             except Exception:
+                logger.debug("Could not list config backups", exc_info=True)
                 button_undo.enabled = False
 
         def save_config() -> None:

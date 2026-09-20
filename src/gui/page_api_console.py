@@ -39,6 +39,8 @@ from simulator.meter_generator import MeterImageGenerator
 if TYPE_CHECKING:
     from callbacks import Callbacks
 
+logger = logging.getLogger(__name__)
+
 
 class ApiConsolePage:
     """Page allowing users to interactively test REST endpoints and studio mock camera feeds."""
@@ -149,6 +151,7 @@ class ApiConsolePage:
             b64 = base64.b64encode(jpeg_bytes).decode("ascii")
             self.mock_img_src = f"data:image/jpeg;base64,{b64}"
         except Exception:
+            logger.warning("Failed to render initial mock frame", exc_info=True)
             self.mock_img_src = ""
 
     def _get_base_url(self) -> str:
@@ -227,6 +230,10 @@ class ApiConsolePage:
                         formatted = json.dumps(data, indent=2)
                         is_json = True
                     except Exception:
+                        logger.debug(
+                            "Response body is not JSON, displaying as text",
+                            exc_info=True,
+                        )
                         formatted = resp.text
 
                 return {
@@ -551,6 +558,9 @@ class ApiConsolePage:
                         overlaid.save(buf, format="JPEG", quality=85)
                         b64 = base64.b64encode(buf.getvalue()).decode("ascii")
                     except Exception:
+                        logger.debug(
+                            "Failed to draw meter ROIs on mock frame", exc_info=True
+                        )
                         b64 = base64.b64encode(jpeg_bytes).decode("ascii")
                 else:
                     b64 = base64.b64encode(jpeg_bytes).decode("ascii")
@@ -802,7 +812,7 @@ class ApiConsolePage:
             )
             dialog.open()
         except Exception as ex:
-            logging.exception("Failed to open MockConfigDialog: %s", ex)
+            logger.exception("Failed to open MockConfigDialog: %s", ex)
             ui.notify(f"Could not open config dialog: {ex}", type="negative")
 
     async def _test_in_digitizer_engine(self) -> None:

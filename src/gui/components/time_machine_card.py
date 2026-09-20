@@ -96,6 +96,11 @@ class TimeMachineCard:
             try:
                 mb_str = f"{float(disk_bytes) / (1024 * 1024):.1f} MB"
             except Exception:
+                logger.debug(
+                    "Failed to calculate disk size MB from '%s'",
+                    disk_bytes,
+                    exc_info=True,
+                )
                 mb_str = "0.0 MB"
 
             with container:
@@ -385,6 +390,9 @@ class TimeMachineCard:
                             dt = datetime.fromisoformat(ts_str).astimezone()
                             ts_formatted = dt.strftime("%Y-%m-%d %H:%M:%S")
                         except Exception:
+                            logger.debug(
+                                "Failed to parse timestamp '%s'", ts_str, exc_info=True
+                            )
                             ts_formatted = ts_str
 
                         ui.badge(
@@ -447,6 +455,11 @@ class TimeMachineCard:
                             dt_hist = datetime.fromisoformat(hist_ts_raw).astimezone()
                             hist_ts_str = dt_hist.strftime("%Y-%m-%d %H:%M:%S")
                         except Exception:
+                            logger.debug(
+                                "Failed to parse history timestamp '%s'",
+                                hist_ts_raw,
+                                exc_info=True,
+                            )
                             hist_ts_str = hist_ts_raw
 
                         live_rec = (
@@ -459,6 +472,11 @@ class TimeMachineCard:
                             dt_live = datetime.fromisoformat(live_ts_raw).astimezone()
                             live_ts_str = dt_live.strftime("%Y-%m-%d %H:%M:%S")
                         except Exception:
+                            logger.debug(
+                                "Failed to parse live timestamp '%s'",
+                                live_ts_raw,
+                                exc_info=True,
+                            )
                             live_ts_str = live_ts_raw
 
                         # Fetch base64 data URIs
@@ -703,6 +721,11 @@ class TimeMachineCard:
                                 ).astimezone()
                                 oldest_ts = dt0.strftime("%Y-%m-%d %H:%M:%S")
                             except Exception:
+                                logger.debug(
+                                    "Failed to parse oldest timestamp '%s'",
+                                    self.timeline_records[0].get("timestamp", ""),
+                                    exc_info=True,
+                                )
                                 oldest_ts = self.timeline_records[0].get(
                                     "timestamp", ""
                                 )
@@ -713,6 +736,11 @@ class TimeMachineCard:
                                 ).astimezone()
                                 latest_ts = dt_last.strftime("%Y-%m-%d %H:%M:%S")
                             except Exception:
+                                logger.debug(
+                                    "Failed to parse latest timestamp '%s'",
+                                    self.timeline_records[-1].get("timestamp", ""),
+                                    exc_info=True,
+                                )
                                 latest_ts = self.timeline_records[-1].get(
                                     "timestamp", ""
                                 )

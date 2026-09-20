@@ -1,7 +1,7 @@
 """Services, System Diagnostics, and Integrations Dashboard Page for NiceGUI."""
 
 import asyncio
-import contextlib
+import logging
 
 from nicegui import ui
 
@@ -10,6 +10,8 @@ from gui.components import page_header
 from gui.components.diagnostics_card import DiagnosticsCard
 from gui.components.leak_monitor_card import LeakMonitorCard
 from gui.components.services_status_card import ServicesStatusCard
+
+logger = logging.getLogger(__name__)
 
 
 class ServicesPage:
@@ -55,20 +57,26 @@ class ServicesPage:
         if self.spinner:
             self.spinner.visible = True
 
-        with contextlib.suppress(Exception):
+        try:
             h_data = await asyncio.to_thread(self.callbacks.get_health_data)
             self.diagnostics_card.update_data(h_data)
+        except Exception:
+            logger.warning("Failed to fetch health data telemetry", exc_info=True)
 
-        with contextlib.suppress(Exception):
+        try:
             l_data = await asyncio.to_thread(self.callbacks.get_leak_status)
             self.leak_card.update_data(l_data)
+        except Exception:
+            logger.warning("Failed to fetch leak status telemetry", exc_info=True)
 
-        with contextlib.suppress(Exception):
+        try:
             p_data, m_data = await asyncio.gather(
                 asyncio.to_thread(self.callbacks.get_poller_status),
                 asyncio.to_thread(self.callbacks.get_mqtt_status),
             )
             self.services_card.update_data(p_data, m_data)
+        except Exception:
+            logger.warning("Failed to fetch poller/MQTT telemetry", exc_info=True)
 
         if self.spinner:
             self.spinner.visible = False

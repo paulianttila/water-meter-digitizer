@@ -390,6 +390,12 @@ class DrawRoisBaseStep(BaseStep):
                 else:
                     display_name = path.name
             except Exception:
+                logger.debug(
+                    "Failed to calculate relative path for %s relative to %s",
+                    path,
+                    dir,
+                    exc_info=True,
+                )
                 display_name = path.name
             models[str(path)] = display_name
         return models

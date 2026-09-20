@@ -1,6 +1,7 @@
 """Meter Dashboard Page for NiceGUI (Live Readouts, Cropped Dials, Analytics, and History Table)."""
 
 import asyncio
+import logging
 import time
 from datetime import datetime
 from typing import Any
@@ -12,6 +13,8 @@ from gui.components.consumption_card import ConsumptionCard
 from gui.components.history_table_card import HistoryTableCard
 from gui.components.time_machine_card import TimeMachineCard
 from gui.theme import BADGE_ERROR, BADGE_SUCCESS, BADGE_WARNING
+
+logger = logging.getLogger(__name__)
 
 
 class MeterPage:
@@ -107,6 +110,7 @@ class MeterPage:
             try:
                 crop_base64 = self.callbacks.get_image_as_base64_str(name)
             except Exception:
+                logger.debug("Failed to load crop image for %s", name, exc_info=True)
                 crop_base64 = ""
 
             with (
@@ -176,6 +180,7 @@ class MeterPage:
             try:
                 leak_status = self.callbacks.get_leak_status() or {}
             except Exception:
+                logger.debug("Leak status unavailable", exc_info=True)
                 leak_status = {}
 
             with value_container:
@@ -317,9 +322,17 @@ class MeterPage:
                     try:
                         roi_img = self.callbacks.get_image_as_base64_str("roi")
                     except Exception:
+                        logger.debug(
+                            "Failed to get 'roi' image, falling back to 'final'",
+                            exc_info=True,
+                        )
                         try:
                             roi_img = self.callbacks.get_image_as_base64_str("final")
                         except Exception:
+                            logger.debug(
+                                "Failed to get 'final' fallback image for ROI dialog",
+                                exc_info=True,
+                            )
                             roi_img = ""
 
                     cfg = self.callbacks.get_config()
@@ -466,6 +479,11 @@ class MeterPage:
                                             )
                                         )
                                     except Exception:
+                                        logger.debug(
+                                            "Stage '%s' image not available, trying 'final'",
+                                            self.active_image_stage,
+                                            exc_info=True,
+                                        )
                                         try:
                                             img_data = (
                                                 self.callbacks.get_image_as_base64_str(
@@ -473,6 +491,10 @@ class MeterPage:
                                                 )
                                             )
                                         except Exception:
+                                            logger.debug(
+                                                "Final fallback stage image not available",
+                                                exc_info=True,
+                                            )
                                             img_data = ""
 
                                     if img_data:
@@ -575,6 +597,11 @@ class MeterPage:
                                                 )
                                             )
                                         except Exception:
+                                            logger.debug(
+                                                "Crop image not available for digital readout %s",
+                                                image,
+                                                exc_info=True,
+                                            )
                                             base64img = ""
                                         if base64img:
                                             ui.image(
@@ -644,6 +671,11 @@ class MeterPage:
                                                 )
                                             )
                                         except Exception:
+                                            logger.debug(
+                                                "Crop image not available for analog dial %s",
+                                                image,
+                                                exc_info=True,
+                                            )
                                             base64img = ""
                                         if base64img:
                                             ui.image(

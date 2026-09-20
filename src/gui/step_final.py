@@ -138,6 +138,9 @@ class FinalStep(BaseStep):
             try:
                 raw_bytes = base64.b64decode(self.image)
             except Exception:
+                logger.debug(
+                    "Failed to decode base64 image for config testing", exc_info=True
+                )
                 raw_bytes = None
 
         await run_engine_test_dialog(
