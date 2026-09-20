@@ -264,6 +264,16 @@ class Config(BaseSettings):
         save_config_to_io(self, fp)
         return self
 
+    def to_ini_string(self) -> str:
+        """Serialize configuration model to an INI formatted string."""
+        return self.save_to_string()
+
+    @classmethod
+    def from_ini_string(cls, ini_text: str) -> "Config":
+        """Create a new Config instance loaded from an INI string."""
+        instance = cls()
+        return instance.load_from_string(ini_text)
+
     def load_config(self, config: configparser.ConfigParser) -> "Config":
         return load_config_from_parser(self, config)
 

@@ -12,6 +12,7 @@ from gui.components.services_status_card import ServicesStatusCard
 from gui.page_api_console import ApiConsolePage
 from gui.page_previous_values import PreviousValuesPage
 from gui.page_services import ServicesPage
+from simulator.meter_generator import MeterImageGenerator
 
 
 @pytest.fixture(autouse=True)
@@ -471,6 +472,36 @@ def test_api_console_test_in_engine(mock_callbacks):
         assert mock_callbacks.get_meter_data.call_count == 2
         call_args2 = mock_callbacks.get_meter_data.call_args
         assert call_args2[0][2] is None
+
+        # 3. Dedicated mock config with custom overrides active
+        page.mock_test_config_mode = "dedicated"
+        custom_cfg = MeterImageGenerator.create_mock_meter_config(width=640, height=480)
+        custom_cfg.meter_configs[0].name = "customized_mock"
+        page.mock_custom_config = custom_cfg
+        page.mock_custom_config_active = True
+        asyncio.run(page._test_in_digitizer_engine())
+        assert mock_callbacks.get_meter_data.call_count == 3
+        call_args3 = mock_callbacks.get_meter_data.call_args
+        assert call_args3[0][2] is custom_cfg
+        assert call_args3[0][2].meter_configs[0].name == "customized_mock"
+
+
+def test_api_console_open_mock_config_dialog(mock_callbacks):
+    page = ApiConsolePage(callbacks=mock_callbacks)
+    with patch("gui.page_api_console.MockConfigDialog") as mock_dialog_cls:
+        page._open_mock_config_dialog()
+        mock_dialog_cls.assert_called_once()
+        dialog_instance = mock_dialog_cls.return_value
+        dialog_instance.open.assert_called_once()
+
+
+def test_api_console_toggle_overlay_rois(mock_callbacks):
+    page = ApiConsolePage(callbacks=mock_callbacks)
+    assert page.mock_show_rois is False
+    mock_event = MagicMock(value=True)
+    asyncio.run(page._toggle_mock_show_rois(mock_event))
+    assert page.mock_show_rois is True
+    assert "data:image/jpeg;base64," in page.mock_img_src
 
 
 def test_consumption_card(mock_callbacks):

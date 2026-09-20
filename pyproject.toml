@@ -110,7 +110,7 @@ skips = []
 
 [tool.pytest.ini_options]
 pythonpath = [
-  ".", "src",
+  ".", "src", "tests/integration",
 ]
 markers = [
   "ui: Web UI integration tests with Playwright",
