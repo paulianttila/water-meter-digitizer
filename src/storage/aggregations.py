@@ -10,7 +10,7 @@ from .base import ConsumptionRecord, ReadingRecord
 def aggregate_consumption(
     readings: list[ReadingRecord],
     meter_name: str = "total",
-    interval: Literal["hourly", "daily", "weekly"] = "daily",
+    interval: Literal["hourly", "daily", "weekly", "monthly"] = "daily",
 ) -> list[ConsumptionRecord]:
     """Group chronological meter readings into regular time bins and calculate consumption."""
     if not readings:
@@ -21,6 +21,8 @@ def aggregate_consumption(
             return ts.strftime("%Y-%m-%d %H:00")
         if interval == "weekly":
             return f"{ts.year}-W{ts.isocalendar()[1]:02d}"
+        if interval == "monthly":
+            return ts.strftime("%Y-%m")
         return ts.strftime("%Y-%m-%d")
 
     bucket_groups: dict[str, list[tuple[datetime, float, str]]] = defaultdict(list)

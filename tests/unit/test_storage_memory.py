@@ -136,6 +136,11 @@ def test_memory_storage_hourly_and_weekly_consumption():
     assert "W" in weekly[0].bucket
     assert round(weekly[0].consumption, 2) == 0.40
 
+    monthly = storage.get_consumption(meter_name="total", interval="monthly")
+    assert len(monthly) == 1
+    assert monthly[0].bucket == "2026-09"
+    assert round(monthly[0].consumption, 2) == 0.40
+
 
 def test_memory_storage_clear():
     storage = MemoryStorageBackend()

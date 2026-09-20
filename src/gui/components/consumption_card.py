@@ -5,6 +5,7 @@ from datetime import datetime, timedelta
 from nicegui import ui
 
 from callbacks import Callbacks
+from gui.components.base_component import BaseComponent
 from gui.theme import (
     FONT_MONO_VALUE,
     HEADING_SUBSECTION,
@@ -14,11 +15,11 @@ from gui.theme import (
 from storage.seed import seed_demo_history
 
 
-class ConsumptionCard:
+class ConsumptionCard(BaseComponent):
     """Component rendering historical consumption analytics, aggregations, and charts."""
 
     def __init__(self, callbacks: Callbacks) -> None:
-        self.callbacks = callbacks
+        super().__init__(callbacks)
         self.current_meter = "total"
         self.current_interval = "daily"
         self.current_days = 14
@@ -27,23 +28,45 @@ class ConsumptionCard:
         self.unit_mode = "L"  # "L" (Liters) or "m3" (Cubic meters)
         self.cumulative = False  # Backward-compatible property
 
-    def render(self, container: ui.column) -> None:
+    def render(self, container: ui.column | None = None) -> None:
         """Render the consumption view inside the provided container."""
+        super().render(container)
+        target = container or self.container
+        if target is None:
+            return
 
         def render_consumption() -> None:
-            container.clear()
+            target.clear()
             storage = self.callbacks.get_storage()
             if storage is None:
-                with container:
+                with target:
                     ui.label("History storage backend is disabled.").classes(
                         "text-gray-400 italic p-4"
                     )
                 return
 
             summary = storage.get_summary()
-            tracked_meters = summary.meters_tracked or ["total"]
+            cfg = self.callbacks.get_config()
+            cfg_meters = (
+                [
+                    m.name
+                    for m in getattr(cfg, "meter_configs", [])
+                    if getattr(m, "name", None)
+                ]
+                if cfg
+                else []
+            )
+            tracked_meters = list(
+                dict.fromkeys((summary.meters_tracked or []) + cfg_meters)
+            )
+            if not tracked_meters:
+                tracked_meters = ["total"]
+
             if self.current_meter not in tracked_meters:
-                self.current_meter = tracked_meters[0]
+                if "total" in tracked_meters:
+                    self.current_meter = "total"
+                else:
+                    self.current_meter = tracked_meters[0]
 
             now = datetime.now().astimezone()
             start_time = (
@@ -79,7 +102,7 @@ class ConsumptionCard:
             unit_label = "L" if self.unit_mode == "L" else "m³"
             cum_unit_label = "m³"
 
-            with container:
+            with target:
                 # Top Controls
                 with ui.row().classes(
                     f"{ROW_HEADER} gap-4 flex-wrap "

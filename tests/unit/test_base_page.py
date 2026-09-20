@@ -38,3 +38,14 @@ async def test_base_page_async_show():
     assert not page.rendered
     await page.show()
     assert page.rendered
+
+
+def test_base_page_dispose():
+    page = DummyPage()
+    page.spinner = MagicMock()
+    page._mounted = True
+
+    assert page.is_mounted
+    page.dispose()
+    assert not page.is_mounted
+    assert page.spinner is None

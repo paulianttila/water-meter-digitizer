@@ -1,6 +1,7 @@
 """NiceGUI Dashboard and Telemetry Components."""
 
 from .async_data_loader import async_fetch_and_render
+from .base_component import BaseComponent
 from .code_inspect_dialog import open_code_inspect_dialog
 from .config_history_dialog import format_diff_html, open_config_history_dialog
 from .confirm_dialog import open_confirm_dialog
@@ -15,6 +16,7 @@ from .time_machine_card import TimeMachineCard
 from .validation_banner import ValidationBanner
 
 __all__ = [
+    "BaseComponent",
     "ConsumptionCard",
     "DiagnosticsCard",
     "HistoryTableCard",

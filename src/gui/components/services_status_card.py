@@ -7,6 +7,7 @@ from nicegui import ui
 
 from callbacks import Callbacks
 from gui.components.async_data_loader import async_fetch_and_render
+from gui.components.base_component import BaseComponent
 from gui.components.page_header import card_header
 from gui.theme import (
     BADGE_ERROR,
@@ -23,19 +24,30 @@ from gui.theme import (
 )
 
 
-class ServicesStatusCard:
+class ServicesStatusCard(BaseComponent):
     """Component rendering Background Poller scheduler and MQTT integration status."""
 
     def __init__(self, callbacks: Callbacks) -> None:
-        self.callbacks = callbacks
-        self.container: ui.column | None = None
+        super().__init__(callbacks)
         self._poller_data: dict[str, Any] = {}
         self._mqtt_data: dict[str, Any] = {}
 
-    def render(self) -> None:
+    def render(self, container: ui.column | None = None) -> None:
         """Render the Services Status Card."""
-        with ui.column().classes("w-full gap-4") as self.container:
-            self._render_content()
+        super().render(container)
+        if container is not None:
+            self.container = container
+            with self.container:
+                self._render_content()
+        else:
+            with ui.column().classes("w-full gap-4") as self.container:
+                self._render_content()
+
+    def dispose(self) -> None:
+        """Clean up widget references and state."""
+        super().dispose()
+        self._poller_data = {}
+        self._mqtt_data = {}
 
     def update_data(
         self,

@@ -28,6 +28,13 @@ class ServicesPage(BasePage):
         self.services_card = ServicesStatusCard(self.callbacks)
         self.spinner: ui.spinner | None = None
 
+    def dispose(self) -> None:
+        """Dispose page and all child components."""
+        super().dispose()
+        self.diagnostics_card.dispose()
+        self.leak_card.dispose()
+        self.services_card.dispose()
+
     async def show(self) -> None:
         """Render the Services and Diagnostics page."""
         with page_header(

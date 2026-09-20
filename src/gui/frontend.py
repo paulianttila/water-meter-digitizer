@@ -10,6 +10,7 @@ from fastapi import FastAPI
 from nicegui import ui
 
 from callbacks import Callbacks
+from gui.base_page import BasePage
 from main import VERSION
 
 from .page_about import AboutPage
@@ -79,6 +80,26 @@ def init(fastapi_app: FastAPI, callbacks: Callbacks) -> None:
         api_console_page = ApiConsolePage(callbacks=_callbacks)
         help_page = HelpPage(callbacks=_callbacks)
         about_page = AboutPage(callbacks=_callbacks)
+
+        pages: list[BasePage] = [
+            meter_page,
+            services_page,
+            setup_page,
+            config_page,
+            previous_values_page,
+            api_console_page,
+            help_page,
+            about_page,
+        ]
+
+        def _cleanup_client() -> None:
+            for page in pages:
+                with contextlib.suppress(Exception):
+                    page.dispose()
+
+        with contextlib.suppress(Exception):
+            if hasattr(ui.context, "client") and ui.context.client is not None:
+                ui.context.client.on_disconnect(_cleanup_client)
 
         tabs: ui.tabs | None = None
         services: ui.tab | None = None

@@ -1,6 +1,7 @@
 """Meter Dashboard Page for NiceGUI (Live Readouts, Cropped Dials, Analytics, and History Table)."""
 
 import asyncio
+import contextlib
 import logging
 import time
 from datetime import datetime
@@ -50,6 +51,20 @@ class MeterPage(BasePage):
         self.last_fetch_time: datetime | None = None
         self.last_pipeline_ms: float = 0.0
         self._fetch_task: asyncio.Task | None = None
+
+    def dispose(self) -> None:
+        """Dispose page, timers, tasks, and child components."""
+        super().dispose()
+        if self._auto_timer is not None:
+            with contextlib.suppress(Exception):
+                self._auto_timer.cancel()
+            self._auto_timer = None
+        if self._fetch_task is not None and not self._fetch_task.done():
+            self._fetch_task.cancel()
+            self._fetch_task = None
+        self.consumption_card.dispose()
+        self.history_card.dispose()
+        self.time_machine_card.dispose()
 
     async def show(self) -> None:
         """Render the Meter Dashboard page."""
@@ -758,5 +773,28 @@ class MeterPage(BasePage):
             with ui.tab_panel(readings_log).classes("p-0"):
                 history_container = ui.column().classes("w-full")
                 self.history_card.render(history_container)
+
+        def on_subtab_change(e: Any) -> None:
+            val = getattr(e, "value", e)
+            if (
+                val is consumption
+                or val == "Consumption"
+                or getattr(val, "name", "") == "Consumption"
+            ):
+                self.consumption_card.render(stats_container)
+            elif (
+                val is time_machine
+                or val == "Time Machine"
+                or getattr(val, "name", "") == "Time Machine"
+            ):
+                self.time_machine_card.render(tm_container)
+            elif (
+                val is readings_log
+                or val == "Readings Log"
+                or getattr(val, "name", "") == "Readings Log"
+            ):
+                self.history_card.render(history_container)
+
+        tabs.on_value_change(on_subtab_change)
 
         await do_fetch()

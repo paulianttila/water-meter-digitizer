@@ -7,6 +7,7 @@ from typing import Any
 from nicegui import ui
 
 from callbacks import Callbacks
+from gui.components.base_component import BaseComponent
 from gui.components.page_header import card_header
 from gui.theme import (
     DIALOG_CARD,
@@ -19,22 +20,27 @@ from storage.base import ReadingRecord
 from storage.seed import seed_demo_history
 
 
-class HistoryTableCard:
+class HistoryTableCard(BaseComponent):
     """Component rendering historical readings in a searchable, paginated table with deep inspection and exports."""
 
     def __init__(self, callbacks: Callbacks) -> None:
-        self.callbacks = callbacks
+        super().__init__(callbacks)
         self.current_meter = "total"
         self.record_limit = 100
         self.time_range_days = 7
         self.search_query = ""
         self.category_filter = "all"  # "all", "good", "anomalies", "flow", "snapshots"
 
-    def render(self, container: ui.column) -> None:
+    def render(self, container: ui.column | None = None) -> None:
         """Render the historical readings table inside the given container."""
+        super().render(container)
+        target = container or self.container
+        if target is None:
+            return
+        target.clear()
         storage = self.callbacks.get_storage()
         if storage is None:
-            with container:
+            with target:
                 ui.label("History storage backend is disabled.").classes(
                     "text-gray-400 italic p-4"
                 )
@@ -122,7 +128,7 @@ class HistoryTableCard:
             },
         ]
 
-        with container:
+        with target:
             # 1. Top Controls Bar (instantiated once)
             with ui.row().classes(
                 f"{ROW_HEADER} gap-3 flex-wrap "

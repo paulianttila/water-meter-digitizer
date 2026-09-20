@@ -7,6 +7,7 @@ from nicegui import ui
 
 from callbacks import Callbacks
 from gui.components.async_data_loader import async_fetch_and_render
+from gui.components.base_component import BaseComponent
 from gui.components.page_header import card_header
 from gui.theme import (
     BADGE_ERROR,
@@ -23,18 +24,28 @@ from gui.theme import (
 )
 
 
-class LeakMonitorCard:
+class LeakMonitorCard(BaseComponent):
     """Component rendering Zero-Flow continuous flow tracking and leak reset controls."""
 
     def __init__(self, callbacks: Callbacks) -> None:
-        self.callbacks = callbacks
-        self.container: ui.column | None = None
+        super().__init__(callbacks)
         self._data: dict[str, Any] = {}
 
-    def render(self) -> None:
+    def render(self, container: ui.column | None = None) -> None:
         """Render the Leak Monitor Card."""
-        with ui.column().classes("w-full gap-4") as self.container:
-            self._render_content()
+        super().render(container)
+        if container is not None:
+            self.container = container
+            with self.container:
+                self._render_content()
+        else:
+            with ui.column().classes("w-full gap-4") as self.container:
+                self._render_content()
+
+    def dispose(self) -> None:
+        """Clean up widget references and state."""
+        super().dispose()
+        self._data = {}
 
     def update_data(self, data: dict[str, Any] | Any) -> None:
         """Update tracker state data and refresh view."""

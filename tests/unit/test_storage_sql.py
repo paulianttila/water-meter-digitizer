@@ -159,6 +159,11 @@ def test_sqlite_consumption_intervals():
     assert daily[0].bucket == "2026-09-01"
     assert round(daily[0].consumption, 2) == 2.00
 
+    monthly = storage.get_consumption("main", interval="monthly")
+    assert len(monthly) == 1
+    assert monthly[0].bucket == "2026-09"
+    assert round(monthly[0].consumption, 2) == 2.00
+
 
 def test_sqlite_concurrent_writes_and_reads():
     storage = SQLAlchemyStorageBackend(db_url="sqlite:///:memory:", max_records=200)

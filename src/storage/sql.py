@@ -619,7 +619,7 @@ class SQLAlchemyStorageBackend(StorageBackend):
     def get_consumption(
         self,
         meter_name: str = "total",
-        interval: Literal["hourly", "daily", "weekly"] = "daily",
+        interval: Literal["hourly", "daily", "weekly", "monthly"] = "daily",
         start: datetime | None = None,
         end: datetime | None = None,
     ) -> list[ConsumptionRecord]:

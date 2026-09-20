@@ -32,7 +32,7 @@ def get_history_consumption(
         return Response(json.dumps([]), media_type="application/json")
 
     start = datetime.now().astimezone() - timedelta(days=days) if days > 0 else None
-    valid_intervals = {"hourly", "daily", "weekly"}
+    valid_intervals = {"hourly", "daily", "weekly", "monthly"}
     use_interval = interval if interval in valid_intervals else "daily"
 
     records = storage.get_consumption(

@@ -8,15 +8,16 @@ from typing import Any
 from nicegui import ui
 
 from callbacks import Callbacks
+from gui.components.base_component import BaseComponent
 
 logger = logging.getLogger(__name__)
 
 
-class TimeMachineCard:
+class TimeMachineCard(BaseComponent):
     """Interactive historical frame scrubber, anomaly inspector, and visual diff viewer."""
 
     def __init__(self, callbacks: Callbacks) -> None:
-        self.callbacks = callbacks
+        super().__init__(callbacks)
         self.timeline_records: list[dict[str, Any]] = []
         self.selected_index: int = 0
         self.anomalies_only: bool = False
@@ -39,8 +40,20 @@ class TimeMachineCard:
                 self._timer.cancel()
             self._timer = None
 
-    def render(self, container: ui.column) -> None:
+    def dispose(self) -> None:
+        """Clean up widget references, timer, and cached records."""
+        super().dispose()
+        self._cancel_timer()
+        self.is_playing = False
+        self._slider = None
+        self.timeline_records = []
+
+    def render(self, container: ui.column | None = None) -> None:
         """Render the Time Machine interface."""
+        super().render(container)
+        target = container or self.container
+        if target is None:
+            return
 
         def refresh_timeline() -> None:
             logger.debug(
@@ -80,10 +93,10 @@ class TimeMachineCard:
         def rebuild_ui() -> None:
             self.is_playing = False
             self._cancel_timer()
-            container.clear()
+            target.clear()
             storage = self.callbacks.get_storage()
             if storage is None:
-                with container:
+                with target:
                     ui.label("History storage backend is disabled.").classes(
                         "text-gray-400 italic p-4"
                     )
@@ -103,7 +116,7 @@ class TimeMachineCard:
                 )
                 mb_str = "0.0 MB"
 
-            with container:
+            with target:
                 # 1. Header Toolbar
                 with ui.row().classes(
                     "w-full justify-between items-center gap-4 flex-wrap "
