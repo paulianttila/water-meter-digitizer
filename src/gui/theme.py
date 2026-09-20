@@ -15,6 +15,45 @@ TOOLBAR_ROW = (
     "bg-slate-900/60 border border-white/10"
 )
 
+# --- Typography ---
+HEADING_SECTION = "font-['Outfit'] font-bold text-base text-gray-100"
+HEADING_SUBSECTION = (
+    "text-xs font-semibold text-gray-300 uppercase tracking-wider font-mono"
+)
+TEXT_MONO_MUTED = "text-[11px] font-mono text-gray-400"
+TEXT_MONO_SMALL = "text-[10px] font-mono text-gray-400"
+FONT_MONO_VALUE = "font-['Outfit'] text-2xl font-bold"
+
+# --- Layout Rows & Flexbox ---
+ROW_HEADER = "w-full justify-between items-center"
+ROW_ACTIONS = "items-center gap-2"
+ROW_ITEMS_CENTER = "items-center gap-1.5"
+
+# --- Inner Panels ---
+PANEL_INNER = (
+    "p-3 rounded-xl bg-slate-950/60 border border-white/5 "
+    "flex flex-col justify-between gap-2"
+)
+PANEL_DARK = "w-full rounded-xl bg-slate-950 p-3 border border-white/10"
+
+# --- Dialogs ---
+DIALOG_CARD = (
+    "w-full p-5 bg-slate-900 border border-white/10 "
+    "rounded-2xl gap-4 shadow-2xl text-white"
+)
+DIALOG_HEADER_ROW = "w-full justify-between items-center pb-2 border-b border-white/10"
+DIALOG_FOOTER_ROW = (
+    "w-full justify-end items-center gap-2 pt-2 border-t border-white/10"
+)
+
+# --- Stats / Metric Cards ---
+STAT_VALUE_LARGE = "font-['Outfit'] text-3xl font-extrabold tracking-tight"
+
+# --- Interactive ---
+CLICKABLE_CARD = (
+    "cursor-pointer hover:border-cyan-500/50 hover:bg-slate-800/90 transition-all"
+)
+
 # --- Status & Classification Badges ---
 BADGE_SUCCESS = (
     "bg-emerald-950/60 text-emerald-300 border border-emerald-500/30 "

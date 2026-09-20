@@ -13,6 +13,13 @@ from gui.theme import (
     BADGE_SUCCESS,
     BADGE_WARNING,
     CARD_DEFAULT,
+    FONT_MONO_VALUE,
+    HEADING_SECTION,
+    HEADING_SUBSECTION,
+    PANEL_INNER,
+    ROW_ACTIONS,
+    ROW_HEADER,
+    TEXT_MONO_MUTED,
 )
 
 
@@ -63,9 +70,9 @@ class LeakMonitorCard:
     def _render_content(self) -> None:
         if not self._data:
             with ui.card().classes(CARD_DEFAULT):
-                with ui.row().classes("w-full justify-between items-center"):
+                with ui.row().classes(ROW_HEADER):
                     ui.label("Leak & Zero-Flow Monitor").classes(
-                        "font-['Outfit'] font-bold text-base text-gray-200"
+                        f"{HEADING_SECTION} text-gray-200"
                     )
                     ui.button(
                         "Fetch Status",
@@ -100,18 +107,16 @@ class LeakMonitorCard:
             badge_cls = BADGE_SUCCESS
             state_label = "NORMAL (ZERO-FLOW)"
 
-        with ui.card().classes(CARD_DEFAULT + " gap-4"):
+        with ui.card().classes(f"{CARD_DEFAULT} gap-4"):
             # Header Row
-            with ui.row().classes("w-full justify-between items-center"):
-                with ui.row().classes("items-center gap-2"):
+            with ui.row().classes(ROW_HEADER):
+                with ui.row().classes(ROW_ACTIONS):
                     ui.icon("water_damage", color="amber").classes("text-xl")
-                    ui.label("Leak & Zero-Flow Monitor").classes(
-                        "font-['Outfit'] font-bold text-base text-gray-100"
-                    )
+                    ui.label("Leak & Zero-Flow Monitor").classes(HEADING_SECTION)
                     with ui.element("span").classes(badge_cls):
                         ui.label(state_label)
 
-                with ui.row().classes("items-center gap-2"):
+                with ui.row().classes(ROW_ACTIONS):
                     ui.button(
                         "Reset Leak State",
                         icon="restart_alt",
@@ -131,69 +136,51 @@ class LeakMonitorCard:
                 "w-full gap-3 grid-cols-1 md:grid-cols-2 lg:grid-cols-4"
             ):
                 # 1. Monitored Meter & State
-                with ui.element("div").classes(
-                    "p-3 rounded-xl bg-slate-950/60 border border-white/5 flex flex-col justify-between"
-                ):
-                    ui.label("Monitored Meter").classes(
-                        "text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1"
-                    )
+                with ui.element("div").classes(PANEL_INNER):
+                    ui.label("Monitored Meter").classes(f"{HEADING_SUBSECTION} mb-1")
                     with ui.row().classes("items-baseline gap-1 my-1"):
-                        ui.label(meter_name).classes(
-                            "font-['Outfit'] text-2xl font-bold text-cyan-300"
-                        )
-                    ui.label(f"State: {state}").classes("text-[11px] text-gray-400")
+                        ui.label(meter_name).classes(f"{FONT_MONO_VALUE} text-cyan-300")
+                    ui.label(f"State: {state}").classes(TEXT_MONO_MUTED)
 
                 # 2. Current Flow Rate
-                with ui.element("div").classes(
-                    "p-3 rounded-xl bg-slate-950/60 border border-white/5 flex flex-col justify-between"
-                ):
-                    ui.label("Current Flow Rate").classes(
-                        "text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1"
-                    )
+                with ui.element("div").classes(PANEL_INNER):
+                    ui.label("Current Flow Rate").classes(f"{HEADING_SUBSECTION} mb-1")
                     with ui.row().classes("items-baseline gap-1 my-1"):
                         ui.label(f"{flow_rate:.3f}").classes(
-                            "font-['Outfit'] text-2xl font-bold text-white"
+                            f"{FONT_MONO_VALUE} text-white"
                         )
                         ui.label("m³/h").classes("text-xs text-gray-400")
                     ui.label(f"Consecutive Zeroes: {consec_zeroes}").classes(
-                        "text-[11px] text-gray-400"
+                        TEXT_MONO_MUTED
                     )
 
                 # 3. Continuous Duration
-                with ui.element("div").classes(
-                    "p-3 rounded-xl bg-slate-950/60 border border-white/5 flex flex-col justify-between"
-                ):
+                with ui.element("div").classes(PANEL_INNER):
                     ui.label("Continuous Duration").classes(
-                        "text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1"
+                        f"{HEADING_SUBSECTION} mb-1"
                     )
                     mins, secs = divmod(int(flow_duration), 60)
                     hrs, mins = divmod(mins, 60)
                     dur_str = f"{hrs:02d}:{mins:02d}:{secs:02d}"
                     with ui.row().classes("items-baseline gap-1 my-1"):
                         ui.label(dur_str).classes(
-                            "font-['Outfit'] text-2xl font-bold text-amber-300 font-mono"
+                            f"{FONT_MONO_VALUE} text-amber-300 font-mono"
                         )
                     last_z_str = str(last_zero_time)[:19] if last_zero_time else "—"
                     ui.label(f"Last Zero: {last_z_str}").classes(
-                        "text-[11px] text-gray-400 truncate"
+                        f"{TEXT_MONO_MUTED} truncate"
                     )
 
                 # 4. Continuous Flow Volume
-                with ui.element("div").classes(
-                    "p-3 rounded-xl bg-slate-950/60 border border-white/5 flex flex-col justify-between"
-                ):
-                    ui.label("Accumulated Volume").classes(
-                        "text-xs font-semibold text-gray-400 uppercase tracking-wider mb-1"
-                    )
+                with ui.element("div").classes(PANEL_INNER):
+                    ui.label("Accumulated Volume").classes(f"{HEADING_SUBSECTION} mb-1")
                     with ui.row().classes("items-baseline gap-1 my-1"):
                         ui.label(f"{flow_vol:.3f}").classes(
-                            "font-['Outfit'] text-2xl font-bold text-rose-300"
+                            f"{FONT_MONO_VALUE} text-rose-300"
                         )
                         ui.label("m³").classes("text-xs text-gray-400")
                     liters = flow_vol * 1000.0
-                    ui.label(f"≈ {liters:.1f} Liters").classes(
-                        "text-[11px] text-gray-400"
-                    )
+                    ui.label(f"≈ {liters:.1f} Liters").classes(TEXT_MONO_MUTED)
 
             # Historical Events Expandable Section
             if recent_events:

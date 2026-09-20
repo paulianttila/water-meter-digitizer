@@ -12,6 +12,13 @@ from gui.theme import (
     BADGE_SUCCESS,
     BADGE_WARNING,
     CARD_DEFAULT,
+    FONT_MONO_VALUE,
+    HEADING_SECTION,
+    HEADING_SUBSECTION,
+    PANEL_INNER,
+    ROW_ACTIONS,
+    ROW_HEADER,
+    TEXT_MONO_MUTED,
 )
 
 
@@ -51,9 +58,9 @@ class DiagnosticsCard:
     def _render_content(self) -> None:
         if not self._data:
             with ui.card().classes(CARD_DEFAULT):
-                with ui.row().classes("w-full justify-between items-center"):
+                with ui.row().classes(ROW_HEADER):
                     ui.label("System Diagnostics & Health").classes(
-                        "font-['Outfit'] font-bold text-base text-gray-200"
+                        f"{HEADING_SECTION} text-gray-200"
                     )
                     ui.button(
                         "Fetch Diagnostics",
@@ -80,18 +87,16 @@ class DiagnosticsCard:
         )
         status_text = status.upper()
 
-        with ui.card().classes(CARD_DEFAULT + " gap-4"):
+        with ui.card().classes(f"{CARD_DEFAULT} gap-4"):
             # Header Row
-            with ui.row().classes("w-full justify-between items-center"):
-                with ui.row().classes("items-center gap-2"):
+            with ui.row().classes(ROW_HEADER):
+                with ui.row().classes(ROW_ACTIONS):
                     ui.icon("health_and_safety", color="cyan").classes("text-xl")
-                    ui.label("System Diagnostics & Health").classes(
-                        "font-['Outfit'] font-bold text-base text-gray-100"
-                    )
+                    ui.label("System Diagnostics & Health").classes(HEADING_SECTION)
                     with ui.element("span").classes(status_badge_cls):
                         ui.label(status_text)
 
-                with ui.row().classes("items-center gap-2"):
+                with ui.row().classes(ROW_ACTIONS):
                     ui.label(f"Uptime: {uptime_info.get('uptime_human', '—')}").classes(
                         "text-xs font-mono text-gray-400"
                     )
@@ -107,13 +112,9 @@ class DiagnosticsCard:
                 "w-full gap-3 grid-cols-1 md:grid-cols-2 lg:grid-cols-4"
             ):
                 # 1. Camera Status
-                with ui.element("div").classes(
-                    "p-3 rounded-xl bg-slate-950/60 border border-white/5 flex flex-col justify-between"
-                ):
-                    with ui.row().classes("items-center justify-between mb-1"):
-                        ui.label("Camera Feed").classes(
-                            "text-xs font-semibold text-gray-400 uppercase tracking-wider"
-                        )
+                with ui.element("div").classes(PANEL_INNER):
+                    with ui.row().classes(f"{ROW_HEADER} mb-1"):
+                        ui.label("Camera Feed").classes(HEADING_SUBSECTION)
                         cam_reachable = camera_info.get("reachable", False)
                         with ui.element("span").classes(
                             BADGE_SUCCESS if cam_reachable else BADGE_ERROR
@@ -124,24 +125,20 @@ class DiagnosticsCard:
                     with ui.row().classes("items-baseline gap-1 my-1"):
                         ui.label(
                             f"{latency:.1f} ms" if latency is not None else "—"
-                        ).classes("font-['Outfit'] text-2xl font-bold text-cyan-300")
+                        ).classes(f"{FONT_MONO_VALUE} text-cyan-300")
                         ui.label("latency").classes("text-xs text-gray-400")
 
                     url_str = camera_info.get("url", "")
                     if len(url_str) > 30:
                         url_str = url_str[:27] + "..."
                     ui.label(url_str or "No URL configured").classes(
-                        "text-[11px] font-mono text-gray-400 truncate"
+                        f"{TEXT_MONO_MUTED} truncate"
                     )
 
                 # 2. Process & Memory
-                with ui.element("div").classes(
-                    "p-3 rounded-xl bg-slate-950/60 border border-white/5 flex flex-col justify-between"
-                ):
-                    with ui.row().classes("items-center justify-between mb-1"):
-                        ui.label("Memory & Process").classes(
-                            "text-xs font-semibold text-gray-400 uppercase tracking-wider"
-                        )
+                with ui.element("div").classes(PANEL_INNER):
+                    with ui.row().classes(f"{ROW_HEADER} mb-1"):
+                        ui.label("Memory & Process").classes(HEADING_SUBSECTION)
                         with ui.element("span").classes(BADGE_INFO):
                             ui.label(f"v{sys_info.get('version', '1.0.0')}")
 
@@ -149,7 +146,7 @@ class DiagnosticsCard:
                     peak = mem_info.get("peak_rss_mb", 0.0)
                     with ui.row().classes("items-baseline gap-1 my-1"):
                         ui.label(f"{rss:.1f} MB").classes(
-                            "font-['Outfit'] text-2xl font-bold text-white"
+                            f"{FONT_MONO_VALUE} text-white"
                         )
                         ui.label(f"(Peak: {peak:.1f} MB)").classes(
                             "text-xs text-gray-400"
@@ -160,13 +157,9 @@ class DiagnosticsCard:
                     ).classes("text-[11px] text-gray-400 truncate")
 
                 # 3. Cache Metrics
-                with ui.element("div").classes(
-                    "p-3 rounded-xl bg-slate-950/60 border border-white/5 flex flex-col justify-between"
-                ):
-                    with ui.row().classes("items-center justify-between mb-1"):
-                        ui.label("Image Cache").classes(
-                            "text-xs font-semibold text-gray-400 uppercase tracking-wider"
-                        )
+                with ui.element("div").classes(PANEL_INNER):
+                    with ui.row().classes(f"{ROW_HEADER} mb-1"):
+                        ui.label("Image Cache").classes(HEADING_SUBSECTION)
                         hit_ratio = cache_info.get("hit_ratio_percent", 0.0)
                         with ui.element("span").classes(
                             BADGE_SUCCESS if hit_ratio > 0 else BADGE_INFO
@@ -177,7 +170,7 @@ class DiagnosticsCard:
                     max_sz = cache_info.get("max_size", 0)
                     with ui.row().classes("items-baseline gap-1 my-1"):
                         ui.label(f"{cur_size} / {max_sz}").classes(
-                            "font-['Outfit'] text-2xl font-bold text-emerald-300"
+                            f"{FONT_MONO_VALUE} text-emerald-300"
                         )
                         ui.label("items").classes("text-xs text-gray-400")
 
@@ -188,13 +181,9 @@ class DiagnosticsCard:
                     )
 
                 # 4. Neural Inference Pool
-                with ui.element("div").classes(
-                    "p-3 rounded-xl bg-slate-950/60 border border-white/5 flex flex-col justify-between"
-                ):
-                    with ui.row().classes("items-center justify-between mb-1"):
-                        ui.label("LiteRT Models").classes(
-                            "text-xs font-semibold text-gray-400 uppercase tracking-wider"
-                        )
+                with ui.element("div").classes(PANEL_INNER):
+                    with ui.row().classes(f"{ROW_HEADER} mb-1"):
+                        ui.label("LiteRT Models").classes(HEADING_SUBSECTION)
                         total_inf = models_info.get("total_inferences", 0)
                         with ui.element("span").classes(BADGE_INFO):
                             ui.label(f"{total_inf} INF")
@@ -203,7 +192,7 @@ class DiagnosticsCard:
                     with ui.row().classes("items-baseline gap-1 my-1"):
                         ui.label(
                             f"{avg_ms:.1f} ms" if avg_ms is not None else "—"
-                        ).classes("font-['Outfit'] text-2xl font-bold text-purple-300")
+                        ).classes(f"{FONT_MONO_VALUE} text-purple-300")
                         ui.label("avg inference").classes("text-xs text-gray-400")
 
                     dig_m = models_info.get("digital", {})
@@ -244,9 +233,7 @@ class DiagnosticsCard:
                         with ui.element("div").classes(
                             "p-3 rounded-lg bg-slate-900/60 border border-white/5 flex flex-col gap-1.5"
                         ):
-                            with ui.row().classes(
-                                "w-full justify-between items-center"
-                            ):
+                            with ui.row().classes(ROW_HEADER):
                                 ui.label(label).classes("font-bold text-slate-200")
                                 enabled = m_info.get("enabled", False)
                                 exists = m_info.get("exists", False)

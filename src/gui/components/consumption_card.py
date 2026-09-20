@@ -5,6 +5,12 @@ from datetime import datetime, timedelta
 from nicegui import ui
 
 from callbacks import Callbacks
+from gui.theme import (
+    FONT_MONO_VALUE,
+    HEADING_SUBSECTION,
+    ROW_HEADER,
+    ROW_ITEMS_CENTER,
+)
 from storage.seed import seed_demo_history
 
 
@@ -76,7 +82,7 @@ class ConsumptionCard:
             with container:
                 # Top Controls
                 with ui.row().classes(
-                    "w-full justify-between items-center gap-4 flex-wrap "
+                    f"{ROW_HEADER} gap-4 flex-wrap "
                     "bg-slate-900/60 p-3.5 rounded-2xl border border-white/10 shadow-lg backdrop-blur-md"
                 ):
 
@@ -287,10 +293,8 @@ class ConsumptionCard:
                         "p-4 rounded-2xl bg-gradient-to-br from-slate-900/80 to-slate-950/80 "
                         "border border-white/10 shadow-lg flex-1 min-w-[170px]"
                     ):
-                        with ui.row().classes("w-full justify-between items-center"):
-                            ui.label("TOTAL CONSUMPTION").classes(
-                                "text-[11px] font-semibold text-slate-400 uppercase tracking-wider"
-                            )
+                        with ui.row().classes(ROW_HEADER):
+                            ui.label("TOTAL CONSUMPTION").classes(HEADING_SUBSECTION)
                             if trend_diff_pct is not None:
                                 is_lower = trend_diff_pct <= 0
                                 badge_bg = (
@@ -305,15 +309,13 @@ class ConsumptionCard:
                                     ui.icon(icon, size="xs")
                                     ui.label(f"{abs(trend_diff_pct):.1f}% vs prior")
 
-                        with ui.row().classes("items-baseline gap-1.5 mt-1"):
+                        with ui.row().classes(f"{ROW_ITEMS_CENTER} mt-1"):
                             fmt = (
                                 f"{total_delta_display:.1f}"
                                 if self.unit_mode == "L"
                                 else f"{total_delta_display:.3f}"
                             )
-                            ui.label(fmt).classes(
-                                "font-['Outfit'] text-2xl font-bold text-cyan-300"
-                            )
+                            ui.label(fmt).classes(f"{FONT_MONO_VALUE} text-cyan-300")
                             ui.label(unit_label).classes(
                                 "text-xs font-semibold text-slate-400"
                             )
@@ -328,17 +330,15 @@ class ConsumptionCard:
                         "border border-white/10 shadow-lg flex-1 min-w-[170px]"
                     ):
                         ui.label(f"AVG PER {self.current_interval.upper()}").classes(
-                            "text-[11px] font-semibold text-slate-400 uppercase tracking-wider"
+                            HEADING_SUBSECTION
                         )
-                        with ui.row().classes("items-baseline gap-1.5 mt-1"):
+                        with ui.row().classes(f"{ROW_ITEMS_CENTER} mt-1"):
                             fmt_avg = (
                                 f"{avg_delta_display:.1f}"
                                 if self.unit_mode == "L"
                                 else f"{avg_delta_display:.3f}"
                             )
-                            ui.label(fmt_avg).classes(
-                                "font-['Outfit'] text-2xl font-bold text-white"
-                            )
+                            ui.label(fmt_avg).classes(f"{FONT_MONO_VALUE} text-white")
                             ui.label(
                                 f"{unit_label}/{self.current_interval[:3]}"
                             ).classes("text-xs font-semibold text-slate-400")
@@ -348,44 +348,44 @@ class ConsumptionCard:
                         "p-4 rounded-2xl bg-gradient-to-br from-slate-900/80 to-slate-950/80 "
                         "border border-white/10 shadow-lg flex-1 min-w-[170px]"
                     ):
-                        ui.label("PEAK IN PERIOD").classes(
-                            "text-[11px] font-semibold text-slate-400 uppercase tracking-wider"
-                        )
-                        with ui.row().classes("items-baseline gap-1.5 mt-1"):
+                        ui.label("PEAK IN RANGE").classes(HEADING_SUBSECTION)
+                        with ui.row().classes(f"{ROW_ITEMS_CENTER} mt-1"):
                             fmt_peak = (
                                 f"{peak_val_display:.1f}"
                                 if self.unit_mode == "L"
                                 else f"{peak_val_display:.3f}"
                             )
                             ui.label(fmt_peak).classes(
-                                "font-['Outfit'] text-2xl font-bold text-emerald-300"
+                                f"{FONT_MONO_VALUE} text-amber-300"
                             )
                             ui.label(unit_label).classes(
                                 "text-xs font-semibold text-slate-400"
                             )
-                            if peak_record:
-                                ui.label(f"({peak_record.bucket})").classes(
-                                    "text-[10px] font-mono text-slate-500 truncate max-w-[110px]"
-                                )
+                        peak_date_str = (
+                            peak_record.start_time.strftime("%b %d")
+                            if peak_record and peak_record.start_time
+                            else "—"
+                        )
+                        ui.label(f"On {peak_date_str}").classes(
+                            "text-[11px] font-mono text-slate-500"
+                        )
 
-                    # 4. Projected Monthly Volume
+                    # 4. 30-Day Projection (Estimated baseline)
                     with ui.element("div").classes(
                         "p-4 rounded-2xl bg-gradient-to-br from-slate-900/80 to-slate-950/80 "
                         "border border-white/10 shadow-lg flex-1 min-w-[170px]"
                     ):
-                        ui.label("ESTIMATED MONTHLY").classes(
-                            "text-[11px] font-semibold text-slate-400 uppercase tracking-wider"
-                        )
-                        with ui.row().classes("items-baseline gap-1.5 mt-1"):
+                        ui.label("30-DAY PROJECTION").classes(HEADING_SUBSECTION)
+                        with ui.row().classes(f"{ROW_ITEMS_CENTER} mt-1"):
                             fmt_proj = (
                                 f"{projected_display:.1f}"
                                 if self.unit_mode == "L"
                                 else f"{projected_display:.3f}"
                             )
                             ui.label(fmt_proj).classes(
-                                "font-['Outfit'] text-2xl font-bold text-purple-300"
+                                f"{FONT_MONO_VALUE} text-purple-300"
                             )
-                            ui.label(f"{unit_label}/mo").classes(
+                            ui.label(unit_label).classes(
                                 "text-xs font-semibold text-slate-400"
                             )
 

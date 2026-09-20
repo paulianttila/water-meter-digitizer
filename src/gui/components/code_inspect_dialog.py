@@ -2,7 +2,13 @@
 
 from nicegui import ui
 
-from gui.theme import copy_to_clipboard
+from gui.theme import (
+    DIALOG_CARD,
+    DIALOG_HEADER_ROW,
+    ROW_ACTIONS,
+    ROW_HEADER,
+    copy_to_clipboard,
+)
 
 
 def open_code_inspect_dialog(
@@ -18,15 +24,11 @@ def open_code_inspect_dialog(
     with (
         ui.dialog() as dialog,
         ui.card()
-        .classes(
-            f"column no-wrap w-full {max_width} p-5 bg-slate-900 border border-white/10 rounded-2xl gap-3"
-        )
+        .classes(f"column no-wrap {DIALOG_CARD} {max_width} gap-3")
         .style("max-width: 95vw; width: 900px;"),
     ):
-        with ui.row().classes(
-            "w-full justify-between items-center pb-2 border-b border-white/10"
-        ):
-            with ui.row().classes("items-center gap-2"):
+        with ui.row().classes(DIALOG_HEADER_ROW):
+            with ui.row().classes(ROW_ACTIONS):
                 ui.icon(icon, color="cyan", size="sm")
                 with ui.column().classes("gap-0"):
                     ui.label(title).classes("text-base font-bold text-slate-100")
@@ -40,7 +42,7 @@ def open_code_inspect_dialog(
             "w-full max-h-[70vh] overflow-auto rounded-lg bg-slate-950 p-4 border border-white/5 font-mono text-xs"
         )
 
-        with ui.row().classes("w-full justify-between items-center pt-1"):
+        with ui.row().classes(f"{ROW_HEADER} pt-1"):
             if caption:
                 ui.label(caption).classes("text-xs font-mono text-slate-400")
             else:

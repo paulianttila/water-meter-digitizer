@@ -16,6 +16,16 @@ from nicegui import ui
 
 from callbacks import Callbacks
 from configuration import Config
+from gui.theme import (
+    DIALOG_CARD,
+    DIALOG_FOOTER_ROW,
+    DIALOG_HEADER_ROW,
+    FONT_MONO_VALUE,
+    PANEL_INNER,
+    ROW_ACTIONS,
+    ROW_HEADER,
+    ROW_ITEMS_CENTER,
+)
 from processor.digitizer import MeterResult
 from processor.image import ImageProcessor
 from utils.diagnostics import get_allowed_asset_directories
@@ -153,15 +163,13 @@ def show_engine_test_modal(
         ui.dialog() as dialog,
         ui.card()
         .classes(
-            "column no-wrap w-full max-w-4xl p-6 bg-slate-900 border border-white/10 rounded-2xl gap-3 max-h-[92vh] overflow-y-auto shadow-2xl text-slate-100"
+            f"column no-wrap w-full max-w-4xl {DIALOG_CARD} max-h-[92vh] overflow-y-auto"
         )
         .style("max-width: 95vw; width: 900px;"),
     ):
         # Header Row
-        with ui.row().classes(
-            "w-full justify-between items-center pb-2 border-b border-white/10"
-        ):
-            with ui.row().classes("items-center gap-2"):
+        with ui.row().classes(DIALOG_HEADER_ROW):
+            with ui.row().classes(ROW_ACTIONS):
                 ui.icon("analytics", color="cyan", size="sm")
                 ui.label("Digitizer Recognition Test Result").classes(
                     "text-base font-bold text-slate-100"
@@ -171,13 +179,13 @@ def show_engine_test_modal(
             )
 
         # Configured Meters Section Header & Metadata Badges
-        with ui.row().classes("w-full justify-between items-center px-0.5 pt-1"):
-            with ui.row().classes("items-center gap-2"):
+        with ui.row().classes(f"{ROW_HEADER} px-0.5 pt-1"):
+            with ui.row().classes(ROW_ACTIONS):
                 ui.icon("speed", color="cyan", size="xs")
                 ui.label("Configured Meters").classes(
                     "text-xs font-bold text-slate-300 uppercase tracking-wider"
                 )
-            with ui.row().classes("items-center gap-1.5"):
+            with ui.row().classes(ROW_ITEMS_CENTER):
                 ui.badge(title_tag, color="indigo").props("dense")
                 ui.badge(f"⚡ {dur_ms} ms", color="teal").props("dense")
                 meter_cnt = len(meters_list)
@@ -206,11 +214,10 @@ def show_engine_test_modal(
                 )
 
                 with ui.card().classes(
-                    "p-3.5 rounded-xl bg-slate-950/80 border border-white/10 "
-                    "flex flex-col justify-between gap-2 shadow-md"
+                    f"{PANEL_INNER} p-3.5 bg-slate-950/80 border-white/10 shadow-md"
                 ):
-                    with ui.row().classes("w-full justify-between items-center"):
-                        with ui.row().classes("items-center gap-1.5"):
+                    with ui.row().classes(ROW_HEADER):
+                        with ui.row().classes(ROW_ITEMS_CENTER):
                             ui.icon("water_drop", color="cyan", size="xs")
                             ui.label(m_name).classes(
                                 "text-xs font-bold text-cyan-300 uppercase tracking-wide"
@@ -221,7 +228,7 @@ def show_engine_test_modal(
 
                     with ui.row().classes("items-baseline gap-1.5 py-0.5"):
                         ui.label(str(m_val)).classes(
-                            "text-2xl font-mono font-bold text-white tracking-tight"
+                            f"{FONT_MONO_VALUE} text-white tracking-tight"
                         )
                         if m_unit:
                             ui.label(m_unit).classes(
@@ -233,13 +240,13 @@ def show_engine_test_modal(
             with ui.card().classes(
                 "w-full p-3 bg-slate-950/70 border border-white/5 rounded-xl flex flex-col gap-2"
             ):
-                with ui.row().classes("w-full justify-between items-center"):
-                    with ui.row().classes("items-center gap-2"):
+                with ui.row().classes(ROW_HEADER):
+                    with ui.row().classes(ROW_ACTIONS):
                         ui.icon("crop", color="cyan", size="xs")
                         ui.label("ROI Extraction Overlay").classes(
                             "text-xs font-bold text-slate-200 uppercase tracking-wide"
                         )
-                    with ui.row().classes("items-center gap-2"):
+                    with ui.row().classes(ROW_ACTIONS):
                         ui.badge("🟦 Digital ROIs", color="cyan").props("dense")
                         ui.badge("🟧 Analog ROIs", color="amber").props("dense")
                 with ui.element("div").classes(
@@ -276,9 +283,7 @@ def show_engine_test_modal(
                         with ui.card().classes(
                             f"p-2 bg-slate-950/60 border {tag_c} rounded-lg flex flex-col gap-1 text-xs"
                         ):
-                            with ui.row().classes(
-                                "w-full justify-between items-center"
-                            ):
+                            with ui.row().classes(ROW_HEADER):
                                 ui.label(r_name).classes(
                                     "font-semibold text-slate-200 uppercase"
                                 )
@@ -290,7 +295,7 @@ def show_engine_test_modal(
                             )
 
         # Dialog Footer Actions
-        with ui.row().classes("w-full justify-end pt-2"):
+        with ui.row().classes(DIALOG_FOOTER_ROW):
             ui.button("Close", on_click=dialog.close).props("flat dense").classes(
                 "text-slate-300 px-3"
             )

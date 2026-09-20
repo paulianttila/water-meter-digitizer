@@ -15,7 +15,21 @@ from gui.components import (
     TimeMachineCard,
     async_fetch_and_render,
 )
-from gui.theme import BADGE_ERROR, BADGE_SUCCESS, BADGE_WARNING
+from gui.theme import (
+    BADGE_ERROR,
+    BADGE_SUCCESS,
+    BADGE_WARNING,
+    CLICKABLE_CARD,
+    DIALOG_CARD,
+    DIALOG_FOOTER_ROW,
+    DIALOG_HEADER_ROW,
+    FONT_MONO_VALUE,
+    HEADING_SECTION,
+    ROW_ACTIONS,
+    ROW_HEADER,
+    ROW_ITEMS_CENTER,
+    STAT_VALUE_LARGE,
+)
 
 logger = logging.getLogger(__name__)
 
@@ -110,20 +124,16 @@ class MeterPage:
 
             with (
                 ui.dialog() as crop_modal,
-                ui.card().classes(
-                    "bg-slate-900 border border-white/10 rounded-2xl p-6 gap-4 min-w-[320px] max-w-md shadow-2xl text-white"
-                ),
+                ui.card().classes(f"{DIALOG_CARD} min-w-[320px] max-w-md p-6"),
             ):
-                with ui.row().classes(
-                    "w-full justify-between items-center pb-2 border-b border-white/10"
-                ):
-                    with ui.row().classes("items-center gap-2"):
+                with ui.row().classes(DIALOG_HEADER_ROW):
+                    with ui.row().classes(ROW_ACTIONS):
                         ui.icon("pin" if is_digital else "speed", color="cyan").classes(
                             "text-lg"
                         )
                         ui.label(
                             f"{'Digital Counter' if is_digital else 'Analog Dial'} - {name}"
-                        ).classes("font-['Outfit'] font-bold text-sm text-gray-100")
+                        ).classes(f"{HEADING_SECTION} text-sm")
                     ui.button(icon="close", on_click=crop_modal.close).props(
                         "flat round dense size=sm aria-label='Close dialog'"
                     )
@@ -152,13 +162,11 @@ class MeterPage:
                         if conf >= 85.0
                         else ("text-amber-400" if conf >= 70.0 else "text-rose-400")
                     )
-                    with ui.row().classes("items-center gap-1.5 text-xs font-mono"):
+                    with ui.row().classes(f"{ROW_ITEMS_CENTER} text-xs font-mono"):
                         ui.label("Neural Confidence:").classes("text-slate-400")
                         ui.label(f"{conf:.1f}%").classes(f"font-bold {conf_color}")
 
-                with ui.row().classes(
-                    "w-full justify-end pt-2 border-t border-white/10"
-                ):
+                with ui.row().classes(f"{DIALOG_FOOTER_ROW}"):
                     ui.button("Close", on_click=crop_modal.close).props(
                         "unelevated color=primary size=sm"
                     ).classes("rounded-xl px-4")
@@ -202,10 +210,8 @@ class MeterPage:
                         )
                         card_classes = f"p-4 rounded-2xl border flex-1 min-w-[220px] backdrop-blur-md {bg_grad}"
                         with ui.element("div").classes(card_classes):
-                            with ui.row().classes(
-                                "w-full justify-between items-center mb-1.5"
-                            ):
-                                with ui.row().classes("items-center gap-1.5"):
+                            with ui.row().classes(f"{ROW_HEADER} mb-1.5"):
+                                with ui.row().classes(ROW_ITEMS_CENTER):
                                     ui.label(meter.name.upper()).classes(
                                         "text-xs font-bold text-gray-300 tracking-wider font-mono"
                                     )
@@ -215,7 +221,7 @@ class MeterPage:
                                             "px-2 py-0.5 rounded-full border border-cyan-500/30"
                                         )
 
-                                with ui.row().classes("items-center gap-1.5"):
+                                with ui.row().classes(ROW_ITEMS_CENTER):
                                     conf_val = getattr(meter, "confidence", 100.0)
                                     qual = getattr(meter, "quality", "good").lower()
                                     badge_cls = (
@@ -241,7 +247,7 @@ class MeterPage:
                                         if is_total
                                         else "text-white"
                                     )
-                                    val_classes = f"font-['Outfit'] text-3xl font-extrabold tracking-tight {text_grad}"
+                                    val_classes = f"{STAT_VALUE_LARGE} {text_grad}"
                                     ui.label(str(meter.value)).classes(val_classes)
                                     if meter.unit:
                                         ui.label(meter.unit).classes(
@@ -269,9 +275,7 @@ class MeterPage:
                     with ui.element("div").classes(
                         "p-4 rounded-2xl border border-white/10 bg-slate-900/70 shadow-lg min-w-[200px] flex-1 backdrop-blur-md"
                     ):
-                        with ui.row().classes(
-                            "w-full justify-between items-center mb-1.5"
-                        ):
+                        with ui.row().classes(f"{ROW_HEADER} mb-1.5"):
                             ui.label("FLOW MONITOR").classes(
                                 "text-xs font-bold text-gray-400 tracking-wider font-mono"
                             )
@@ -286,20 +290,20 @@ class MeterPage:
 
                         with ui.row().classes("items-baseline gap-2"):
                             if is_flowing:
-                                with ui.row().classes("items-center gap-1.5"):
+                                with ui.row().classes(ROW_ITEMS_CENTER):
                                     ui.icon("water_drop", color="blue").classes(
                                         "text-2xl animate-bounce"
                                     )
                                     ui.label("Active Flow").classes(
-                                        "font-['Outfit'] text-2xl font-bold text-blue-300"
+                                        f"{FONT_MONO_VALUE} text-blue-300"
                                     )
                             else:
-                                with ui.row().classes("items-center gap-1.5"):
+                                with ui.row().classes(ROW_ITEMS_CENTER):
                                     ui.icon("pause_circle", color="gray").classes(
                                         "text-2xl"
                                     )
                                     ui.label("Zero-Flow").classes(
-                                        "font-['Outfit'] text-2xl font-bold text-slate-400"
+                                        f"{FONT_MONO_VALUE} text-slate-400"
                                     )
 
                         if flow_dur > 0:
@@ -345,18 +349,14 @@ class MeterPage:
 
                     with (
                         ui.dialog() as roi_modal,
-                        ui.card().classes(
-                            "w-full max-w-4xl p-5 bg-slate-900 border border-white/10 rounded-2xl gap-4 shadow-2xl text-white"
-                        ),
+                        ui.card().classes(f"{DIALOG_CARD} max-w-4xl"),
                     ):
-                        with ui.row().classes(
-                            "w-full justify-between items-center pb-2 border-b border-white/10"
-                        ):
-                            with ui.row().classes("items-center gap-2"):
+                        with ui.row().classes(DIALOG_HEADER_ROW):
+                            with ui.row().classes(ROW_ACTIONS):
                                 ui.icon("crop_free", color="cyan").classes("text-xl")
                                 with ui.column().classes("gap-0"):
                                     ui.label("ROI & Reference Marks Inspector").classes(
-                                        "font-['Outfit'] font-bold text-base text-gray-100"
+                                        HEADING_SECTION
                                     )
                                     ui.label(
                                         "Visual alignment markers and digitization region bounding boxes"
@@ -433,18 +433,16 @@ class MeterPage:
                 with ui.row().classes("w-full gap-6 items-start"):
                     # Processed image with multi-stage switcher
                     with ui.column().classes("flex-1 min-w-[340px] gap-2"):
-                        with ui.row().classes(
-                            "w-full justify-between items-center gap-2 flex-wrap"
-                        ):
-                            with ui.row().classes("items-center gap-1.5"):
+                        with ui.row().classes(f"{ROW_HEADER} gap-2 flex-wrap"):
+                            with ui.row().classes(ROW_ITEMS_CENTER):
                                 ui.icon("photo_camera", color="cyan").classes(
                                     "text-base"
                                 )
                                 ui.label("Processed Capture").classes(
-                                    "font-['Outfit'] font-bold text-sm text-gray-200"
+                                    f"{HEADING_SECTION} text-sm text-gray-200"
                                 )
 
-                            with ui.row().classes("items-center gap-1.5"):
+                            with ui.row().classes(ROW_ITEMS_CENTER):
                                 ui.button(
                                     "Inspect ROIs",
                                     icon="crop_free",
@@ -534,13 +532,11 @@ class MeterPage:
                     # Deductions Breakdown (Interactive Zoom Cards)
                     with ui.column().classes("flex-1 min-w-[320px] gap-4"):
                         if result.digital_results:
-                            with ui.row().classes(
-                                "w-full justify-between items-center"
-                            ):
-                                with ui.row().classes("items-center gap-1.5"):
+                            with ui.row().classes(ROW_HEADER):
+                                with ui.row().classes(ROW_ITEMS_CENTER):
                                     ui.icon("pin", color="cyan").classes("text-base")
                                     ui.label("Digital Counters").classes(
-                                        "font-['Outfit'] font-bold text-sm text-gray-200"
+                                        f"{HEADING_SECTION} text-sm text-gray-200"
                                     )
                                 ui.label("Click to Zoom").classes(
                                     "text-[10px] text-slate-500 font-mono"
@@ -566,9 +562,9 @@ class MeterPage:
                                     with (
                                         ui.element("div")
                                         .classes(
-                                            "p-2.5 rounded-xl bg-slate-900/90 border border-white/10 "
-                                            "flex flex-col items-center gap-1 min-w-[80px] shadow-lg "
-                                            "cursor-pointer hover:border-cyan-500/50 hover:bg-slate-800/90 transition-all"
+                                            f"p-2.5 rounded-xl bg-slate-900/90 border border-white/10 "
+                                            f"flex flex-col items-center gap-1 min-w-[80px] shadow-lg "
+                                            f"{CLICKABLE_CARD}"
                                         )
                                         .on(
                                             "click",
@@ -608,13 +604,11 @@ class MeterPage:
                                         )
 
                         if result.analog_results:
-                            with ui.row().classes(
-                                "w-full justify-between items-center"
-                            ):
-                                with ui.row().classes("items-center gap-1.5"):
+                            with ui.row().classes(ROW_HEADER):
+                                with ui.row().classes(ROW_ITEMS_CENTER):
                                     ui.icon("speed", color="amber").classes("text-base")
                                     ui.label("Analog Dials").classes(
-                                        "font-['Outfit'] font-bold text-sm text-gray-200"
+                                        f"{HEADING_SECTION} text-sm text-gray-200"
                                     )
                                 ui.label("Click to Zoom").classes(
                                     "text-[10px] text-slate-500 font-mono"
@@ -642,7 +636,7 @@ class MeterPage:
                                         .classes(
                                             "p-2.5 rounded-xl bg-slate-900/90 border border-white/10 "
                                             "flex flex-col items-center gap-1 min-w-[80px] shadow-lg "
-                                            "cursor-pointer hover:border-amber-500/50 hover:bg-slate-800/90 transition-all"
+                                            f"{CLICKABLE_CARD}"
                                         )
                                         .on(
                                             "click",
@@ -682,16 +676,14 @@ class MeterPage:
                                         )
 
         # Top Bar
-        with ui.row().classes(
-            "w-full justify-between items-center gap-4 flex-wrap mb-3"
-        ):
+        with ui.row().classes(f"{ROW_HEADER} gap-4 flex-wrap mb-3"):
             with ui.row().classes("items-center gap-3"):
                 ui.label("Meter Dashboard").classes("text-h4")
                 self.spinner = ui.spinner("dots", size="md", color="cyan")
                 self.spinner.visible = False
 
             with ui.row().classes(
-                "items-center gap-1.5 text-xs font-mono"
+                f"{ROW_ITEMS_CENTER} text-xs font-mono"
             ) as freshness_container:
                 freshness_container.visible = False
                 ui.icon("fiber_manual_record", size="10px").classes(

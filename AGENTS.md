@@ -87,7 +87,7 @@ uv run pytest tests/unit/test_example.py  # Run a specific or new test file dire
 - **Security**: Bandit (excludes tests/)
 - Imports: use `isort`-compatible ordering via Ruff `I` rule
 - All models use **Pydantic BaseModel** with type hints
-- GUI styling uses Tailwind CSS class constants defined in `src/gui/theme.py` – reuse existing constants, don't inline ad-hoc classes
+- **GUI Theme & Styling**: All UI styling must use Tailwind CSS class constants defined in `src/gui/theme.py`. Always reuse existing constants (`HEADING_*`, `ROW_*`, `DIALOG_*`, `PANEL_*`, `CARD_*`, `BADGE_*`, `STAT_*`) and proactively extend `src/gui/theme.py` with new centralized constants when introducing reusable styles, typography, or layout patterns instead of inlining ad-hoc Tailwind strings.
 - The `Callbacks` **Protocol** in `src/callbacks.py` decouples the GUI from backend logic – add new backend operations there first
 - Configuration is INI-based (`config/config.ini`) parsed via `configparser` into Pydantic models in `src/configuration.py`
 - Storage backends implement the abstract base in `src/storage/base.py`

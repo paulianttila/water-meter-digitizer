@@ -15,6 +15,11 @@ from gui.components import (
     run_engine_test_dialog,
 )
 from gui.theme import (
+    DIALOG_HEADER_ROW,
+    ROW_ACTIONS,
+    ROW_HEADER,
+)
+from gui.theme import (
     copy_to_clipboard as theme_copy_to_clipboard,
 )
 
@@ -743,10 +748,8 @@ class ConfigPage:
                     with ui.card().classes(
                         "w-full p-4 bg-slate-900/90 border border-white/10 rounded-xl flex flex-col gap-2 shadow-sm"
                     ):
-                        with ui.row().classes(
-                            "w-full justify-between items-center pb-2 border-b border-white/5"
-                        ):
-                            with ui.row().classes("items-center gap-2"):
+                        with ui.row().classes(DIALOG_HEADER_ROW):
+                            with ui.row().classes(ROW_ACTIONS):
                                 with ui.element("div").classes(
                                     "w-7 h-7 rounded-lg bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-400"
                                 ):
@@ -765,7 +768,7 @@ class ConfigPage:
                                 f_desc = schema.get("description", "")
 
                                 with ui.row().classes(
-                                    "w-full justify-between items-center text-xs py-1.5 px-3 rounded-lg bg-slate-950/60 border border-white/5 font-mono gap-3"
+                                    f"{ROW_HEADER} text-xs py-1.5 px-3 rounded-lg bg-slate-950/60 border border-white/5 font-mono gap-3"
                                 ):
                                     with ui.column().classes(
                                         "gap-0 min-w-[160px] max-w-sm shrink-0"
@@ -930,10 +933,10 @@ class ConfigPage:
 
             # Toolbar Row
             with ui.row().classes(
-                "w-full items-center justify-between gap-3 p-2.5 "
+                f"{ROW_HEADER} gap-3 p-2.5 "
                 "rounded-xl bg-slate-900/80 border border-white/10 shrink-0"
             ):
-                with ui.row().classes("items-center gap-2 flex-wrap"):
+                with ui.row().classes(f"{ROW_ACTIONS} flex-wrap"):
                     ui.button(
                         "Reload File", icon="file_download", on_click=load_config
                     ).props("outline color=grey-4 size=sm").tooltip(
@@ -972,7 +975,7 @@ class ConfigPage:
                         )
                     )
 
-                with ui.row().classes("items-center gap-2 flex-wrap"):
+                with ui.row().classes(f"{ROW_ACTIONS} flex-wrap"):
                     ui.button(
                         "Snapshots & Diffs",
                         icon="manage_history",
@@ -1006,7 +1009,7 @@ class ConfigPage:
                 .props('id="config-diag-banner"') as diag_banner
             ):
                 diag_banner.visible = False
-                with ui.row().classes("items-center gap-2 flex-1 min-w-0"):
+                with ui.row().classes(f"{ROW_ACTIONS} flex-1 min-w-0"):
                     diag_icon = ui.icon("check_circle", color="emerald", size="sm")
                     diag_text = ui.label("Syntax is valid").classes(
                         "font-medium truncate"
@@ -1059,7 +1062,7 @@ class ConfigPage:
 
             # Status & Telemetry Bar
             with ui.row().classes(
-                "w-full items-center justify-between px-3 py-1.5 rounded-lg "
+                f"{ROW_HEADER} px-3 py-1.5 rounded-lg "
                 "bg-slate-900/60 border border-white/5 text-xs text-slate-400 shrink-0 select-none"
             ):
                 with ui.row().classes("items-center gap-3"):

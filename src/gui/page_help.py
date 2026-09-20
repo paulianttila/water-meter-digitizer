@@ -75,18 +75,16 @@ class HelpPage:
     def show(self) -> None:
         with (
             ui.dialog() as support_dialog,
-            ui.card().classes(
-                "w-full max-w-3xl bg-slate-900 border border-white/10 p-5 rounded-2xl flex flex-col gap-4 text-white shadow-2xl"
-            ),
+            ui.card().classes(f"{theme.DIALOG_CARD} max-w-3xl flex-col"),
         ):
-            with ui.row().classes("w-full items-center justify-between"):
+            with ui.row().classes(theme.ROW_HEADER):
                 with ui.row().classes("items-center gap-2.5"):
                     with ui.element("div").classes(
                         "w-8 h-8 rounded-lg bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center"
                     ):
                         ui.icon("bug_report", color="cyan").classes("text-lg")
                     ui.label("Support Diagnostic Bundle").classes(
-                        "text-base font-bold text-white font-['Outfit']"
+                        f"{theme.HEADING_SECTION} text-white"
                     )
                 ui.button(icon="close", on_click=support_dialog.close).props(
                     "flat round dense size=sm color=gray"
@@ -105,9 +103,9 @@ class HelpPage:
             )
 
             with ui.row().classes(
-                "w-full items-center justify-between pt-2 border-t border-white/10 gap-2"
+                f"{theme.ROW_HEADER} pt-2 border-t border-white/10 gap-2"
             ):
-                with ui.row().classes("items-center gap-2"):
+                with ui.row().classes(theme.ROW_ACTIONS):
                     ui.button(
                         "Download Bundle (.md)",
                         icon="file_download",

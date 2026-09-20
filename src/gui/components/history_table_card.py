@@ -7,6 +7,14 @@ from typing import Any
 from nicegui import ui
 
 from callbacks import Callbacks
+from gui.theme import (
+    DIALOG_CARD,
+    DIALOG_HEADER_ROW,
+    HEADING_SECTION,
+    HEADING_SUBSECTION,
+    ROW_ACTIONS,
+    ROW_HEADER,
+)
 from storage.base import ReadingRecord
 from storage.seed import seed_demo_history
 
@@ -117,7 +125,7 @@ class HistoryTableCard:
         with container:
             # 1. Top Controls Bar (instantiated once)
             with ui.row().classes(
-                "w-full justify-between items-center gap-3 flex-wrap "
+                f"{ROW_HEADER} gap-3 flex-wrap "
                 "bg-slate-900/60 p-3.5 rounded-2xl border border-white/10 shadow-lg backdrop-blur-md"
             ):
 
@@ -730,16 +738,14 @@ class HistoryTableCard:
         with (
             ui.dialog() as dialog,
             ui.card().classes(
-                "bg-slate-900 text-white min-w-[340px] md:min-w-[680px] max-w-4xl p-6 rounded-2xl border border-white/10 shadow-2xl"
+                f"{DIALOG_CARD} min-w-[340px] md:min-w-[680px] max-w-4xl"
             ),
         ):
-            with ui.row().classes(
-                "w-full justify-between items-center pb-3 border-b border-white/10"
-            ):
-                with ui.row().classes("items-center gap-2.5"):
+            with ui.row().classes(DIALOG_HEADER_ROW):
+                with ui.row().classes(ROW_ACTIONS):
                     ui.icon("manage_search", size="sm").classes("text-cyan-400")
                     ui.label(f"Reading Record #{rec_id}").classes(
-                        "text-lg font-bold text-white font-['Outfit']"
+                        f"{HEADING_SECTION} text-lg text-white"
                     )
                     if record.flow_detected:
                         ui.badge("💧 Flow Detected", color="blue").classes(
@@ -757,7 +763,7 @@ class HistoryTableCard:
             with ui.column().classes("w-full gap-4 mt-4"):
                 # Top Metadata Info
                 with ui.row().classes(
-                    "w-full justify-between items-center bg-slate-950/60 p-3 rounded-xl border border-white/5 text-xs font-mono"
+                    f"{ROW_HEADER} bg-slate-950/60 p-3 rounded-xl border border-white/5 text-xs font-mono"
                 ):
                     with ui.row().classes("items-center gap-1 text-slate-300"):
                         ui.icon("schedule", size="xs").classes("text-cyan-400")
@@ -775,7 +781,7 @@ class HistoryTableCard:
                 if record.meters:
                     with ui.column().classes("w-full gap-1.5"):
                         ui.label("Meter Readouts & Post-Processed Values").classes(
-                            "text-xs font-bold text-slate-400 uppercase tracking-wider"
+                            HEADING_SUBSECTION
                         )
                         with ui.row().classes("w-full gap-3 flex-wrap"):
                             for m_name, m_val in record.meters.items():

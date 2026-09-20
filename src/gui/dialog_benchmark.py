@@ -7,6 +7,12 @@ from typing import Any, TypedDict
 
 from nicegui import ui
 
+from gui.theme import (
+    DIALOG_HEADER_ROW,
+    ROW_ACTIONS,
+    ROW_HEADER,
+    ROW_ITEMS_CENTER,
+)
 from processor.digitizer import DigitizerProcessor, ReadoutResult
 
 logger = logging.getLogger(__name__)
@@ -118,8 +124,7 @@ def open_model_benchmark_dialog(
     ):
         # Dialog Header
         with ui.row().classes(
-            "w-full justify-between items-center px-6 py-4 border-b "
-            "border-white/10 bg-slate-900/80 shrink-0"
+            f"{DIALOG_HEADER_ROW} px-6 py-4 bg-slate-900/80 shrink-0"
         ):
             with ui.row().classes("items-center gap-3"):
                 with ui.element("div").classes(
@@ -142,22 +147,22 @@ def open_model_benchmark_dialog(
 
         # KPI Summary Bar
         with ui.row().classes(
-            "w-full px-6 py-3 bg-slate-900/40 border-b border-white/5 "
-            "gap-4 items-center justify-between text-xs shrink-0 flex-wrap"
+            f"{ROW_HEADER} px-6 py-3 bg-slate-900/40 border-b border-white/5 "
+            "gap-4 text-xs shrink-0 flex-wrap"
         ):
-            with ui.row().classes("items-center gap-2"):
+            with ui.row().classes(ROW_ACTIONS):
                 if top_model:
                     ui.label("★ Top Accuracy:").classes("text-slate-400 font-medium")
                     ui.label(
                         f"{top_model['name']} ({top_model['avg_confidence']}%)"
                     ).classes("font-bold text-emerald-400 font-mono")
-            with ui.row().classes("items-center gap-2"):
+            with ui.row().classes(ROW_ACTIONS):
                 if fastest_model:
                     ui.label("⚡ Fastest:").classes("text-slate-400 font-medium")
                     ui.label(
                         f"{fastest_model['name']} ({fastest_model['latency_ms']}ms)"
                     ).classes("font-bold text-cyan-400 font-mono")
-            with ui.row().classes("items-center gap-2"):
+            with ui.row().classes(ROW_ACTIONS):
                 ui.label("ROIs:").classes("text-slate-400 font-medium")
                 ui.label(f"{len(cut_images)} regions").classes(
                     "font-semibold text-slate-300 font-mono"
@@ -169,7 +174,7 @@ def open_model_benchmark_dialog(
             "gap-3 items-center shrink-0 flex-nowrap overflow-x-auto "
             "custom-scrollbar"
         ):
-            with ui.row().classes("items-center gap-1.5 shrink-0 mr-2"):
+            with ui.row().classes(f"{ROW_ITEMS_CENTER} shrink-0 mr-2"):
                 ui.icon("photo_camera", size="xs").classes("text-cyan-400")
                 ui.label("ROI Reference:").classes(
                     "text-xs font-semibold text-slate-300 whitespace-nowrap"

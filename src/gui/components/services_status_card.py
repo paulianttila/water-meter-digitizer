@@ -13,6 +13,14 @@ from gui.theme import (
     BADGE_SUCCESS,
     BADGE_WARNING,
     CARD_DEFAULT,
+    FONT_MONO_VALUE,
+    HEADING_SECTION,
+    HEADING_SUBSECTION,
+    PANEL_INNER,
+    ROW_ACTIONS,
+    ROW_HEADER,
+    ROW_ITEMS_CENTER,
+    TEXT_MONO_MUTED,
 )
 
 
@@ -109,16 +117,14 @@ class ServicesStatusCard:
         m_topic = self._mqtt_data.get("topic_prefix", "watermeter")
         m_ha = self._mqtt_data.get("ha_discovery", False)
 
-        with ui.card().classes(CARD_DEFAULT + " gap-4"):
+        with ui.card().classes(f"{CARD_DEFAULT} gap-4"):
             # Header Row
-            with ui.row().classes("w-full justify-between items-center"):
-                with ui.row().classes("items-center gap-2"):
+            with ui.row().classes(ROW_HEADER):
+                with ui.row().classes(ROW_ACTIONS):
                     ui.icon("hub", color="cyan").classes("text-xl")
-                    ui.label("Services & Integrations").classes(
-                        "font-['Outfit'] font-bold text-base text-gray-100"
-                    )
+                    ui.label("Services & Integrations").classes(HEADING_SECTION)
 
-                with ui.row().classes("items-center gap-2"):
+                with ui.row().classes(ROW_ACTIONS):
                     ui.button(
                         icon="refresh",
                         on_click=self.fetch_and_update,
@@ -129,15 +135,11 @@ class ServicesStatusCard:
             # 2 Main Columns: Poller Scheduler & MQTT Broker
             with ui.grid(columns=2).classes("w-full gap-4 grid-cols-1 md:grid-cols-2"):
                 # 1. Background Poller Card
-                with ui.element("div").classes(
-                    "p-3.5 rounded-xl bg-slate-950/60 border border-white/5 flex flex-col justify-between gap-2"
-                ):
-                    with ui.row().classes("w-full justify-between items-center"):
-                        with ui.row().classes("items-center gap-1.5"):
+                with ui.element("div").classes(PANEL_INNER):
+                    with ui.row().classes(ROW_HEADER):
+                        with ui.row().classes(ROW_ITEMS_CENTER):
                             ui.icon("schedule", color="cyan").classes("text-sm")
-                            ui.label("Background Poller").classes(
-                                "text-xs font-semibold text-gray-300 uppercase tracking-wider"
-                            )
+                            ui.label("Background Poller").classes(HEADING_SUBSECTION)
 
                         if p_running:
                             if p_last_error:
@@ -163,14 +165,14 @@ class ServicesStatusCard:
 
                     with ui.row().classes("items-baseline gap-2 my-1"):
                         ui.label(f"{p_interval}s").classes(
-                            "font-['Outfit'] text-2xl font-bold text-cyan-300"
+                            f"{FONT_MONO_VALUE} text-cyan-300"
                         )
                         ui.label("poll interval").classes("text-xs text-gray-400")
 
-                    with ui.row().classes("w-full justify-between items-center"):
+                    with ui.row().classes(ROW_HEADER):
                         ui.label(
                             f"Next: {str(next_run)[:19] if next_run else '—'}"
-                        ).classes("text-[11px] font-mono text-gray-400")
+                        ).classes(TEXT_MONO_MUTED)
                         ui.button(
                             "Trigger Readout",
                             icon="play_arrow",
@@ -208,14 +210,12 @@ class ServicesStatusCard:
                         ui.label(f"Errors: {p_failed}").classes(err_color)
 
                 # 2. MQTT & Home Assistant Card
-                with ui.element("div").classes(
-                    "p-3.5 rounded-xl bg-slate-950/60 border border-white/5 flex flex-col justify-between gap-2"
-                ):
-                    with ui.row().classes("w-full justify-between items-center"):
-                        with ui.row().classes("items-center gap-1.5"):
+                with ui.element("div").classes(PANEL_INNER):
+                    with ui.row().classes(ROW_HEADER):
+                        with ui.row().classes(ROW_ITEMS_CENTER):
                             ui.icon("sensors", color="teal").classes("text-sm")
                             ui.label("MQTT & Home Assistant").classes(
-                                "text-xs font-semibold text-gray-300 uppercase tracking-wider"
+                                HEADING_SUBSECTION
                             )
                         with ui.element("span").classes(
                             BADGE_SUCCESS

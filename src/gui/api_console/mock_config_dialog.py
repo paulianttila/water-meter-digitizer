@@ -15,6 +15,12 @@ from nicegui import ui
 from api.routes_mock_camera import render_mock_camera_frame
 from configuration import Config
 from data_classes import MeterConfig
+from gui.theme import (
+    DIALOG_CARD,
+    DIALOG_HEADER_ROW,
+    ROW_ACTIONS,
+    ROW_HEADER,
+)
 from processor.image import ImageProcessor
 from simulator.meter_generator import MeterImageGenerator
 
@@ -121,14 +127,12 @@ class MockConfigDialog:
             ui.dialog() as self.dialog,
             ui.card()
             .classes(
-                "column no-wrap w-[94vw] max-w-5xl max-h-[90vh] p-6 bg-slate-900 border border-white/10 rounded-2xl gap-4 text-slate-100 shadow-2xl overflow-hidden"
+                f"column no-wrap w-[94vw] max-w-5xl max-h-[90vh] {DIALOG_CARD} text-slate-100 overflow-hidden"
             )
             .style("max-width: 95vw; width: 1000px;"),
         ):
             # Dialog Header
-            with ui.row().classes(
-                "w-full justify-between items-center pb-3 border-b border-white/10 shrink-0 gap-3"
-            ):
+            with ui.row().classes(f"{DIALOG_HEADER_ROW} shrink-0 gap-3"):
                 with ui.row().classes("items-center gap-2.5 min-w-0 flex-1"):
                     ui.icon("tune", color="cyan", size="md").classes("shrink-0")
                     with ui.column().classes("gap-0 min-w-0"):
@@ -139,7 +143,7 @@ class MockConfigDialog:
                             "Fine-tune neural networks, meter formulas, and image filters for mock camera testing"
                         ).classes("text-xs text-slate-400 truncate")
 
-                with ui.row().classes("items-center gap-2 shrink-0"):
+                with ui.row().classes(f"{ROW_ACTIONS} shrink-0"):
                     ui.badge(f"{self.width}x{self.height}", color="indigo").classes(
                         "text-xs font-mono"
                     )
@@ -472,9 +476,9 @@ class MockConfigDialog:
 
             # Dialog Footer Actions
             with ui.row().classes(
-                "w-full justify-between items-center pt-3 border-t border-white/10 flex-wrap gap-2 shrink-0"
+                f"{ROW_HEADER} pt-3 border-t border-white/10 flex-wrap gap-2 shrink-0"
             ):
-                with ui.row().classes("items-center gap-2"):
+                with ui.row().classes(ROW_ACTIONS):
                     ui.button(
                         "Reset to Canvas Sync",
                         icon="restart_alt",
@@ -491,7 +495,7 @@ class MockConfigDialog:
                         "text-xs font-semibold"
                     )
 
-                with ui.row().classes("items-center gap-2"):
+                with ui.row().classes(ROW_ACTIONS):
                     ui.button(
                         "Cancel",
                         icon="close",

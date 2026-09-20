@@ -32,6 +32,9 @@ from gui.theme import (
     BADGE_INFO,
     BADGE_SUCCESS,
     BADGE_WARNING,
+    CARD_PANEL,
+    ROW_ACTIONS,
+    ROW_HEADER,
 )
 from processor.image import ImageProcessor
 from simulator.meter_generator import MeterImageGenerator
@@ -315,11 +318,11 @@ class ApiConsolePage:
                     with ui.column().classes(
                         "w-full items-center gap-3 p-4 bg-slate-900/80 rounded-xl border border-white/10"
                     ):
-                        with ui.row().classes("w-full justify-between items-center"):
+                        with ui.row().classes(ROW_HEADER):
                             ui.label("Rendered Camera Picture").classes(
                                 "text-sm font-semibold text-cyan-300"
                             )
-                            with ui.row().classes("gap-2 items-center"):
+                            with ui.row().classes(ROW_ACTIONS):
                                 if "x-mock-meter-value" in headers:
                                     ui.badge(
                                         f"Value: {headers['x-mock-meter-value']}",
@@ -359,7 +362,7 @@ class ApiConsolePage:
                 else:
                     for k, v in headers.items():
                         with ui.row().classes(
-                            "w-full justify-between items-center py-1.5 px-3 bg-slate-950/70 border-b border-white/5 font-mono text-xs"
+                            f"{ROW_HEADER} py-1.5 px-3 bg-slate-950/70 border-b border-white/5 font-mono text-xs"
                         ):
                             ui.label(k).classes("text-cyan-300 font-semibold")
                             ui.label(str(v)).classes(
@@ -372,15 +375,15 @@ class ApiConsolePage:
             with self.history_container:
                 for item in self.request_history:
                     with ui.row().classes(
-                        "w-full justify-between items-center p-2 rounded-lg bg-slate-950/60 border border-white/5 text-xs font-mono"
+                        f"{ROW_HEADER} p-2 rounded-lg bg-slate-950/60 border border-white/5 text-xs font-mono"
                     ):
-                        with ui.row().classes("items-center gap-2"):
+                        with ui.row().classes(ROW_ACTIONS):
                             ui.label(item["time"]).classes("text-slate-400")
                             ui.badge(item["method"], color="indigo")
                             ui.label(item["url"]).classes(
                                 "text-slate-200 truncate max-w-xs"
                             )
-                        with ui.row().classes("items-center gap-2"):
+                        with ui.row().classes(ROW_ACTIONS):
                             status_c = (
                                 "text-emerald-400"
                                 if item["status"] < 400
@@ -1087,7 +1090,7 @@ class ApiConsolePage:
 
                     # Telemetry Status Bar & Action Strip
                     with ui.row().classes(
-                        "w-full justify-between items-center px-1 shrink-0 bg-slate-950/60 p-2 rounded-xl border border-white/5"
+                        f"{ROW_HEADER} px-1 shrink-0 bg-slate-950/60 p-2 rounded-xl border border-white/5"
                     ):
                         with ui.row().classes("items-center gap-3"):
                             self.spinner = ui.spinner("dots", size="sm", color="cyan")
@@ -1103,7 +1106,7 @@ class ApiConsolePage:
                                 "text-xs font-mono text-cyan-400/80"
                             )
 
-                        with ui.row().classes("items-center gap-2"):
+                        with ui.row().classes(ROW_ACTIONS):
                             ui.button(
                                 "Copy cURL",
                                 icon="terminal",
@@ -1147,7 +1150,7 @@ class ApiConsolePage:
                                 "w-full h-full p-0 overflow-y-auto"
                             ),
                             ui.element("div").classes(
-                                "w-full h-full rounded-xl bg-slate-950 p-3 border border-white/10 overflow-y-auto"
+                                f"{CARD_PANEL} h-full overflow-y-auto"
                             ),
                         ):
                             self.viewer_container = ui.column().classes(
@@ -1165,7 +1168,7 @@ class ApiConsolePage:
                                 "w-full h-full p-0 overflow-y-auto"
                             ),
                             ui.element("div").classes(
-                                "w-full h-full rounded-xl bg-slate-950 p-3 border border-white/10 overflow-y-auto"
+                                f"{CARD_PANEL} h-full overflow-y-auto"
                             ),
                         ):
                             self.headers_container = ui.column().classes("w-full gap-1")
@@ -1180,7 +1183,7 @@ class ApiConsolePage:
                                 "w-full h-full p-0 overflow-y-auto"
                             ),
                             ui.element("div").classes(
-                                "w-full h-full rounded-xl bg-slate-950 p-3 border border-white/10 overflow-y-auto"
+                                f"{CARD_PANEL} h-full overflow-y-auto"
                             ),
                         ):
                             self.curl_viewer = ui.code(
@@ -1194,7 +1197,7 @@ class ApiConsolePage:
                                 "w-full h-full p-0 overflow-y-auto"
                             ),
                             ui.element("div").classes(
-                                "w-full h-full rounded-xl bg-slate-950 p-3 border border-white/10 overflow-y-auto"
+                                f"{CARD_PANEL} h-full overflow-y-auto"
                             ),
                         ):
                             self.history_container = ui.column().classes("w-full gap-2")
@@ -1213,9 +1216,7 @@ class ApiConsolePage:
                     with ui.card().classes(
                         "w-full p-3 bg-slate-900 border border-white/10 rounded-2xl shrink-0 gap-2"
                     ):
-                        with ui.row().classes(
-                            "w-full items-center justify-between gap-3"
-                        ):
+                        with ui.row().classes(f"{ROW_HEADER} gap-3"):
                             with ui.row().classes("flex-1 items-center gap-2 min-w-0"):
                                 ui.icon("travel_explore", color="cyan").classes(
                                     "text-lg"
@@ -1243,7 +1244,7 @@ class ApiConsolePage:
                             )
 
                         with ui.row().classes(
-                            "w-full items-center justify-between gap-3 pt-1 border-t border-white/5"
+                            f"{ROW_HEADER} gap-3 pt-1 border-t border-white/5"
                         ):
                             with ui.row().classes("items-center gap-4"):
                                 ui.switch(
@@ -1264,7 +1265,7 @@ class ApiConsolePage:
                                     "text-xs font-semibold text-gray-300"
                                 )
 
-                            with ui.row().classes("items-center gap-2 flex-wrap"):
+                            with ui.row().classes(f"{ROW_ACTIONS} flex-wrap"):
                                 ui.button(
                                     "Download JPG",
                                     icon="download",
