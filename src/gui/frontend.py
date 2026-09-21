@@ -247,7 +247,7 @@ def init(fastapi_app: FastAPI, callbacks: Callbacks) -> None:
                         "api_console",
                         api_console,
                         api_console_page.show,
-                        "w-full h-full p-0 overflow-y-auto flex flex-col",
+                        "w-full h-full p-0 overflow-hidden flex flex-col min-h-0",
                     ),
                     (
                         "help",

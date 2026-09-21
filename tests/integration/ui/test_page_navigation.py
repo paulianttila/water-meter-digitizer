@@ -134,3 +134,80 @@ def test_help_page_card_expansion_and_scrollability(page: Page, live_server_url:
     wiki_link = page.get_by_text("Getting Started & Hardware")
     wiki_link.scroll_into_view_if_needed()
     expect(wiki_link).to_be_visible()
+
+
+@pytest.mark.ui
+def test_api_console_page_layout_left_aligned_tabs_and_execute(
+    page: Page, live_server_url: str
+):
+    """Verify that the API Console tabs are left-aligned, Swagger UI card is full-height,
+    and executing REST requests in a constrained viewport does not collapse the page content.
+    """
+    page.set_viewport_size({"width": 1024, "height": 520})
+    page.goto(f"{live_server_url}/gui", wait_until="domcontentloaded")
+
+    # 1. Navigate to API Console tab
+    api_tab = page.get_by_role("tab", name="API Console")
+    api_tab.click()
+    expect(page.get_by_text("REST API Console & Studio")).to_be_visible(timeout=5000)
+
+    # 2. Verify subtab buttons are present and left-aligned
+    rest_subtab = page.get_by_role("tab", name="REST Endpoints")
+    mock_subtab = page.get_by_role("tab", name="Mock Camera Studio")
+    swagger_subtab = page.get_by_role("tab", name="Swagger UI")
+
+    expect(rest_subtab).to_be_visible()
+    expect(mock_subtab).to_be_visible()
+    expect(swagger_subtab).to_be_visible()
+
+    tabs_align = page.evaluate("""() => {
+        const panels = document.querySelector('#api-console-tab-panels');
+        const restTab = document.querySelector('.q-tab[aria-label="REST Endpoints"]') || document.querySelector('.q-tab');
+        const tabsContainer = restTab ? restTab.closest('.q-tabs') : null;
+        return {
+            hasPanels: !!panels,
+            tabOffsetLeft: restTab ? restTab.offsetLeft : 0
+        };
+    }""")
+    assert tabs_align["hasPanels"] is True
+    # Left aligned tabs start near the left boundary
+    assert tabs_align["tabOffsetLeft"] < 60
+
+    # 3. Switch to Swagger UI subtab and verify full-height iframe card
+    swagger_subtab.click()
+    expect(page.get_by_text("Interactive OpenAPI Documentation")).to_be_visible(
+        timeout=5000
+    )
+    swagger_iframe = page.locator('iframe[title="Swagger UI Documentation"]')
+    expect(swagger_iframe).to_be_visible()
+
+    swagger_height = page.evaluate("""() => {
+        const iframe = document.querySelector('iframe[title="Swagger UI Documentation"]');
+        return iframe ? iframe.clientHeight : 0;
+    }""")
+    assert swagger_height > 200
+
+    # 4. Switch back to REST Endpoints subtab
+    rest_subtab.click()
+    execute_btn = page.get_by_role("button", name="Execute")
+    expect(execute_btn).to_be_visible(timeout=5000)
+
+    # 5. Click Execute and verify page content remains fully intact and visible
+    execute_btn.click()
+    page.wait_for_timeout(1000)
+
+    expect(execute_btn).to_be_visible()
+    expect(page.get_by_text("REST API Console & Studio")).to_be_visible()
+    expect(page.get_by_text("Response Body")).to_be_visible()
+
+    # Verify container geometry: card has non-zero height and panel is scrollable if needed
+    panel_info = page.evaluate("""() => {
+        const panel = document.querySelector('#api-subtab-rest');
+        const card = panel ? panel.querySelector('.q-card') : null;
+        return {
+            panelClientHeight: panel ? panel.clientHeight : 0,
+            cardClientHeight: card ? card.clientHeight : 0,
+            cardOffsetHeight: card ? card.offsetHeight : 0
+        };
+    }""")
+    assert panel_info["cardClientHeight"] >= 400

@@ -662,7 +662,7 @@ class ApiConsolePage(BasePage):
         """Render embedded Swagger UI and OpenAPI explorer."""
         with (
             ui.card().classes(
-                "w-full flex-1 min-h-0 flex flex-col p-4 bg-slate-900 border border-white/10 rounded-2xl gap-3 overflow-hidden"
+                "w-full h-full flex-1 min-h-[450px] flex flex-col p-4 bg-slate-900 border border-white/10 rounded-2xl gap-3"
             ),
         ):
             # Toolbar
@@ -703,38 +703,78 @@ class ApiConsolePage(BasePage):
 
             # Embedded Swagger UI Frame
             with ui.element("div").classes(
-                "w-full flex-1 min-h-0 bg-slate-950 rounded-xl border border-white/5 overflow-hidden relative"
+                "w-full flex-1 min-h-[350px] bg-slate-950 rounded-xl border border-white/5 overflow-hidden relative"
             ):
                 ui.element("iframe").props(
                     'src="/docs" title="Swagger UI Documentation"'
                 ).classes("w-full h-full border-0 rounded-xl").style(
-                    "width: 100%; height: 100%; min-height: 550px; background-color: #0f172a;"
+                    "width: 100%; height: 100%; min-height: 350px; border: 0; background-color: #0f172a;"
                 )
 
     def show(self) -> None:
         """Render the API Console page."""
-        render_page_header(
-            "REST API Console & Studio",
-            "Interactive OpenAPI testing, real-time mock camera feed generator, and swagger explorer.",
-            "api",
-        )
+        with ui.column().classes(
+            "w-full h-full flex flex-col gap-3 p-4 overflow-hidden min-h-0 min-w-0 max-w-full"
+        ):
+            render_page_header(
+                "REST API Console & Studio",
+                "Interactive OpenAPI testing, real-time mock camera feed generator, and swagger explorer.",
+                "api",
+                classes="w-full justify-between items-center shrink-0 mb-1",
+            )
 
-        with ui.tabs().classes("w-full") as tabs:
-            tab_rest = ui.tab("REST Endpoints", icon="terminal")
-            tab_mock = ui.tab("Mock Camera Studio", icon="videocam")
-            tab_swagger = ui.tab("Swagger UI", icon="auto_stories")
-
-        with ui.tab_panels(tabs, value=tab_rest).classes("w-full bg-transparent"):
-            with ui.tab_panel(tab_rest):
-                self.rest_panel.render()
-
-            with ui.tab_panel(tab_mock):
-                self.mock_panel.render()
-
-            with ui.tab_panel(tab_swagger).classes(
-                "w-full h-full flex flex-col p-0 gap-3 overflow-hidden"
+            # Left-aligned navigation sub-tabs
+            with (
+                ui.tabs()
+                .props("align=left no-caps")
+                .classes(
+                    "w-full bg-slate-900/90 border border-white/10 rounded-xl p-1 shrink-0 min-w-0"
+                ) as tabs,
+                ui.row().classes("w-full justify-start gap-2"),
             ):
-                self._render_swagger_tab()
+                tab_rest = ui.tab("REST Endpoints", icon="terminal").classes(
+                    "font-semibold text-sm"
+                )
+                tab_mock = ui.tab("Mock Camera Studio", icon="videocam").classes(
+                    "font-semibold text-sm"
+                )
+                tab_swagger = ui.tab("Swagger UI", icon="auto_stories").classes(
+                    "font-semibold text-sm"
+                )
+
+            with (
+                ui.tab_panels(tabs, value=tab_rest)
+                .classes(
+                    "w-full flex-1 min-h-0 min-w-0 bg-transparent p-0 overflow-hidden flex flex-col"
+                )
+                .props('id="api-console-tab-panels"')
+            ):
+                with (
+                    ui.tab_panel(tab_rest)
+                    .classes(
+                        "w-full h-full p-0 overflow-y-auto overflow-x-hidden min-w-0 max-w-full flex flex-col flex-nowrap min-h-0 gap-3"
+                    )
+                    .props('id="api-subtab-rest"')
+                ):
+                    self.rest_panel.render()
+
+                with (
+                    ui.tab_panel(tab_mock)
+                    .classes(
+                        "w-full h-full p-0 overflow-y-auto overflow-x-hidden min-w-0 max-w-full flex flex-col flex-nowrap min-h-0 gap-3"
+                    )
+                    .props('id="api-subtab-mock"')
+                ):
+                    self.mock_panel.render()
+
+                with (
+                    ui.tab_panel(tab_swagger)
+                    .classes(
+                        "w-full h-full p-0 overflow-y-auto overflow-x-hidden min-w-0 max-w-full flex flex-col flex-nowrap min-h-0"
+                    )
+                    .props('id="api-subtab-swagger"')
+                ):
+                    self._render_swagger_tab()
 
 
 __all__ = [

@@ -219,6 +219,10 @@ class RestConsolePanel(BaseComponent):
             size_kb = round(result["raw_len"] / 1024.0, 1)
             self.size_label.text = f"{size_kb} KB"
 
+        # Ensure Body tab is active
+        if self.resp_tabs and self.resp_tab_body:
+            self.resp_tabs.value = self.resp_tab_body
+
         # Update Body Viewer
         if self.viewer_container:
             self.viewer_container.clear()
@@ -329,7 +333,7 @@ class RestConsolePanel(BaseComponent):
 
     def _render_content(self) -> None:
         with ui.card().classes(
-            "w-full flex-1 min-h-0 flex flex-col p-4 bg-slate-900 border border-white/10 rounded-2xl gap-3 overflow-hidden"
+            "w-full flex-1 min-h-[500px] flex flex-col p-4 bg-slate-900 border border-white/10 rounded-2xl gap-3"
         ):
             # Preset Selector Row
             with ui.row().classes("w-full gap-3 items-center shrink-0"):
@@ -405,7 +409,7 @@ class RestConsolePanel(BaseComponent):
             with (
                 ui.tabs().classes(
                     "w-full bg-slate-950/80 border border-white/5 rounded-lg p-0.5 shrink-0"
-                ) as resp_subtabs,
+                ) as self.resp_tabs,
                 ui.row().classes("w-full gap-1"),
             ):
                 self.resp_tab_body = ui.tab(
@@ -422,17 +426,21 @@ class RestConsolePanel(BaseComponent):
                 ).classes("text-xs")
 
             # Response Sub-Panels
-            with ui.tab_panels(resp_subtabs, value=self.resp_tab_body).classes(
-                "w-full flex-1 min-h-0 bg-transparent p-0 overflow-hidden"
+            with ui.tab_panels(self.resp_tabs, value=self.resp_tab_body).classes(
+                "w-full flex-1 min-h-[250px] bg-transparent p-0 overflow-hidden flex flex-col"
             ):
                 # Panel 1: Body
                 with (
                     ui.tab_panel(self.resp_tab_body).classes(
-                        "w-full h-full p-0 overflow-y-auto"
+                        "w-full h-full min-h-[220px] p-0 overflow-y-auto"
                     ),
-                    ui.element("div").classes(f"{CARD_PANEL} h-full overflow-y-auto"),
+                    ui.element("div").classes(
+                        f"{CARD_PANEL} h-full min-h-[220px] overflow-y-auto"
+                    ),
                 ):
-                    self.viewer_container = ui.column().classes("w-full p-0 gap-0")
+                    self.viewer_container = ui.column().classes(
+                        "w-full p-0 gap-0 min-h-0"
+                    )
                     with self.viewer_container:
                         self.response_viewer = ui.code(
                             "// Select an endpoint above and click Execute to test API responses.",
@@ -442,9 +450,11 @@ class RestConsolePanel(BaseComponent):
                 # Panel 2: Headers
                 with (
                     ui.tab_panel(self.resp_tab_headers).classes(
-                        "w-full h-full p-0 overflow-y-auto"
+                        "w-full h-full min-h-[220px] p-0 overflow-y-auto"
                     ),
-                    ui.element("div").classes(f"{CARD_PANEL} h-full overflow-y-auto"),
+                    ui.element("div").classes(
+                        f"{CARD_PANEL} h-full min-h-[220px] overflow-y-auto"
+                    ),
                 ):
                     self.headers_container = ui.column().classes("w-full gap-1")
                     with self.headers_container:
@@ -455,9 +465,11 @@ class RestConsolePanel(BaseComponent):
                 # Panel 3: cURL
                 with (
                     ui.tab_panel(self.resp_tab_curl).classes(
-                        "w-full h-full p-0 overflow-y-auto"
+                        "w-full h-full min-h-[220px] p-0 overflow-y-auto"
                     ),
-                    ui.element("div").classes(f"{CARD_PANEL} h-full overflow-y-auto"),
+                    ui.element("div").classes(
+                        f"{CARD_PANEL} h-full min-h-[220px] overflow-y-auto"
+                    ),
                 ):
                     self.curl_viewer = ui.code(
                         "curl -X GET 'http://localhost:3000/health'",
@@ -467,9 +479,11 @@ class RestConsolePanel(BaseComponent):
                 # Panel 4: History
                 with (
                     ui.tab_panel(self.resp_tab_history).classes(
-                        "w-full h-full p-0 overflow-y-auto"
+                        "w-full h-full min-h-[220px] p-0 overflow-y-auto"
                     ),
-                    ui.element("div").classes(f"{CARD_PANEL} h-full overflow-y-auto"),
+                    ui.element("div").classes(
+                        f"{CARD_PANEL} h-full min-h-[220px] overflow-y-auto"
+                    ),
                 ):
                     self.history_container = ui.column().classes("w-full gap-2")
                     with self.history_container:
