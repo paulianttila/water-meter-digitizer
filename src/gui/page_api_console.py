@@ -21,8 +21,6 @@ from gui.base_page import BasePage
 from gui.components import render_page_header
 
 if TYPE_CHECKING:
-    import PIL.Image
-
     from callbacks import Callbacks
 
 logger = logging.getLogger(__name__)
@@ -241,24 +239,6 @@ class ApiConsolePage(BasePage):
     async def _execute_request(self) -> None:
         await self.rest_panel._execute_request()
 
-    def _update_curl_preview(self) -> None:
-        self.rest_panel._update_curl_preview()
-
-    def _render_response_viewers(self) -> None:
-        self.rest_panel._render_response_viewers()
-
-    def _render_headers_view(self) -> None:
-        self.rest_panel._render_headers_view()
-
-    def _render_curl_view(self) -> None:
-        self.rest_panel._render_curl_view()
-
-    def _render_history_view(self) -> None:
-        self.rest_panel._render_history_view()
-
-    def _load_from_history(self, entry: dict[str, Any]) -> None:
-        self.rest_panel._load_from_history(entry)
-
     def _copy_curl(self) -> None:
         self.rest_panel._copy_curl()
 
@@ -469,14 +449,6 @@ class ApiConsolePage(BasePage):
         self.mock_panel.mock_streaming = value
 
     @property
-    def mock_streaming_fps(self) -> int:
-        return self.mock_panel.mock_streaming_fps
-
-    @mock_streaming_fps.setter
-    def mock_streaming_fps(self, value: int) -> None:
-        self.mock_panel.mock_streaming_fps = value
-
-    @property
     def mock_stream_timer(self) -> ui.timer | None:
         return self.mock_panel.mock_stream_timer
 
@@ -549,27 +521,11 @@ class ApiConsolePage(BasePage):
         self.mock_panel.mock_meta_size_badge = value
 
     @property
-    def mock_stream_badge(self) -> ui.element | None:
-        return self.mock_panel.mock_stream_badge
-
-    @mock_stream_badge.setter
-    def mock_stream_badge(self, value: ui.element | None) -> None:
-        self.mock_panel.mock_stream_badge = value
-
-    @property
-    def mock_stream_btn(self) -> ui.button | None:
-        return self.mock_panel.mock_stream_btn
-
-    @mock_stream_btn.setter
-    def mock_stream_btn(self, value: ui.button | None) -> None:
-        self.mock_panel.mock_stream_btn = value
-
-    @property
-    def _raw_mock_bytes(self) -> bytes | None:
+    def _raw_mock_bytes(self) -> bytes:
         return self.mock_panel._raw_mock_bytes
 
     @_raw_mock_bytes.setter
-    def _raw_mock_bytes(self, value: bytes | None) -> None:
+    def _raw_mock_bytes(self, value: bytes) -> None:
         self.mock_panel._raw_mock_bytes = value
 
     @property
@@ -600,14 +556,11 @@ class ApiConsolePage(BasePage):
     async def _reset_mock_ticker(self) -> None:
         await self.mock_panel._reset_mock_ticker()
 
-    async def _toggle_mock_streaming(self) -> None:
-        await self.mock_panel._toggle_mock_streaming()
+    def _toggle_mock_streaming(self, e: Any = True) -> None:
+        self.mock_panel._toggle_mock_streaming(e)
 
     async def _toggle_mock_show_rois(self, e: Any) -> None:
         await self.mock_panel._toggle_mock_show_rois(e)
-
-    def _draw_rois_on_image(self, img: PIL.Image.Image) -> PIL.Image.Image:
-        return self.mock_panel._draw_rois_on_image(img)
 
     def _download_mock_image(self) -> None:
         self.mock_panel._download_mock_image()
@@ -625,29 +578,7 @@ class ApiConsolePage(BasePage):
         await self.mock_panel._test_in_digitizer_engine()
 
     def _open_mock_config_dialog(self) -> None:
-        try:
-            current_cfg = (
-                self.mock_custom_config
-                if self.mock_custom_config_active and self.mock_custom_config
-                else None
-            )
-            dialog = MockConfigDialog(
-                callbacks=self.callbacks,
-                current_config=current_cfg,
-                meter_width=self.mock_width,
-                meter_height=self.mock_height,
-                on_save_callback=self._on_mock_config_saved,
-                on_reset_callback=self._on_mock_config_reset,
-            )
-            dialog.open()
-        except Exception as e:
-            logger.error("Failed to open MockConfigDialog: %s", e)
-
-    def _on_mock_config_saved(self, custom_config: Any) -> None:
-        self.mock_panel._on_mock_config_saved(custom_config)
-
-    def _on_mock_config_reset(self) -> None:
-        self.mock_panel._on_mock_config_reset()
+        self.mock_panel._open_mock_config_dialog()
 
     # -------------------------------------------------------------------------
     # Lifecycle & Rendering
@@ -711,7 +642,7 @@ class ApiConsolePage(BasePage):
                     "width: 100%; height: 100%; min-height: 350px; border: 0; background-color: #0f172a;"
                 )
 
-    def show(self) -> None:
+    async def show(self) -> None:
         """Render the API Console page."""
         with ui.column().classes(
             "w-full h-full flex flex-col gap-3 p-4 overflow-hidden min-h-0 min-w-0 max-w-full"

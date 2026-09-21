@@ -631,7 +631,7 @@ class MockStudioPanel(BaseComponent):
         if self.mock_auto_refresh:
             await self._generate_mock_frame()
 
-    def _toggle_mock_streaming(self, e: Any) -> None:
+    def _toggle_mock_streaming(self, e: Any = True) -> None:
         """Toggle live periodic ticker stream timer."""
         self.streaming_controller.toggle_streaming(bool(getattr(e, "value", e)))
 

@@ -127,3 +127,16 @@ def test_page_help_load_markdown_files():
         assert len(content) > 0, f"Help file {filename} should not be empty"
 
     assert _load_help("non_existent_file.md") == ""
+
+
+def test_page_api_console_show(mock_callbacks):
+    from gui.page_api_console import ApiConsolePage
+
+    page = ApiConsolePage(callbacks=mock_callbacks)
+    with (
+        patch("gui.page_api_console.ui"),
+        patch("gui.components.page_header.ui"),
+        patch.object(page.rest_panel, "render"),
+        patch.object(page.mock_panel, "render"),
+    ):
+        asyncio.run(page.show())

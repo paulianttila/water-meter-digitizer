@@ -503,7 +503,7 @@ def test_api_console_test_in_engine(mock_callbacks):
 
 def test_api_console_open_mock_config_dialog(mock_callbacks):
     page = ApiConsolePage(callbacks=mock_callbacks)
-    with patch("gui.page_api_console.MockConfigDialog") as mock_dialog_cls:
+    with patch("gui.api_console.mock_studio_panel.MockConfigDialog") as mock_dialog_cls:
         page._open_mock_config_dialog()
         mock_dialog_cls.assert_called_once()
         dialog_instance = mock_dialog_cls.return_value
