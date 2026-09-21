@@ -10,7 +10,6 @@ from typing import Any
 from nicegui import ui
 
 from callbacks import Callbacks
-from gui.base_page import BasePage
 from gui.components import (
     ConsumptionCard,
     HistoryTableCard,
@@ -18,6 +17,7 @@ from gui.components import (
     async_fetch_and_render,
     card_header,
 )
+from gui.pages.base import BasePage
 from gui.theme import (
     BADGE_ERROR,
     BADGE_SUCCESS,

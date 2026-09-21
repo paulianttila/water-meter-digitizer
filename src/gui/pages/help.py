@@ -7,14 +7,14 @@ from nicegui import ui
 
 import gui.theme as theme
 from callbacks import Callbacks
-from gui.base_page import BasePage
 from gui.components import page_header
+from gui.pages.base import BasePage
 from main import VERSION
 from utils.diagnostics import get_process_memory_info, get_system_info
 
 logger = logging.getLogger(__name__)
 
-HELP_DIR = Path(__file__).parent.parent / "web" / "static" / "help"
+HELP_DIR = Path(__file__).parent.parent.parent / "web" / "static" / "help"
 
 
 def _load_help(filename: str) -> str:

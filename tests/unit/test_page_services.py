@@ -5,7 +5,7 @@ from unittest.mock import MagicMock, patch
 
 from callbacks import Callbacks
 from gui.components import DiagnosticsCard, LeakMonitorCard, ServicesStatusCard
-from gui.page_services import ServicesPage
+from gui.pages.services import ServicesPage
 
 
 def test_services_page_init():
@@ -32,7 +32,7 @@ def test_services_page_show_and_fetch():
     page.leak_card = MagicMock(spec=LeakMonitorCard)
     page.services_card = MagicMock(spec=ServicesStatusCard)
 
-    with patch("gui.page_services.ui"), patch("gui.components.page_header.ui"):
+    with patch("gui.pages.services.ui"), patch("gui.components.page_header.ui"):
         asyncio.run(page.show())
 
         page.diagnostics_card.render.assert_called_once()

@@ -13,7 +13,7 @@ from gui.components import (
     run_engine_test_dialog,
 )
 
-from .step_base import BaseStep
+from .base import BaseStep
 
 logger = logging.getLogger(__name__)
 

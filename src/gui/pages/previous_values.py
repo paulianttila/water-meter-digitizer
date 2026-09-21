@@ -9,8 +9,8 @@ from typing import Any
 from nicegui import ui
 
 from callbacks import Callbacks
-from gui.base_page import BasePage
 from gui.components import open_code_inspect_dialog, page_header
+from gui.pages.base import BasePage
 
 
 class PreviousValuesPage(BasePage):

@@ -5,8 +5,8 @@ from unittest.mock import MagicMock, patch
 
 from callbacks import Callbacks
 from configuration import Config, ImageSource
-from gui.step_download import DownloadImageStep
-from gui.step_final import FinalStep
+from gui.wizard.steps.download import DownloadImageStep
+from gui.wizard.steps.final import FinalStep
 
 
 def test_step_download_load_and_actions():
@@ -61,7 +61,10 @@ def test_step_download_show():
     set_img = MagicMock()
     step = DownloadImageStep("Download", set_image_callback=set_img)
 
-    with patch("gui.step_download.ui") as mock_ui, patch("gui.step_base.ui"):
+    with (
+        patch("gui.wizard.steps.download.ui") as mock_ui,
+        patch("gui.wizard.steps.base.ui"),
+    ):
         mock_stepper = MagicMock()
         asyncio.run(step.show(mock_stepper, first_step=True, last_step=False))
         mock_ui.step.assert_called_once_with("Download")
@@ -114,9 +117,9 @@ def test_step_final_show_and_json_preview():
     )
 
     with (
-        patch("gui.step_final.open_code_inspect_dialog") as mock_inspect,
-        patch("gui.step_final.ui") as mock_ui,
-        patch("gui.step_base.ui"),
+        patch("gui.wizard.steps.final.open_code_inspect_dialog") as mock_inspect,
+        patch("gui.wizard.steps.final.ui") as mock_ui,
+        patch("gui.wizard.steps.base.ui"),
         patch("gui.components.validation_banner.ui"),
     ):
         asyncio.run(step.show(MagicMock(), first_step=False, last_step=True))

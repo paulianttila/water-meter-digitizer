@@ -17,8 +17,8 @@ from gui.api_console.registry import (
     generate_curl_command,
 )
 from gui.api_console.rest_console_panel import RestConsolePanel
-from gui.base_page import BasePage
 from gui.components import render_page_header
+from gui.pages.base import BasePage
 
 if TYPE_CHECKING:
     from callbacks import Callbacks

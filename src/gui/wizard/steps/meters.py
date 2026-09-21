@@ -6,7 +6,7 @@ from nicegui import events, ui
 
 from data_classes import MeterConfig
 
-from .step_base import BaseStep
+from .base import BaseStep
 
 HELP_TEXT = (
     "- **Meter & Digits**: Name your meter and choose digital/analog digits "

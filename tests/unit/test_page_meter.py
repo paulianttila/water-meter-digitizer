@@ -6,7 +6,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 from configuration import Config
-from gui.page_meter import MeterPage
+from gui.pages.meter import MeterPage
 from processor.digitizer import MeterResult, MeterValue
 
 
@@ -64,7 +64,7 @@ def test_page_meter_show_and_fetch_success(mock_meter_result):
     page.history_card = MagicMock()
     page.time_machine_card = MagicMock()
 
-    with patch("gui.page_meter.ui") as mock_ui:
+    with patch("gui.pages.meter.ui") as mock_ui:
         mock_ui.element.return_value.__enter__ = MagicMock()
         mock_ui.element.return_value.__exit__ = MagicMock()
         mock_ui.row.return_value.__enter__ = MagicMock()
@@ -98,7 +98,7 @@ def test_page_meter_fetch_exception():
     page.history_card = MagicMock()
     page.time_machine_card = MagicMock()
 
-    with patch("gui.page_meter.ui") as mock_ui:
+    with patch("gui.pages.meter.ui") as mock_ui:
         mock_ui.element.return_value.__enter__ = MagicMock()
         mock_ui.element.return_value.__exit__ = MagicMock()
         mock_ui.row.return_value.__enter__ = MagicMock()
@@ -135,7 +135,7 @@ def test_page_meter_roi_dialog_and_fallbacks(mock_meter_result):
     page.history_card = MagicMock()
     page.time_machine_card = MagicMock()
 
-    with patch("gui.page_meter.ui") as mock_ui:
+    with patch("gui.pages.meter.ui") as mock_ui:
         mock_ui.element.return_value.__enter__ = MagicMock()
         mock_ui.element.return_value.__exit__ = MagicMock()
         mock_ui.row.return_value.__enter__ = MagicMock()

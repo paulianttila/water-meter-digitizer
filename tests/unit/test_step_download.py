@@ -4,7 +4,7 @@ import asyncio
 from unittest.mock import MagicMock, patch
 
 from configuration import ImageSource
-from gui.step_download import DownloadImageStep
+from gui.wizard.steps.download import DownloadImageStep
 
 
 def test_download_image_step_empty_url():
@@ -30,7 +30,7 @@ def test_download_image_step_error_calls_callback():
     step.timeout = MagicMock()
     step.timeout.value = 5
 
-    with patch("gui.step_download.ImageProcessor") as mock_ip_cls:
+    with patch("gui.wizard.steps.download.ImageProcessor") as mock_ip_cls:
         mock_ip = MagicMock()
         mock_ip.download_image.side_effect = TimeoutError("Connection timed out")
         mock_ip_cls.return_value = mock_ip
@@ -53,7 +53,7 @@ def test_download_image_step_success():
     step.timeout = MagicMock()
     step.timeout.value = 10
 
-    with patch("gui.step_download.ImageProcessor") as mock_ip_cls:
+    with patch("gui.wizard.steps.download.ImageProcessor") as mock_ip_cls:
         mock_ip = MagicMock()
         mock_ip.download_image.return_value = mock_ip
         mock_ip.get_image_as_base64_str.return_value = "base64_sample_data"
@@ -87,8 +87,8 @@ def test_download_image_step_show_renders_controls():
     stepper = MagicMock()
 
     with (
-        patch("gui.step_download.ui") as mock_ui,
-        patch("gui.step_base.ui") as mock_base_ui,
+        patch("gui.wizard.steps.download.ui") as mock_ui,
+        patch("gui.wizard.steps.base.ui") as mock_base_ui,
     ):
         mock_ui.step.return_value.__enter__ = MagicMock()
         mock_ui.step.return_value.__exit__ = MagicMock()

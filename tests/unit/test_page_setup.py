@@ -4,7 +4,7 @@ import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
 
 from configuration import Config
-from gui.page_setup import SetupPage
+from gui.pages.setup import SetupPage
 
 
 def test_setup_page_init():
@@ -18,7 +18,7 @@ def test_setup_page_init():
     assert page.image == ""
 
 
-@patch("gui.page_setup.ImageUtils.image_size_from_file", return_value=(50, 50))
+@patch("gui.pages.setup.ImageUtils.image_size_from_file", return_value=(50, 50))
 def test_setup_page_reset_from_config(mock_size):
     callbacks = MagicMock()
     config = Config()
@@ -80,7 +80,7 @@ def test_wizard_navigation_flow():
     page.final_step = MagicMock()
 
     # Define update helper inside test mirroring implementation
-    from gui.page_setup import NAME_DOWNLOAD_IMAGE, NAME_FINAL, steps_order
+    from gui.wizard.navigator import NAME_DOWNLOAD_IMAGE, NAME_FINAL, steps_order
 
     def update_wizard_nav(current_step: str) -> None:
         idx = steps_order.index(current_step) if current_step in steps_order else 0
@@ -120,30 +120,38 @@ def test_setup_page_show():
     page = SetupPage(callbacks=callbacks)
 
     with (
-        patch("gui.page_setup.ui") as mock_ui,
-        patch("gui.step_base.ui"),
-        patch("gui.step_download.DownloadImageStep.show", new_callable=AsyncMock),
-        patch("gui.step_initial_rotate.InitialRotateStep.show", new_callable=AsyncMock),
-        patch("gui.step_draw_refs.DrawRefsStep.show", new_callable=AsyncMock),
-        patch("gui.step_adjust.AdjustStep.show", new_callable=AsyncMock),
+        patch("gui.pages.setup.ui") as mock_ui,
+        patch("gui.wizard.steps.base.ui"),
         patch(
-            "gui.step_draw_digital_rois.DrawDigitalRoisStep.show",
+            "gui.wizard.steps.download.DownloadImageStep.show", new_callable=AsyncMock
+        ),
+        patch(
+            "gui.wizard.steps.initial_rotate.InitialRotateStep.show",
+            new_callable=AsyncMock,
+        ),
+        patch("gui.wizard.steps.draw_refs.DrawRefsStep.show", new_callable=AsyncMock),
+        patch("gui.wizard.steps.adjust.AdjustStep.show", new_callable=AsyncMock),
+        patch(
+            "gui.wizard.steps.draw_digital_rois.DrawDigitalRoisStep.show",
             new_callable=AsyncMock,
         ),
         patch(
-            "gui.step_draw_analog_rois.DrawAnalogRoisStep.show", new_callable=AsyncMock
+            "gui.wizard.steps.draw_analog_rois.DrawAnalogRoisStep.show",
+            new_callable=AsyncMock,
         ),
-        patch("gui.step_meters.MeterStep.show", new_callable=AsyncMock),
-        patch("gui.step_services.ServicesStep.show", new_callable=AsyncMock),
-        patch("gui.step_final.FinalStep.show", new_callable=AsyncMock),
-        patch("gui.step_download.DownloadImageStep.load_from_config"),
-        patch("gui.step_initial_rotate.InitialRotateStep.load_from_config"),
-        patch("gui.step_draw_refs.DrawRefsStep.load_from_config"),
-        patch("gui.step_adjust.AdjustStep.load_from_config"),
-        patch("gui.step_draw_digital_rois.DrawDigitalRoisStep.load_from_config"),
-        patch("gui.step_draw_analog_rois.DrawAnalogRoisStep.load_from_config"),
-        patch("gui.step_meters.MeterStep.load_from_config"),
-        patch("gui.step_services.ServicesStep.load_from_config"),
+        patch("gui.wizard.steps.meters.MeterStep.show", new_callable=AsyncMock),
+        patch("gui.wizard.steps.services.ServicesStep.show", new_callable=AsyncMock),
+        patch("gui.wizard.steps.final.FinalStep.show", new_callable=AsyncMock),
+        patch("gui.wizard.steps.download.DownloadImageStep.load_from_config"),
+        patch("gui.wizard.steps.initial_rotate.InitialRotateStep.load_from_config"),
+        patch("gui.wizard.steps.draw_refs.DrawRefsStep.load_from_config"),
+        patch("gui.wizard.steps.adjust.AdjustStep.load_from_config"),
+        patch(
+            "gui.wizard.steps.draw_digital_rois.DrawDigitalRoisStep.load_from_config"
+        ),
+        patch("gui.wizard.steps.draw_analog_rois.DrawAnalogRoisStep.load_from_config"),
+        patch("gui.wizard.steps.meters.MeterStep.load_from_config"),
+        patch("gui.wizard.steps.services.ServicesStep.load_from_config"),
     ):
         mock_ui.splitter.return_value.__enter__ = MagicMock()
         mock_ui.splitter.return_value.__exit__ = MagicMock()
@@ -166,7 +174,7 @@ def test_setup_page_show():
 
 
 def test_setup_page_gather_config_model_files_no_spaces():
-    from gui.step_draw_rois_base import Roi
+    from gui.wizard.steps.draw_rois_base import Roi
 
     callbacks = MagicMock()
     config = Config()
@@ -283,7 +291,7 @@ def test_setup_page_gather_config_model_files_no_spaces():
 
 
 def test_show_rois_does_not_call_set_image():
-    from gui.step_draw_rois_base import DrawRoisBaseStep, Roi
+    from gui.wizard.steps.draw_rois_base import DrawRoisBaseStep, Roi
 
     set_img = MagicMock()
     draw_roi = MagicMock(return_value="<rect />")

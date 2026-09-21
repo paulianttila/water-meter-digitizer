@@ -2,7 +2,7 @@
 
 from unittest.mock import MagicMock
 
-from gui.wizard_navigator import (
+from gui.wizard.navigator import (
     NAME_ADJUST,
     NAME_DOWNLOAD_IMAGE,
     NAME_DRAW_DIGITAL_ROIS,

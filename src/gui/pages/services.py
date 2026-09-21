@@ -6,7 +6,6 @@ import logging
 from nicegui import ui
 
 from callbacks import Callbacks
-from gui.base_page import BasePage
 from gui.components import (
     DiagnosticsCard,
     LeakMonitorCard,
@@ -14,6 +13,7 @@ from gui.components import (
     async_fetch_and_render,
     page_header,
 )
+from gui.pages.base import BasePage
 
 logger = logging.getLogger(__name__)
 

@@ -8,9 +8,7 @@ from nicegui import ui
 import utils.image
 from configuration import Config
 from data_classes import RefImage
-from processor.image import ImageProcessor
-
-from .adjust import (
+from gui.wizard.adjust import (
     build_filter_curves_card,
     build_glare_suppression_card,
     build_histogram_card,
@@ -18,7 +16,9 @@ from .adjust import (
     build_unsharp_mask_card,
     generate_histogram_svg,
 )
-from .step_base import BaseStep
+from processor.image import ImageProcessor
+
+from .base import BaseStep
 
 logger = logging.getLogger(__name__)
 

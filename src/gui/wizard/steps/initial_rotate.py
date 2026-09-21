@@ -5,7 +5,7 @@ from nicegui import ui
 from configuration import Alignment
 from processor.image import ImageProcessor
 
-from .step_base import BaseStep
+from .base import BaseStep
 
 HELP_TEXT = (
     "- **Coarse Rotation**: Rotate image in 90° steps (`-90°`, `180°`, `+90°`) "

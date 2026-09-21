@@ -9,7 +9,7 @@ from PIL import Image
 
 import utils.image as img_utils
 from configuration import Config
-from gui.step_adjust import AdjustStep
+from gui.wizard.steps.adjust import AdjustStep
 
 
 @pytest.fixture
@@ -287,8 +287,8 @@ def test_adjust_step_show():
     )
 
     with (
-        patch("gui.step_adjust.ui") as mock_ui,
-        patch("gui.step_base.ui") as mock_base_ui,
+        patch("gui.wizard.steps.adjust.ui") as mock_ui,
+        patch("gui.wizard.steps.base.ui") as mock_base_ui,
     ):
         mock_ui.step.return_value.__enter__ = MagicMock()
         mock_ui.step.return_value.__exit__ = MagicMock()

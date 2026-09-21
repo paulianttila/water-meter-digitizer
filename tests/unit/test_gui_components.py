@@ -11,9 +11,9 @@ from gui.components.diagnostics_card import DiagnosticsCard
 from gui.components.history_table_card import HistoryTableCard
 from gui.components.leak_monitor_card import LeakMonitorCard
 from gui.components.services_status_card import ServicesStatusCard
-from gui.page_api_console import ApiConsolePage
-from gui.page_previous_values import PreviousValuesPage
-from gui.page_services import ServicesPage
+from gui.pages.api_console import ApiConsolePage
+from gui.pages.previous_values import PreviousValuesPage
+from gui.pages.services import ServicesPage
 from simulator.meter_generator import MeterImageGenerator
 
 
@@ -292,7 +292,7 @@ def test_api_console_page_mock_camera_generate_and_reset():
     with (
         patch("requests.get") as mock_get,
         patch("requests.post") as mock_post,
-        patch("gui.page_api_console.ui.notify") as mock_notify,
+        patch("gui.pages.api_console.ui.notify") as mock_notify,
     ):
         mock_resp_get = MagicMock()
         mock_resp_get.ok = True
@@ -350,7 +350,7 @@ def test_api_console_page_execute_mock_query():
     page = ApiConsolePage()
     page.mock_url_display = MagicMock(value="/api/mock_camera?value=00999.88888")
     page.mock_img_elem = MagicMock()
-    with patch("gui.page_api_console.ui.notify") as mock_notify:
+    with patch("gui.pages.api_console.ui.notify") as mock_notify:
         asyncio.run(page._execute_mock_query())
         assert page.mock_value == "00999.88888"
         assert (
@@ -375,7 +375,7 @@ def test_api_console_page_reset_to_defaults():
     page.mock_digit_overrides = ["1", "2", "3", "4", "5"]
     page.mock_img_elem = MagicMock()
 
-    with patch("gui.page_api_console.ui.notify") as mock_notify:
+    with patch("gui.pages.api_console.ui.notify") as mock_notify:
         asyncio.run(page._reset_to_defaults())
         assert page.mock_mode == "fixed"
         assert page.mock_value == "00452.91241"
@@ -393,7 +393,7 @@ def test_api_console_page_reset_to_defaults():
 
 def test_api_console_page_apply_as_active_image_source(mock_callbacks):
     page = ApiConsolePage(callbacks=mock_callbacks)
-    with patch("gui.page_api_console.ui.notify") as mock_notify:
+    with patch("gui.pages.api_console.ui.notify") as mock_notify:
         page._apply_as_active_image_source()
         mock_callbacks.get_config.assert_called_once()
         mock_callbacks.save_config_file.assert_called_once()
@@ -402,14 +402,14 @@ def test_api_console_page_apply_as_active_image_source(mock_callbacks):
 
 
 def test_api_console_scenario_presets():
-    from gui.page_api_console import SCENARIO_PRESETS
+    from gui.pages.api_console import SCENARIO_PRESETS
 
     page = ApiConsolePage()
     assert len(SCENARIO_PRESETS) >= 5
 
     # Test applying first preset
     preset = SCENARIO_PRESETS[1]  # Tilted & Noisy
-    with patch("gui.page_api_console.ui.notify") as mock_notify:
+    with patch("gui.pages.api_console.ui.notify") as mock_notify:
         asyncio.run(page._apply_scenario_preset(preset))
         assert page.mock_rotate == 15.0
         assert page.mock_noise == 8.0
@@ -419,7 +419,7 @@ def test_api_console_scenario_presets():
 
 
 def test_api_console_curl_generation_and_image_download():
-    from gui.page_api_console import generate_curl_command
+    from gui.pages.api_console import generate_curl_command
 
     cmd = generate_curl_command(
         "GET", "http://localhost:3000/meter", headers={"Accept": "application/json"}
@@ -431,8 +431,8 @@ def test_api_console_curl_generation_and_image_download():
     page = ApiConsolePage()
     page._raw_mock_bytes = b"sample_jpg_bytes"
     with (
-        patch("gui.page_api_console.ui.download") as mock_dl,
-        patch("gui.page_api_console.ui.notify"),
+        patch("gui.pages.api_console.ui.download") as mock_dl,
+        patch("gui.pages.api_console.ui.notify"),
     ):
         page._download_mock_image()
         mock_dl.assert_called_once_with(
@@ -452,9 +452,9 @@ def test_api_console_test_in_engine(mock_callbacks):
     mock_callbacks.get_config.return_value = Config()
 
     with (
-        patch("gui.page_api_console.ui.dialog") as mock_dialog,
-        patch("gui.page_api_console.ui.card"),
-        patch("gui.page_api_console.ui.notify"),
+        patch("gui.pages.api_console.ui.dialog") as mock_dialog,
+        patch("gui.pages.api_console.ui.card"),
+        patch("gui.pages.api_console.ui.notify"),
     ):
         mock_dialog.return_value.__enter__ = MagicMock()
         mock_dialog.return_value.__exit__ = MagicMock()

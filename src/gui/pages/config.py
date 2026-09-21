@@ -7,7 +7,6 @@ from nicegui import ui
 
 from callbacks import Callbacks
 from configuration import Config
-from gui.base_page import BasePage
 from gui.components import (
     open_code_inspect_dialog,
     open_config_history_dialog,
@@ -15,7 +14,8 @@ from gui.components import (
     page_header,
     run_engine_test_dialog,
 )
-from gui.config_field_registry import (
+from gui.pages.base import BasePage
+from gui.pages.config_field_registry import (
     FIELD_OVERRIDES,
     FIELD_SCHEMAS,
     build_field_registry,

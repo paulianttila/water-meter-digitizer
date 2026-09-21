@@ -10,17 +10,18 @@ from fastapi import FastAPI
 from nicegui import ui
 
 from callbacks import Callbacks
-from gui.base_page import BasePage
+from gui.pages import (
+    AboutPage,
+    ApiConsolePage,
+    BasePage,
+    ConfigPage,
+    HelpPage,
+    MeterPage,
+    PreviousValuesPage,
+    ServicesPage,
+    SetupPage,
+)
 from main import VERSION
-
-from .page_about import AboutPage
-from .page_api_console import ApiConsolePage
-from .page_config import ConfigPage
-from .page_help import HelpPage
-from .page_meter import MeterPage
-from .page_previous_values import PreviousValuesPage
-from .page_services import ServicesPage
-from .page_setup import SetupPage
 
 logger = logging.getLogger(__name__)
 

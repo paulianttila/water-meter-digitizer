@@ -5,7 +5,7 @@ from unittest.mock import MagicMock
 import pytest
 
 from callbacks import Callbacks
-from gui.base_page import BasePage
+from gui.pages.base import BasePage
 
 
 class DummyPage(BasePage):

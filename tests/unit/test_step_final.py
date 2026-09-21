@@ -3,7 +3,7 @@
 from unittest.mock import MagicMock, patch
 
 from configuration import Config
-from gui.step_final import FinalStep
+from gui.wizard.steps.final import FinalStep
 
 
 def test_final_step_set_config():
@@ -38,13 +38,13 @@ def test_final_step_syntax_check():
     # Valid syntax
     config = Config()
     step.editor = MagicMock(value=config.save_to_string())
-    with patch("gui.step_final.ui.notify") as mock_notify:
+    with patch("gui.wizard.steps.final.ui.notify") as mock_notify:
         assert step._syntax_check() is True
         mock_notify.assert_called_with("Syntax is correct", type="positive")
 
     # Invalid syntax
     step.editor = MagicMock(value="invalid [ini format ::::")
-    with patch("gui.step_final.ui.notify") as mock_notify:
+    with patch("gui.wizard.steps.final.ui.notify") as mock_notify:
         assert step._syntax_check() is False
         mock_notify.assert_called_once()
         assert "Syntax error" in mock_notify.call_args[0][0]
@@ -63,7 +63,7 @@ def test_final_step_show_config():
     # Valid config JSON preview
     config = Config()
     step.editor = MagicMock(value=config.save_to_string())
-    with patch("gui.step_final.open_code_inspect_dialog") as mock_inspect:
+    with patch("gui.wizard.steps.final.open_code_inspect_dialog") as mock_inspect:
         step._show_config()
         assert mock_inspect.called
         kwargs = mock_inspect.call_args.kwargs
@@ -72,7 +72,7 @@ def test_final_step_show_config():
 
     # Invalid config error handling
     step.editor = MagicMock(value="invalid [ini format ::::")
-    with patch("gui.step_final.ui.notify") as mock_notify:
+    with patch("gui.wizard.steps.final.ui.notify") as mock_notify:
         step._show_config()
         mock_notify.assert_called_once()
         assert "Syntax error" in mock_notify.call_args[0][0]
@@ -91,7 +91,7 @@ def test_final_step_save_and_use_config():
     config = Config()
     step.editor = MagicMock(value=config.save_to_string())
 
-    with patch("gui.step_final.ui.notify"):
+    with patch("gui.wizard.steps.final.ui.notify"):
         step._save_config()
         assert save_refs_func.called
         callbacks.save_config_file.assert_called_once_with(step.editor.value)
@@ -112,14 +112,14 @@ def test_final_step_prompt_hot_reload():
         save_refs_func=save_refs_func,
     )
     with (
-        patch("gui.step_final.ui.dialog") as mock_dialog,
-        patch("gui.step_final.ui.card"),
-        patch("gui.step_final.ui.row"),
-        patch("gui.step_final.ui.element"),
-        patch("gui.step_final.ui.icon"),
-        patch("gui.step_final.ui.column"),
-        patch("gui.step_final.ui.label"),
-        patch("gui.step_final.ui.button"),
+        patch("gui.wizard.steps.final.ui.dialog") as mock_dialog,
+        patch("gui.wizard.steps.final.ui.card"),
+        patch("gui.wizard.steps.final.ui.row"),
+        patch("gui.wizard.steps.final.ui.element"),
+        patch("gui.wizard.steps.final.ui.icon"),
+        patch("gui.wizard.steps.final.ui.column"),
+        patch("gui.wizard.steps.final.ui.label"),
+        patch("gui.wizard.steps.final.ui.button"),
     ):
         dialog_inst = MagicMock()
         mock_dialog.return_value.__enter__.return_value = dialog_inst

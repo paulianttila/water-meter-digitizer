@@ -4,7 +4,7 @@ import asyncio
 from unittest.mock import MagicMock, patch
 
 from configuration import Alignment
-from gui.step_initial_rotate import InitialRotateStep
+from gui.wizard.steps.initial_rotate import InitialRotateStep
 
 
 def test_initial_rotate_init_and_load():
@@ -51,8 +51,8 @@ def test_initial_rotate_show():
     step = InitialRotateStep("Rotate", set_image_callback=set_img)
 
     with (
-        patch("gui.step_initial_rotate.ui") as mock_ui,
-        patch("gui.step_base.ui") as mock_base_ui,
+        patch("gui.wizard.steps.initial_rotate.ui") as mock_ui,
+        patch("gui.wizard.steps.base.ui") as mock_base_ui,
     ):
         mock_ui.step.return_value.__enter__ = MagicMock()
         mock_ui.step.return_value.__exit__ = MagicMock()

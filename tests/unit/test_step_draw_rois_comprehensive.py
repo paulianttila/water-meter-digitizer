@@ -5,10 +5,10 @@ from unittest.mock import MagicMock, patch
 
 from configuration import CNNParams
 from data_classes import ImagePosition
-from gui.step_draw_analog_rois import DrawAnalogRoisStep
-from gui.step_draw_digital_rois import DrawDigitalRoisStep
-from gui.step_draw_refs import DrawRefsStep
-from gui.step_draw_rois_base import DrawRoisBaseStep
+from gui.wizard.steps.draw_analog_rois import DrawAnalogRoisStep
+from gui.wizard.steps.draw_digital_rois import DrawDigitalRoisStep
+from gui.wizard.steps.draw_refs import DrawRefsStep
+from gui.wizard.steps.draw_rois_base import DrawRoisBaseStep
 from processor.digitizer import ReadoutResult
 
 
@@ -33,7 +33,7 @@ def test_draw_rois_base_alignments_and_resizing():
         ImagePosition(name="roi3", x=90, y=10, w=25, h=35),
     ]
 
-    with patch("gui.step_draw_rois_base.ui"):
+    with patch("gui.wizard.steps.draw_rois_base.ui"):
         step.load_rois(items)
         assert len(step.rois) == 3
 
@@ -90,7 +90,7 @@ def test_draw_rois_base_mouse_events_and_roi_ops():
         show_temp_draw_in_svg_func=show_temp,
     )
 
-    with patch("gui.step_draw_rois_base.ui"):
+    with patch("gui.wizard.steps.draw_rois_base.ui"):
         step.load_rois([ImagePosition(name="roi1", x=10, y=10, w=20, h=20)])
 
         # Simulate Mouse Down
@@ -204,8 +204,8 @@ def test_show_digits_and_analogs_execution():
 
     with (
         patch.object(digital_step, "_cut_images", return_value=[]),
-        patch("gui.step_draw_digital_rois.DigitizerProcessor") as MockProc,
-        patch("gui.step_draw_digital_rois.ui") as mock_ui,
+        patch("gui.wizard.steps.draw_digital_rois.DigitizerProcessor") as MockProc,
+        patch("gui.wizard.steps.draw_digital_rois.ui") as mock_ui,
     ):
         mock_ui.row.return_value.__enter__ = MagicMock()
         mock_ui.row.return_value.__exit__ = MagicMock()
@@ -239,8 +239,8 @@ def test_show_digits_and_analogs_execution():
 
     with (
         patch.object(analog_step, "_cut_images", return_value=[]),
-        patch("gui.step_draw_analog_rois.DigitizerProcessor") as MockProcA,
-        patch("gui.step_draw_analog_rois.ui") as mock_ui_a,
+        patch("gui.wizard.steps.draw_analog_rois.DigitizerProcessor") as MockProcA,
+        patch("gui.wizard.steps.draw_analog_rois.ui") as mock_ui_a,
     ):
         mock_ui_a.row.return_value.__enter__ = MagicMock()
         mock_ui_a.row.return_value.__exit__ = MagicMock()
@@ -274,9 +274,9 @@ def test_step_draw_refs_show():
     )
 
     with (
-        patch("gui.step_draw_refs.ui") as mock_ui,
-        patch("gui.step_draw_rois_base.ui") as mock_base_rois_ui,
-        patch("gui.step_base.ui") as mock_base_ui,
+        patch("gui.wizard.steps.draw_refs.ui") as mock_ui,
+        patch("gui.wizard.steps.draw_rois_base.ui") as mock_base_rois_ui,
+        patch("gui.wizard.steps.base.ui") as mock_base_ui,
     ):
         mock_ui.step.return_value.__enter__ = MagicMock()
         mock_ui.step.return_value.__exit__ = MagicMock()
@@ -313,10 +313,10 @@ def test_step_draw_digital_and_analog_show():
     )
 
     with (
-        patch("gui.step_draw_digital_rois.ui") as mock_ui_d,
-        patch("gui.step_draw_analog_rois.ui") as mock_ui_a,
-        patch("gui.step_draw_rois_base.ui") as mock_base_rois_ui,
-        patch("gui.step_base.ui") as mock_base_ui,
+        patch("gui.wizard.steps.draw_digital_rois.ui") as mock_ui_d,
+        patch("gui.wizard.steps.draw_analog_rois.ui") as mock_ui_a,
+        patch("gui.wizard.steps.draw_rois_base.ui") as mock_base_rois_ui,
+        patch("gui.wizard.steps.base.ui") as mock_base_ui,
         patch.object(digital_step, "_get_cnn_models", return_value={"m1": "m1.tflite"}),
         patch.object(analog_step, "_get_cnn_models", return_value={"a1": "a1.tflite"}),
     ):

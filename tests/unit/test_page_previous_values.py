@@ -4,7 +4,7 @@ import asyncio
 from unittest.mock import MagicMock, patch
 
 from configuration import Config, MeterConfig
-from gui.page_previous_values import PreviousValuesPage
+from gui.pages.previous_values import PreviousValuesPage
 
 
 def test_previous_values_page_show_and_refresh():
@@ -27,7 +27,7 @@ def test_previous_values_page_show_and_refresh():
     page = PreviousValuesPage(callbacks)
 
     with (
-        patch("gui.page_previous_values.ui") as mock_ui,
+        patch("gui.pages.previous_values.ui") as mock_ui,
         patch("gui.components.page_header.ui"),
     ):
         mock_ui.column.return_value.__enter__ = MagicMock()
@@ -63,7 +63,7 @@ def test_previous_values_stepper_and_live_presets():
     assert page.value_input.value == "11.4"
 
     # Use live in form
-    with patch("gui.page_previous_values.ui.notify"):
+    with patch("gui.pages.previous_values.ui.notify"):
         page._use_live_in_form()
         assert page.value_input.value == "15.7500"
 
@@ -76,8 +76,8 @@ def test_previous_values_export_and_modal():
     page = PreviousValuesPage(callbacks)
 
     with (
-        patch("gui.page_previous_values.ui.download") as mock_download,
-        patch("gui.page_previous_values.ui.notify"),
+        patch("gui.pages.previous_values.ui.download") as mock_download,
+        patch("gui.pages.previous_values.ui.notify"),
     ):
         page._export_csv()
         mock_download.assert_called_once()
@@ -86,8 +86,8 @@ def test_previous_values_export_and_modal():
         assert b"total,100.000" in args[0]
 
     with (
-        patch("gui.page_previous_values.ui.dialog") as mock_dialog,
-        patch("gui.page_previous_values.ui.card"),
+        patch("gui.pages.previous_values.ui.dialog") as mock_dialog,
+        patch("gui.pages.previous_values.ui.card"),
     ):
         mock_dialog.return_value.__enter__ = MagicMock()
         mock_dialog.return_value.__exit__ = MagicMock()
@@ -105,7 +105,7 @@ def test_previous_values_page_save_baseline():
     page.value_input = MagicMock(value="555.123")
     page.refresh_table = MagicMock()
 
-    with patch("gui.page_previous_values.ui.notify"):
+    with patch("gui.pages.previous_values.ui.notify"):
         asyncio.run(page._save_baseline())
         callbacks.set_previous_value.assert_called_with("total", "555.123")
         page.refresh_table.assert_called_once()

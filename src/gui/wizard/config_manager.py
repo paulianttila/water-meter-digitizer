@@ -13,14 +13,16 @@ from configuration import CNNParams, Config
 from data_classes import ImagePosition, MeterConfig, RefImage
 
 if TYPE_CHECKING:
-    from gui.step_adjust import AdjustStep
-    from gui.step_download import DownloadImageStep
-    from gui.step_draw_analog_rois import DrawAnalogRoisStep
-    from gui.step_draw_digital_rois import DrawDigitalRoisStep
-    from gui.step_draw_refs import DrawRefsStep
-    from gui.step_initial_rotate import InitialRotateStep
-    from gui.step_meters import MeterStep
-    from gui.step_services import ServicesStep
+    from gui.wizard.steps import (
+        AdjustStep,
+        DownloadImageStep,
+        DrawAnalogRoisStep,
+        DrawDigitalRoisStep,
+        DrawRefsStep,
+        InitialRotateStep,
+        MeterStep,
+        ServicesStep,
+    )
 
 logger = logging.getLogger(__name__)
 

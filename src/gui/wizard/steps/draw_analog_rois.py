@@ -7,8 +7,8 @@ from nicegui import ui
 from configuration import CNNParams
 from processor.digitizer import DigitizerProcessor
 
-from .step_base import BaseStep
-from .step_draw_rois_base import DrawRoisBaseStep
+from .base import BaseStep
+from .draw_rois_base import DrawRoisBaseStep
 
 HELP_TEXT = (
     "- **Analog Dials**: Add bounding boxes tightly around each "

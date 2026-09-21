@@ -4,7 +4,7 @@ import asyncio
 from unittest.mock import MagicMock, patch
 
 from gui.components import format_diff_html
-from gui.page_config import (
+from gui.pages.config import (
     ConfigPage,
     get_section_icon,
     parse_ini_sections,
@@ -104,7 +104,10 @@ def test_page_config_init_and_show():
     assert page.txt == "[TakeImage]\nUrl = http://mock/capture\n"
     assert page.view_mode == "editor"
 
-    with patch("gui.page_config.ui") as mock_ui, patch("gui.components.page_header.ui"):
+    with (
+        patch("gui.pages.config.ui") as mock_ui,
+        patch("gui.components.page_header.ui"),
+    ):
         mock_ui.element.return_value.__enter__ = MagicMock()
         mock_ui.element.return_value.__exit__ = MagicMock()
         mock_ui.row.return_value.__enter__ = MagicMock()
@@ -129,9 +132,9 @@ def test_page_config_editor_actions():
     page = ConfigPage(callbacks)
 
     with (
-        patch("gui.page_config.ui") as mock_ui,
+        patch("gui.pages.config.ui") as mock_ui,
         patch("gui.components.page_header.ui"),
-        patch("gui.page_config.theme_copy_to_clipboard") as mock_clipboard,
+        patch("gui.pages.config.theme_copy_to_clipboard") as mock_clipboard,
     ):
         mock_ui.element.return_value.__enter__ = MagicMock()
         mock_ui.element.return_value.__exit__ = MagicMock()
@@ -178,7 +181,7 @@ def test_page_config_editor_actions():
 
 
 def test_get_field_schema():
-    from gui.page_config import get_field_schema
+    from gui.pages.config import get_field_schema
 
     # Choice / select
     assert get_field_schema("DEFAULT", "LogLevel", "INFO")["type"] == "select"
@@ -220,7 +223,7 @@ def test_get_field_schema():
 
 
 def test_update_ini_value():
-    from gui.page_config import update_ini_value
+    from gui.pages.config import update_ini_value
 
     sample = """[DEFAULT]
 LogLevel = INFO                                                           # App log level

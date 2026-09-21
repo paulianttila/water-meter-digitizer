@@ -10,7 +10,7 @@ import utils.image
 from data_classes import CutImage, ImagePosition, RefImage
 from processor.image import ImageProcessor
 
-from .step_base import BaseStep
+from .base import BaseStep
 
 logger = logging.getLogger(__name__)
 
@@ -450,7 +450,7 @@ class DrawRoisBaseStep(BaseStep):
             for img in cut_images
         }
 
-        from gui.dialog_benchmark import open_model_benchmark_dialog
+        from gui.dialogs import open_model_benchmark_dialog
 
         open_model_benchmark_dialog(
             model_type=model_type,

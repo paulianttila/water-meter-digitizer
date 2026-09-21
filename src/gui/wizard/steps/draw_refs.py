@@ -4,7 +4,7 @@ from nicegui import ui
 
 from data_classes import RefImage
 
-from .step_draw_rois_base import DrawRoisBaseStep
+from .draw_rois_base import DrawRoisBaseStep
 
 HELP_TEXT = (
     "- **Reference Points**: Mark **exactly 3 distinct visual landmarks** "

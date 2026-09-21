@@ -7,7 +7,7 @@ import nicegui
 from nicegui import ui
 
 from callbacks import Callbacks
-from gui.base_page import BasePage
+from gui.pages.base import BasePage
 from gui.theme import CARD_DEFAULT, FONT_MONO_VALUE, ROW_ACTIONS, ROW_HEADER
 from main import VERSION
 from utils.diagnostics import get_process_memory_info, get_system_info

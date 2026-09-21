@@ -3,10 +3,10 @@
 import asyncio
 from unittest.mock import MagicMock, patch
 
-import gui.dialog_benchmark  # noqa: F401
-from gui.step_draw_analog_rois import DrawAnalogRoisStep
-from gui.step_draw_digital_rois import DrawDigitalRoisStep
-from gui.step_draw_rois_base import Roi
+import gui.dialogs.benchmark  # noqa: F401
+from gui.wizard.steps.draw_analog_rois import DrawAnalogRoisStep
+from gui.wizard.steps.draw_digital_rois import DrawDigitalRoisStep
+from gui.wizard.steps.draw_rois_base import Roi
 from processor.digitizer import ReadoutResult
 
 
@@ -70,7 +70,7 @@ def test_digital_rois_benchmark_success_flow():
         patch.object(step, "_get_cnn_models", return_value=mock_models),
         patch.object(step, "_cut_images", return_value=mock_cuts),
         patch.object(step, "_get_base64_image_by_name", return_value="dummy_b64"),
-        patch("gui.dialog_benchmark.DigitizerProcessor") as mock_dp_cls,
+        patch("gui.dialogs.benchmark.DigitizerProcessor") as mock_dp_cls,
         patch("nicegui.ui.dialog") as mock_dialog,
         patch("nicegui.ui.card"),
         patch("nicegui.ui.row"),
@@ -124,7 +124,7 @@ def test_analog_rois_benchmark_success_flow():
         patch.object(step, "_get_cnn_models", return_value=mock_models),
         patch.object(step, "_cut_images", return_value=mock_cuts),
         patch.object(step, "_get_base64_image_by_name", return_value="dummy_b64"),
-        patch("gui.dialog_benchmark.DigitizerProcessor") as mock_dp_cls,
+        patch("gui.dialogs.benchmark.DigitizerProcessor") as mock_dp_cls,
         patch("nicegui.ui.dialog") as mock_dialog,
         patch("nicegui.ui.card"),
         patch("nicegui.ui.row"),

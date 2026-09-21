@@ -3,7 +3,7 @@
 from unittest.mock import MagicMock, patch
 
 from data_classes import MeterConfig
-from gui.step_meters import Meter, MeterParams, MeterStep
+from gui.wizard.steps.meters import DigitsHolder, Meter, MeterParams, MeterStep
 
 
 def test_meter_init_and_update():
@@ -22,7 +22,7 @@ def test_meter_init_and_update():
 
 
 def test_meter_show_new_and_remove():
-    with patch("gui.step_meters.ui") as mock_ui:
+    with patch("gui.wizard.steps.meters.ui") as mock_ui:
         mock_ui.card.return_value.__enter__ = MagicMock()
         mock_ui.card.return_value.__exit__ = MagicMock()
         mock_ui.row.return_value.__enter__ = MagicMock()
@@ -50,7 +50,7 @@ def test_step_meters_load_and_add_remove():
         get_digit_names_func=get_digit_names,
     )
 
-    with patch("gui.step_meters.ui") as mock_ui:
+    with patch("gui.wizard.steps.meters.ui") as mock_ui:
         mock_ui.card.return_value.__enter__ = MagicMock()
         mock_ui.card.return_value.__exit__ = MagicMock()
         mock_ui.row.return_value.__enter__ = MagicMock()
@@ -138,8 +138,6 @@ def test_meter_step_refresh_digit_names():
 
 
 def test_digits_holder():
-    from gui.step_meters import DigitsHolder
-
     change_called = False
 
     def on_ch():
@@ -164,7 +162,7 @@ def test_meter_render_inline_badges_and_dialog():
     # Without badge container (should not crash)
     m.render_inline_badges()
 
-    with patch("gui.step_meters.ui") as mock_ui:
+    with patch("gui.wizard.steps.meters.ui") as mock_ui:
         mock_ui.card.return_value.__enter__ = MagicMock()
         mock_ui.card.return_value.__exit__ = MagicMock()
         mock_ui.row.return_value.__enter__ = MagicMock()

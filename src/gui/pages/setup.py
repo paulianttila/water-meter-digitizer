@@ -8,10 +8,10 @@ from nicegui import events, ui
 import utils.image as ImageUtils
 from callbacks import Callbacks
 from configuration import Config
-from gui.base_page import BasePage
 from gui.components import open_config_history_dialog, open_confirm_dialog
-from gui.wizard_config_manager import WizardConfigManager, resolve_model_path
-from gui.wizard_navigator import (
+from gui.pages.base import BasePage
+from gui.wizard.config_manager import WizardConfigManager, resolve_model_path
+from gui.wizard.navigator import (
     NAME_ADJUST,
     NAME_DOWNLOAD_IMAGE,
     NAME_DRAW_ANALOG_ROIS,
@@ -24,16 +24,17 @@ from gui.wizard_navigator import (
     WizardNavigator,
     steps_order,
 )
-
-from .step_adjust import AdjustStep
-from .step_download import DownloadImageStep
-from .step_draw_analog_rois import DrawAnalogRoisStep
-from .step_draw_digital_rois import DrawDigitalRoisStep
-from .step_draw_refs import DrawRefsStep
-from .step_final import FinalStep
-from .step_initial_rotate import InitialRotateStep
-from .step_meters import MeterStep
-from .step_services import ServicesStep
+from gui.wizard.steps import (
+    AdjustStep,
+    DownloadImageStep,
+    DrawAnalogRoisStep,
+    DrawDigitalRoisStep,
+    DrawRefsStep,
+    FinalStep,
+    InitialRotateStep,
+    MeterStep,
+    ServicesStep,
+)
 
 logger = logging.getLogger(__name__)
 

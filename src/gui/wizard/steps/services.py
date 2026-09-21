@@ -5,7 +5,7 @@ from nicegui import ui
 from configuration import Config
 from leak.models import ValueType
 
-from .step_base import BaseStep
+from .base import BaseStep
 
 HELP_TEXT = (
     "- **Background Poller**: Enable scheduled periodic readouts without "

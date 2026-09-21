@@ -10,8 +10,8 @@ from gui.components.history_table_card import HistoryTableCard
 from gui.components.leak_monitor_card import LeakMonitorCard
 from gui.components.services_status_card import ServicesStatusCard
 from gui.components.time_machine_card import TimeMachineCard
-from gui.page_meter import MeterPage
-from gui.page_services import ServicesPage
+from gui.pages.meter import MeterPage
+from gui.pages.services import ServicesPage
 
 
 def test_base_component_lifecycle():

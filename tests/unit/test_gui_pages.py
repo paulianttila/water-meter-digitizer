@@ -6,8 +6,8 @@ from unittest.mock import MagicMock, patch
 import pytest
 
 import gui.theme as theme
-from gui.page_about import AboutPage
-from gui.page_help import HelpPage
+from gui.pages.about import AboutPage
+from gui.pages.help import HelpPage
 
 
 @pytest.fixture
@@ -59,7 +59,7 @@ def test_theme_copy_to_clipboard():
 
 def test_page_about_show():
     page = AboutPage()
-    with patch("gui.page_about.ui"), patch("gui.components.page_header.ui"):
+    with patch("gui.pages.about.ui"), patch("gui.components.page_header.ui"):
         asyncio.run(page.show())
 
 
@@ -70,7 +70,7 @@ def test_page_about_with_callbacks(mock_callbacks):
     assert "python" in diag
     assert "memory" in diag
     assert "health" in diag
-    with patch("gui.page_about.ui"), patch("gui.components.page_header.ui"):
+    with patch("gui.pages.about.ui"), patch("gui.components.page_header.ui"):
         asyncio.run(page.show())
 
 
@@ -80,7 +80,7 @@ def test_page_about_with_failing_health_callback():
     page = AboutPage(callbacks=mock_cb)
     diag = page._get_diagnostics_data()
     assert "error" in diag["health"]
-    with patch("gui.page_about.ui"), patch("gui.components.page_header.ui"):
+    with patch("gui.pages.about.ui"), patch("gui.components.page_header.ui"):
         asyncio.run(page.show())
 
 
@@ -88,7 +88,7 @@ def test_page_help_show():
     page = HelpPage()
     bundle = page._generate_support_bundle()
     assert "Support Diagnostic Bundle" in bundle
-    with patch("gui.page_help.ui"), patch("gui.components.page_header.ui"):
+    with patch("gui.pages.help.ui"), patch("gui.components.page_header.ui"):
         asyncio.run(page.show())
 
 
@@ -97,7 +97,7 @@ def test_page_help_with_callbacks(mock_callbacks):
     bundle = page._generate_support_bundle()
     assert "Support Diagnostic Bundle" in bundle
     assert "System Status" in bundle
-    with patch("gui.page_help.ui"), patch("gui.components.page_header.ui"):
+    with patch("gui.pages.help.ui"), patch("gui.components.page_header.ui"):
         asyncio.run(page.show())
 
 
@@ -107,12 +107,12 @@ def test_page_help_with_failing_health_callback():
     page = HelpPage(callbacks=mock_cb)
     bundle = page._generate_support_bundle()
     assert "Support Diagnostic Bundle" in bundle
-    with patch("gui.page_help.ui"), patch("gui.components.page_header.ui"):
+    with patch("gui.pages.help.ui"), patch("gui.components.page_header.ui"):
         asyncio.run(page.show())
 
 
 def test_page_help_load_markdown_files():
-    from gui.page_help import _load_help
+    from gui.pages.help import _load_help
 
     expected_files = [
         "pipeline_architecture.md",
@@ -132,11 +132,11 @@ def test_page_help_load_markdown_files():
 
 
 def test_page_api_console_show(mock_callbacks):
-    from gui.page_api_console import ApiConsolePage
+    from gui.pages.api_console import ApiConsolePage
 
     page = ApiConsolePage(callbacks=mock_callbacks)
     with (
-        patch("gui.page_api_console.ui"),
+        patch("gui.pages.api_console.ui"),
         patch("gui.components.page_header.ui"),
         patch.object(page.rest_panel, "render"),
         patch.object(page.mock_panel, "render"),

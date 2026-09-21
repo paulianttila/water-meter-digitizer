@@ -6,7 +6,7 @@ from PIL import Image
 
 import utils.image
 from configuration import Config
-from gui.step_adjust import AdjustStep
+from gui.wizard.steps.adjust import AdjustStep
 
 
 def test_create_clean_default_properties():
@@ -159,7 +159,7 @@ def test_adjust_step_after_clean_config_pipeline():
 
 
 def test_save_refs_keyword_arguments(tmp_path):
-    from gui.step_draw_rois_base import Roi
+    from gui.wizard.steps.draw_rois_base import Roi
 
     # Verify ImagePosition instantiation with keyword arguments works
     roi = Roi(name="Ref1", x=10, y=10, w=20, h=20)
@@ -177,7 +177,7 @@ def test_save_refs_keyword_arguments(tmp_path):
 
 def test_draw_refs_step_warning_logic():
     from data_classes import RefImage
-    from gui.step_draw_refs import DrawRefsStep
+    from gui.wizard.steps.draw_refs import DrawRefsStep
 
     step = DrawRefsStep(
         name="draw_refs",

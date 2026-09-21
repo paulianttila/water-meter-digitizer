@@ -4,8 +4,8 @@ from unittest.mock import MagicMock, patch
 
 from configuration import Config
 from data_classes import RefImage
-from gui.step_draw_rois_base import Roi
-from gui.wizard_config_manager import WizardConfigManager, resolve_model_path
+from gui.wizard.config_manager import WizardConfigManager, resolve_model_path
+from gui.wizard.steps.draw_rois_base import Roi
 
 
 def test_resolve_model_path_empty_or_none():

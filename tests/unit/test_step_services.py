@@ -4,7 +4,7 @@ import asyncio
 from unittest.mock import MagicMock, patch
 
 from configuration import Config
-from gui.step_services import ServicesStep
+from gui.wizard.steps.services import ServicesStep
 
 
 def test_services_step_load_and_apply():
@@ -117,8 +117,8 @@ def test_services_step_show():
     step = ServicesStep(name="Services", set_image_callback=MagicMock())
 
     with (
-        patch("gui.step_services.ui") as mock_ui,
-        patch("gui.step_base.ui") as mock_base_ui,
+        patch("gui.wizard.steps.services.ui") as mock_ui,
+        patch("gui.wizard.steps.base.ui") as mock_base_ui,
     ):
         mock_ui.step.return_value.__enter__ = MagicMock()
         mock_ui.step.return_value.__exit__ = MagicMock()

@@ -2,7 +2,7 @@
 
 from pydantic.fields import FieldInfo
 
-from gui.config_field_registry import (
+from gui.pages.config_field_registry import (
     _field_info_to_schema,
     build_field_registry,
     get_field_schema,

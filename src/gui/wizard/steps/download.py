@@ -7,7 +7,7 @@ from nicegui import ui
 from configuration import ImageSource
 from processor.image import ImageProcessor
 
-from .step_base import BaseStep
+from .base import BaseStep
 
 HELP_TEXT = (
     "- **Camera URL**: Enter snapshot endpoint (e.g. `http://...` or `file://...`).\n"

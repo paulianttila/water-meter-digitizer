@@ -257,7 +257,7 @@ def test_config_glare_serialization():
 def test_step_adjust_load_autocontrast_cut_images():
     from unittest.mock import MagicMock
 
-    from gui.step_adjust import AdjustStep
+    from gui.wizard.steps.adjust import AdjustStep
 
     step = AdjustStep(name="Adjust", set_image_callback=MagicMock())
     step.crop_enabled = MagicMock()
@@ -309,7 +309,7 @@ def test_step_adjust_load_autocontrast_cut_images():
 def test_step_draw_rois_cut_images_with_glare():
     from unittest.mock import MagicMock
 
-    from gui.step_draw_rois_base import DrawRoisBaseStep, Roi
+    from gui.wizard.steps.draw_rois_base import DrawRoisBaseStep, Roi
 
     step = DrawRoisBaseStep(
         name="Digital ROIs",
