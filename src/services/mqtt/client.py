@@ -256,6 +256,7 @@ class MQTTService:
                         "unit": meter.unit,
                         "quality": getattr(meter, "quality", "good"),
                         "confidence": conf,
+                        "valid": getattr(meter, "valid", True),
                         "timestamp": now_iso,
                     }
                     attrs_json = json.dumps(attrs)

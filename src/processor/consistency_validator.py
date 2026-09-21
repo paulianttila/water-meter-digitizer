@@ -23,6 +23,9 @@ class ConsistencyValidator:
         previous_value: str,
     ) -> None:
         """Verify that current value satisfies continuity, direction, and rate-of-change constraints."""
+        if not current_value or not previous_value:
+            return
+
         try:
             current = Decimal(current_value)
             previous = Decimal(previous_value)

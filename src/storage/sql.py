@@ -302,6 +302,7 @@ class SQLAlchemyStorageBackend(StorageBackend):
                 unit=m.unit or "",
                 quality=getattr(m, "quality", "good"),
                 confidence=getattr(m, "confidence", 100.0),
+                valid=getattr(m, "valid", True),
             )
             confidence_scores[m.name] = getattr(m, "confidence", 100.0)
 

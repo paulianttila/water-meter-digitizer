@@ -96,16 +96,22 @@ stages:
             unit: ""
             quality: "good"
             confidence: 93.5
+            warning: ""
+            valid: true
           - name: analog
             value: "91241"
             unit: ""
             quality: "good"
             confidence: 99.5
+            warning: ""
+            valid: true
           - name: total
             value: "00452.91241"
             unit: ""
             quality: "good"
             confidence: 96.2
+            warning: ""
+            valid: true
         digital_results:
           digit1: "0.0"
           digit2: "0.0"
@@ -128,3 +134,5 @@ stages:
           digit4: 90.9
           digit5: 100.0
         error: ""
+        warning: ""
+        valid: true

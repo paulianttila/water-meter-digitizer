@@ -11,7 +11,6 @@ from src.processor.digitizer import (
     MODEL_ANALOG100,
     MODEL_DIGITAL,
     MODEL_DIGITAL100,
-    ConsistencyError,
     DigitizerProcessor,
     Meter,
     MeterConfig,
@@ -274,10 +273,10 @@ def test_postprocessing_with_rate_too_high(
     meter = get_default_meter()
     meter.config.max_rate_value = 0.200
     processor = get_default_processor()
-    with pytest.raises(ConsistencyError) as exc_info:
-        processor._postprocess_meter_value(meter, {}, get_default_cnn_results())
+    processor._postprocess_meter_value(meter, {}, get_default_cnn_results())
 
-    assert str(exc_info.value) == "Rate too high (0.201)"
+    assert meter.warning == "Rate too high (0.201)"
+    assert meter.valid is False
     assert meter.value == "123.567"
     mock_load_previous_value_from_file.assert_called_with("test-file.ini", "meter1", 30)
     mock_save_previous_value_to_file.assert_not_called()
@@ -292,10 +291,10 @@ def test_postprocessing_with_rate_too_high_2l(
     meter = get_default_meter()
     meter.config.max_rate_value = 0.002
     processor = get_default_processor()
-    with pytest.raises(ConsistencyError) as exc_info:
-        processor._postprocess_meter_value(meter, {}, get_default_cnn_results())
+    processor._postprocess_meter_value(meter, {}, get_default_cnn_results())
 
-    assert str(exc_info.value) == "Rate too high (0.003)"
+    assert meter.warning == "Rate too high (0.003)"
+    assert meter.valid is False
     assert meter.value == "123.567"
     mock_load_previous_value_from_file.assert_called_with("test-file.ini", "meter1", 30)
     mock_save_previous_value_to_file.assert_not_called()
@@ -310,10 +309,10 @@ def test_postprocessing_with_negative_rate(
     meter = get_default_meter()
     meter.config.allow_negative_rates = False
     processor = get_default_processor()
-    with pytest.raises(ConsistencyError) as exc_info:
-        processor._postprocess_meter_value(meter, {}, get_default_cnn_results())
+    processor._postprocess_meter_value(meter, {}, get_default_cnn_results())
 
-    assert str(exc_info.value) == "Negative rate (-0.001)"
+    assert meter.warning == "Negative rate (-0.001)"
+    assert meter.valid is False
     assert meter.value == "123.567"
     mock_load_previous_value_from_file.assert_called_with("test-file.ini", "meter1", 30)
     mock_save_previous_value_to_file.assert_not_called()
@@ -345,12 +344,15 @@ def test_postprocessing_aged_previous_value(
 
     meter = get_default_meter()
     processor = get_default_processor()
-    with pytest.raises(ValueError):
-        processor._postprocess_meter_value(meter, {}, get_default_cnn_results())
+    processor._postprocess_meter_value(meter, {}, get_default_cnn_results())
 
     assert meter.value == "123.567"
+    assert meter.previous_value == ""
+    assert meter.valid is True
     mock_load_previous_value_from_file.assert_called_with("test-file.ini", "meter1", 30)
-    mock_save_previous_value_to_file.assert_not_called()
+    mock_save_previous_value_to_file.assert_called_with(
+        "test-file.ini", "meter1", "123.567"
+    )
 
 
 @patch("src.processor.digitizer.load_previous_value_from_file", return_value="123.451")
@@ -405,11 +407,10 @@ def test_postprocessing_with_prev_val_filling_negative_rate(
         "analog3": ReadoutResult(name="analog3", value=7.3, model=MODEL_ANALOG),
     }
 
-    with pytest.raises(ConsistencyError) as exc_info:
-        processor._postprocess_meter_value(meter, {}, cnn_results)
+    processor._postprocess_meter_value(meter, {}, cnn_results)
 
-    assert str(exc_info.value) == "Negative rate (-0.889)"
-
+    assert meter.warning == "Negative rate (-0.889)"
+    assert meter.valid is False
     assert meter.value == "122.567"
     mock_load_previous_value_from_file.assert_called_with("test-file.ini", "meter1", 30)
     mock_save_previous_value_to_file.assert_not_called()
@@ -681,3 +682,74 @@ def test_concurrent_digitizer_process():
     for r in results:
         assert len(r.meters) == 1
         assert r.meters[0].value == "5"
+
+
+@patch("src.processor.digitizer.load_previous_value_from_file", return_value="100.0")
+@patch("src.processor.digitizer.save_previous_value_to_file")
+def test_get_meter_values_with_rate_too_high(mock_save, mock_load) -> None:
+    processor = DigitizerProcessor()
+    processor.use_previous_value_file("test-prev.ini")
+    processor.available_values = {"digit1": 1, "digit2": 5, "digit3": 0}
+    processor.cnn_digital_results = [
+        ReadoutResult(name="digit1", value=1, model=MODEL_DIGITAL, confidence=95.0),
+        ReadoutResult(name="digit2", value=5, model=MODEL_DIGITAL, confidence=95.0),
+        ReadoutResult(name="digit3", value=0, model=MODEL_DIGITAL, confidence=95.0),
+    ]
+
+    meter_cfg = MeterConfig(
+        name="total",
+        format="{digit1}{digit2}{digit3}",
+        value_names=["digit1", "digit2", "digit3"],
+        use_previous_value=True,
+        consistency_enabled=True,
+        max_rate_value=10.0,
+    )
+
+    # 150.0 - 100.0 = 50.0 > max_rate_value (10.0)
+    result = processor.get_meter_values([meter_cfg])
+
+    assert len(result.meters) == 1
+    m = result.meters[0]
+    assert m.value == "150"
+    assert m.quality == "warning"
+    assert m.warning == "Rate too high (50.000)"
+    assert m.valid is False
+    assert result.valid is False
+    assert result.warning == "Rate too high (50.000)"
+    assert result.error == ""
+    mock_save.assert_not_called()
+
+
+@patch("src.processor.digitizer.load_previous_value_from_file", return_value="100.0")
+@patch("src.processor.digitizer.save_previous_value_to_file")
+def test_get_meter_values_valid_success(mock_save, mock_load) -> None:
+    processor = DigitizerProcessor()
+    processor.use_previous_value_file("test-prev.ini")
+    processor.available_values = {"digit1": 1, "digit2": 0, "digit3": 5}
+    processor.cnn_digital_results = [
+        ReadoutResult(name="digit1", value=1, model=MODEL_DIGITAL, confidence=95.0),
+        ReadoutResult(name="digit2", value=0, model=MODEL_DIGITAL, confidence=95.0),
+        ReadoutResult(name="digit3", value=5, model=MODEL_DIGITAL, confidence=95.0),
+    ]
+
+    meter_cfg = MeterConfig(
+        name="total",
+        format="{digit1}{digit2}{digit3}",
+        value_names=["digit1", "digit2", "digit3"],
+        use_previous_value=True,
+        consistency_enabled=True,
+        max_rate_value=10.0,
+    )
+
+    # 105.0 - 100.0 = 5.0 <= max_rate_value (10.0)
+    result = processor.get_meter_values([meter_cfg])
+
+    assert len(result.meters) == 1
+    m = result.meters[0]
+    assert m.value == "105"
+    assert m.quality == "good"
+    assert m.warning == ""
+    assert m.valid is True
+    assert result.valid is True
+    assert result.warning == ""
+    mock_save.assert_called_once_with("test-prev.ini", "total", "105")

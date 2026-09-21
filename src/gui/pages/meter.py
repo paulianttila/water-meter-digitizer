@@ -239,6 +239,7 @@ class MeterPage(BasePage):
                                 with ui.row().classes(ROW_ITEMS_CENTER):
                                     conf_val = getattr(meter, "confidence", 100.0)
                                     qual = getattr(meter, "quality", "good").lower()
+                                    warn_msg = getattr(meter, "warning", "")
                                     badge_cls = (
                                         BADGE_SUCCESS
                                         if qual == "good"
@@ -252,6 +253,8 @@ class MeterPage(BasePage):
                                         ui.label(
                                             f"{conf_val:.1f}% • {qual.capitalize()}"
                                         )
+                                        if warn_msg:
+                                            ui.tooltip(warn_msg)
 
                             with ui.row().classes(
                                 "w-full justify-between items-baseline gap-2"
@@ -284,6 +287,13 @@ class MeterPage(BasePage):
                                 ).tooltip(
                                     "Copy reading to clipboard"
                                 )
+
+                            if getattr(meter, "warning", ""):
+                                with ui.row().classes(
+                                    "items-center gap-1 mt-1 text-amber-400 text-xs font-medium"
+                                ):
+                                    ui.icon("warning", size="xs")
+                                    ui.label(meter.warning)
 
                     # Flow & Leak Telemetry Card
                     is_flowing = leak_status.get("flow_active", False)

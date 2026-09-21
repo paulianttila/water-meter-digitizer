@@ -100,7 +100,14 @@ def test_setup_wizard_restore_backup_dialog(page: Page, live_server_url: str):
     restore_btn.click()
 
     expect(page.get_by_text("Restore Wizard from Backup")).to_be_visible(timeout=5000)
-    page.keyboard.press("Escape")
+    close_btn = page.get_by_role("button", name="Close dialog")
+    if close_btn.is_visible():
+        close_btn.click()
+    else:
+        page.keyboard.press("Escape")
+    expect(page.get_by_text("Restore Wizard from Backup")).not_to_be_visible(
+        timeout=5000
+    )
 
 
 @pytest.mark.ui

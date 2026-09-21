@@ -55,6 +55,8 @@ class MeterValue(BaseModel):
     unit: str = ""
     quality: Literal["good", "warning", "uncertain"] = "good"
     confidence: float = 100.0
+    warning: str = ""
+    valid: bool = True
 
 
 class MeterResult(BaseModel):
@@ -63,6 +65,8 @@ class MeterResult(BaseModel):
     analog_results: dict[str, str] = Field(default_factory=dict)
     confidence_scores: dict[str, float] = Field(default_factory=dict)
     error: str = ""
+    warning: str = ""
+    valid: bool = True
 
 
 class Meter(BaseModel):
@@ -71,6 +75,8 @@ class Meter(BaseModel):
     value: str = ""  # value after postprocessing
     unprocessed_value: str = ""  # value without postprocessing
     previous_value: str = ""
+    warning: str = ""
+    valid: bool = True
 
 
 class DigitizerProcessor:
@@ -434,16 +440,24 @@ class DigitizerProcessor:
                 raise ValueError(
                     "Previous value file must be configured when use_previous_value is enabled"
                 )
-            meter.previous_value = load_previous_value_from_file(
-                self.previous_value_file,
-                meter.name,
-                meter.config.pre_value_from_file_max_age,
-            )
+            try:
+                meter.previous_value = load_previous_value_from_file(
+                    self.previous_value_file,
+                    meter.name,
+                    meter.config.pre_value_from_file_max_age,
+                )
+            except ValueError as e:
+                logger.info(
+                    "Previous value could not be loaded for meter '%s': %s",
+                    meter.name,
+                    e,
+                )
+                meter.previous_value = ""
 
         if meter.config.use_extended_resolution:
             meter.value = self._append_extended_digit(meter, cnn_results)
 
-        if meter.config.use_previous_value:
+        if meter.config.use_previous_value and meter.previous_value:
             meter.previous_value = FormatParser.adapt_previous_value_to_match_length(
                 meter.value, meter.previous_value
             )
@@ -451,13 +465,38 @@ class DigitizerProcessor:
                 meter.value, meter.previous_value
             )
             if meter.config.consistency_enabled:
-                ConsistencyValidator.validate_reading(
-                    meter.config, meter.value, meter.previous_value
-                )
+                try:
+                    ConsistencyValidator.validate_reading(
+                        meter.config, meter.value, meter.previous_value
+                    )
+                except ConsistencyError as err:
+                    logger.warning(
+                        "Consistency validation warning for meter '%s': %s",
+                        meter.name,
+                        err,
+                    )
+                    meter.warning = str(err)
+                    meter.valid = False
 
-            save_previous_value_to_file(
-                str(self.previous_value_file), meter.name, meter.value
-            )
+        if INVALID_DIGIT in meter.value:
+            meter.valid = False
+
+        if (
+            meter.config.use_previous_value
+            and self.previous_value_file
+            and meter.valid
+            and not meter.warning
+        ):
+            try:
+                save_previous_value_to_file(
+                    str(self.previous_value_file), meter.name, meter.value
+                )
+            except Exception as e:
+                logger.warning(
+                    "Failed to save previous value for meter '%s': %s",
+                    meter.name,
+                    e,
+                )
 
     def _get_readout_results(
         self,
@@ -528,7 +567,11 @@ class DigitizerProcessor:
                 min_conf = 100.0
 
             quality: Literal["good", "warning", "uncertain"]
-            if (
+            if meter.warning:
+                quality = "warning"
+            elif not meter.valid:
+                quality = "uncertain"
+            elif (
                 min_conf >= QUALITY_HIGH_MIN_CONFIDENCE
                 and avg_conf >= QUALITY_HIGH_AVG_CONFIDENCE
             ):
@@ -548,8 +591,14 @@ class DigitizerProcessor:
                     unit=meter.config.unit,
                     quality=quality,
                     confidence=avg_conf,
+                    warning=meter.warning,
+                    valid=meter.valid,
                 )
             )
+
+        all_warnings = [m.warning for m in meter_results if m.warning]
+        warning_str = ", ".join(all_warnings) if all_warnings else ""
+        is_valid = bool(meter_results) and all(m.valid for m in meter_results)
 
         return MeterResult(
             meters=meter_results,
@@ -557,6 +606,8 @@ class DigitizerProcessor:
             analog_results=analog_dict,
             confidence_scores=confidence_scores,
             error="",
+            warning=warning_str,
+            valid=is_valid,
         )
 
     # ------------------------------------------------------------------

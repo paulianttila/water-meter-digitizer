@@ -11,6 +11,7 @@ class MeterReading(BaseModel):
     unit: str = ""
     quality: Literal["good", "warning", "uncertain"] = "good"
     confidence: float = 100.0
+    valid: bool = True
 
 
 class ReadingRecord(BaseModel):

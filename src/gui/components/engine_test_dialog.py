@@ -47,6 +47,8 @@ def extract_meter_readouts(
         m_unit = getattr(m, "unit", "")
         m_qual = getattr(m, "quality", "good")
         m_conf = getattr(m, "confidence", 100.0)
+        m_warn = getattr(m, "warning", "")
+        m_valid = getattr(m, "valid", True)
         meters_list.append(
             {
                 "name": m_name,
@@ -54,6 +56,8 @@ def extract_meter_readouts(
                 "unit": m_unit,
                 "quality": m_qual,
                 "confidence": m_conf,
+                "warning": m_warn,
+                "valid": m_valid,
             }
         )
 
