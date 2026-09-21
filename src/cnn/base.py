@@ -71,7 +71,7 @@ class CNNBase:
                 details.xsize,
                 details.ysize,
                 details.channels,
-                details.numer_output,
+                details.num_outputs,
             )
         except Exception as e:
             logger.error(

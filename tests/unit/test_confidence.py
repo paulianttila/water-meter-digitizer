@@ -29,7 +29,7 @@ def test_digital_counter_11class_high_confidence():
         cnn = DigitalCounterCNN("dummy.tflite", 20, 32)
         cnn.get_model_details = MagicMock(
             return_value=ModelDetails(
-                name="dummy.tflite", xsize=20, ysize=32, channels=3, numer_output=11
+                name="dummy.tflite", xsize=20, ysize=32, channels=3, num_outputs=11
             )
         )
         logits = np.array(
@@ -47,7 +47,7 @@ def test_digital_counter_already_normalized_probabilities():
         cnn = DigitalCounterCNN("dummy.tflite", 20, 32)
         cnn.get_model_details = MagicMock(
             return_value=ModelDetails(
-                name="dummy.tflite", xsize=20, ysize=32, channels=3, numer_output=11
+                name="dummy.tflite", xsize=20, ysize=32, channels=3, num_outputs=11
             )
         )
         # Model output is already a normalized softmax probability distribution
@@ -64,7 +64,7 @@ def test_digital_counter_11class_nan_class():
         cnn = DigitalCounterCNN("dummy.tflite", 20, 32)
         cnn.get_model_details = MagicMock(
             return_value=ModelDetails(
-                name="dummy.tflite", xsize=20, ysize=32, channels=3, numer_output=11
+                name="dummy.tflite", xsize=20, ysize=32, channels=3, num_outputs=11
             )
         )
         logits = np.array([-10.0] * 10 + [10.0])
@@ -80,7 +80,7 @@ def test_digital_counter_100class_density_window():
         cnn = DigitalCounterCNN("dummy.tflite", 20, 32)
         cnn.get_model_details = MagicMock(
             return_value=ModelDetails(
-                name="dummy.tflite", xsize=20, ysize=32, channels=3, numer_output=100
+                name="dummy.tflite", xsize=20, ysize=32, channels=3, num_outputs=100
             )
         )
         logits = np.zeros(100)
@@ -104,7 +104,7 @@ def test_analog_needle_2output_vector_magnitude():
         cnn = AnalogNeedleCNN("dummy.tflite", 32, 32)
         cnn.get_model_details = MagicMock(
             return_value=ModelDetails(
-                name="dummy.tflite", xsize=32, ysize=32, channels=3, numer_output=2
+                name="dummy.tflite", xsize=32, ysize=32, channels=3, num_outputs=2
             )
         )
         # Perfect unit circle point: sin(pi/2)=1, cos(pi/2)=0 -> reading 2.5
@@ -126,7 +126,7 @@ def test_analog_needle_100class_density_window():
         cnn = AnalogNeedleCNN("dummy.tflite", 32, 32)
         cnn.get_model_details = MagicMock(
             return_value=ModelDetails(
-                name="dummy.tflite", xsize=32, ysize=32, channels=3, numer_output=100
+                name="dummy.tflite", xsize=32, ysize=32, channels=3, num_outputs=100
             )
         )
         logits = np.zeros(100)

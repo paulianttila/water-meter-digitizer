@@ -50,10 +50,10 @@ class ConfigHistoryManager:
             backup_path = backup_dir / backup_filename
 
             shutil.copyfile(config_file, backup_path)
-            logger.info(f"Created config backup: {backup_path}")
+            logger.info("Created config backup: %s", backup_path)
             return str(backup_path)
         except Exception as e:
-            logger.error(f"Failed to create config backup for {config_file}: {e}")
+            logger.error("Failed to create config backup for %s: %s", config_file, e)
             return None
 
     @classmethod
@@ -118,7 +118,9 @@ class ConfigHistoryManager:
                 )
             except Exception as e:
                 logger.warning(
-                    f"Could not read backup file metadata for {file_path}: {e}"
+                    "Could not read backup file metadata for %s: %s",
+                    file_path,
+                    e,
                 )
 
         # Sort newest first based on timestamp
@@ -151,7 +153,7 @@ class ConfigHistoryManager:
         cls.create_backup(config_file, tag="before_restore")
 
         shutil.copyfile(target_path, config_file)
-        logger.info(f"Restored backup '{target_path.name}' to '{config_file}'")
+        logger.info("Restored backup '%s' to '%s'", target_path.name, config_file)
 
     @classmethod
     def undo_last(cls, config_file: str) -> str | None:
@@ -187,7 +189,7 @@ class ConfigHistoryManager:
             and target_path.suffix == ".bak"
         ):
             target_path.unlink()
-            logger.info(f"Deleted backup: {target_path}")
+            logger.info("Deleted backup: %s", target_path)
             return True
         return False
 

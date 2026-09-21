@@ -20,35 +20,35 @@ from src.processor.digitizer import (
 
 def test_solve_model_analog() -> None:
     details = ModelDetails(
-        name="test.tflite", xsize=32, ysize=32, channels=3, numer_output=2
+        name="test.tflite", xsize=32, ysize=32, channels=3, num_outputs=2
     )
     assert DigitizerProcessor()._solve_model("auto", details) == MODEL_ANALOG
 
 
 def test_solve_model_digital() -> None:
     details = ModelDetails(
-        name="test.tflite", xsize=32, ysize=32, channels=3, numer_output=11
+        name="test.tflite", xsize=32, ysize=32, channels=3, num_outputs=11
     )
     assert DigitizerProcessor()._solve_model("auto", details) == MODEL_DIGITAL
 
 
 def test_solve_model_analog100() -> None:
     details = ModelDetails(
-        name="test.tflite", xsize=32, ysize=32, channels=3, numer_output=100
+        name="test.tflite", xsize=32, ysize=32, channels=3, num_outputs=100
     )
     assert DigitizerProcessor()._solve_model("auto", details) == MODEL_ANALOG100
 
 
 def test_solve_model_digital100() -> None:
     details = ModelDetails(
-        name="test.tflite", xsize=20, ysize=20, channels=3, numer_output=100
+        name="test.tflite", xsize=20, ysize=20, channels=3, num_outputs=100
     )
     assert DigitizerProcessor()._solve_model("auto", details) == MODEL_DIGITAL100
 
 
 def test_solve_model_empty() -> None:
     details = ModelDetails(
-        name="test.tflite", xsize=20, ysize=20, channels=3, numer_output=0
+        name="test.tflite", xsize=20, ysize=20, channels=3, num_outputs=0
     )
     with pytest.raises(ValueError):
         DigitizerProcessor()._solve_model("auto", details)
@@ -56,7 +56,7 @@ def test_solve_model_empty() -> None:
 
 def test_solve_model_non_auto() -> None:
     details = ModelDetails(
-        name="test.tflite", xsize=32, ysize=32, channels=3, numer_output=0
+        name="test.tflite", xsize=32, ysize=32, channels=3, num_outputs=0
     )
     assert (
         DigitizerProcessor()._solve_model(MODEL_ANALOG100, details) == MODEL_ANALOG100

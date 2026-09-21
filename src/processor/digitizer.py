@@ -462,11 +462,11 @@ class DigitizerProcessor:
     def _solve_model(self, model: str, details: ModelDetails) -> str:
         if model.lower() != MODEL_AUTO:
             return model
-        if details.numer_output == 2:
+        if details.num_outputs == 2:
             return MODEL_ANALOG
-        if details.numer_output == 11:
+        if details.num_outputs == 11:
             return MODEL_DIGITAL
-        if details.numer_output == 100:
+        if details.num_outputs == 100:
             # 32x32 model = analog 0.00-9.99
             if details.xsize == 32 and details.ysize == 32:
                 return MODEL_ANALOG100

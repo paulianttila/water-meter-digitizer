@@ -34,7 +34,7 @@ def test_interpreter_pool_lifecycle():
     details = pool.get_model_details()
     assert details.xsize == 32
     assert details.ysize == 20
-    assert details.numer_output == 100
+    assert details.num_outputs == 100
 
     # Acquire and release
     with pool.acquire() as inst1:

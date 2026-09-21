@@ -29,7 +29,7 @@ class DigitalCounterCNN(CNNBase):
         probs = stable_softmax(output_data[0])
         argmax = int(np.argmax(probs))
 
-        if self.get_model_details().numer_output == 100:
+        if self.get_model_details().num_outputs == 100:
             value = float(argmax) / 10.0
             conf = density_confidence(probs, argmax, window=1)
             return value, conf

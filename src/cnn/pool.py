@@ -28,7 +28,7 @@ class ModelDetails:
     xsize: int
     ysize: int
     channels: int
-    numer_output: int
+    num_outputs: int
 
 
 class InterpreterInstance:
@@ -55,14 +55,14 @@ class InterpreterInstance:
         xsize = self.input_details[0]["shape"][1]
         ysize = self.input_details[0]["shape"][2]
         channels = self.input_details[0]["shape"][3]
-        numer_output = self.output_details[0]["shape"][1]
+        num_outputs = self.output_details[0]["shape"][1]
 
         self.model_details = ModelDetails(
             name=modelfile,
             xsize=xsize,
             ysize=ysize,
             channels=channels,
-            numer_output=numer_output,
+            num_outputs=num_outputs,
         )
 
 

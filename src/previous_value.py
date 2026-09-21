@@ -33,7 +33,7 @@ def load_previous_value_from_file(
                     )
 
             previous_value = config.get(section, "Value")
-            logger.info(f"Previous value loaded from file: {previous_value}")
+            logger.info("Previous value loaded from file: %s", previous_value)
             return previous_value
         except Exception as e:
             raise ValueError(
@@ -76,5 +76,5 @@ def get_all_previous_values(file: str) -> dict[str, dict[str, str]]:
                 }
             return result
         except Exception as e:
-            logger.error(f"Failed to read previous value file '{file}': {e}")
+            logger.error("Failed to read previous value file '%s': %s", file, e)
             return {}
