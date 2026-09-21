@@ -210,7 +210,7 @@ def init(fastapi_app: FastAPI, callbacks: Callbacks) -> None:
                         if _callbacks.get_config_version() > client_config_version:
                             reload_banner.visible = True
 
-                ui.timer(2.0, check_config_reload)
+                ui.timer(0.5, check_config_reload)
 
                 tab_defs = [
                     (
