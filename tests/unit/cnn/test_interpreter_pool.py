@@ -19,6 +19,7 @@ def _find_model(rel_path: str) -> str:
     candidates = [
         os.path.join("config", rel_path),
         os.path.join("/config", rel_path),
+        os.path.join("config", "local", "test_config", rel_path),
         os.path.join("test_config", rel_path),
     ]
     for c in candidates:
