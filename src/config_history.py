@@ -5,7 +5,6 @@ import os
 import re
 import shutil
 from pathlib import Path
-from typing import Any
 
 from pydantic import BaseModel
 
@@ -20,9 +19,6 @@ class BackupEntry(BaseModel):
     size_bytes: int
     tag: str = "Auto Backup"
     is_auto: bool = True
-
-    def model_dump(self, **kwargs: Any) -> dict[str, Any]:
-        return super().model_dump(**kwargs)
 
 
 class ConfigHistoryManager:

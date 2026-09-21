@@ -306,7 +306,9 @@ class SQLAlchemyStorageBackend(StorageBackend):
             result.digital_results, dict
         ):
             for k, _v in result.digital_results.items():
-                confidence_scores[f"digital_{k}"] = 95.0
+                confidence_scores[f"digital_{k}"] = result.confidence_scores.get(
+                    k, 100.0
+                )
 
         # Snapshot evaluation
         frame_bytes: bytes | None = None

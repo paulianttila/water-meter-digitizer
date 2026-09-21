@@ -205,6 +205,7 @@ def test_sqlite_record_meter_result():
         digital_results={"digit_0": "5"},
         analog_results={},
         error="",
+        confidence_scores={"digit_0": 91.2},
     )
     storage.record_meter_result(res)
 
@@ -212,6 +213,7 @@ def test_sqlite_record_meter_result():
     assert len(readings) == 1
     assert readings[0].meters["main"].value == 543.21
     assert readings[0].meters["main"].confidence == 98.5
+    assert readings[0].confidence_scores["digital_digit_0"] == 91.2
 
 
 def test_sqlite_timeline_queries_and_filters():

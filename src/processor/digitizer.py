@@ -334,8 +334,10 @@ class DigitizerProcessor:
         results = self._get_readout_results(meter, cnn_results)
         logger.info(" Postprocess meter: %s, readout results: %s", meter, results)
 
-        values = self._evaluate_counters(results)
-        meter.value = FormatParser.format_template(meter.config.format, values)
+        evaluated_values = self._evaluate_counters(results)
+        meter.value = FormatParser.format_template(
+            meter.config.format, evaluated_values
+        )
 
         if meter.config.use_previous_value:
             if self.previous_value_file is None:
