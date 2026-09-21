@@ -1,19 +1,29 @@
 import base64
-import contextlib
 import logging
-import os
 import time
 from hashlib import sha256
-from pathlib import Path
 
 from nicegui import events, ui
 
 import utils.image as ImageUtils
 from callbacks import Callbacks
-from configuration import CNNParams, Config
-from data_classes import ImagePosition, MeterConfig, RefImage
+from configuration import Config
 from gui.base_page import BasePage
 from gui.components import open_config_history_dialog, open_confirm_dialog
+from gui.wizard_config_manager import WizardConfigManager, resolve_model_path
+from gui.wizard_navigator import (
+    NAME_ADJUST,
+    NAME_DOWNLOAD_IMAGE,
+    NAME_DRAW_ANALOG_ROIS,
+    NAME_DRAW_DIGITAL_ROIS,
+    NAME_DRAW_REFS,
+    NAME_FINAL,
+    NAME_INITIAL_ROTATE,
+    NAME_METERS,
+    NAME_SERVICES,
+    WizardNavigator,
+    steps_order,
+)
 
 from .step_adjust import AdjustStep
 from .step_download import DownloadImageStep
@@ -27,6 +37,22 @@ from .step_services import ServicesStep
 
 logger = logging.getLogger(__name__)
 
+# Re-export constants for backward compatibility
+__all__ = [
+    "NAME_ADJUST",
+    "NAME_DOWNLOAD_IMAGE",
+    "NAME_DRAW_ANALOG_ROIS",
+    "NAME_DRAW_DIGITAL_ROIS",
+    "NAME_DRAW_REFS",
+    "NAME_FINAL",
+    "NAME_INITIAL_ROTATE",
+    "NAME_METERS",
+    "NAME_SERVICES",
+    "SetupPage",
+    "resolve_model_path",
+    "steps_order",
+]
+
 svg_grid = """
 <defs>
     <pattern id="smallGrid" width="8" height="8" patternUnits="userSpaceOnUse">
@@ -39,32 +65,13 @@ svg_grid = """
 </defs>
 """
 
-NAME_DOWNLOAD_IMAGE = "Download image"
-NAME_INITIAL_ROTATE = "Initial rotate"
-NAME_DRAW_REFS = "Draw reference points"
-NAME_ADJUST = "Adjust image"
-NAME_DRAW_DIGITAL_ROIS = "Draw digital region of interest"
-NAME_DRAW_ANALOG_ROIS = "Draw analog region of interest"
-NAME_METERS = "Meters"
-NAME_SERVICES = "Services & Integrations"
-NAME_FINAL = "Final"
-
-steps_order = [
-    NAME_DOWNLOAD_IMAGE,
-    NAME_INITIAL_ROTATE,
-    NAME_DRAW_REFS,
-    NAME_ADJUST,
-    NAME_DRAW_DIGITAL_ROIS,
-    NAME_DRAW_ANALOG_ROIS,
-    NAME_METERS,
-    NAME_SERVICES,
-    NAME_FINAL,
-]
-
 
 class SetupPage(BasePage):
     def __init__(self, callbacks: Callbacks) -> None:
         super().__init__(callbacks)
+
+        self.config_manager = WizardConfigManager(self.callbacks)
+        self.navigator = WizardNavigator(self.callbacks)
 
         self.interactive_image: ui.interactive_image
         self.image_details: ui.label
@@ -88,16 +95,44 @@ class SetupPage(BasePage):
         self.comparison_container: ui.element
         self.comparison_image: ui.image
 
-        self.previous_step: str = NAME_DOWNLOAD_IMAGE
-
         self.config: Config
         self.image: str = ""  # base64 str
+        self.processed_image: str = ""
         self.refs = ""
-        self.refs_enabled_in_image = False
         self.digital_rois = ""
-        self.digital_rois_enabled_in_image = False
         self.analog_rois = ""
-        self.analog_rois_enabled_in_image = False
+
+    @property
+    def previous_step(self) -> str:
+        return self.navigator.previous_step
+
+    @previous_step.setter
+    def previous_step(self, value: str) -> None:
+        self.navigator.previous_step = value
+
+    @property
+    def refs_enabled_in_image(self) -> bool:
+        return self.navigator.refs_enabled_in_image
+
+    @refs_enabled_in_image.setter
+    def refs_enabled_in_image(self, value: bool) -> None:
+        self.navigator.refs_enabled_in_image = value
+
+    @property
+    def digital_rois_enabled_in_image(self) -> bool:
+        return self.navigator.digital_rois_enabled_in_image
+
+    @digital_rois_enabled_in_image.setter
+    def digital_rois_enabled_in_image(self, value: bool) -> None:
+        self.navigator.digital_rois_enabled_in_image = value
+
+    @property
+    def analog_rois_enabled_in_image(self) -> bool:
+        return self.navigator.analog_rois_enabled_in_image
+
+    @analog_rois_enabled_in_image.setter
+    def analog_rois_enabled_in_image(self, value: bool) -> None:
+        self.navigator.analog_rois_enabled_in_image = value
 
     async def show(self) -> None:
 
@@ -143,26 +178,12 @@ class SetupPage(BasePage):
             elif stepper.value == NAME_DRAW_ANALOG_ROIS:
                 self.draw_analog_rois_step.mouse_event(e)
 
-        def get_refs_from_config() -> str:
-            style = "stroke-width:3;stroke:red;fill-opacity:0;stroke-opacity:0.9"
-            content = ""
-            for ref in self.callbacks.get_config().alignment.ref_images:
-                content += (
-                    f'<rect x="{ref.x}" y="{ref.y}" width="{ref.w}" '
-                    f'height="{ref.h}" style="{style}" />'
-                )
-            return content
-
         def print_image_hash(text: str, image: str) -> None:
             if image is None or image == "":
                 logger.debug(f"{text}, hash: empty")
             else:
                 data = image.encode("utf-8")
                 logger.debug(f"{text}, hash: {sha256(data).hexdigest()}")
-
-        def get_image() -> str:
-            print_image_hash("get_image", self.image)
-            return self.image
 
         def set_refs_to_svg_func(refs: str) -> None:
             self.refs = refs
@@ -179,444 +200,25 @@ class SetupPage(BasePage):
         def show_temp_draw_in_svg_func(draw: str) -> None:
             update_svg(draw)
 
-        def gather_config() -> None:
-            config = Config()
-            orig_config = self.callbacks.get_config()
-            config.log_level = orig_config.log_level
-            config.config_dir = orig_config.config_dir
-            config.digital_models_dir = orig_config.digital_models_dir
-            config.analog_models_dir = orig_config.analog_models_dir
-            config.previous_value_file = orig_config.previous_value_file
-
-            config.image_source.url = self.download_image_step.url.value
-            config.image_source.timeout = int(
-                self.download_image_step.timeout.value or 30
+        def gather_config() -> Config:
+            self.config = self.config_manager.gather_config(
+                download_image_step=self.download_image_step,
+                initial_rotate_step=self.initial_rotate_step,
+                draw_refs_step=self.draw_refs_step,
+                adjust_step=self.adjust_step,
+                draw_digital_rois_step=self.draw_digital_rois_step,
+                draw_analog_rois_step=self.draw_analog_rois_step,
+                meters_step=self.meters_step,
+                services_step=self.services_step,
             )
-            config.image_source.min_size = int(
-                self.download_image_step.minsize.value or 10000
-            )
-            config.crop.enabled = self.adjust_step.crop_enabled.value
-            config.crop.x = int(self.adjust_step.crop_x.value or 0)
-            config.crop.y = int(self.adjust_step.crop_y.value or 0)
-            config.crop.w = int(self.adjust_step.crop_w.value or 0)
-            config.crop.h = int(self.adjust_step.crop_h.value or 0)
-            config.resize.enabled = self.adjust_step.resize_enabled.value
-            config.resize.w = int(self.adjust_step.resize_w.value or 0)
-            config.resize.h = int(self.adjust_step.resize_h.value or 0)
-            config.image_processing.enabled = self.adjust_step.adjust_enabled.value
-            config.image_processing.gamma = float(
-                self.adjust_step.adjust_gamma.value or 1.0
-            )
-            config.image_processing.contrast = float(
-                self.adjust_step.adjust_contrast.value or 1.0
-            )
-            config.image_processing.brightness = float(
-                self.adjust_step.adjust_brightness.value or 1.0
-            )
-            config.image_processing.sharpness = float(
-                self.adjust_step.adjust_sharpness.value or 1.0
-            )
-            config.image_processing.color = float(
-                self.adjust_step.adjust_color.value or 1.0
-            )
-            config.image_processing.grayscale = self.adjust_step.grayscale_enabled.value
-            config.image_processing.sharpness_mode = str(
-                self.adjust_step.sharpness_mode.value or "standard"
-            )
-            config.image_processing.unsharp_radius = float(
-                self.adjust_step.unsharp_radius.value or 1.0
-            )
-            config.image_processing.unsharp_amount = float(
-                self.adjust_step.unsharp_amount.value or 1.5
-            )
-            config.image_processing.unsharp_threshold = int(
-                self.adjust_step.unsharp_threshold.value or 3
-            )
-            config.image_processing.auto_sharpen_cut_images = (
-                self.adjust_step.auto_sharpen_cut_images.value
-            )
-            config.image_processing.autocontrast.enabled = (
-                self.adjust_step.autocontrast_enabled.value
-            )
-            config.image_processing.autocontrast.cutoff_low = float(
-                self.adjust_step.autocontrast_cutoff_low.value or 2.0
-            )
-            config.image_processing.autocontrast.cutoff_high = float(
-                self.adjust_step.autocontrast_cutoff_high.value or 45.0
-            )
-            config.image_processing.autocontrast_cut_images.enabled = (
-                self.adjust_step.autocontrast_cut_images_enabled.value
-            )
-            config.image_processing.autocontrast_cut_images.cutoff_low = float(
-                self.adjust_step.autocontrast_cut_images_cutoff_low.value or 2.0
-            )
-            config.image_processing.autocontrast_cut_images.cutoff_high = float(
-                self.adjust_step.autocontrast_cut_images_cutoff_high.value or 45.0
-            )
-
-            # Glare suppression
-            config.image_processing.glare_suppression.enabled = (
-                self.adjust_step.glare_enabled.value
-            )
-            config.image_processing.glare_suppression.mode = str(
-                self.adjust_step.glare_mode.value or "clahe"
-            )
-            config.image_processing.glare_suppression.inpaint_threshold = int(
-                self.adjust_step.glare_inpaint_threshold.value or 230
-            )
-            config.image_processing.glare_suppression.inpaint_radius = int(
-                self.adjust_step.glare_inpaint_radius.value or 3
-            )
-            config.image_processing.glare_suppression.clahe_clip_limit = float(
-                self.adjust_step.glare_clahe_clip_limit.value or 2.0
-            )
-            config.image_processing.glare_suppression.clahe_grid_size = int(
-                self.adjust_step.glare_clahe_grid_size.value or 8
-            )
-            config.image_processing.glare_suppression.apply_to_cut_images = (
-                self.adjust_step.glare_apply_to_cut_images.value
-            )
-
-            config.alignment.rotate_angle = float(self.initial_rotate_step.angle or 0.0)
-            config.alignment.post_rotate_angle = float(
-                self.adjust_step.rotate_angle.value or 0.0
-            )
-
-            for roi in self.draw_refs_step.rois:
-                config_dir = "${ConfigDir}"
-                config.alignment.ref_images.append(
-                    RefImage(
-                        name=roi.name,
-                        x=roi.x,
-                        y=roi.y,
-                        w=roi.w,
-                        h=roi.h,
-                        file_name=f"{config_dir}/ref_{roi.name}_x{roi.x}_y{roi.y}.jpg",
-                    )
-                )
-
-            def _resolve_model_path(
-                cnn_select: ui.select | None,
-                models_dir: str,
-                placeholder_var: str,
-            ) -> str:
-                if cnn_select is None or not cnn_select.value:
-                    return ""
-                val = str(cnn_select.value).strip()
-                if val.startswith("${"):
-                    parts = [p.strip() for p in val.split("/")]
-                    return "/".join(parts)
-                with contextlib.suppress(Exception):
-                    p = Path(val)
-                    if models_dir:
-                        md = Path(models_dir)
-                        if p.is_relative_to(md):
-                            rel = p.relative_to(md).as_posix()
-                            return f"{placeholder_var}/{rel}"
-                        if p.resolve().is_relative_to(md.resolve()):
-                            rel = p.resolve().relative_to(md.resolve()).as_posix()
-                            return f"{placeholder_var}/{rel}"
-                parts = [part.strip() for part in val.split("/") if part.strip()]
-                clean_rel = "/".join(parts)
-                return f"{placeholder_var}/{clean_rel}" if clean_rel else ""
-
-            digital_model_file = _resolve_model_path(
-                self.draw_digital_rois_step.cnn_file,
-                self.draw_digital_rois_step.digital_models_dir,
-                "${DigitalModelsDir}",
-            )
-            digital_cut_images = []
-            for roi in self.draw_digital_rois_step.rois:
-                digital_cut_images.append(
-                    ImagePosition(
-                        name=roi.name,
-                        x=roi.x,
-                        y=roi.y,
-                        w=roi.w,
-                        h=roi.h,
-                    )
-                )
-            digital_model_val = (
-                str(self.draw_digital_rois_step.cnn_type.value or "auto")
-                if self.draw_digital_rois_step.cnn_type is not None
-                else "auto"
-            )
-            detect_neg = (
-                bool(self.draw_digital_rois_step.detect_negative_sign.value)
-                if self.draw_digital_rois_step.detect_negative_sign is not None
-                else False
-            )
-            config.digital_readout = CNNParams(
-                enabled=len(digital_cut_images) > 0,
-                model=digital_model_val,
-                model_file=digital_model_file,
-                detect_negative_sign=detect_neg,
-                cut_images=digital_cut_images,
-            )
-
-            analog_model_file = _resolve_model_path(
-                self.draw_analog_rois_step.cnn_file,
-                self.draw_analog_rois_step.analog_models_dir,
-                "${AnalogModelsDir}",
-            )
-            analog_cut_images = []
-            for roi in self.draw_analog_rois_step.rois:
-                analog_cut_images.append(
-                    ImagePosition(
-                        name=roi.name,
-                        x=roi.x,
-                        y=roi.y,
-                        w=roi.w,
-                        h=roi.h,
-                    )
-                )
-            analog_model_val = (
-                str(self.draw_analog_rois_step.cnn_type.value or "auto")
-                if self.draw_analog_rois_step.cnn_type is not None
-                else "auto"
-            )
-            config.analog_readout = CNNParams(
-                enabled=len(analog_cut_images) > 0,
-                model=analog_model_val,
-                model_file=analog_model_file,
-                cut_images=analog_cut_images,
-            )
-            meters = []
-            for meter in self.meters_step.meter_params:
-                meters.append(
-                    MeterConfig(
-                        name=meter.name,
-                        format=meter.value,
-                        consistency_enabled=meter.consistency_enabled,
-                        allow_negative_rates=meter.allow_negative_rates,
-                        max_rate_value=meter.max_rate_value,
-                        use_previous_value=meter.use_previous_value,
-                        pre_value_from_file_max_age=meter.prevalue_from_file_max_age,
-                        use_extended_resolution=meter.use_extended_resolution,
-                        unit=meter.unit,
-                        detect_negative_sign=meter.detect_negative_sign,
-                    )
-                )
-            config.meter_configs = meters
-
-            # Apply services (Poller, MQTT, History, DataDir, MinConfidence)
-            self.services_step.apply_to_config(config)
-
-            self.config = config
+            return self.config
 
         def save_refs() -> None:
-            config_dir = self.callbacks.get_config().config_dir
-            ref_source_b64 = (
-                self.draw_refs_step.get_image()
-                or self.initial_rotate_step.get_image()
-                or self.image
+            self.config_manager.save_refs(
+                draw_refs_step=self.draw_refs_step,
+                initial_rotate_step=self.initial_rotate_step,
+                fallback_image_b64=self.image,
             )
-            if not ref_source_b64:
-                return
-            image = ImageUtils.convert_base64_str_to_image(ref_source_b64)
-            for roi in self.draw_refs_step.rois:
-                ref_img = ImageUtils.cut_image(
-                    image,
-                    ImagePosition(name=roi.name, x=roi.x, y=roi.y, w=roi.w, h=roi.h),
-                )
-                ImageUtils.save_image(
-                    ref_img, f"{config_dir}/ref_{roi.name}_x{roi.x}_y{roi.y}.jpg"
-                )
-
-        def get_digit_names() -> list[str]:
-            rois: list[str] = []
-            for roi in self.draw_digital_rois_step.rois:
-                rois.append(roi.name)
-            for roi in self.draw_analog_rois_step.rois:
-                rois.append(roi.name)
-            return rois
-
-        def get_image_by_step_name(name: str) -> str:
-            if name == NAME_DOWNLOAD_IMAGE:
-                return self.download_image_step.get_image()
-            elif name == NAME_INITIAL_ROTATE:
-                return self.initial_rotate_step.get_image()
-            elif name == NAME_DRAW_REFS:
-                return self.draw_refs_step.get_image()
-            elif name == NAME_ADJUST:
-                return self.adjust_step.get_image()
-            elif name == NAME_DRAW_DIGITAL_ROIS:
-                return self.draw_digital_rois_step.get_image()
-            elif name == NAME_DRAW_ANALOG_ROIS:
-                return self.draw_analog_rois_step.get_image()
-            elif name == NAME_METERS:
-                return self.meters_step.get_image()
-            elif name == NAME_SERVICES:
-                return self.services_step.get_image()
-            elif name == NAME_FINAL:
-                return self.final_step.get_image()
-            return ""
-
-        def get_source_image_for_step(step_name: str) -> str:
-            raw_img = self.download_image_step.get_image() or self.image
-            if step_name in (NAME_DOWNLOAD_IMAGE, NAME_INITIAL_ROTATE):
-                return raw_img
-
-            rotated_img = self.initial_rotate_step.get_image() or raw_img
-            if step_name in (NAME_DRAW_REFS, NAME_ADJUST):
-                return rotated_img
-
-            adjusted_img = self.adjust_step.get_image() or rotated_img
-            return adjusted_img
-
-        def set_image_by_step_name(name: str, image: str) -> None:
-            if not image:
-                return
-            if name == NAME_INITIAL_ROTATE:
-                self.initial_rotate_step.update_image(image)
-            elif name == NAME_DRAW_REFS:
-                self.draw_refs_step.update_image(image)
-            elif name == NAME_ADJUST:
-                self.adjust_step.update_image(image)
-            elif name == NAME_DRAW_DIGITAL_ROIS:
-                self.draw_digital_rois_step.update_image(
-                    image,
-                    self.adjust_step.autocontrast_cut_images_enabled.value,
-                    self.adjust_step.autocontrast_cut_images_cutoff_low.value,
-                    self.adjust_step.autocontrast_cut_images_cutoff_high.value,
-                    glare_suppression=(
-                        self.adjust_step.glare_enabled.value
-                        and self.adjust_step.glare_apply_to_cut_images.value
-                    ),
-                    glare_mode=self.adjust_step.glare_mode.value or "clahe",
-                    glare_inpaint_threshold=int(
-                        self.adjust_step.glare_inpaint_threshold.value or 230
-                    ),
-                    glare_inpaint_radius=int(
-                        self.adjust_step.glare_inpaint_radius.value or 3
-                    ),
-                    glare_clahe_clip_limit=float(
-                        self.adjust_step.glare_clahe_clip_limit.value or 2.0
-                    ),
-                    glare_clahe_grid_size=int(
-                        self.adjust_step.glare_clahe_grid_size.value or 8
-                    ),
-                    unsharp=(
-                        self.adjust_step.adjust_enabled.value
-                        and self.adjust_step.auto_sharpen_cut_images.value
-                    ),
-                    unsharp_radius=float(self.adjust_step.unsharp_radius.value or 1.0),
-                    unsharp_amount=float(self.adjust_step.unsharp_amount.value or 1.5),
-                    unsharp_threshold=int(
-                        self.adjust_step.unsharp_threshold.value or 3
-                    ),
-                )
-            elif name == NAME_DRAW_ANALOG_ROIS:
-                self.draw_analog_rois_step.update_image(
-                    image,
-                    self.adjust_step.autocontrast_cut_images_enabled.value,
-                    self.adjust_step.autocontrast_cut_images_cutoff_low.value,
-                    self.adjust_step.autocontrast_cut_images_cutoff_high.value,
-                    glare_suppression=(
-                        self.adjust_step.glare_enabled.value
-                        and self.adjust_step.glare_apply_to_cut_images.value
-                    ),
-                    glare_mode=self.adjust_step.glare_mode.value or "clahe",
-                    glare_inpaint_threshold=int(
-                        self.adjust_step.glare_inpaint_threshold.value or 230
-                    ),
-                    glare_inpaint_radius=int(
-                        self.adjust_step.glare_inpaint_radius.value or 3
-                    ),
-                    glare_clahe_clip_limit=float(
-                        self.adjust_step.glare_clahe_clip_limit.value or 2.0
-                    ),
-                    glare_clahe_grid_size=int(
-                        self.adjust_step.glare_clahe_grid_size.value or 8
-                    ),
-                    unsharp=(
-                        self.adjust_step.adjust_enabled.value
-                        and self.adjust_step.auto_sharpen_cut_images.value
-                    ),
-                    unsharp_radius=float(self.adjust_step.unsharp_radius.value or 1.0),
-                    unsharp_amount=float(self.adjust_step.unsharp_amount.value or 1.5),
-                    unsharp_threshold=int(
-                        self.adjust_step.unsharp_threshold.value or 3
-                    ),
-                )
-            elif name == NAME_METERS:
-                self.meters_step.update_image(image)
-            elif name == NAME_SERVICES:
-                self.services_step.update_image(image)
-            elif name == NAME_FINAL:
-                self.final_step.update_image(image)
-
-        def is_step_forward(new_step: str, previous_step: str) -> bool:
-            if previous_step == "" or previous_step not in steps_order:
-                return True
-            if new_step not in steps_order:
-                return False
-            return steps_order.index(new_step) > steps_order.index(previous_step)
-
-        def handle_stepper_change(step: str) -> None:
-            logger.debug(f"Step: {self.previous_step} -> {step}")
-
-            # Update ROI overlay visibility flags before updating any step images
-            self.refs_enabled_in_image = step == NAME_DRAW_REFS
-            self.digital_rois_enabled_in_image = step == NAME_DRAW_DIGITAL_ROIS
-            self.analog_rois_enabled_in_image = step == NAME_DRAW_ANALOG_ROIS
-            if step in (NAME_METERS, NAME_SERVICES, NAME_FINAL):
-                self.digital_rois_enabled_in_image = True
-                self.analog_rois_enabled_in_image = True
-            if step == NAME_FINAL:
-                self.refs_enabled_in_image = True
-
-            # Sync reference rois to adjust step
-            if step == NAME_ADJUST:
-                config_dir = self.callbacks.get_config().config_dir
-                ref_images = []
-                for roi in self.draw_refs_step.rois:
-                    ref_path = f"{config_dir}/ref_{roi.name}_x{roi.x}_y{roi.y}.jpg"
-                    ref_images.append(
-                        RefImage(
-                            name=roi.name,
-                            x=roi.x,
-                            y=roi.y,
-                            w=roi.w,
-                            h=roi.h,
-                            file_name=ref_path if os.path.exists(ref_path) else "",
-                        )
-                    )
-                self.adjust_step.ref_images = ref_images
-
-            # Update step's image from its pipeline predecessor
-            src_img = get_source_image_for_step(step)
-            set_image_by_step_name(step, src_img)
-
-            if step == NAME_ADJUST:
-                self.adjust_step._update_preview_canvas()
-            else:
-                current_img = get_image_by_step_name(step) or src_img
-                set_image(current_img)
-                set_comparison_image("")
-                # Ensure active step ROIs are freshly synced and SVG canvas is updated
-                if step == NAME_DRAW_REFS:
-                    self.draw_refs_step._show_rois()
-                elif step == NAME_DRAW_DIGITAL_ROIS:
-                    self.draw_digital_rois_step._show_rois()
-                elif step == NAME_DRAW_ANALOG_ROIS:
-                    self.draw_analog_rois_step._show_rois()
-                elif step in (NAME_METERS, NAME_SERVICES, NAME_FINAL):
-                    self.draw_digital_rois_step._show_rois()
-                    self.draw_analog_rois_step._show_rois()
-                    if step == NAME_FINAL:
-                        self.draw_refs_step._show_rois()
-                else:
-                    update_svg()
-
-            if step == NAME_METERS:
-                self.meters_step.refresh_digit_names()
-
-            if step == NAME_FINAL:
-                gather_config()
-                self.final_step.set_config(self.config)
-            self.previous_step = step
-            update_wizard_nav(step)
 
         def set_comparison_image(base64_str: str = "") -> None:
             if (
@@ -651,33 +253,35 @@ class SetupPage(BasePage):
                     else:
                         self.main_image_header.set_visibility(False)
 
+        def handle_stepper_change(step: str) -> None:
+            self.navigator.handle_stepper_change(
+                step=step,
+                download_image_step=self.download_image_step,
+                initial_rotate_step=self.initial_rotate_step,
+                draw_refs_step=self.draw_refs_step,
+                adjust_step=self.adjust_step,
+                draw_digital_rois_step=self.draw_digital_rois_step,
+                draw_analog_rois_step=self.draw_analog_rois_step,
+                meters_step=self.meters_step,
+                services_step=self.services_step,
+                final_step=self.final_step,
+                set_image_fn=set_image,
+                set_comparison_image_fn=set_comparison_image,
+                update_svg_fn=update_svg,
+                gather_config_fn=gather_config,
+                wizard_prev_btn=self.wizard_prev_btn,
+                wizard_step_badge=self.wizard_step_badge,
+                wizard_next_btn=self.wizard_next_btn,
+                fallback_image=self.image,
+            )
+
         def update_wizard_nav(current_step: str) -> None:
-            if not hasattr(self, "wizard_prev_btn") or self.wizard_prev_btn is None:
-                return
-            idx = steps_order.index(current_step) if current_step in steps_order else 0
-            total = len(steps_order)
-
-            # Update Back button visibility
-            self.wizard_prev_btn.set_visibility(idx > 0)
-
-            # Update Step Badge
-            self.wizard_step_badge.text = f"Step {idx + 1} of {total}: {current_step}"
-
-            # Update Next button visibility & styling
-            if idx == total - 1:
-                self.wizard_next_btn.set_visibility(False)
-            else:
-                self.wizard_next_btn.set_visibility(True)
-                self.wizard_next_btn.text = "Continue"
-                self.wizard_next_btn.props("icon-right=arrow_forward")
-                self.wizard_next_btn.classes(
-                    "px-4 py-1.5 rounded-lg text-sm font-semibold bg-gradient-to-r "
-                    "from-blue-600 to-cyan-600 hover:from-blue-500 "
-                    "hover:to-cyan-500 text-white shadow-md "
-                    "shadow-cyan-950/40 transition-all",
-                    remove="from-emerald-600 to-teal-600 hover:from-emerald-500 "
-                    "hover:to-teal-500 shadow-emerald-950/40",
-                )
+            self.navigator.update_wizard_nav(
+                current_step=current_step,
+                wizard_prev_btn=self.wizard_prev_btn,
+                wizard_step_badge=self.wizard_step_badge,
+                wizard_next_btn=self.wizard_next_btn,
+            )
 
         async def on_wizard_next() -> None:
             self.stepper.next()
@@ -996,7 +600,9 @@ class SetupPage(BasePage):
         self.meters_step = MeterStep(
             name=NAME_METERS,
             set_image_callback=set_image,
-            get_digit_names_func=get_digit_names,
+            get_digit_names_func=lambda: WizardConfigManager.get_digit_names(
+                self.draw_digital_rois_step, self.draw_analog_rois_step
+            ),
             spinner=self.spinner,
         )
         self.services_step = ServicesStep(
