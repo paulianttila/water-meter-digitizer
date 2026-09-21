@@ -128,26 +128,33 @@ class ConfigHistoryManager:
         return entries
 
     @classmethod
-    def restore_backup(cls, config_file: str, backup_name_or_path: str) -> None:
-        """Restore a backup file over config_file, taking a safety snapshot first."""
+    def _resolve_backup_path(
+        cls, backup_name_or_path: str, config_file: str = ""
+    ) -> Path | None:
+        """Resolve a backup filename or path against backups subfolder and config parent."""
         target_path = Path(backup_name_or_path)
-        if not target_path.is_absolute():
-            # Check in backups subfolder first, then parent directory
+        if target_path.is_absolute():
+            return (
+                target_path if target_path.exists() and target_path.is_file() else None
+            )
+
+        if config_file:
             backup_dir = cls.get_backup_dir(config_file)
             candidate = backup_dir / backup_name_or_path
-            if candidate.exists():
-                target_path = candidate
-            else:
-                candidate = Path(config_file).parent / backup_name_or_path
-                if candidate.exists():
-                    target_path = candidate
-                else:
-                    raise FileNotFoundError(
-                        f"Backup file '{backup_name_or_path}' not found"
-                    )
+            if candidate.exists() and candidate.is_file():
+                return candidate
+            candidate = Path(config_file).parent / backup_name_or_path
+            if candidate.exists() and candidate.is_file():
+                return candidate
 
-        if not target_path.exists() or not target_path.is_file():
-            raise FileNotFoundError(f"Backup file '{target_path}' not found")
+        return None
+
+    @classmethod
+    def restore_backup(cls, config_file: str, backup_name_or_path: str) -> None:
+        """Restore a backup file over config_file, taking a safety snapshot first."""
+        target_path = cls._resolve_backup_path(backup_name_or_path, config_file)
+        if target_path is None:
+            raise FileNotFoundError(f"Backup file '{backup_name_or_path}' not found")
 
         # Take safety snapshot before restoring
         cls.create_backup(config_file, tag="before_restore")
@@ -170,24 +177,8 @@ class ConfigHistoryManager:
     @classmethod
     def delete_backup(cls, config_file: str, backup_name_or_path: str) -> bool:
         """Delete a backup file safely."""
-        target_path = Path(backup_name_or_path)
-        if not target_path.is_absolute():
-            backup_dir = cls.get_backup_dir(config_file)
-            candidate = backup_dir / backup_name_or_path
-            if candidate.exists():
-                target_path = candidate
-            else:
-                candidate = Path(config_file).parent / backup_name_or_path
-                if candidate.exists():
-                    target_path = candidate
-                else:
-                    return False
-
-        if (
-            target_path.exists()
-            and target_path.is_file()
-            and target_path.suffix == ".bak"
-        ):
+        target_path = cls._resolve_backup_path(backup_name_or_path, config_file)
+        if target_path is not None and target_path.suffix == ".bak":
             target_path.unlink()
             logger.info("Deleted backup: %s", target_path)
             return True
@@ -201,18 +192,8 @@ class ConfigHistoryManager:
         config_file: str = "",
     ) -> list[str]:
         """Generate a unified diff between current content and the backup."""
-        target_path = Path(backup_name_or_path)
-        if not target_path.is_absolute() and config_file:
-            backup_dir = cls.get_backup_dir(config_file)
-            candidate = backup_dir / backup_name_or_path
-            if candidate.exists():
-                target_path = candidate
-            else:
-                candidate = Path(config_file).parent / backup_name_or_path
-                if candidate.exists():
-                    target_path = candidate
-
-        if not target_path.exists() or not target_path.is_file():
+        target_path = cls._resolve_backup_path(backup_name_or_path, config_file)
+        if target_path is None:
             raise FileNotFoundError(f"Backup file '{backup_name_or_path}' not found")
 
         with open(target_path, encoding="utf-8", errors="replace") as f:
@@ -238,18 +219,8 @@ class ConfigHistoryManager:
         config_file: str = "",
     ) -> str:
         """Retrieve the raw text content of a backup file."""
-        target_path = Path(backup_name_or_path)
-        if not target_path.is_absolute() and config_file:
-            backup_dir = cls.get_backup_dir(config_file)
-            candidate = backup_dir / backup_name_or_path
-            if candidate.exists():
-                target_path = candidate
-            else:
-                candidate = Path(config_file).parent / backup_name_or_path
-                if candidate.exists():
-                    target_path = candidate
-
-        if not target_path.exists() or not target_path.is_file():
+        target_path = cls._resolve_backup_path(backup_name_or_path, config_file)
+        if target_path is None:
             raise FileNotFoundError(f"Backup file '{backup_name_or_path}' not found")
 
         with open(target_path, encoding="utf-8", errors="replace") as f:
