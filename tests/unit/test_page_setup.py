@@ -1,3 +1,5 @@
+"""Unit tests for Setup Wizard page, navigation, and stepper orchestration."""
+
 import asyncio
 from unittest.mock import AsyncMock, MagicMock, patch
 

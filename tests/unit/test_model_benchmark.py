@@ -1,3 +1,5 @@
+"""Unit tests for CNN inference benchmarking and model evaluation dialog."""
+
 import asyncio
 from unittest.mock import MagicMock, patch
 

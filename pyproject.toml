@@ -109,9 +109,18 @@ exclude_dirs = ["tests", ".venv", "dist", "build", "setup.py"]
 skips = []
 
 [tool.pytest.ini_options]
+anyio_mode = "auto"
 pythonpath = [
   ".", "src", "tests/integration",
 ]
 markers = [
   "ui: Web UI integration tests with Playwright",
 ]
+filterwarnings = [
+  "ignore::DeprecationWarning:anyio",
+  "ignore:.*The anyio.abc.BlockingPortal alias is deprecated.*:DeprecationWarning",
+  "ignore:.*Using `httpx` with `starlette.testclient` is deprecated.*:Warning",
+  "ignore:.*HTTP_422_UNPROCESSABLE_ENTITY.*:Warning",
+  "ignore:.*Callback API version 1 is deprecated.*:DeprecationWarning",
+]
+

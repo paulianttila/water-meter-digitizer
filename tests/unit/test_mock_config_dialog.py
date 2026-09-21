@@ -1,3 +1,5 @@
+"""Unit tests for mock configuration editor modal dialog."""
+
 from unittest.mock import MagicMock, patch
 
 import pytest

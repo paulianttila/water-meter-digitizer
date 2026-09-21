@@ -1,3 +1,5 @@
+"""Unit tests for path traversal prevention and filesystem security guards in src/utils/security.py."""
+
 import pytest
 
 from utils.diagnostics import check_camera_reachability

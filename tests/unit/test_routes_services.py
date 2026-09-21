@@ -1,3 +1,5 @@
+"""Unit tests for FastAPI services, telemetry, and background job endpoints."""
+
 from unittest.mock import MagicMock
 
 import pytest

@@ -71,6 +71,14 @@ def check_poller_status_response(response: requests.Response):
 
 
 def check_mqtt_meter_data(response: requests.Response):
+    """Verify published MQTT topics and payload values match reference image inference.
+
+    Expected values correspond to CNN inference performed on default reference
+    meter image ('config/original.jpg') using standard ROI alignments in 'config/config.ini':
+      - Digital readout: '00452' (digits 0.0, 0.0, 4.0, 5.0, 2.6)
+      - Analog readout: '91241' (needles 0.00, 1.20, 2.40, 4.10)
+      - Total formatted meter: '00452.91241' with confidence ~96.2%
+    """
     data = response.json()
     assert data["enabled"] is True
     assert "last_published_topics" in data

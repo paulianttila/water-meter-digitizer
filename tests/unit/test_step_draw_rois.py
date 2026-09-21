@@ -1,3 +1,5 @@
+"""Unit tests for ROI placement and bounding box drawing steps in Setup Wizard."""
+
 from unittest.mock import MagicMock
 
 from data_classes import ImagePosition, RefImage

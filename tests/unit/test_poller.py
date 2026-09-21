@@ -1,3 +1,5 @@
+"""Unit tests for periodic background meter readout poller scheduler."""
+
 import asyncio
 from unittest.mock import MagicMock
 

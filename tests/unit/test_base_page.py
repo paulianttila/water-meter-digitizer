@@ -49,3 +49,30 @@ def test_base_page_dispose():
     page.dispose()
     assert not page.is_mounted
     assert page.spinner is None
+
+    # Repeated dispose should be idempotent
+    page.dispose()
+    assert not page.is_mounted
+    assert page.spinner is None
+
+
+@pytest.mark.anyio
+async def test_base_page_concurrent_mount_and_dispose():
+    import anyio
+
+    page = DummyPage()
+
+    async def mount():
+        page._mounted = True
+        await page.show()
+
+    async def unmount():
+        await anyio.sleep(0.005)
+        page.dispose()
+
+    async with anyio.create_task_group() as tg:
+        tg.start_soon(mount)
+        tg.start_soon(unmount)
+
+    assert not page.is_mounted
+    assert page.rendered

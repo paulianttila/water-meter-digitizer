@@ -1,8 +1,9 @@
+"""Unit tests for DigitizerProcessor and post-processing evaluation."""
+
 from unittest.mock import MagicMock, patch
 
 import pytest
 
-from src.cnn.analog_needle_cnn import AnalogNeedleCNN
 from src.cnn.base import ModelDetails
 from src.cnn.digital_counter_cnn import DigitalCounterCNN
 from src.processor.digitizer import (
@@ -63,50 +64,19 @@ def test_solve_model_non_auto() -> None:
     )
 
 
-def test_evaluate_cnn_results_analog() -> None:
+@pytest.mark.parametrize("model", [MODEL_ANALOG, MODEL_ANALOG100])
+def test_evaluate_cnn_results_analog_models(model: str) -> None:
     processor = DigitizerProcessor()
-    processor.analog_counter_reader = MagicMock(spec=AnalogNeedleCNN)
-    processor.analog_model = MODEL_ANALOG
     processor.cnn_analog_results = [
-        ReadoutResult(name="analog1", value=1.45342, model=MODEL_ANALOG),
-        ReadoutResult(name="analog2", value=2.23533, model=MODEL_ANALOG),
-        ReadoutResult(name="analog3", value=3.83533, model=MODEL_ANALOG),
-        ReadoutResult(name="analog4", value=4.99533, model=MODEL_ANALOG),
-        ReadoutResult(name="analog5", value=5.23455, model=MODEL_ANALOG),
-        ReadoutResult(name="analog6", value=6.99533, model=MODEL_ANALOG),
-        ReadoutResult(name="analog7", value=7.99533, model=MODEL_ANALOG),
-        ReadoutResult(name="analog8", value=8.69533, model=MODEL_ANALOG),
-        ReadoutResult(name="analog9", value=9.29533, model=MODEL_ANALOG),
-    ]
-    processor.evaluate_cnn_results()
-
-    assert processor.available_values == {
-        "analog1": 1,
-        "analog2": 2,
-        "analog3": 4,
-        "analog4": 5,
-        "analog5": 5,
-        "analog6": 7,
-        "analog7": 8,
-        "analog8": 9,
-        "analog9": 9,
-    }
-
-
-def test_evaluate_cnn_results_analog100() -> None:
-    processor = DigitizerProcessor()
-    processor.analog_counter_reader = MagicMock(spec=AnalogNeedleCNN)
-    processor.analog_model = MODEL_ANALOG100
-    processor.cnn_analog_results = [
-        ReadoutResult(name="analog1", value=1.45342, model=MODEL_ANALOG100),
-        ReadoutResult(name="analog2", value=2.23533, model=MODEL_ANALOG100),
-        ReadoutResult(name="analog3", value=3.83533, model=MODEL_ANALOG100),
-        ReadoutResult(name="analog4", value=4.99533, model=MODEL_ANALOG100),
-        ReadoutResult(name="analog5", value=5.23455, model=MODEL_ANALOG100),
-        ReadoutResult(name="analog6", value=6.99533, model=MODEL_ANALOG100),
-        ReadoutResult(name="analog7", value=7.99533, model=MODEL_ANALOG100),
-        ReadoutResult(name="analog8", value=8.69533, model=MODEL_ANALOG100),
-        ReadoutResult(name="analog9", value=9.29533, model=MODEL_ANALOG100),
+        ReadoutResult(name="analog1", value=1.45342, model=model),
+        ReadoutResult(name="analog2", value=2.23533, model=model),
+        ReadoutResult(name="analog3", value=3.83533, model=model),
+        ReadoutResult(name="analog4", value=4.99533, model=model),
+        ReadoutResult(name="analog5", value=5.23455, model=model),
+        ReadoutResult(name="analog6", value=6.99533, model=model),
+        ReadoutResult(name="analog7", value=7.99533, model=model),
+        ReadoutResult(name="analog8", value=8.69533, model=model),
+        ReadoutResult(name="analog9", value=9.29533, model=model),
     ]
     processor.evaluate_cnn_results()
 
@@ -125,8 +95,6 @@ def test_evaluate_cnn_results_analog100() -> None:
 
 def test_evaluate_cnn_results_digital() -> None:
     processor = DigitizerProcessor()
-    processor.digital_model = MODEL_DIGITAL
-    processor.digital_counter_reader = MagicMock(spec=DigitalCounterCNN)
     processor.cnn_digital_results = [
         ReadoutResult(name="digital1", value=1, model=MODEL_DIGITAL),
         ReadoutResult(name="digital2", value=2, model=MODEL_DIGITAL),
@@ -155,8 +123,6 @@ def test_evaluate_cnn_results_digital() -> None:
 
 def test_evaluate_cnn_results_digital100() -> None:
     processor = DigitizerProcessor()
-    processor.digital_model = MODEL_DIGITAL100
-    processor.digital_counter_reader = MagicMock(spec=DigitalCounterCNN)
     processor.cnn_digital_results = [
         ReadoutResult(name="digital1", value=1.4, model=MODEL_DIGITAL100),
         ReadoutResult(name="digital2", value=2.5, model=MODEL_DIGITAL100),
@@ -185,8 +151,6 @@ def test_evaluate_cnn_results_digital100() -> None:
 
 def test_evaluate_cnn_results_digital100_up() -> None:
     processor = DigitizerProcessor()
-    processor.digital_model = MODEL_DIGITAL100
-    processor.digital_counter_reader = MagicMock(spec=DigitalCounterCNN)
     processor.cnn_digital_results = [
         ReadoutResult(name="digital1", value=1.6, model=MODEL_DIGITAL100),
         ReadoutResult(name="digital2", value=2.6, model=MODEL_DIGITAL100),

@@ -1,3 +1,5 @@
+"""Unit tests for negative flow sign detection and morphological analysis."""
+
 from PIL import Image, ImageDraw
 
 from configuration import MeterConfig

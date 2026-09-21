@@ -1,3 +1,5 @@
+"""Unit tests for concurrency safety and thread locks across digitizer and storage."""
+
 from concurrent.futures import ThreadPoolExecutor
 from unittest.mock import patch
 

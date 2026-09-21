@@ -1,3 +1,5 @@
+"""Unit tests for finalization and configuration save step in Setup Wizard."""
+
 from unittest.mock import MagicMock, patch
 
 from configuration import Config

@@ -1,3 +1,5 @@
+"""Unit tests for digit rollover zero-crossing analysis."""
+
 import math
 
 

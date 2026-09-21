@@ -1,3 +1,5 @@
+"""Unit tests for configuration cleaning and stripping utilities."""
+
 from unittest.mock import MagicMock
 
 from PIL import Image

@@ -1,3 +1,5 @@
+"""Unit tests for system health probes and resource metrics collection."""
+
 from unittest.mock import MagicMock, patch
 
 import requests

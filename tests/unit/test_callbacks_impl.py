@@ -2,8 +2,38 @@
 
 from unittest.mock import MagicMock
 
+import pytest
+
 from gui.callbacks_impl import CallbacksImpl
 from processor.digitizer import MeterResult
+
+
+@pytest.fixture
+def base_callbacks_kwargs():
+    """Default minimal keyword arguments for CallbacksImpl."""
+    return {
+        "get_meter_data_fn": lambda **kwargs: MeterResult(
+            meters=[], digital_results={}, analog_results={}
+        ),
+        "get_image_base64_fn": lambda name: "",
+        "get_config_fn": MagicMock,
+        "load_config_file_fn": lambda: "",
+        "save_config_file_fn": lambda data: None,
+        "use_config_fn": lambda: None,
+        "get_storage_fn": lambda: None,
+        "list_backups_fn": lambda: [],
+        "restore_backup_fn": lambda name: None,
+        "undo_backup_fn": lambda: None,
+        "create_snapshot_fn": lambda tag: None,
+        "delete_backup_fn": lambda name: False,
+        "diff_backup_fn": lambda name: [],
+    }
+
+
+@pytest.fixture
+def callbacks_empty_storage(base_callbacks_kwargs) -> CallbacksImpl:
+    """CallbacksImpl instance with no storage backend configured."""
+    return CallbacksImpl(**base_callbacks_kwargs)
 
 
 def test_callbacks_impl_methods():
@@ -103,25 +133,9 @@ def test_callbacks_impl_methods():
     assert callbacks.get_config_version() == 1
 
 
-def test_callbacks_impl_fallbacks():
+def test_callbacks_impl_fallbacks(callbacks_empty_storage: CallbacksImpl):
     """Verify default fallback behaviors when optional delegates are omitted."""
-    callbacks = CallbacksImpl(
-        get_meter_data_fn=lambda **kwargs: MeterResult(
-            meters=[], digital_results={}, analog_results={}
-        ),
-        get_image_base64_fn=lambda name: "",
-        get_config_fn=MagicMock,
-        load_config_file_fn=lambda: "",
-        save_config_file_fn=lambda data: None,
-        use_config_fn=lambda: None,
-        get_storage_fn=lambda: None,
-        list_backups_fn=lambda: [],
-        restore_backup_fn=lambda name: None,
-        undo_backup_fn=lambda: None,
-        create_snapshot_fn=lambda tag: None,
-        delete_backup_fn=lambda name: False,
-        diff_backup_fn=lambda name: [],
-    )
+    callbacks = callbacks_empty_storage
 
     assert callbacks.get_health_data().status == "unknown"
     assert callbacks.get_leak_status().enabled is False
@@ -135,7 +149,9 @@ def test_callbacks_impl_fallbacks():
     assert callbacks.get_config_version() == 1
 
 
-def test_callbacks_impl_frame_data_uris():
+def test_callbacks_impl_frame_data_uris(
+    base_callbacks_kwargs: dict, callbacks_empty_storage: CallbacksImpl
+):
     mock_storage = MagicMock()
     # JPEG test image bytes
     mock_storage.get_frame_bytes.return_value = (
@@ -143,51 +159,22 @@ def test_callbacks_impl_frame_data_uris():
         "image/jpeg",
     )
 
-    callbacks = CallbacksImpl(
-        get_meter_data_fn=lambda **kwargs: MeterResult(
-            meters=[], digital_results={}, analog_results={}
-        ),
-        get_image_base64_fn=lambda name: "",
-        get_config_fn=MagicMock,
-        load_config_file_fn=lambda: "",
-        save_config_file_fn=lambda data: None,
-        use_config_fn=lambda: None,
-        get_storage_fn=lambda: mock_storage,
-        list_backups_fn=lambda: [],
-        restore_backup_fn=lambda name: None,
-        undo_backup_fn=lambda: None,
-        create_snapshot_fn=lambda tag: None,
-        delete_backup_fn=lambda name: False,
-        diff_backup_fn=lambda name: [],
-    )
+    kwargs = {**base_callbacks_kwargs, "get_storage_fn": lambda: mock_storage}
+    callbacks = CallbacksImpl(**kwargs)
 
     uri = callbacks.get_frame_data_uri(1)
     assert uri is not None
     assert uri.startswith("data:image/jpeg;base64,")
 
     # When storage is None
-    callbacks_no_store = CallbacksImpl(
-        get_meter_data_fn=lambda **kwargs: MeterResult(
-            meters=[], digital_results={}, analog_results={}
-        ),
-        get_image_base64_fn=lambda name: "",
-        get_config_fn=MagicMock,
-        load_config_file_fn=lambda: "",
-        save_config_file_fn=lambda data: None,
-        use_config_fn=lambda: None,
-        get_storage_fn=lambda: None,
-        list_backups_fn=lambda: [],
-        restore_backup_fn=lambda name: None,
-        undo_backup_fn=lambda: None,
-        create_snapshot_fn=lambda tag: None,
-        delete_backup_fn=lambda name: False,
-        diff_backup_fn=lambda name: [],
-    )
+    callbacks_no_store = callbacks_empty_storage
     assert callbacks_no_store.get_frame_data_uri(1) is None
     assert callbacks_no_store.get_frame_diff_data_uri(1) is None
 
 
-def test_callbacks_impl_timeline_and_diffs():
+def test_callbacks_impl_timeline_and_diffs(
+    base_callbacks_kwargs: dict, callbacks_empty_storage: CallbacksImpl
+):
     from datetime import datetime
 
     import cv2
@@ -223,23 +210,8 @@ def test_callbacks_impl_timeline_and_diffs():
         else ((bytes2, "image/jpeg") if rid == 2 else (None, None))
     )
 
-    callbacks = CallbacksImpl(
-        get_meter_data_fn=lambda **kwargs: MeterResult(
-            meters=[], digital_results={}, analog_results={}
-        ),
-        get_image_base64_fn=lambda name: "",
-        get_config_fn=MagicMock,
-        load_config_file_fn=lambda: "",
-        save_config_file_fn=lambda data: None,
-        use_config_fn=lambda: None,
-        get_storage_fn=lambda: mock_storage,
-        list_backups_fn=lambda: [],
-        restore_backup_fn=lambda name: None,
-        undo_backup_fn=lambda: None,
-        create_snapshot_fn=lambda tag: None,
-        delete_backup_fn=lambda name: False,
-        diff_backup_fn=lambda name: [],
-    )
+    kwargs = {**base_callbacks_kwargs, "get_storage_fn": lambda: mock_storage}
+    callbacks = CallbacksImpl(**kwargs)
 
     timeline = callbacks.get_timeline(
         limit=10, offset=0, anomalies_only=False, frames_only=False
@@ -268,22 +240,6 @@ def test_callbacks_impl_timeline_and_diffs():
     assert diff_uri.startswith("data:image/jpeg;base64,")
 
     # Empty storage timeline
-    callbacks_no_store = CallbacksImpl(
-        get_meter_data_fn=lambda **kwargs: MeterResult(
-            meters=[], digital_results={}, analog_results={}
-        ),
-        get_image_base64_fn=lambda name: "",
-        get_config_fn=MagicMock,
-        load_config_file_fn=lambda: "",
-        save_config_file_fn=lambda data: None,
-        use_config_fn=lambda: None,
-        get_storage_fn=lambda: None,
-        list_backups_fn=lambda: [],
-        restore_backup_fn=lambda name: None,
-        undo_backup_fn=lambda: None,
-        create_snapshot_fn=lambda tag: None,
-        delete_backup_fn=lambda name: False,
-        diff_backup_fn=lambda name: [],
-    )
+    callbacks_no_store = callbacks_empty_storage
     assert callbacks_no_store.get_timeline() == []
-    assert "error" in callbacks_no_store.get_frame_diff(1)
+    assert callbacks_no_store.get_frame_diff(1).error != ""

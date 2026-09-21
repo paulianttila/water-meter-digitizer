@@ -1,3 +1,5 @@
+"""Unit tests for SQLite / SQLAlchemy persistent storage backend."""
+
 import threading
 from datetime import datetime, timedelta
 from pathlib import Path

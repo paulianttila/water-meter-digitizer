@@ -113,46 +113,70 @@ def test_adjust_step_load_from_config(sample_pil_image: Image.Image) -> None:
     assert step.glare_clahe_clip_limit.value == 3.5
 
 
+def _mock_adjust_step_ui(
+    step: AdjustStep,
+    sample_image: Image.Image | None = None,
+    **overrides,
+) -> None:
+    """Helper to initialize mock UI element values on AdjustStep instance."""
+    defaults = {
+        "live_preview": True,
+        "compare_mode": "Single",
+        "crop_enabled": False,
+        "crop_x": 0,
+        "crop_y": 0,
+        "crop_w": 0,
+        "crop_h": 0,
+        "resize_enabled": False,
+        "resize_w": 0,
+        "resize_h": 0,
+        "rotate_enabled": False,
+        "rotate_angle": 0.0,
+        "adjust_enabled": False,
+        "adjust_gamma": 1.0,
+        "adjust_contrast": 1.0,
+        "adjust_brightness": 1.0,
+        "adjust_sharpness": 1.0,
+        "adjust_color": 1.0,
+        "sharpness_mode": "standard",
+        "unsharp_radius": 1.0,
+        "unsharp_amount": 1.5,
+        "unsharp_threshold": 3,
+        "grayscale_enabled": False,
+        "autocontrast_enabled": False,
+        "autocontrast_cutoff_low": 0.0,
+        "autocontrast_cutoff_high": 0.0,
+        "glare_enabled": False,
+        "glare_mode": "clahe",
+        "glare_inpaint_threshold": 230,
+        "glare_inpaint_radius": 3,
+        "glare_clahe_clip_limit": 2.0,
+        "glare_clahe_grid_size": 8,
+    }
+    defaults.update(overrides)
+    for attr, val in defaults.items():
+        setattr(step, attr, MagicMock(value=val))
+
+    if sample_image is not None:
+        b64_orig = img_utils.convert_image_base64str(sample_image)
+        step.org_image = b64_orig
+
+
 def test_adjust_step_do_adjust(sample_pil_image: Image.Image) -> None:
     """Verify _do_adjust applies processing transformations."""
     cb = MagicMock()
     step = AdjustStep(name="Adjust", set_image_callback=cb)
-
-    # Initialize mocked UI elements
-    step.crop_enabled = MagicMock(value=False)
-    step.crop_x = MagicMock(value=0)
-    step.crop_y = MagicMock(value=0)
-    step.crop_w = MagicMock(value=0)
-    step.crop_h = MagicMock(value=0)
-    step.resize_enabled = MagicMock(value=False)
-    step.resize_w = MagicMock(value=0)
-    step.resize_h = MagicMock(value=0)
-    step.rotate_enabled = MagicMock(value=False)
-    step.rotate_angle = MagicMock(value=0.0)
-    step.adjust_enabled = MagicMock(value=True)
-    step.adjust_gamma = MagicMock(value=0.9)
-    step.adjust_contrast = MagicMock(value=1.2)
-    step.adjust_brightness = MagicMock(value=1.1)
-    step.adjust_sharpness = MagicMock(value=1.0)
-    step.adjust_color = MagicMock(value=1.0)
-    step.sharpness_mode = MagicMock(value="unsharp_mask")
-    step.unsharp_radius = MagicMock(value=1.0)
-    step.unsharp_amount = MagicMock(value=1.5)
-    step.unsharp_threshold = MagicMock(value=3)
-    step.grayscale_enabled = MagicMock(value=False)
-    step.autocontrast_enabled = MagicMock(value=False)
-    step.autocontrast_cutoff_low = MagicMock(value=0.0)
-    step.autocontrast_cutoff_high = MagicMock(value=0.0)
-    step.glare_enabled = MagicMock(value=False)
-    step.glare_mode = MagicMock(value="clahe")
-    step.glare_inpaint_threshold = MagicMock(value=230)
-    step.glare_inpaint_radius = MagicMock(value=3)
-    step.glare_clahe_clip_limit = MagicMock(value=2.0)
-    step.glare_clahe_grid_size = MagicMock(value=8)
+    _mock_adjust_step_ui(
+        step,
+        sample_pil_image,
+        adjust_enabled=True,
+        adjust_gamma=0.9,
+        adjust_contrast=1.2,
+        adjust_brightness=1.1,
+        sharpness_mode="unsharp_mask",
+    )
 
     b64_orig = img_utils.convert_image_base64str(sample_pil_image)
-    step.org_image = b64_orig
-
     result_b64 = step._do_adjust(b64_orig)
     assert isinstance(result_b64, str)
     assert len(result_b64) > 0
@@ -194,37 +218,7 @@ def test_adjust_step_debounced_on_param_change(
     """Verify _on_param_change debounces and triggers preview callback."""
     cb = MagicMock()
     step = AdjustStep(name="Adjust", set_image_callback=cb)
-
-    step.live_preview = MagicMock(value=True)
-    step.compare_mode = MagicMock(value="Single")
-    step.crop_enabled = MagicMock(value=False)
-    step.crop_x = MagicMock(value=0)
-    step.crop_y = MagicMock(value=0)
-    step.crop_w = MagicMock(value=0)
-    step.crop_h = MagicMock(value=0)
-    step.resize_enabled = MagicMock(value=False)
-    step.resize_w = MagicMock(value=0)
-    step.resize_h = MagicMock(value=0)
-    step.rotate_enabled = MagicMock(value=False)
-    step.rotate_angle = MagicMock(value=0.0)
-    step.adjust_enabled = MagicMock(value=False)
-    step.adjust_contrast = MagicMock(value=1.0)
-    step.adjust_brightness = MagicMock(value=1.0)
-    step.adjust_sharpness = MagicMock(value=1.0)
-    step.adjust_color = MagicMock(value=1.0)
-    step.grayscale_enabled = MagicMock(value=False)
-    step.autocontrast_enabled = MagicMock(value=False)
-    step.autocontrast_cutoff_low = MagicMock(value=0.0)
-    step.autocontrast_cutoff_high = MagicMock(value=0.0)
-    step.glare_enabled = MagicMock(value=False)
-    step.glare_mode = MagicMock(value="clahe")
-    step.glare_inpaint_threshold = MagicMock(value=230)
-    step.glare_inpaint_radius = MagicMock(value=3)
-    step.glare_clahe_clip_limit = MagicMock(value=2.0)
-    step.glare_clahe_grid_size = MagicMock(value=8)
-
-    b64_orig = img_utils.convert_image_base64str(sample_pil_image)
-    step.org_image = b64_orig
+    _mock_adjust_step_ui(step, sample_pil_image)
 
     async def run_debounce_test():
         step._on_param_change()
@@ -245,37 +239,8 @@ def test_adjust_step_comparison_callback_side_by_side(
         set_image_callback=cb,
         set_comparison_callback=comp_cb,
     )
-
-    step.live_preview = MagicMock(value=True)
-    step.compare_mode = MagicMock(value="Side-by-Side")
-    step.crop_enabled = MagicMock(value=False)
-    step.crop_x = MagicMock(value=0)
-    step.crop_y = MagicMock(value=0)
-    step.crop_w = MagicMock(value=0)
-    step.crop_h = MagicMock(value=0)
-    step.resize_enabled = MagicMock(value=False)
-    step.resize_w = MagicMock(value=0)
-    step.resize_h = MagicMock(value=0)
-    step.rotate_enabled = MagicMock(value=False)
-    step.rotate_angle = MagicMock(value=0.0)
-    step.adjust_enabled = MagicMock(value=False)
-    step.adjust_contrast = MagicMock(value=1.0)
-    step.adjust_brightness = MagicMock(value=1.0)
-    step.adjust_sharpness = MagicMock(value=1.0)
-    step.adjust_color = MagicMock(value=1.0)
-    step.grayscale_enabled = MagicMock(value=False)
-    step.autocontrast_enabled = MagicMock(value=False)
-    step.autocontrast_cutoff_low = MagicMock(value=0.0)
-    step.autocontrast_cutoff_high = MagicMock(value=0.0)
-    step.glare_enabled = MagicMock(value=False)
-    step.glare_mode = MagicMock(value="clahe")
-    step.glare_inpaint_threshold = MagicMock(value=230)
-    step.glare_inpaint_radius = MagicMock(value=3)
-    step.glare_clahe_clip_limit = MagicMock(value=2.0)
-    step.glare_clahe_grid_size = MagicMock(value=8)
-
+    _mock_adjust_step_ui(step, sample_pil_image, compare_mode="Side-by-Side")
     b64_orig = img_utils.convert_image_base64str(sample_pil_image)
-    step.org_image = b64_orig
 
     async def run_test():
         step._on_param_change()
@@ -301,37 +266,7 @@ def test_adjust_step_comparison_callback_single_clears(
         set_image_callback=cb,
         set_comparison_callback=comp_cb,
     )
-
-    step.live_preview = MagicMock(value=True)
-    step.compare_mode = MagicMock(value="Single")
-    step.crop_enabled = MagicMock(value=False)
-    step.crop_x = MagicMock(value=0)
-    step.crop_y = MagicMock(value=0)
-    step.crop_w = MagicMock(value=0)
-    step.crop_h = MagicMock(value=0)
-    step.resize_enabled = MagicMock(value=False)
-    step.resize_w = MagicMock(value=0)
-    step.resize_h = MagicMock(value=0)
-    step.rotate_enabled = MagicMock(value=False)
-    step.rotate_angle = MagicMock(value=0.0)
-    step.adjust_enabled = MagicMock(value=False)
-    step.adjust_contrast = MagicMock(value=1.0)
-    step.adjust_brightness = MagicMock(value=1.0)
-    step.adjust_sharpness = MagicMock(value=1.0)
-    step.adjust_color = MagicMock(value=1.0)
-    step.grayscale_enabled = MagicMock(value=False)
-    step.autocontrast_enabled = MagicMock(value=False)
-    step.autocontrast_cutoff_low = MagicMock(value=0.0)
-    step.autocontrast_cutoff_high = MagicMock(value=0.0)
-    step.glare_enabled = MagicMock(value=False)
-    step.glare_mode = MagicMock(value="clahe")
-    step.glare_inpaint_threshold = MagicMock(value=230)
-    step.glare_inpaint_radius = MagicMock(value=3)
-    step.glare_clahe_clip_limit = MagicMock(value=2.0)
-    step.glare_clahe_grid_size = MagicMock(value=8)
-
-    b64_orig = img_utils.convert_image_base64str(sample_pil_image)
-    step.org_image = b64_orig
+    _mock_adjust_step_ui(step, sample_pil_image, compare_mode="Single")
 
     async def run_test():
         step._on_param_change()
@@ -396,23 +331,14 @@ def test_adjust_step_do_adjust_with_missing_ref_files(
             name="Ref2", x=30, y=60, w=20, h=20, file_name="/nonexistent/ref2.jpg"
         ),
     ]
-
-    step.crop_enabled = MagicMock(value=False)
-    step.resize_enabled = MagicMock(value=False)
-    step.rotate_enabled = MagicMock(value=False)
-    step.rotate_angle = MagicMock(value=0.0)
-    step.adjust_enabled = MagicMock(value=True)
-    step.adjust_contrast = MagicMock(value=1.5)
-    step.adjust_brightness = MagicMock(value=1.0)
-    step.adjust_sharpness = MagicMock(value=1.0)
-    step.adjust_color = MagicMock(value=1.0)
-    step.grayscale_enabled = MagicMock(value=False)
-    step.autocontrast_enabled = MagicMock(value=False)
-    step.glare_enabled = MagicMock(value=False)
+    _mock_adjust_step_ui(
+        step,
+        sample_pil_image,
+        adjust_enabled=True,
+        adjust_contrast=1.5,
+    )
 
     b64_orig = img_utils.convert_image_base64str(sample_pil_image)
-    step.org_image = b64_orig
-
     # Should not raise FileNotFoundError, should successfully apply contrast
     result_b64 = step._do_adjust(b64_orig)
     assert isinstance(result_b64, str)

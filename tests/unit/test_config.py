@@ -1,3 +1,5 @@
+"""Unit tests for configuration loading, serialization, variable interpolation, and schema validation."""
+
 import os
 
 from configuration import Config, ConfigurationMissing
@@ -6,6 +8,7 @@ from leak import ValueType
 
 
 def test_config():
+    """Verify loading default config/config.ini and assert strongly-typed configuration schema and defaults."""
     config = Config().load_from_file("config/config.ini")
     cfg_dir = "/config" if os.path.exists("/config") else os.path.abspath("config")
 

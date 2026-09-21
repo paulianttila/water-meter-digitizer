@@ -1,3 +1,5 @@
+"""Unit tests for GUI components, metric cards, and layout elements."""
+
 import asyncio
 from unittest.mock import MagicMock, patch
 

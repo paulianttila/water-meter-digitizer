@@ -1,3 +1,5 @@
+"""Unit tests for version resolution and fallback in src/version.py."""
+
 import tomllib
 from pathlib import Path
 from unittest.mock import patch
@@ -17,7 +19,7 @@ def test_version_matches_pyproject_toml():
 
 def test_version_fallback_when_file_not_found():
     with (
-        patch("pathlib.Path.is_file", return_value=False),
+        patch("version.Path.is_file", return_value=False),
         patch("version.version", side_effect=Exception("not installed")),
     ):
         v = _get_version()

@@ -1,3 +1,5 @@
+"""Unit tests for MQTT publisher service, reconnects, and message payload delivery."""
+
 from unittest.mock import MagicMock
 
 from configuration import MQTT

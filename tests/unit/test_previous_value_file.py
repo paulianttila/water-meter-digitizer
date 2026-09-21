@@ -1,3 +1,5 @@
+"""Unit tests for atomic previous value persistence in prevalue.ini."""
+
 import pytest
 
 from previous_value import (

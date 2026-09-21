@@ -1,3 +1,5 @@
+"""Unit tests for CNN confidence calculations and threshold validation."""
+
 import math
 from unittest.mock import MagicMock, patch
 

@@ -1,3 +1,5 @@
+"""Unit tests for CLAHE and inpainting glare suppression image processing."""
+
 import os
 
 import numpy as np

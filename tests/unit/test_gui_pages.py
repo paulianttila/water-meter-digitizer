@@ -1,3 +1,5 @@
+"""Unit tests for NiceGUI top-level page routing and instantiation."""
+
 import asyncio
 from unittest.mock import MagicMock, patch
 

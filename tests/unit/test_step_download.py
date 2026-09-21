@@ -1,3 +1,5 @@
+"""Unit tests for DownloadImageStep in src/gui/step_download.py."""
+
 import asyncio
 from unittest.mock import MagicMock, patch
 
@@ -67,11 +69,35 @@ def test_download_image_step_load_from_config():
     step = DownloadImageStep(name="Download", set_image_callback=MagicMock())
     step.url = MagicMock()
     step.timeout = MagicMock()
+    step.minsize = MagicMock()
 
     config_source = ImageSource()
     config_source.url = "http://192.168.1.100/jpg"
     config_source.timeout = 15
+    config_source.min_size = 25000
 
     step.load_from_config(config_source)
     assert step.url.value == "http://192.168.1.100/jpg"
     assert step.timeout.value == 15
+    assert step.minsize.value == 25000
+
+
+def test_download_image_step_show_renders_controls():
+    step = DownloadImageStep(name="Download", set_image_callback=MagicMock())
+    stepper = MagicMock()
+
+    with (
+        patch("gui.step_download.ui") as mock_ui,
+        patch("gui.step_base.ui") as mock_base_ui,
+    ):
+        mock_ui.step.return_value.__enter__ = MagicMock()
+        mock_ui.step.return_value.__exit__ = MagicMock()
+        mock_ui.row.return_value.__enter__ = MagicMock()
+        mock_ui.row.return_value.__exit__ = MagicMock()
+        mock_base_ui.expansion.return_value.__enter__ = MagicMock()
+        mock_base_ui.expansion.return_value.__exit__ = MagicMock()
+
+        asyncio.run(step.show(stepper))
+        assert step.url is not None
+        assert step.timeout is not None
+        assert step.minsize is not None
