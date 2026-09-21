@@ -10,7 +10,6 @@ from cnn.analog_needle_cnn import AnalogNeedleCNN
 from cnn.base import ModelDetails
 from cnn.digital_counter_cnn import DigitalCounterCNN
 from data_classes import CutImage, MeterConfig
-from decorators.decorators import log_execution_time
 from previous_value import (
     load_previous_value_from_file,
     save_previous_value_to_file,
@@ -28,6 +27,7 @@ from processor.rollover_corrector import (
     RolloverCorrector,
 )
 from processor.sign_detector import detect_minus_sign
+from utils.decorators import log_execution_time
 from utils.math import fill_with_predecessor_digits
 
 logger = logging.getLogger(__name__)

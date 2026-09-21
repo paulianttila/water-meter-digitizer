@@ -10,7 +10,7 @@ from gui.api_console.mock_config_dialog import (
     DIGITAL_MODELS,
     MockConfigDialog,
 )
-from simulator.meter_generator import MeterImageGenerator
+from services.simulator.meter_generator import MeterImageGenerator
 
 
 @pytest.fixture

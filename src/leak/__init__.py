@@ -1,4 +1,12 @@
-from .models import LeakEvent, LeakState, ValueType, ZeroFlowStatus
-from .tracker import ZeroFlowTracker
+"""Backward-compatibility facade for leak package."""
 
-__all__ = ["LeakEvent", "LeakState", "ValueType", "ZeroFlowStatus", "ZeroFlowTracker"]
+from services.leak.models import LeakEvent, LeakState, ValueType, ZeroFlowStatus
+from services.leak.tracker import ZeroFlowTracker
+
+__all__ = [
+    "LeakEvent",
+    "LeakState",
+    "ValueType",
+    "ZeroFlowStatus",
+    "ZeroFlowTracker",
+]

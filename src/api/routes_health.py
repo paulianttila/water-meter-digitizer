@@ -5,7 +5,7 @@ from fastapi.responses import HTMLResponse
 
 from context import AppContext, get_app_context
 from data_classes import HealthResponse
-from decorators.decorators import log_execution_time
+from utils.decorators import log_execution_time
 from utils.diagnostics import collect_health_status, get_allowed_asset_directories
 from version import __version__
 

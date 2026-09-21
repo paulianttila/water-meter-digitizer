@@ -7,8 +7,8 @@ import cv2
 import numpy as np
 from fastapi import APIRouter, HTTPException, Query, Request, Response
 
-from decorators.decorators import log_execution_time
 from storage.seed import seed_demo_history
+from utils.decorators import log_execution_time
 from utils.visual_diff import (
     calculate_image_ssim,
     compress_image_to_bytes,

@@ -14,7 +14,7 @@ from gui.components.services_status_card import ServicesStatusCard
 from gui.pages.api_console import ApiConsolePage
 from gui.pages.previous_values import PreviousValuesPage
 from gui.pages.services import ServicesPage
-from simulator.meter_generator import MeterImageGenerator
+from services.simulator.meter_generator import MeterImageGenerator
 
 
 @pytest.fixture(autouse=True)

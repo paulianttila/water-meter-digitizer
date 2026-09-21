@@ -6,7 +6,7 @@ import os
 from fastapi import APIRouter, Request, Response
 from fastapi.responses import JSONResponse, RedirectResponse
 
-from decorators.decorators import log_execution_time
+from utils.decorators import log_execution_time
 from version import __version__
 
 logger = logging.getLogger(__name__)

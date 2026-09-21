@@ -3,7 +3,7 @@
 from pydantic import BaseModel, Field
 
 from data_classes import ImagePosition, RefImage
-from leak.models import ValueType
+from services.leak.models import ValueType
 
 
 class ImageSource(BaseModel):

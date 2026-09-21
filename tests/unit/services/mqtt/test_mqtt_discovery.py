@@ -4,9 +4,9 @@ from unittest.mock import MagicMock, patch
 
 from configuration import MQTT
 from data_classes import MeterConfig
-from leak.models import LeakEvent, LeakState, ZeroFlowStatus
-from mqtt.client import MQTTService
-from mqtt.discovery import build_homeassistant_discovery_payloads
+from services.leak.models import LeakEvent, LeakState, ZeroFlowStatus
+from services.mqtt.client import MQTTService
+from services.mqtt.discovery import build_homeassistant_discovery_payloads
 
 
 def test_discovery_payload_device_classes():

@@ -23,7 +23,7 @@ from config.models import (
 )
 from config.paths import format_config_path
 from data_classes import ImagePosition, MeterConfig, RefImage
-from leak.models import ValueType
+from services.leak.models import ValueType
 
 if TYPE_CHECKING:
     from config.main import Config

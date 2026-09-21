@@ -4,7 +4,7 @@ import os
 
 from configuration import Config, ConfigurationMissing
 from data_classes import ImagePosition, MeterConfig, RefImage
-from leak import ValueType
+from services.leak.models import ValueType
 
 
 def test_config():

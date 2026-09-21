@@ -6,7 +6,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, Response
 
 from context import AppContext, get_app_context
-from decorators.decorators import log_execution_time
+from utils.decorators import log_execution_time
 
 router = APIRouter(tags=["services"])
 

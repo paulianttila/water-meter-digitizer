@@ -14,8 +14,8 @@ from data_classes import (
     TimelineFrame,
     VisualDiffMetrics,
 )
-from leak.models import LeakState, ZeroFlowStatus
 from processor.digitizer import MeterResult
+from services.leak.models import LeakState, ZeroFlowStatus
 from storage.base import StorageBackend
 from storage.frame_service import FrameService
 

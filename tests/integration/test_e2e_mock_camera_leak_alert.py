@@ -6,8 +6,8 @@ import requests
 from testing_utils import MQTTTestReceiver
 
 from configuration import ZeroFlowMonitor
-from leak import ValueType
-from leak.tracker import LeakState, ZeroFlowTracker
+from services.leak.models import LeakState, ValueType
+from services.leak.tracker import ZeroFlowTracker
 
 
 def test_e2e_mock_camera_leak_detection_flow_and_reset():

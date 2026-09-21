@@ -5,9 +5,9 @@ from dataclasses import dataclass
 from fastapi import Request
 
 from configuration import Config
-from leak.tracker import ZeroFlowTracker
-from mqtt.client import MQTTService
-from poller.scheduler import BackgroundPoller
+from services.leak.tracker import ZeroFlowTracker
+from services.mqtt.client import MQTTService
+from services.poller.scheduler import BackgroundPoller
 from storage.base import StorageBackend
 from utils.cache import ImageCache
 

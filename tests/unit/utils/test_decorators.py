@@ -1,8 +1,8 @@
-"""Unit tests for decorators in src/decorators/decorators.py."""
+"""Unit tests for decorators in src/utils/decorators.py."""
 
 import asyncio
 
-from decorators.decorators import log_execution_time
+from utils.decorators import log_execution_time
 
 
 def test_log_execution_time_sync(caplog):

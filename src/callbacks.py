@@ -9,8 +9,8 @@ from data_classes import (
     TimelineFrame,
     VisualDiffMetrics,
 )
-from leak.models import ZeroFlowStatus
 from processor.digitizer import MeterResult
+from services.leak.models import ZeroFlowStatus
 from storage.base import StorageBackend
 
 

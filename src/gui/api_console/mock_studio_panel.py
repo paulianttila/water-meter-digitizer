@@ -29,7 +29,7 @@ from gui.theme import (
     ROW_HEADER,
 )
 from processor.image import ImageProcessor
-from simulator.meter_generator import MeterImageGenerator
+from services.simulator.meter_generator import MeterImageGenerator
 
 if TYPE_CHECKING:
     from callbacks import Callbacks

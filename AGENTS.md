@@ -29,15 +29,18 @@ src/                    # Application source (Python path root in container)
 ├── cnn/                # LiteRT inference: base class, pool, analog/digital CNNs
 ├── processor/          # 6-stage pipeline: image capture → digitizer post-processing
 ├── storage/            # Abstract base + SQLite and in-memory backends
-├── gui/                # NiceGUI pages (page_*.py), setup wizard steps (step_*.py)
+├── gui/                # NiceGUI web UI: pages/, wizard/ (steps/, adjust/), dialogs/, components/
 │   ├── components/     # Reusable UI cards (consumption, time_machine, leak, etc.)
+│   ├── pages/          # Full page views (meter, config, services, setup, etc.)
+│   ├── wizard/         # 9-step calibration wizard (steps/, adjust/)
+│   ├── dialogs/        # Modal dialogs (benchmark)
 │   └── theme.py        # Tailwind CSS class constants for consistent styling
-├── mqtt/               # MQTT client service + Home Assistant discovery
-├── leak/               # Zero-flow continuous leak detection engine
-├── poller/             # Background polling scheduler
-├── simulator/          # Mock camera meter generator for synthetic frames & simulation
-├── utils/              # Shared helpers (image, cache, math, security, visual_diff)
-├── decorators/         # Cross-cutting decorators (e.g. log_execution_time)
+├── services/           # Background & integration services (mqtt, leak, poller, simulator)
+│   ├── mqtt/           # MQTT client service + Home Assistant discovery
+│   ├── leak/           # Zero-flow continuous leak detection engine
+│   ├── poller/         # Background polling scheduler
+│   └── simulator/      # Mock camera meter generator for synthetic frames & simulation
+├── utils/              # Shared helpers (image, cache, math, security, decorators, visual_diff)
 └── web/static/         # Static assets served by FastAPI
 config/                 # Default INI config, reference marker images, neural net models
 tests/
@@ -98,12 +101,12 @@ uv run pytest tests/unit/test_example.py  # Run a specific or new test file dire
 - **Thread-safe LiteRT pool**: `src/cnn/pool.py` manages a pool of TFLite interpreter instances for concurrent inference
 - **6-stage pipeline**: Capture → Alignment → Adjustment → ROI Extraction → CNN Inference → Post-Processing (in `src/processor/`)
 - **Storage abstraction**: `StorageBackend` ABC with SQLite (production) and in-memory (testing) implementations
-- **Background poller**: `src/poller/scheduler.py` runs periodic meter reads on a configurable interval
+- **Background poller**: `src/services/poller/scheduler.py` runs periodic meter reads on a configurable interval
 
 ## Test Conventions
 
-- Unit tests live in `tests/unit/test_<module>.py` mirroring the source module
-- New or individual test files can be executed directly via `uv run pytest tests/unit/test_<module>.py`
+- Unit tests live in `tests/unit/` mirroring the source hierarchy (e.g. `tests/unit/services/poller/test_poller.py`)
+- New or individual test files can be executed directly via `uv run pytest tests/unit/...`
 - Integration tests in `tests/integration/` use Tavern YAML for REST API and pytest for end-to-end flows
 - Test resources go in `tests/unit/resource/`
 - Use `unittest.mock.patch` for external dependencies; test configs use `test_config*/` directories

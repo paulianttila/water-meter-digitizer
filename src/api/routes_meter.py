@@ -11,11 +11,11 @@ import previous_value
 import utils.image
 from configuration import Config
 from data_classes import CutImageOptions
-from decorators.decorators import log_execution_time
 from processor.digitizer import DigitizerProcessor, MeterResult
 from processor.image import (
     ImageProcessor,
 )
+from utils.decorators import log_execution_time
 from utils.diagnostics import get_allowed_asset_directories
 from utils.download import DownloadFailure
 

@@ -31,7 +31,7 @@ from config.serializer import (
     save_config_to_io,
 )
 from data_classes import MeterConfig
-from leak.models import ValueType
+from services.leak.models import ValueType
 
 
 class Config(BaseSettings):

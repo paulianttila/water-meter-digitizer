@@ -27,13 +27,13 @@ from api.routes_services import router as services_router
 from api.routes_system import router as system_router
 from configuration import Config, ensure_config_initialized
 from context import AppContext
-from decorators.decorators import log_execution_time
-from leak.tracker import ZeroFlowTracker
-from mqtt.client import MQTTService
-from poller.scheduler import BackgroundPoller
 from processor.image import ImageProcessor
+from services.leak.tracker import ZeroFlowTracker
+from services.mqtt.client import MQTTService
+from services.poller.scheduler import BackgroundPoller
 from storage import get_storage_backend
 from utils.cache import ImageCache
+from utils.decorators import log_execution_time
 from version import __version__ as VERSION
 
 config_file = os.environ.get("CONFIG_FILE", "/config/config.ini")

@@ -1,5 +1,5 @@
-"""Water meter simulator and procedural image generation package."""
+"""Backward-compatibility facade for simulator package."""
 
-from .meter_generator import MeterImageGenerator
+from services.simulator.meter_generator import MeterImageGenerator
 
 __all__ = ["MeterImageGenerator"]

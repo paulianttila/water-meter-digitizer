@@ -5,8 +5,8 @@ from unittest.mock import MagicMock
 import pytest
 from fastapi.testclient import TestClient
 
-from leak.models import LeakState, ZeroFlowStatus
 from main import app
+from services.leak.models import LeakState, ZeroFlowStatus
 
 
 @pytest.fixture(autouse=True)

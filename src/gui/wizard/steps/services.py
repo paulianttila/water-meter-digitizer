@@ -3,7 +3,7 @@ from collections.abc import Callable
 from nicegui import ui
 
 from configuration import Config
-from leak.models import ValueType
+from services.leak.models import ValueType
 
 from .base import BaseStep
 

@@ -3,8 +3,8 @@
 from datetime import datetime, timedelta
 
 from configuration import ZeroFlowMonitor
-from leak.models import LeakState, ValueType
-from leak.tracker import ZeroFlowTracker
+from services.leak.models import LeakState, ValueType
+from services.leak.tracker import ZeroFlowTracker
 
 
 def test_tracker_initial_state():

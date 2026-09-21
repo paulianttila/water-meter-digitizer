@@ -3,7 +3,7 @@
 import PIL.Image
 
 from processor.image import ImageProcessor
-from simulator.meter_generator import MeterImageGenerator
+from services.simulator.meter_generator import MeterImageGenerator
 
 
 def test_mock_camera_glare_suppression():

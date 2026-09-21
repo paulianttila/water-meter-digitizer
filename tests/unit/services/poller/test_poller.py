@@ -6,8 +6,8 @@ from unittest.mock import MagicMock
 import pytest
 
 from configuration import Poller
-from poller.scheduler import BackgroundPoller
 from processor.digitizer import MeterResult, MeterValue
+from services.poller.scheduler import BackgroundPoller
 
 
 @pytest.mark.anyio
