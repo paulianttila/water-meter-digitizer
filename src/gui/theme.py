@@ -10,6 +10,14 @@ CARD_SUBTLE = (
     "hover:border-indigo-500/30 transition-all"
 )
 CARD_PANEL = "w-full rounded-xl bg-slate-950 p-3 border border-white/10"
+CARD_EXPANSION = (
+    "w-full max-w-full bg-slate-900/60 border border-white/10 rounded-xl "
+    "overflow-hidden shadow-sm hover:border-white/20 transition-colors shrink-0 min-w-0"
+)
+PANEL_TAB_CONTENT = (
+    "w-full h-full p-0 overflow-y-auto overflow-x-hidden min-w-0 max-w-full "
+    "flex flex-col flex-nowrap gap-3 pr-1"
+)
 TOOLBAR_ROW = (
     "w-full items-center justify-between gap-3 mb-3 p-3 rounded-xl "
     "bg-slate-900/60 border border-white/10"

@@ -29,7 +29,13 @@ class AboutPage(BasePage):
         health_data: dict[str, Any] = {}
         if self.callbacks:
             try:
-                health_data = self.callbacks.get_health_data() or {}
+                raw_health = self.callbacks.get_health_data()
+                if hasattr(raw_health, "model_dump"):
+                    health_data = raw_health.model_dump()
+                elif isinstance(raw_health, dict):
+                    health_data = raw_health
+                else:
+                    health_data = {}
             except Exception as e:
                 health_data = {"error": str(e)}
 

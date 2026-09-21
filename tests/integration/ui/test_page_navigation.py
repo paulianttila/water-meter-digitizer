@@ -73,3 +73,64 @@ def test_app_shell_header_and_tabs_navigation(page: Page, live_server_url: str):
     # 10. Navigate back to Meter tab
     meter_tab.click()
     expect(page.get_by_text("Meter Dashboard")).to_be_visible(timeout=5000)
+
+
+@pytest.mark.ui
+def test_help_page_card_expansion_and_scrollability(page: Page, live_server_url: str):
+    """Verify that Help page cards are closed by default, and expanding multiple
+    cards in restricted viewports allows independent vertical scrolling.
+    """
+    page.set_viewport_size({"width": 1024, "height": 650})
+    page.goto(f"{live_server_url}/gui", wait_until="domcontentloaded")
+
+    # Navigate to Help tab
+    page.get_by_role("tab", name="Help").click()
+    expect(page.get_by_text("Help & Documentation")).to_be_visible(timeout=5000)
+
+    # Verify cards are present and closed by default
+    arch_card = page.get_by_text("Runtime Architecture", exact=True)
+    wizard_card = page.get_by_text("Setup Wizard Progression", exact=True)
+    rules_card = page.get_by_text(
+        "Marker Placement Rules & Calibration Tips", exact=True
+    )
+    wiki_card = page.get_by_text("Wiki Documentation & Deep Dives", exact=True)
+
+    expect(arch_card).to_be_visible()
+    expect(wizard_card).to_be_visible()
+    expect(rules_card).to_be_visible()
+    expect(wiki_card).to_be_visible()
+
+    # Click headers to expand
+    for card in [arch_card, wizard_card, rules_card, wiki_card]:
+        card.click()
+        page.wait_for_timeout(300)
+
+    page.wait_for_timeout(500)
+
+    # Verify that the active tab panel becomes scrollable vertically with NO horizontal scrollbar
+    layout_info = page.evaluate("""() => {
+        const body = document.body;
+        const scrollContainer = document.querySelector('#help-subtab-workflow');
+        return {
+            bodyScrollHeight: body.scrollHeight,
+            windowHeight: window.innerHeight,
+            bodyScrollWidth: body.scrollWidth,
+            windowWidth: window.innerWidth,
+            panelScrollable: scrollContainer ? scrollContainer.scrollHeight > scrollContainer.clientHeight : false,
+            panelScrollHeight: scrollContainer ? scrollContainer.scrollHeight : 0,
+            panelClientHeight: scrollContainer ? scrollContainer.clientHeight : 0,
+            horizontalScrollable: scrollContainer ? scrollContainer.scrollWidth > scrollContainer.clientWidth : false,
+            panelScrollWidth: scrollContainer ? scrollContainer.scrollWidth : 0,
+            panelClientWidth: scrollContainer ? scrollContainer.clientWidth : 0
+        };
+    }""")
+
+    assert layout_info["bodyScrollHeight"] <= layout_info["windowHeight"]
+    assert layout_info["bodyScrollWidth"] <= layout_info["windowWidth"]
+    assert layout_info["panelScrollable"] is True
+    assert layout_info["horizontalScrollable"] is False
+
+    # Scroll the bottom-most wiki card into view and verify it can be seen
+    wiki_link = page.get_by_text("Getting Started & Hardware")
+    wiki_link.scroll_into_view_if_needed()
+    expect(wiki_link).to_be_visible()

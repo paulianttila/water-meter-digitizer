@@ -150,7 +150,7 @@ class HelpPage(BasePage):
             support_dialog.open()
 
         with ui.column().classes(
-            "w-full h-full flex flex-col gap-3 p-4 overflow-hidden"
+            "w-full h-full flex flex-col gap-3 p-4 overflow-hidden min-h-0 min-w-0 max-w-full"
         ):
             # Header Hero Bar
             with page_header(
@@ -189,7 +189,7 @@ class HelpPage(BasePage):
             # 3 Navigation Tabs
             with (
                 ui.tabs().classes(
-                    "w-full bg-slate-900/90 border border-white/10 rounded-xl p-1 shrink-0"
+                    "w-full bg-slate-900/90 border border-white/10 rounded-xl p-1 shrink-0 min-w-0"
                 ) as tabs,
                 ui.row().classes("w-full gap-2"),
             ):
@@ -203,203 +203,252 @@ class HelpPage(BasePage):
                     "Integrations & API Specs", icon="hub"
                 ).classes("font-semibold text-sm")
 
-            with ui.tab_panels(tabs, value=tab_workflow).classes(
-                "w-full flex-1 bg-transparent p-0 overflow-y-auto"
+            with (
+                ui.tab_panels(tabs, value=tab_workflow)
+                .classes(
+                    "w-full flex-1 min-h-0 min-w-0 bg-transparent p-0 overflow-hidden"
+                )
+                .props('id="help-tab-panels"')
             ):
                 # -------------------------------------------------------------
                 # TAB 1: Setup Workflow & Pipeline
                 # -------------------------------------------------------------
-                with ui.tab_panel(tab_workflow).classes(
-                    "w-full h-full p-0 flex flex-col gap-4"
+                with (
+                    ui.tab_panel(tab_workflow)
+                    .classes(theme.PANEL_TAB_CONTENT)
+                    .props('id="help-subtab-workflow"')
                 ):
-                    # Top Pipeline Architecture Banner
-                    with ui.card().classes(
-                        "w-full p-4 bg-slate-900/70 border border-emerald-500/20 rounded-xl flex flex-col gap-2.5 shrink-0"
+                    # Card 1: Runtime Architecture
+                    with (
+                        ui.expansion(
+                            "Runtime Architecture",
+                            icon="account_tree",
+                            value=False,
+                        )
+                        .classes(theme.CARD_EXPANSION)
+                        .props("header-class='text-white font-semibold text-sm'"),
+                        ui.column().classes(
+                            "w-full max-w-full p-4 pt-2 border-t border-white/5 gap-2.5 min-w-0 overflow-x-auto"
+                        ),
                     ):
-                        with ui.row().classes("items-center gap-2"):
-                            ui.icon("account_tree", color="emerald").classes("text-lg")
-                            ui.label("Runtime Architecture").classes(
-                                "text-xs font-bold text-emerald-400 tracking-wider uppercase"
-                            )
                         ui.markdown(_load_help("pipeline_architecture.md")).classes(
-                            "text-xs text-gray-300 w-full"
+                            "text-xs text-gray-300 w-full leading-relaxed"
                         )
 
-                    # 2-Column Split: Wizard Steps (Left) + Quick Reference Cheat-Sheet (Right)
-                    with ui.element("div").classes(
-                        "grid grid-cols-1 lg:grid-cols-3 gap-4 items-start"
+                    # Card 2: Setup Wizard Progression
+                    with (
+                        ui.expansion(
+                            "Setup Wizard Progression",
+                            icon="format_list_numbered",
+                            value=False,
+                        )
+                        .classes(theme.CARD_EXPANSION)
+                        .props("header-class='text-white font-semibold text-sm'"),
+                        ui.column().classes(
+                            "w-full max-w-full p-4 pt-2 border-t border-white/5 gap-2.5 min-w-0 overflow-x-auto"
+                        ),
                     ):
-                        # Left Column (2/3 width): 9-Step Linear Progression
-                        with (
-                            ui.column().classes("lg:col-span-2 gap-3 w-full"),
-                            ui.card().classes(
-                                "w-full p-4 bg-slate-900/60 border border-white/10 rounded-xl flex flex-col gap-3"
-                            ),
+                        ui.markdown(_load_help("wizard_steps.md")).classes(
+                            "text-xs text-gray-300 w-full leading-relaxed"
+                        )
+
+                    # Card 3: Marker Placement Rules & Calibration Tips
+                    with (
+                        ui.expansion(
+                            "Marker Placement Rules & Calibration Tips",
+                            icon="check_circle",
+                            value=False,
+                        )
+                        .classes(theme.CARD_EXPANSION)
+                        .props("header-class='text-white font-semibold text-sm'"),
+                        ui.column().classes(
+                            "w-full max-w-full p-4 pt-2 border-t border-white/5 gap-2.5 min-w-0 overflow-x-auto"
+                        ),
+                    ):
+                        ui.markdown(_load_help("calibration_tips.md")).classes(
+                            "text-xs text-gray-300 w-full leading-relaxed"
+                        )
+
+                    # Card 4: Wiki Documentation & Deep Dives
+                    with (
+                        ui.expansion(
+                            "Wiki Documentation & Deep Dives",
+                            icon="menu_book",
+                            value=False,
+                        )
+                        .classes(theme.CARD_EXPANSION)
+                        .props("header-class='text-white font-semibold text-sm'"),
+                        ui.column().classes(
+                            "w-full max-w-full p-4 pt-2 border-t border-white/5 gap-2.5 min-w-0 overflow-x-auto"
+                        ),
+                    ):
+                        ui.label(
+                            "Explore complete architecture, hardware, and integration guides on the GitHub Wiki:"
+                        ).classes("text-xs text-gray-400")
+                        with ui.element("div").classes(
+                            "grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-2.5 w-full pt-1"
                         ):
-                            with ui.row().classes("items-center gap-2"):
-                                ui.icon("format_list_numbered", color="cyan").classes(
-                                    "text-lg"
-                                )
-                                ui.label("Setup Wizard Progression").classes(
-                                    "text-sm font-bold text-white font-['Outfit']"
-                                )
-                            ui.markdown(_load_help("wizard_steps.md")).classes(
-                                "text-xs text-gray-300 w-full leading-relaxed"
-                            )
-
-                        # Right Column (1/3 width): Quick Reference Cheat-Sheet
-                        with ui.column().classes("lg:col-span-1 gap-3 w-full"):
-                            # Cheat Sheet Card 1: Marker Placement Rules
-                            with ui.card().classes(
-                                "w-full p-4 bg-slate-900/80 border border-emerald-500/20 rounded-xl flex flex-col gap-2.5"
-                            ):
-                                with ui.row().classes("items-center gap-2"):
-                                    ui.icon("check_circle", color="emerald").classes(
-                                        "text-base"
-                                    )
-                                    ui.label("Marker Rules").classes(
-                                        "text-xs font-bold text-emerald-400 uppercase tracking-wider"
-                                    )
-                                ui.markdown(_load_help("calibration_tips.md")).classes(
-                                    "text-xs text-gray-300"
-                                )
-
-                            # Cheat Sheet Card 2: Deep Documentation Links
-                            with ui.card().classes(
-                                "w-full p-4 bg-slate-900/80 border border-cyan-500/20 rounded-xl flex flex-col gap-2.5"
-                            ):
-                                with ui.row().classes("items-center gap-2"):
-                                    ui.icon("menu_book", color="cyan").classes(
-                                        "text-base"
-                                    )
-                                    ui.label("Wiki Deep Dives").classes(
-                                        "text-xs font-bold text-cyan-400 uppercase tracking-wider"
-                                    )
-                                wiki_links = [
-                                    (
-                                        "Getting Started & Hardware",
-                                        "https://github.com/paulianttila/water-meter-digitizer/wiki/Getting-Started-&-Hardware",
-                                    ),
-                                    (
-                                        "Setup & Calibration Manual",
-                                        "https://github.com/paulianttila/water-meter-digitizer/wiki/Setup-Wizard-&-Calibration",
-                                    ),
-                                    (
-                                        "Smart Home & API Reference",
-                                        "https://github.com/paulianttila/water-meter-digitizer/wiki/Integrations-&-API-Reference",
-                                    ),
-                                    (
-                                        "Architecture & Neural Models",
-                                        "https://github.com/paulianttila/water-meter-digitizer/wiki/Architecture-&-Neural-Networks",
-                                    ),
-                                    (
-                                        "Configuration & Storage",
-                                        "https://github.com/paulianttila/water-meter-digitizer/wiki/Configuration-&-Storage-Manual",
-                                    ),
-                                ]
-                                for title, url in wiki_links:
-                                    ui.link(title, url, new_tab=True).classes(
-                                        "text-xs text-cyan-400 hover:text-cyan-200 underline flex items-center gap-1"
-                                    )
+                            wiki_links = [
+                                (
+                                    "Getting Started & Hardware",
+                                    "https://github.com/paulianttila/water-meter-digitizer/wiki/Getting-Started-&-Hardware",
+                                    "Hardware selection, ESP32-CAM setup, and prerequisites",
+                                ),
+                                (
+                                    "Setup & Calibration Manual",
+                                    "https://github.com/paulianttila/water-meter-digitizer/wiki/Setup-Wizard-&-Calibration",
+                                    "Step-by-step alignment, cropping, and ROI configuration",
+                                ),
+                                (
+                                    "Smart Home & API Reference",
+                                    "https://github.com/paulianttila/water-meter-digitizer/wiki/Integrations-&-API-Reference",
+                                    "Home Assistant, MQTT, and REST API integration details",
+                                ),
+                                (
+                                    "Architecture & Neural Models",
+                                    "https://github.com/paulianttila/water-meter-digitizer/wiki/Architecture-&-Neural-Networks",
+                                    "CNN model architectures and inference pipelines",
+                                ),
+                                (
+                                    "Configuration & Storage",
+                                    "https://github.com/paulianttila/water-meter-digitizer/wiki/Configuration-&-Storage-Manual",
+                                    "INI configuration reference and storage backend guides",
+                                ),
+                            ]
+                            for title, url, desc in wiki_links:
+                                with ui.link(target=url, new_tab=True).classes(
+                                    "p-3 rounded-lg bg-slate-950/60 border border-white/5 hover:border-cyan-500/30 hover:bg-slate-950/80 transition-all flex flex-col gap-1 no-underline"
+                                ):
+                                    with ui.row().classes("items-center gap-1.5"):
+                                        ui.icon("open_in_new", color="cyan").classes(
+                                            "text-xs"
+                                        )
+                                        ui.label(title).classes(
+                                            "text-xs font-semibold text-cyan-400 hover:text-cyan-300"
+                                        )
+                                    ui.label(desc).classes("text-[11px] text-gray-400")
 
                 # -------------------------------------------------------------
                 # TAB 2: Calibration & Canvas Tools
                 # -------------------------------------------------------------
                 with (
-                    ui.tab_panel(tab_canvas).classes(
-                        "w-full h-full p-0 flex flex-col gap-4"
-                    ),
-                    ui.element("div").classes(
-                        "grid grid-cols-1 lg:grid-cols-2 gap-4 items-start"
-                    ),
+                    ui.tab_panel(tab_canvas)
+                    .classes(theme.PANEL_TAB_CONTENT)
+                    .props('id="help-subtab-canvas"')
                 ):
-                    # Left Column: Marker Best Practices
-                    with ui.card().classes(
-                        "w-full p-4 bg-slate-900/60 border border-white/10 rounded-xl flex flex-col gap-3"
+                    # Card 1: Alignment Best Practices
+                    with (
+                        ui.expansion(
+                            "Alignment Best Practices",
+                            icon="center_focus_strong",
+                            value=False,
+                        )
+                        .classes(theme.CARD_EXPANSION)
+                        .props("header-class='text-white font-semibold text-sm'"),
+                        ui.column().classes(
+                            "w-full max-w-full p-4 pt-2 border-t border-white/5 gap-2.5 min-w-0 overflow-x-auto"
+                        ),
                     ):
-                        with ui.row().classes("items-center gap-2"):
-                            ui.icon("center_focus_strong", color="emerald").classes(
-                                "text-xl"
-                            )
-                            ui.label("Alignment Best Practices").classes(
-                                "text-base font-bold text-white font-['Outfit']"
-                            )
                         ui.markdown(_load_help("calibration_tips.md")).classes(
                             "text-xs text-gray-300 leading-relaxed"
                         )
 
-                    # Right Column: Canvas Controls & Model Guide
-                    with ui.column().classes("w-full gap-4"):
-                        with ui.card().classes(
-                            "w-full p-4 bg-slate-900/60 border border-white/10 rounded-xl flex flex-col gap-3"
-                        ):
-                            with ui.row().classes("items-center gap-2"):
-                                ui.icon("touch_app", color="purple").classes("text-xl")
-                                ui.label("Canvas Controls").classes(
-                                    "text-base font-bold text-white font-['Outfit']"
-                                )
-                            ui.markdown(
-                                _load_help("canvas_keyboard_shortcuts.md")
-                            ).classes("text-xs text-gray-300 leading-relaxed")
+                    # Card 2: Canvas Controls & Keyboard Shortcuts
+                    with (
+                        ui.expansion(
+                            "Canvas Controls & Keyboard Shortcuts",
+                            icon="touch_app",
+                            value=False,
+                        )
+                        .classes(theme.CARD_EXPANSION)
+                        .props("header-class='text-white font-semibold text-sm'"),
+                        ui.column().classes(
+                            "w-full max-w-full p-4 pt-2 border-t border-white/5 gap-2.5 min-w-0 overflow-x-auto"
+                        ),
+                    ):
+                        ui.markdown(_load_help("canvas_keyboard_shortcuts.md")).classes(
+                            "text-xs text-gray-300 leading-relaxed"
+                        )
 
-                        with ui.card().classes(
-                            "w-full p-4 bg-slate-900/60 border border-white/10 rounded-xl flex flex-col gap-2.5"
-                        ):
-                            with ui.row().classes("items-center gap-2"):
-                                ui.icon("memory", color="cyan").classes("text-base")
-                                ui.label("Neural Network Models").classes(
-                                    "text-xs font-bold text-cyan-400 uppercase tracking-wider"
-                                )
-                            ui.markdown(_load_help("roi_best_practices.md")).classes(
-                                "text-xs text-gray-300 leading-relaxed"
-                            )
+                    # Card 3: Neural Network Models & ROIs
+                    with (
+                        ui.expansion(
+                            "Neural Network Models & ROIs",
+                            icon="memory",
+                            value=False,
+                        )
+                        .classes(theme.CARD_EXPANSION)
+                        .props("header-class='text-white font-semibold text-sm'"),
+                        ui.column().classes(
+                            "w-full max-w-full p-4 pt-2 border-t border-white/5 gap-2.5 min-w-0 overflow-x-auto"
+                        ),
+                    ):
+                        ui.markdown(_load_help("roi_best_practices.md")).classes(
+                            "text-xs text-gray-300 leading-relaxed"
+                        )
 
                 # -------------------------------------------------------------
                 # TAB 3: Integrations & API Specs
                 # -------------------------------------------------------------
-                with ui.tab_panel(tab_integrations).classes(
-                    "w-full h-full p-0 flex flex-col gap-4"
+                with (
+                    ui.tab_panel(tab_integrations)
+                    .classes(theme.PANEL_TAB_CONTENT)
+                    .props('id="help-subtab-integrations"')
                 ):
-                    # Top Integrations Summary Card
-                    with ui.card().classes(
-                        "w-full p-4 bg-slate-900/60 border border-white/10 rounded-xl flex flex-col gap-3"
+                    # Card 1: Smart Home & Automations
+                    with (
+                        ui.expansion(
+                            "Smart Home & Automations",
+                            icon="home",
+                            value=False,
+                        )
+                        .classes(theme.CARD_EXPANSION)
+                        .props("header-class='text-white font-semibold text-sm'"),
+                        ui.column().classes(
+                            "w-full max-w-full p-4 pt-2 border-t border-white/5 gap-2.5 min-w-0 overflow-x-auto"
+                        ),
                     ):
-                        with ui.row().classes("items-center gap-2"):
-                            ui.icon("home", color="amber").classes("text-lg")
-                            ui.label("Smart Home & Automations").classes(
-                                "text-sm font-bold text-white font-['Outfit']"
-                            )
                         ui.markdown(_load_help("home_assistant.md")).classes(
                             "text-xs text-gray-300 leading-relaxed"
                         )
 
-                    # MQTT Schema Reference Table Card
-                    with ui.card().classes(
-                        "w-full p-4 bg-slate-900/60 border border-white/10 rounded-xl flex flex-col gap-3"
+                    # Card 2: MQTT Topics & Telemetry
+                    with (
+                        ui.expansion(
+                            "MQTT Topics & Telemetry",
+                            icon="hub",
+                            value=False,
+                        )
+                        .classes(theme.CARD_EXPANSION)
+                        .props("header-class='text-white font-semibold text-sm'"),
+                        ui.column().classes(
+                            "w-full max-w-full p-4 pt-2 border-t border-white/5 gap-2.5 min-w-0 overflow-x-auto"
+                        ),
                     ):
-                        with ui.row().classes("items-center justify-between"):
-                            with ui.row().classes("items-center gap-2"):
-                                ui.icon("hub", color="cyan").classes("text-lg")
-                                ui.label("MQTT Topics & Telemetry").classes(
-                                    "text-sm font-bold text-white font-['Outfit']"
-                                )
-                            ui.label("Prefix configured in [MQTT] section").classes(
-                                "text-xs text-gray-400"
-                            )
+                        ui.label("Prefix configured in [MQTT] section").classes(
+                            "text-xs text-gray-400"
+                        )
                         ui.markdown(_load_help("mqtt_integration.md")).classes(
                             "text-xs text-gray-300 leading-relaxed"
                         )
 
-                    # REST Endpoints Table Card
-                    with ui.card().classes(
-                        "w-full p-4 bg-slate-900/60 border border-white/10 rounded-xl flex flex-col gap-3"
+                    # Card 3: Primary REST API Endpoints
+                    with (
+                        ui.expansion(
+                            "Primary REST API Endpoints",
+                            icon="api",
+                            value=False,
+                        )
+                        .classes(theme.CARD_EXPANSION)
+                        .props("header-class='text-white font-semibold text-sm'"),
+                        ui.column().classes(
+                            "w-full max-w-full p-4 pt-2 border-t border-white/5 gap-2.5 min-w-0 overflow-x-auto"
+                        ),
                     ):
-                        with ui.row().classes("items-center justify-between"):
-                            with ui.row().classes("items-center gap-2"):
-                                ui.icon("api", color="emerald").classes("text-lg")
-                                ui.label("Primary REST API Endpoints").classes(
-                                    "text-sm font-bold text-white font-['Outfit']"
-                                )
+                        with ui.row().classes("w-full justify-between items-center"):
+                            ui.label(
+                                "Core REST endpoints for integration and automation"
+                            ).classes("text-xs text-gray-400")
                             ui.link(
                                 "Open Interactive API Console", "/api_console"
                             ).classes(

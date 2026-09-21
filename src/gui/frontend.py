@@ -253,7 +253,7 @@ def init(fastapi_app: FastAPI, callbacks: Callbacks) -> None:
                         "help",
                         help_tab,
                         help_page.show,
-                        "w-full h-full p-0 overflow-y-auto",
+                        "w-full h-full p-0 overflow-hidden flex flex-col min-h-0",
                     ),
                     (
                         "about",

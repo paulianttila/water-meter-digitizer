@@ -41,6 +41,11 @@ body, body.body--dark {
 
 .q-tab-panels {
     background: transparent !important;
+    overflow-x: hidden !important;
+}
+
+.q-tab-panel {
+    overflow-x: hidden !important;
 }
 
 .q-splitter__panel {
@@ -81,3 +86,35 @@ body, body.body--dark {
     letter-spacing: -0.02em !important;
     color: #f8fafc !important;
 }
+
+.nicegui-markdown {
+    max-width: 100%;
+    overflow-wrap: break-word;
+    word-break: break-word;
+}
+
+.nicegui-markdown table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 0.5rem 0;
+    max-width: 100%;
+}
+
+.nicegui-markdown th,
+.nicegui-markdown td {
+    padding: 0.5rem 0.75rem;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    font-size: 0.75rem;
+}
+
+.nicegui-markdown th {
+    background: rgba(15, 23, 42, 0.8);
+    color: #38bdf8;
+    font-weight: 600;
+    text-align: left;
+}
+
+.nicegui-markdown tr:nth-child(even) {
+    background: rgba(255, 255, 255, 0.02);
+}
+
