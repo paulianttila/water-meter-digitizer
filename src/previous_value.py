@@ -2,12 +2,28 @@ import configparser
 import logging
 import os
 import threading
-import time
 from datetime import datetime
+from pathlib import Path
 
 logger = logging.getLogger(__name__)
 
 _previous_value_lock = threading.Lock()
+
+
+def _parse_timestamp(time_str: str) -> datetime:
+    """Parse timestamp string supporting ISO-8601 and legacy formats."""
+    try:
+        return datetime.fromisoformat(time_str)
+    except ValueError:
+        pass
+
+    for fmt in ("%Y.%m.%d %H:%M:%S", "%Y-%m-%d %H:%M:%S"):
+        try:
+            return datetime.strptime(time_str, fmt)
+        except ValueError:
+            continue
+
+    raise ValueError(f"Unsupported timestamp format: {time_str}")
 
 
 def load_previous_value_from_file(
@@ -23,7 +39,7 @@ def load_previous_value_from_file(
         try:
             if max_age_minutes is not None and max_age_minutes > 0:
                 time_str = config.get(section, "Time")
-                value_time = datetime.strptime(time_str, "%Y.%m.%d %H:%M:%S")
+                value_time = _parse_timestamp(time_str)
                 diff_minutes = (datetime.now() - value_time).total_seconds() / 60
 
                 if diff_minutes > max_age_minutes:
@@ -44,7 +60,7 @@ def load_previous_value_from_file(
 def save_previous_value_to_file(file: str, section: str, value: str) -> None:
     with _previous_value_lock:
         config = configparser.ConfigParser()
-        now = time.strftime("%Y.%m.%d %H:%M:%S", time.localtime())
+        now = datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
 
         if os.path.exists(file):
             config.read(file)
@@ -57,8 +73,20 @@ def save_previous_value_to_file(file: str, section: str, value: str) -> None:
                 "Time": now,
                 "Value": value,
             }
-        with open(file, "w") as cfg:
-            config.write(cfg)
+
+        file_path = Path(file).resolve()
+        file_path.parent.mkdir(parents=True, exist_ok=True)
+        tmp_file = file_path.with_suffix(f"{file_path.suffix}.tmp")
+        try:
+            with open(tmp_file, "w", encoding="utf-8") as cfg:
+                config.write(cfg)
+                cfg.flush()
+                os.fsync(cfg.fileno())
+            os.replace(tmp_file, file_path)
+        except Exception:
+            if tmp_file.exists():
+                tmp_file.unlink(missing_ok=True)
+            raise
 
 
 def get_all_previous_values(file: str) -> dict[str, dict[str, str]]:

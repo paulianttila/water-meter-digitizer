@@ -59,3 +59,43 @@ def test_get_all_previous_values_corrupted(tmp_path):
     corrupted_file = tmp_path / "corrupted.ini"
     corrupted_file.write_text("NOT A VALID INI FILE === [[[]]]")
     assert get_all_previous_values(str(corrupted_file)) == {}
+
+
+def test_timestamp_formats_iso_and_legacy(tmp_path):
+    from datetime import datetime
+
+    # 1. ISO format timestamp
+    iso_file = tmp_path / "iso_prevalue.ini"
+    now_iso = datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
+    iso_file.write_text(f"[total]\nTime = {now_iso}\nValue = 111.222\n")
+    assert (
+        load_previous_value_from_file(str(iso_file), "total", max_age_minutes=5)
+        == "111.222"
+    )
+
+    # 2. Legacy dot format timestamp
+    legacy_file = tmp_path / "legacy_prevalue.ini"
+    now_dot = datetime.now().strftime("%Y.%m.%d %H:%M:%S")
+    legacy_file.write_text(f"[total]\nTime = {now_dot}\nValue = 333.444\n")
+    assert (
+        load_previous_value_from_file(str(legacy_file), "total", max_age_minutes=5)
+        == "333.444"
+    )
+
+    # 3. Invalid timestamp format error
+    invalid_file = tmp_path / "invalid_prevalue.ini"
+    invalid_file.write_text("[total]\nTime = INVALID_TIME\nValue = 555.666\n")
+    with pytest.raises(ValueError, match="Error occured during previous value loading"):
+        load_previous_value_from_file(str(invalid_file), "total", max_age_minutes=5)
+
+
+def test_atomic_save_writes_iso_timestamp(tmp_path):
+    temp_file = tmp_path / "atomic_test.ini"
+    save_previous_value_to_file(str(temp_file), "main", "42.0")
+    assert temp_file.exists()
+    assert not (tmp_path / "atomic_test.ini.tmp").exists()
+
+    assert load_previous_value_from_file(str(temp_file), "main") == "42.0"
+    content = temp_file.read_text()
+    assert "value = 42.0" in content
+    assert "T" in content  # ISO-8601 has 'T' between date and time
