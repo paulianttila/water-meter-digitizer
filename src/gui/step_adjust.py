@@ -793,7 +793,7 @@ class AdjustStep(BaseStep):
                 ).props("unelevated dense").classes(
                     "bg-gradient-to-r from-blue-600 to-indigo-600 "
                     "hover:from-blue-500 hover:to-indigo-500 text-white shadow-md "
-                    "transition-all font-medium px-3"
+                    "transition-colors font-medium px-3"
                 ).bind_enabled_from(
                     self, "image", lambda image: image != ""
                 ).tooltip(
@@ -806,7 +806,7 @@ class AdjustStep(BaseStep):
                     on_click=self._reset_image,
                 ).props("outline dense").classes(
                     "text-slate-300 border-white/20 hover:bg-white/10 "
-                    "transition-all font-medium px-3"
+                    "transition-colors font-medium px-3"
                 ).bind_enabled_from(
                     self, "image", lambda image: image != ""
                 ).tooltip(

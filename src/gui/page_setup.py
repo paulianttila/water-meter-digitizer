@@ -269,18 +269,18 @@ class SetupPage(BasePage):
                 set_comparison_image_fn=set_comparison_image,
                 update_svg_fn=update_svg,
                 gather_config_fn=gather_config,
-                wizard_prev_btn=self.wizard_prev_btn,
-                wizard_step_badge=self.wizard_step_badge,
-                wizard_next_btn=self.wizard_next_btn,
+                wizard_prev_btn=getattr(self, "wizard_prev_btn", None),
+                wizard_step_badge=getattr(self, "wizard_step_badge", None),
+                wizard_next_btn=getattr(self, "wizard_next_btn", None),
                 fallback_image=self.image,
             )
 
         def update_wizard_nav(current_step: str) -> None:
             self.navigator.update_wizard_nav(
                 current_step=current_step,
-                wizard_prev_btn=self.wizard_prev_btn,
-                wizard_step_badge=self.wizard_step_badge,
-                wizard_next_btn=self.wizard_next_btn,
+                wizard_prev_btn=getattr(self, "wizard_prev_btn", None),
+                wizard_step_badge=getattr(self, "wizard_step_badge", None),
+                wizard_next_btn=getattr(self, "wizard_next_btn", None),
             )
 
         async def on_wizard_next() -> None:
@@ -774,22 +774,21 @@ class SetupPage(BasePage):
                     "bg-slate-900/90 border border-white/10 rounded-xl "
                     "shadow-2xl backdrop-blur-md shrink-0"
                 ):
-                    self.wizard_prev_btn = (
-                        ui.button(
-                            "Back",
-                            icon="arrow_back",
-                            on_click=lambda: self.stepper.previous(),
-                        )
-                        .props("flat color=grey text-color=white")
-                        .classes(
-                            "px-3.5 py-1.5 rounded-lg text-sm font-medium "
-                            "hover:bg-white/10 transition-all"
-                        )
-                        .tooltip("Return to previous step")
-                    )
-                    self.wizard_prev_btn.visible = False
-
                     with ui.row().classes("items-center gap-2"):
+                        self.wizard_prev_btn = (
+                            ui.button(
+                                "Back",
+                                icon="arrow_back",
+                                on_click=lambda: self.stepper.previous(),
+                            )
+                            .props("flat no-caps color=grey text-color=white")
+                            .classes(
+                                "px-3.5 py-1.5 rounded-lg text-sm font-medium "
+                                "hover:bg-white/10 transition-colors"
+                            )
+                        )
+                        self.wizard_prev_btn.visible = False
+
                         self.wizard_step_badge = ui.label(
                             f"Step 1 of {len(steps_order)}: {steps_order[0]}"
                         ).classes(
@@ -803,15 +802,13 @@ class SetupPage(BasePage):
                             "Continue",
                             on_click=on_wizard_next,
                         )
-                        .props("unelevated icon-right=arrow_forward")
+                        .props("unelevated no-caps icon-right=arrow_forward")
                         .classes(
                             "px-4 py-1.5 rounded-lg text-sm font-semibold "
-                            "bg-gradient-to-r from-blue-600 to-cyan-600 "
-                            "hover:from-blue-500 hover:to-cyan-500 "
-                            "text-white shadow-md shadow-cyan-950/40 "
-                            "transition-all"
+                            "bg-blue-600 hover:bg-blue-500 "
+                            "text-white shadow-md shadow-blue-950/40 "
+                            "transition-colors"
                         )
-                        .tooltip("Proceed to next step")
                     )
 
         update_wizard_nav(self.stepper.value or steps_order[0])

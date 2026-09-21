@@ -231,14 +231,15 @@ class WizardNavigator:
             else:
                 wizard_next_btn.set_visibility(True)
                 wizard_next_btn.text = "Continue"
-                wizard_next_btn.props("icon-right=arrow_forward")
+                wizard_next_btn.props("unelevated no-caps icon-right=arrow_forward")
                 wizard_next_btn.classes(
-                    "px-4 py-1.5 rounded-lg text-sm font-semibold bg-gradient-to-r "
-                    "from-blue-600 to-cyan-600 hover:from-blue-500 "
-                    "hover:to-cyan-500 text-white shadow-md "
-                    "shadow-cyan-950/40 transition-all",
+                    "px-4 py-1.5 rounded-lg text-sm font-semibold "
+                    "bg-blue-600 hover:bg-blue-500 text-white shadow-md "
+                    "shadow-blue-950/40 transition-colors",
                     remove="from-emerald-600 to-teal-600 hover:from-emerald-500 "
-                    "hover:to-teal-500 shadow-emerald-950/40",
+                    "hover:to-teal-500 shadow-emerald-950/40 transition-all "
+                    "bg-gradient-to-r from-blue-600 to-cyan-600 "
+                    "hover:from-blue-500 hover:to-cyan-500 shadow-cyan-950/40",
                 )
 
     def handle_stepper_change(
