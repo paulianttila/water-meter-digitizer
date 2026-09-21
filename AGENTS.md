@@ -41,7 +41,7 @@ src/                    # Application source (Python path root in container)
 └── web/static/         # Static assets served by FastAPI
 config/                 # Default INI config, reference marker images, neural net models
 tests/
-├── unit/               # ~500 pytest unit tests (run: ./run_tests.sh -u)
+├── unit/               # ~580+ pytest unit tests (run: ./run_tests.sh -u)
 └── integration/        # Tavern REST + Playwright UI + end-to-end tests
 docs/wiki/              # GitHub Wiki source (synced by CI to repo.wiki)
 README.md               # User documentation, features, hardware & quick start

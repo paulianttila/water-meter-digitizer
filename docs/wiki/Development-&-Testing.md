@@ -30,7 +30,7 @@ The repository includes an all-in-one test runner script `./run_tests.sh`:
 
 | Command | Suite | Purpose |
 | :--- | :--- | :--- |
-| **`./run_tests.sh -u`** | Unit Tests | Runs all 400+ fast isolated unit tests (`tests/unit/`). |
+| **`./run_tests.sh -u`** | Unit Tests | Runs all 580+ fast isolated unit tests (`tests/unit/`). |
 | **`./run_tests.sh -c`** | Code Coverage | Runs unit tests and reports line coverage (target: $\ge 80\%$). |
 | **`./run_tests.sh --ui`** | Playwright UI Tests | Executes automated headless browser tests across all Web UI tabs. |
 | **`./run_tests.sh -i`** | Integration Tests | Runs Tavern REST and live MQTT broker integration scenarios. |
