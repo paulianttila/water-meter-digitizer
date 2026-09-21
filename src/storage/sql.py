@@ -44,6 +44,17 @@ from .snapshots import (
 
 logger = logging.getLogger(__name__)
 
+DEFAULT_MEMORY_FRAMES_CAP = 50
+DEFAULT_SNAPSHOT_MAX_DISK_MB = 500.0
+ESTIMATED_BYTES_PER_RECORD = 300
+
+
+def _to_local(ts: datetime) -> datetime:
+    """Normalize a datetime to local timezone with fallback."""
+    if ts.tzinfo is not None:
+        return ts.astimezone()
+    return ts.replace(tzinfo=datetime.now().astimezone().tzinfo)
+
 
 class SQLAlchemyStorageBackend(StorageBackend):
     """SQLAlchemy-based historical storage supporting SQLite (memory/disk),
@@ -254,7 +265,7 @@ class SQLAlchemyStorageBackend(StorageBackend):
                     entry.frame_blob = frame_blob
                     self._memory_frames[inserted_id] = (frame_bytes, frame_type)
                     # Limit memory frame ring buffer to ~50 frames
-                    while len(self._memory_frames) > 50:
+                    while len(self._memory_frames) > DEFAULT_MEMORY_FRAMES_CAP:
                         self._memory_frames.popitem(last=False)
 
             session.commit()
@@ -398,7 +409,7 @@ class SQLAlchemyStorageBackend(StorageBackend):
             is_memory=self.is_memory,
             auto_vacuum=self.auto_vacuum,
             snapshots_dir=self.snapshots_dir,
-            max_disk_mb=500.0,
+            max_disk_mb=DEFAULT_SNAPSHOT_MAX_DISK_MB,
             memory_frames=self._memory_frames,
         )
 
@@ -408,7 +419,9 @@ class SQLAlchemyStorageBackend(StorageBackend):
         max_disk_mb: float | None = None,
     ) -> int:
         """Prune snapshot files exceeding max disk limit or age threshold."""
-        return prune_disk_snapshots(self.snapshots_dir, max_disk_mb or 500.0)
+        return prune_disk_snapshots(
+            self.snapshots_dir, max_disk_mb or DEFAULT_SNAPSHOT_MAX_DISK_MB
+        )
 
     def prune(self) -> None:
         """Manually trigger pruning and vacuuming."""
@@ -425,19 +438,9 @@ class SQLAlchemyStorageBackend(StorageBackend):
         with self._lock, self.Session() as session:
             query = select(ReadingModel)
             if start is not None:
-                s_loc = (
-                    start.astimezone()
-                    if start.tzinfo is not None
-                    else start.replace(tzinfo=datetime.now().astimezone().tzinfo)
-                )
-                query = query.where(ReadingModel.timestamp >= s_loc)
+                query = query.where(ReadingModel.timestamp >= _to_local(start))
             if end is not None:
-                e_loc = (
-                    end.astimezone()
-                    if end.tzinfo is not None
-                    else end.replace(tzinfo=datetime.now().astimezone().tzinfo)
-                )
-                query = query.where(ReadingModel.timestamp <= e_loc)
+                query = query.where(ReadingModel.timestamp <= _to_local(end))
 
             if limit is not None and limit > 0:
                 query = query.order_by(ReadingModel.timestamp.desc()).limit(limit)
@@ -472,11 +475,7 @@ class SQLAlchemyStorageBackend(StorageBackend):
 
             rec = ReadingRecord(
                 id=r.id,
-                timestamp=(
-                    r.timestamp.astimezone()
-                    if r.timestamp.tzinfo is not None
-                    else r.timestamp.replace(tzinfo=datetime.now().astimezone().tzinfo)
-                ),
+                timestamp=_to_local(r.timestamp),
                 meters=parsed_meters,
                 digital_results=json.loads(r.digital_json) if r.digital_json else {},
                 analog_results=json.loads(r.analog_json) if r.analog_json else {},
@@ -502,19 +501,9 @@ class SQLAlchemyStorageBackend(StorageBackend):
         with self._lock, self.Session() as session:
             query = select(ReadingModel)
             if start is not None:
-                s_loc = (
-                    start.astimezone()
-                    if start.tzinfo is not None
-                    else start.replace(tzinfo=datetime.now().astimezone().tzinfo)
-                )
-                query = query.where(ReadingModel.timestamp >= s_loc)
+                query = query.where(ReadingModel.timestamp >= _to_local(start))
             if end is not None:
-                e_loc = (
-                    end.astimezone()
-                    if end.tzinfo is not None
-                    else end.replace(tzinfo=datetime.now().astimezone().tzinfo)
-                )
-                query = query.where(ReadingModel.timestamp <= e_loc)
+                query = query.where(ReadingModel.timestamp <= _to_local(end))
 
             if anomalies_only:
                 query = query.where(ReadingModel.error != "")
@@ -559,13 +548,7 @@ class SQLAlchemyStorageBackend(StorageBackend):
             results.append(
                 ReadingRecord(
                     id=r.id,
-                    timestamp=(
-                        r.timestamp.astimezone()
-                        if r.timestamp.tzinfo is not None
-                        else r.timestamp.replace(
-                            tzinfo=datetime.now().astimezone().tzinfo
-                        )
-                    ),
+                    timestamp=_to_local(r.timestamp),
                     meters=parsed_meters,
                     digital_results=(
                         json.loads(r.digital_json) if r.digital_json else {}
@@ -706,25 +689,9 @@ class SQLAlchemyStorageBackend(StorageBackend):
             backend=backend_name,
             total_records=total_records,
             memory_usage_bytes=mem_bytes,
-            max_memory_bytes=self.max_records * 300,
-            oldest_timestamp=(
-                min_ts.astimezone()
-                if min_ts and min_ts.tzinfo is not None
-                else (
-                    min_ts.replace(tzinfo=datetime.now().astimezone().tzinfo)
-                    if min_ts
-                    else None
-                )
-            ),
-            newest_timestamp=(
-                max_ts.astimezone()
-                if max_ts and max_ts.tzinfo is not None
-                else (
-                    max_ts.replace(tzinfo=datetime.now().astimezone().tzinfo)
-                    if max_ts
-                    else None
-                )
-            ),
+            max_memory_bytes=self.max_records * ESTIMATED_BYTES_PER_RECORD,
+            oldest_timestamp=_to_local(min_ts) if min_ts else None,
+            newest_timestamp=_to_local(max_ts) if max_ts else None,
             meters_tracked=sorted(list(meters_tracked)),
             total_snapshots=total_snaps + len(self._memory_frames),
             snapshot_disk_bytes=snap_disk_bytes,

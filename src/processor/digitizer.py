@@ -36,6 +36,11 @@ DEFAULT_MIN_CONFIDENCE_THRESHOLD = 60.0
 MIN_CONFIDENCE_THRESHOLD = DEFAULT_MIN_CONFIDENCE_THRESHOLD
 MODEL_AUTO = "auto"
 
+QUALITY_HIGH_MIN_CONFIDENCE = 80.0
+QUALITY_HIGH_AVG_CONFIDENCE = 85.0
+QUALITY_WARNING_MIN_CONFIDENCE = 60.0
+QUALITY_WARNING_AVG_CONFIDENCE = 65.0
+
 
 class ReadoutResult(BaseModel):
     name: str
@@ -430,9 +435,15 @@ class DigitizerProcessor:
                 min_conf = 100.0
 
             quality: Literal["good", "warning", "uncertain"]
-            if min_conf >= 80.0 and avg_conf >= 85.0:
+            if (
+                min_conf >= QUALITY_HIGH_MIN_CONFIDENCE
+                and avg_conf >= QUALITY_HIGH_AVG_CONFIDENCE
+            ):
                 quality = "good"
-            elif min_conf >= 60.0 and avg_conf >= 65.0:
+            elif (
+                min_conf >= QUALITY_WARNING_MIN_CONFIDENCE
+                and avg_conf >= QUALITY_WARNING_AVG_CONFIDENCE
+            ):
                 quality = "warning"
             else:
                 quality = "uncertain"

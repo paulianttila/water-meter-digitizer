@@ -1,6 +1,6 @@
 from abc import ABC, abstractmethod
 from datetime import datetime
-from typing import Literal
+from typing import Any, Literal
 
 from pydantic import BaseModel, Field
 
@@ -124,6 +124,22 @@ class StorageBackend(ABC):
         max_disk_mb: float | None = None,
     ) -> int:
         """Prune older snapshots based on tier retention or max disk usage."""
+        pass
+
+    @abstractmethod
+    def record_meter_result(
+        self,
+        result: Any,
+        timestamp: datetime | None = None,
+        image: Any | None = None,
+        config: Any | None = None,
+    ) -> int | None:
+        """Process and record a high-level MeterResult object into historical readings."""
+        pass
+
+    @abstractmethod
+    def prune(self) -> None:
+        """Manually trigger pruning and vacuuming."""
         pass
 
     @abstractmethod
