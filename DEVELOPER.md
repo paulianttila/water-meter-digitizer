@@ -28,6 +28,45 @@ The web dashboard and setup wizard will be available at **`http://localhost:3000
 
 ---
 
+## 📁 Repository Structure
+
+```
+├── src/                    # Application source (Python path root in container)
+│   ├── main.py             # Entry point, FastAPI lifespan, service orchestration
+│   ├── configuration.py    # Pydantic config model, INI parsing, env overrides
+│   ├── callbacks.py        # Protocol interface decoupling GUI ↔ backend
+│   ├── data_classes.py     # Shared Pydantic models (health, metrics, positions)
+│   ├── version.py          # Dynamic version from pyproject.toml
+│   ├── api/                # FastAPI route modules (routes_*.py)
+│   ├── cnn/                # LiteRT inference: base class, pool, analog/digital CNNs
+│   ├── processor/          # 6-stage pipeline: image capture → digitizer post-processing
+│   ├── storage/            # Abstract base + SQLite and in-memory backends
+│   ├── gui/                # NiceGUI web UI: pages/, wizard/ (steps/, adjust/), dialogs/, components/
+│   │   ├── components/     # Reusable UI cards (consumption, time_machine, leak, etc.)
+│   │   ├── pages/          # Full page views (meter, config, services, setup, etc.)
+│   │   ├── wizard/         # 9-step calibration wizard (steps/, adjust/)
+│   │   ├── dialogs/        # Modal dialogs (benchmark)
+│   │   └── theme.py        # Tailwind CSS class constants for consistent styling
+│   ├── services/           # Background & integration services (mqtt, leak, poller, simulator)
+│   │   ├── mqtt/           # MQTT client service + Home Assistant discovery
+│   │   ├── leak/           # Zero-flow continuous leak detection engine
+│   │   ├── poller/         # Background polling scheduler
+│   │   └── simulator/      # Mock camera meter generator for synthetic frames & simulation
+│   ├── utils/              # Shared helpers (image, cache, math, security, decorators, visual_diff)
+│   └── web/static/         # Static assets served by FastAPI
+├── config/                 # Default INI config, reference marker images, neural net models
+├── tests/
+│   ├── unit/               # ~590+ pytest unit tests mirroring src/ hierarchy
+│   └── integration/        # Tavern REST + Playwright UI + end-to-end tests
+├── docs/wiki/              # GitHub Wiki source (synced by CI to repo.wiki)
+├── README.md               # User documentation, features, hardware & quick start
+├── DEVELOPER.md            # Developer setup, testing, and release guide
+├── Dockerfile              # Multi-stage Docker container build definition
+└── pyproject.toml          # Project configuration, dependencies, and tooling
+```
+
+---
+
 ## 🧪 Testing & Quality Assurance
 
 Run the unified test runner script `./run_tests.sh`:

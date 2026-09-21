@@ -24,13 +24,52 @@ uv run playwright install --with-deps chromium
 
 ---
 
+## 📁 Repository Structure
+
+```
+├── src/                    # Application source (Python path root in container)
+│   ├── main.py             # Entry point, FastAPI lifespan, service orchestration
+│   ├── configuration.py    # Pydantic config model, INI parsing, env overrides
+│   ├── callbacks.py        # Protocol interface decoupling GUI ↔ backend
+│   ├── data_classes.py     # Shared Pydantic models (health, metrics, positions)
+│   ├── version.py          # Dynamic version from pyproject.toml
+│   ├── api/                # FastAPI route modules (routes_*.py)
+│   ├── cnn/                # LiteRT inference: base class, pool, analog/digital CNNs
+│   ├── processor/          # 6-stage pipeline: image capture → digitizer post-processing
+│   ├── storage/            # Abstract base + SQLite and in-memory backends
+│   ├── gui/                # NiceGUI web UI: pages/, wizard/ (steps/, adjust/), dialogs/, components/
+│   │   ├── components/     # Reusable UI cards (consumption, time_machine, leak, etc.)
+│   │   ├── pages/          # Full page views (meter, config, services, setup, etc.)
+│   │   ├── wizard/         # 9-step calibration wizard (steps/, adjust/)
+│   │   ├── dialogs/        # Modal dialogs (benchmark)
+│   │   └── theme.py        # Tailwind CSS class constants for consistent styling
+│   ├── services/           # Background & integration services (mqtt, leak, poller, simulator)
+│   │   ├── mqtt/           # MQTT client service + Home Assistant discovery
+│   │   ├── leak/           # Zero-flow continuous leak detection engine
+│   │   ├── poller/         # Background polling scheduler
+│   │   └── simulator/      # Mock camera meter generator for synthetic frames & simulation
+│   ├── utils/              # Shared helpers (image, cache, math, security, decorators, visual_diff)
+│   └── web/static/         # Static assets served by FastAPI
+├── config/                 # Default INI config, reference marker images, neural net models
+├── tests/
+│   ├── unit/               # ~590+ pytest unit tests mirroring src/ hierarchy
+│   └── integration/        # Tavern REST + Playwright UI + end-to-end tests
+├── docs/wiki/              # GitHub Wiki source (synced by CI to repo.wiki)
+├── README.md               # User documentation, features, hardware & quick start
+├── DEVELOPER.md            # Developer setup, testing, and release guide
+├── Dockerfile              # Multi-stage Docker container build definition
+└── pyproject.toml          # Project configuration, dependencies, and tooling
+```
+
+---
+
 ## 🧪 Comprehensive Test Suites (`./run_tests.sh`)
 
 The repository includes an all-in-one test runner script `./run_tests.sh`:
 
 | Command | Suite | Purpose |
 | :--- | :--- | :--- |
-| **`./run_tests.sh -u`** | Unit Tests | Runs all 580+ fast isolated unit tests (`tests/unit/`). |
+| **`./run_tests.sh -u`** | Unit Tests | Runs all 590+ fast isolated unit tests (`tests/unit/`). |
 | **`./run_tests.sh -c`** | Code Coverage | Runs unit tests and reports line coverage (target: $\ge 80\%$). |
 | **`./run_tests.sh --ui`** | Playwright UI Tests | Executes automated headless browser tests across all Web UI tabs. |
 | **`./run_tests.sh -i`** | Integration Tests | Runs Tavern REST and live MQTT broker integration scenarios. |
@@ -60,13 +99,13 @@ The project includes an autonomous procedural water meter generator and CLI (`me
 
 ```bash
 # Generate a static test image
-uv run python -m simulator.cli --value 00789.1234 --output test_meter.jpg
+uv run python -m services.simulator.cli --value 00789.1234 --output test_meter.jpg
 
 # Generate a continuous water flow sequence
-uv run python -m simulator.cli --mode flow --frames 15 --interval 0.5 --output-dir ./test_frames/
+uv run python -m services.simulator.cli --mode flow --frames 15 --interval 0.5 --output-dir ./test_frames/
 
 # Stress test image with glare, noise, and tilt
-uv run python -m simulator.cli --value 00452.9124 --glare --noise 5.0 --rotate 3.0 --output stress.jpg
+uv run python -m services.simulator.cli --value 00452.9124 --glare --noise 5.0 --rotate 3.0 --output stress.jpg
 ```
 
 ---
