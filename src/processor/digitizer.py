@@ -2,6 +2,7 @@
 
 import logging
 import math
+from typing import Literal
 
 from pydantic import BaseModel, Field
 
@@ -47,14 +48,14 @@ class MeterValue(BaseModel):
     name: str
     value: str
     unit: str = ""
-    quality: str = "good"  # "good", "warning", or "uncertain"
+    quality: Literal["good", "warning", "uncertain"] = "good"
     confidence: float = 100.0
 
 
 class MeterResult(BaseModel):
     meters: list[MeterValue] = Field(default_factory=list)
-    digital_results: dict = Field(default_factory=dict)
-    analog_results: dict = Field(default_factory=dict)
+    digital_results: dict[str, str] = Field(default_factory=dict)
+    analog_results: dict[str, str] = Field(default_factory=dict)
     confidence_scores: dict[str, float] = Field(default_factory=dict)
     error: str = ""
 
@@ -72,8 +73,8 @@ class DigitizerProcessor:
 
     def __init__(self) -> None:
         self.condition = None
-        self.analog_counter_reader: AnalogNeedleCNN = None  # type: ignore
-        self.digital_counter_reader: DigitalCounterCNN = None  # type: ignore
+        self.analog_counter_reader: AnalogNeedleCNN | None = None
+        self.digital_counter_reader: DigitalCounterCNN | None = None
         self.analog_model: str = ""
         self.digital_model: str = ""
         self.previous_value_file: str | None = None
@@ -428,6 +429,7 @@ class DigitizerProcessor:
                 avg_conf = 100.0
                 min_conf = 100.0
 
+            quality: Literal["good", "warning", "uncertain"]
             if min_conf >= 80.0 and avg_conf >= 85.0:
                 quality = "good"
             elif min_conf >= 60.0 and avg_conf >= 65.0:

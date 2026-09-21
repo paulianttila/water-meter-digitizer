@@ -9,7 +9,7 @@ class MeterReading(BaseModel):
     value: float | None = None
     raw_value: str = ""
     unit: str = ""
-    quality: str = "good"
+    quality: Literal["good", "warning", "uncertain"] = "good"
     confidence: float = 100.0
 
 

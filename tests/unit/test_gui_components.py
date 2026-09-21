@@ -627,7 +627,10 @@ def test_history_table_card(mock_callbacks):
             timestamp=datetime(2026, 9, 14, 12, 5, 0),
             meters={
                 "total": MeterReading(
-                    value=None, raw_value="00452.9124", quality="error", confidence=0.0
+                    value=None,
+                    raw_value="00452.9124",
+                    quality="uncertain",
+                    confidence=0.0,
                 ),
             },
             digital_results={},

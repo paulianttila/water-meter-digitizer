@@ -11,6 +11,7 @@ from data_classes import (
 )
 from leak.models import ZeroFlowStatus
 from processor.digitizer import MeterResult
+from storage.base import StorageBackend
 
 
 @runtime_checkable
@@ -48,7 +49,7 @@ class Callbacks(Protocol):
         """Get active configuration version counter (increments on reload)."""
         ...
 
-    def get_storage(self) -> Any:
+    def get_storage(self) -> StorageBackend | None:
         """Get history storage backend"""
         ...
 

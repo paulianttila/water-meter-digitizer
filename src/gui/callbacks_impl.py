@@ -16,6 +16,7 @@ from data_classes import (
 )
 from leak.models import LeakState, ZeroFlowStatus
 from processor.digitizer import MeterResult
+from storage.base import StorageBackend
 from storage.frame_service import FrameService
 
 if TYPE_CHECKING:
@@ -35,7 +36,7 @@ class CallbacksImpl(Callbacks):
         load_config_file_fn: Callable[[], str],
         save_config_file_fn: Callable[[str], None],
         use_config_fn: Callable[[], None],
-        get_storage_fn: Callable[[], Any],
+        get_storage_fn: Callable[[], StorageBackend | None],
         list_backups_fn: Callable[[], list[ConfigBackupInfo] | list[dict[str, Any]]],
         restore_backup_fn: Callable[[str], None],
         undo_backup_fn: Callable[[], str | None],
@@ -116,7 +117,7 @@ class CallbacksImpl(Callbacks):
             return self._get_config_version()
         return 1
 
-    def get_storage(self) -> Any:
+    def get_storage(self) -> StorageBackend | None:
         return self._get_storage()
 
     def list_config_backups(self) -> list[ConfigBackupInfo]:

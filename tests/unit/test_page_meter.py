@@ -30,13 +30,13 @@ def mock_meter_result():
         name="sub2",
         value="0.5",
         confidence=40.0,
-        quality="bad",
+        quality="uncertain",
         unit="m3",
     )
     return MeterResult(
         meters=[submeter_total, submeter_sub1, submeter_sub2],
-        digital_results={"digit1": 1, "digit2": 2},
-        analog_results={"analog1": 3.4},
+        digital_results={"digit1": "1", "digit2": "2"},
+        analog_results={"analog1": "3.4"},
         confidence_scores={"digit1": 95.0, "digit2": 70.0, "analog1": 50.0},
         error="Low confidence warning",
     )
