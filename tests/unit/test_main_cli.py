@@ -104,3 +104,51 @@ def test_main_init_gui():
     with patch("gui.frontend.init") as mock_front_init:
         main.init_gui(mock_app)
         mock_front_init.assert_called_once()
+
+
+def test_main_selective_start_services():
+    import copy
+
+    mock_app = FastAPI()
+    old_mqtt = MagicMock()
+    old_poller = MagicMock()
+    mock_app.state.mqtt_service = old_mqtt
+    mock_app.state.poller = old_poller
+    mock_app.state.zero_flow_tracker = MagicMock()
+
+    cfg_prev = copy.deepcopy(main.config)
+    cfg_prev.mqtt.enabled = True
+    cfg_prev.poller.enabled = True
+
+    with (
+        patch("main.app", mock_app),
+        patch("main.MQTTService") as MockMQTT,
+        patch("main.BackgroundPoller") as MockPoller,
+    ):
+        # 1. No change in config -> neither MQTT nor poller recreated
+        main.start_services(previous_config=cfg_prev)
+        old_mqtt.stop.assert_not_called()
+        old_poller.stop.assert_not_called()
+        MockMQTT.assert_not_called()
+        MockPoller.assert_not_called()
+
+        # 2. Only poller config changed
+        cfg_prev_poller = copy.deepcopy(main.config)
+        cfg_prev_poller.poller.interval_seconds = 999
+        main.start_services(previous_config=cfg_prev_poller)
+        old_mqtt.stop.assert_not_called()
+        old_poller.stop.assert_called_once()
+        MockMQTT.assert_not_called()
+        MockPoller.assert_called_once()
+
+
+def test_main_create_app(tmp_path):
+    test_cfg_file = tmp_path / "custom_config.ini"
+    test_cfg_file.write_text("[DEFAULT]\nLogLevel = DEBUG\n")
+
+    app_instance = main.create_app(str(test_cfg_file))
+    assert isinstance(app_instance, FastAPI)
+    assert app_instance.state.config_file == str(test_cfg_file)
+    assert app_instance.state.image_cache is not None
+    assert app_instance.state.storage is not None
+    assert app_instance.state.context is not None

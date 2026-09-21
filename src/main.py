@@ -64,66 +64,121 @@ logger = logging.getLogger(__name__)
 BASE_DIR = Path(__file__).resolve().parent
 
 
-def _sync_app_context() -> None:
+def _sync_app_context(target_app: FastAPI | None = None) -> None:
     """Synchronize app.state.context with active application state."""
-    app.state.context = AppContext(
-        config=getattr(app.state, "config", config),
-        config_file=getattr(app.state, "config_file", config_file),
-        config_version=getattr(app.state, "config_version", 1),
-        storage=getattr(app.state, "storage", None),
-        cache=getattr(app.state, "image_cache", None),
-        zero_flow_tracker=getattr(app.state, "zero_flow_tracker", None),
-        mqtt_service=getattr(app.state, "mqtt_service", None),
-        poller=getattr(app.state, "poller", None),
-        version=getattr(app.state, "version", VERSION),
-        start_time=getattr(app.state, "start_time", 0.0),
-        started_at=getattr(app.state, "started_at", ""),
+    app_inst = target_app or app
+    app_inst.state.context = AppContext(
+        config=getattr(app_inst.state, "config", config),
+        config_file=getattr(app_inst.state, "config_file", config_file),
+        config_version=getattr(app_inst.state, "config_version", 1),
+        storage=getattr(app_inst.state, "storage", None),
+        cache=getattr(app_inst.state, "image_cache", None),
+        zero_flow_tracker=getattr(app_inst.state, "zero_flow_tracker", None),
+        mqtt_service=getattr(app_inst.state, "mqtt_service", None),
+        poller=getattr(app_inst.state, "poller", None),
+        version=getattr(app_inst.state, "version", VERSION),
+        start_time=getattr(app_inst.state, "start_time", 0.0),
+        started_at=getattr(app_inst.state, "started_at", ""),
     )
 
 
-def start_services() -> None:
-    """Start MQTT service and background poller based on active config."""
-    stop_services()
+def start_services(
+    previous_config: Config | None = None,
+    target_app: FastAPI | None = None,
+) -> None:
+    """Start or selectively reload MQTT service and background poller based on active config."""
+    app_inst = target_app or app
+    cfg = getattr(app_inst.state, "config", config)
+    if previous_config is None:
+        stop_services(target_app=app_inst)
+        app_inst.state.zero_flow_tracker = ZeroFlowTracker(cfg.zero_flow_monitor)
 
-    app.state.zero_flow_tracker = ZeroFlowTracker(config.zero_flow_monitor)
+        mqtt_svc = MQTTService(
+            config=cfg.mqtt,
+            meter_configs=cfg.meter_configs,
+            version=VERSION,
+        )
+        if cfg.mqtt.enabled:
+            mqtt_svc.start()
+        app_inst.state.mqtt_service = mqtt_svc
 
-    mqtt_svc = MQTTService(
-        config=config.mqtt,
-        meter_configs=config.meter_configs,
-        version=VERSION,
+        poller = BackgroundPoller(
+            config=cfg.poller,
+            readout_func=get_meter_data,
+            mqtt_service=mqtt_svc if cfg.mqtt.enabled else None,
+        )
+        if cfg.poller.enabled:
+            poller.start()
+        app_inst.state.poller = poller
+        _sync_app_context(app_inst)
+        return
+
+    # Selective service restart
+    if (
+        previous_config.zero_flow_monitor != cfg.zero_flow_monitor
+        or getattr(app_inst.state, "zero_flow_tracker", None) is None
+    ):
+        app_inst.state.zero_flow_tracker = ZeroFlowTracker(cfg.zero_flow_monitor)
+
+    mqtt_changed = (
+        previous_config.mqtt != cfg.mqtt
+        or previous_config.meter_configs != cfg.meter_configs
+        or getattr(app_inst.state, "mqtt_service", None) is None
     )
-    if config.mqtt.enabled:
-        mqtt_svc.start()
-    app.state.mqtt_service = mqtt_svc
+    if mqtt_changed:
+        old_mqtt = getattr(app_inst.state, "mqtt_service", None)
+        if old_mqtt is not None:
+            old_mqtt.stop()
+        mqtt_svc = MQTTService(
+            config=cfg.mqtt,
+            meter_configs=cfg.meter_configs,
+            version=VERSION,
+        )
+        if cfg.mqtt.enabled:
+            mqtt_svc.start()
+        app_inst.state.mqtt_service = mqtt_svc
+    else:
+        mqtt_svc = app_inst.state.mqtt_service
 
-    poller = BackgroundPoller(
-        config=config.poller,
-        readout_func=get_meter_data,
-        mqtt_service=mqtt_svc if config.mqtt.enabled else None,
+    poller_changed = (
+        previous_config.poller != cfg.poller
+        or mqtt_changed
+        or getattr(app_inst.state, "poller", None) is None
     )
-    if config.poller.enabled:
-        poller.start()
-    app.state.poller = poller
-    _sync_app_context()
+    if poller_changed:
+        old_poller = getattr(app_inst.state, "poller", None)
+        if old_poller is not None:
+            old_poller.stop()
+        poller = BackgroundPoller(
+            config=cfg.poller,
+            readout_func=get_meter_data,
+            mqtt_service=mqtt_svc if cfg.mqtt.enabled else None,
+        )
+        if cfg.poller.enabled:
+            poller.start()
+        app_inst.state.poller = poller
+
+    _sync_app_context(app_inst)
 
 
-def stop_services() -> None:
+def stop_services(target_app: FastAPI | None = None) -> None:
     """Stop background poller and MQTT client services."""
-    poller = getattr(app.state, "poller", None)
+    app_inst = target_app or app
+    poller = getattr(app_inst.state, "poller", None)
     if poller is not None:
         poller.stop()
 
-    mqtt_svc = getattr(app.state, "mqtt_service", None)
+    mqtt_svc = getattr(app_inst.state, "mqtt_service", None)
     if mqtt_svc is not None:
         mqtt_svc.stop()
-    _sync_app_context()
+    _sync_app_context(app_inst)
 
 
 @asynccontextmanager
-async def lifespan(app: FastAPI):
-    init_config()
+async def lifespan(app_inst: FastAPI):
+    init_config(target_app=app_inst)
     yield
-    stop_services()
+    stop_services(target_app=app_inst)
 
 
 # --- Application Bootstrap ---
@@ -154,67 +209,71 @@ OPENAPI_TAGS = [
     },
 ]
 
-app = FastAPI(
-    title="Water Meter Digitizer API",
-    description=(
-        "High-performance edge AI digitizer for analog & digital water meters with "
-        "real-time neural network inference, MQTT publishing, background polling, "
-        "historical consumption analytics, and procedural mock camera simulation."
-    ),
-    version=VERSION,
-    docs_url="/docs",
-    redoc_url="/redoc",
-    openapi_url="/openapi.json",
-    openapi_tags=OPENAPI_TAGS,
-    swagger_ui_parameters={
-        "defaultModelsExpandDepth": -1,
-        "displayRequestDuration": True,
-        "filter": True,
-        "tryItOutEnabled": True,
-        "syntaxHighlight.theme": "monokai",
-    },
-    lifespan=lifespan,
-)
-set_app_ref(app)
 
-app.state.version = VERSION
-app.state.config_file = config_file
-app.state.config = config
-app.state.config_version = 1
-app.state.image_cache = ImageCache(max_size=50, ttl_seconds=300.0)
-app.state.storage = get_storage_backend(config)
-app.state.zero_flow_tracker = ZeroFlowTracker(config.zero_flow_monitor)
-app.state.start_time = time.time()
-app.state.started_at = datetime.now().astimezone().isoformat()
-app.state.mqtt_service = MQTTService(
-    config=config.mqtt,
-    meter_configs=config.meter_configs,
-    version=VERSION,
-)
-app.state.poller = BackgroundPoller(
-    config=config.poller,
-    readout_func=lambda *args, **kwargs: None,  # type: ignore
-    mqtt_service=app.state.mqtt_service,
-)
-app.state.init_config_fn = lambda: init_config()
-_sync_app_context()
+def create_app(custom_config_file: str | None = None) -> FastAPI:
+    """Application factory creating a configured FastAPI app instance."""
+    cfg_path = custom_config_file or config_file
+    ensure_config_initialized(cfg_path)
+
+    app_instance = FastAPI(
+        title="Water Meter Digitizer API",
+        description=(
+            "High-performance edge AI digitizer for analog & digital water meters with "
+            "real-time neural network inference, MQTT publishing, background polling, "
+            "historical consumption analytics, and procedural mock camera simulation."
+        ),
+        version=VERSION,
+        docs_url="/docs",
+        redoc_url="/redoc",
+        openapi_url="/openapi.json",
+        openapi_tags=OPENAPI_TAGS,
+        swagger_ui_parameters={
+            "defaultModelsExpandDepth": -1,
+            "displayRequestDuration": True,
+            "filter": True,
+            "tryItOutEnabled": True,
+            "syntaxHighlight.theme": "monokai",
+        },
+        lifespan=lifespan,
+    )
+    set_app_ref(app_instance)
+
+    app_instance.state.version = VERSION
+    app_instance.state.config_file = cfg_path
+    app_instance.state.config = config
+    app_instance.state.config_version = 1
+    app_instance.state.image_cache = ImageCache(max_size=50, ttl_seconds=300.0)
+    app_instance.state.storage = get_storage_backend(config)
+    app_instance.state.zero_flow_tracker = None
+    app_instance.state.start_time = time.time()
+    app_instance.state.started_at = datetime.now().astimezone().isoformat()
+    app_instance.state.mqtt_service = None
+    app_instance.state.poller = None
+    app_instance.state.init_config_fn = lambda: init_config(app_instance)
+
+    # Mount static files
+    app_instance.mount(
+        "/static",
+        StaticFiles(directory=str(BASE_DIR / "web" / "static")),
+        name="static",
+    )
+
+    # Register REST Routers
+    app_instance.include_router(system_router)
+    app_instance.include_router(health_router)
+    app_instance.include_router(meter_router)
+    app_instance.include_router(history_router)
+    app_instance.include_router(services_router)
+    app_instance.include_router(mock_camera_router)
+
+    # Register RFC 7807 Domain Exception Handlers
+    register_exception_handlers(app_instance)
+
+    _sync_app_context(app_instance)
+    return app_instance
 
 
-# Mount static files
-app.mount(
-    "/static", StaticFiles(directory=str(BASE_DIR / "web" / "static")), name="static"
-)
-
-# Register REST Routers
-app.include_router(system_router)
-app.include_router(health_router)
-app.include_router(meter_router)
-app.include_router(history_router)
-app.include_router(services_router)
-app.include_router(mock_camera_router)
-
-# Register RFC 7807 Domain Exception Handlers
-register_exception_handlers(app)
+app = create_app()
 
 
 # --- Helper Functions for NiceGUI Bridge ---
@@ -427,23 +486,30 @@ def init_gui(app_instance: FastAPI) -> None:
 
 
 @log_execution_time
-def init_config() -> None:
+def init_config(target_app: FastAPI | None = None) -> None:
     """Load configuration file and reconfigure services and logging levels."""
     from cnn.pool import clear_interpreter_pools
 
+    app_inst = target_app or app
     with _config_lock:
         clear_interpreter_pools()
         global config
-        new_config = Config().load_from_file(ini_file=config_file)
+        old_config = getattr(app_inst.state, "config", None)
+        target_cfg_file = (
+            config_file
+            if target_app is None
+            else getattr(app_inst.state, "config_file", config_file)
+        )
+        new_config = Config().load_from_file(ini_file=target_cfg_file)
         config = new_config
-        app.state.config = new_config
-        app.state.config_file = config_file
-        app.state.config_version = getattr(app.state, "config_version", 0) + 1
+        app_inst.state.config = new_config
+        app_inst.state.config_file = target_cfg_file
+        app_inst.state.config_version = getattr(app_inst.state, "config_version", 0) + 1
         target_log_level = getattr(logging, str(config.log_level).upper(), logging.INFO)
         logging.getLogger().setLevel(target_log_level)
         logger.setLevel(target_log_level)
-        app.state.storage = get_storage_backend(config)
-        start_services()
+        app_inst.state.storage = get_storage_backend(config)
+        start_services(previous_config=old_config, target_app=app_inst)
 
         logging.getLogger("urllib3").setLevel(logging.WARNING)
         logging.getLogger("asyncio").setLevel(logging.WARNING)

@@ -148,20 +148,41 @@ class DigitizerProcessor:
         if self.analog_counter_reader is None and self.digital_counter_reader is None:
             raise ValueError("No CNN reader initialized")
 
-        self.cnn_analog_results = []
-        self.cnn_digital_results = []
-        self.available_values = {}
-
-        if min_confidence_threshold is not None:
-            self.min_confidence_threshold = min_confidence_threshold
+        min_conf = (
+            min_confidence_threshold
+            if min_confidence_threshold is not None
+            else self.min_confidence_threshold
+        )
         if detect_negative_sign is not None:
-            self.detect_negative_sign = detect_negative_sign
+            detect_neg = detect_negative_sign
         elif any(getattr(m, "detect_negative_sign", False) for m in meter_configs):
-            self.detect_negative_sign = True
-        self.execute_analog_cnn(analog_images)
-        self.execute_digital_cnn(digital_images)
-        self.evaluate_cnn_results()
-        return self.get_meter_values(meter_configs)
+            detect_neg = True
+        else:
+            detect_neg = self.detect_negative_sign
+
+        analog_results = self._run_analog_cnn(analog_images)
+        digital_results = self._run_digital_cnn(
+            digital_images,
+            detect_negative_sign=detect_neg,
+            min_confidence_threshold=min_conf,
+        )
+        all_results = analog_results + digital_results
+        available_values = self._evaluate_cnn_results(
+            all_results, min_confidence_threshold=min_conf
+        )
+
+        # Update instance attributes for backward compatibility / inspection
+        self.cnn_analog_results = analog_results
+        self.cnn_digital_results = digital_results
+        self.available_values = available_values
+
+        return self._build_meter_values(
+            meter_configs=meter_configs,
+            analog_results=analog_results,
+            digital_results=digital_results,
+            available_values=available_values,
+            min_confidence_threshold=min_conf,
+        )
 
     async def process_async(
         self,
@@ -183,89 +204,94 @@ class DigitizerProcessor:
             detect_negative_sign,
         )
 
-    @log_execution_time
-    def execute_analog_cnn(self, images: list[CutImage]) -> "DigitizerProcessor":
-        if self.analog_counter_reader is not None:
-            result = []
-            model = self._solve_model(
-                self.analog_model, self.analog_counter_reader.get_model_details()
+    def _run_analog_cnn(self, images: list[CutImage]) -> list[ReadoutResult]:
+        if self.analog_counter_reader is None or not images:
+            return []
+        result: list[ReadoutResult] = []
+        model = self._solve_model(
+            self.analog_model, self.analog_counter_reader.get_model_details()
+        )
+        for item in images:
+            value, conf = self.analog_counter_reader.readout_with_confidence(item.image)
+            value = round(value, 1)
+            value = 0 if value == 10 else value
+            result.append(
+                ReadoutResult(
+                    name=item.name,
+                    value=value,
+                    model=model,
+                    confidence=conf,
+                )
             )
-            for item in images:
-                value, conf = self.analog_counter_reader.readout_with_confidence(
-                    item.image
-                )
-                value = round(value, 1)
-                value = 0 if value == 10 else value
-                result.append(
-                    ReadoutResult(
-                        name=item.name,
-                        value=value,
-                        model=model,
-                        confidence=conf,
-                    )
-                )
-            self.cnn_analog_results = result
-            logger.debug("Analog CNN results: %s", self.cnn_analog_results)
-        return self
+        logger.debug("Analog CNN results: %s", result)
+        return result
 
-    @log_execution_time
-    def execute_digital_cnn(self, images: list[CutImage]) -> "DigitizerProcessor":
-        if self.digital_counter_reader is not None:
-            result = []
-            model = self._solve_model(
-                self.digital_model, self.digital_counter_reader.get_model_details()
+    def _run_digital_cnn(
+        self,
+        images: list[CutImage],
+        detect_negative_sign: bool,
+        min_confidence_threshold: float,
+    ) -> list[ReadoutResult]:
+        if self.digital_counter_reader is None or not images:
+            return []
+        result: list[ReadoutResult] = []
+        model = self._solve_model(
+            self.digital_model, self.digital_counter_reader.get_model_details()
+        )
+        for item in images:
+            value, conf = self.digital_counter_reader.readout_with_confidence(
+                item.image
             )
-            for item in images:
-                value, conf = self.digital_counter_reader.readout_with_confidence(
-                    item.image
-                )
 
-                if self.detect_negative_sign:
-                    is_unreadable = (
-                        isinstance(value, float) and math.isnan(value)
-                    ) or conf < self.min_confidence_threshold
-                    if is_unreadable:
-                        sign_thresh = (
-                            min(50.0, self.min_confidence_threshold)
-                            if self.min_confidence_threshold > 0
-                            else 50.0
-                        )
-                        is_minus, minus_conf = detect_minus_sign(
-                            item.image, min_confidence=sign_thresh
-                        )
-                        logger.info(
-                            "Minus sign detector for ROI '%s': detected=%s, confidence=%.1f%%",
-                            item.name,
-                            is_minus,
-                            minus_conf,
-                        )
-                        if is_minus:
-                            value = "-"
-                            conf = minus_conf
-
-                result.append(
-                    ReadoutResult(
-                        name=item.name,
-                        value=value,
-                        model=model,
-                        confidence=conf,
+            if detect_negative_sign:
+                is_unreadable = (
+                    isinstance(value, float) and math.isnan(value)
+                ) or conf < min_confidence_threshold
+                if is_unreadable:
+                    sign_thresh = (
+                        min(50.0, min_confidence_threshold)
+                        if min_confidence_threshold > 0
+                        else 50.0
                     )
-                )
-            self.cnn_digital_results = result
-            logger.debug("Digital CNN results: %s", self.cnn_digital_results)
-        return self
+                    is_minus, minus_conf = detect_minus_sign(
+                        item.image, min_confidence=sign_thresh
+                    )
+                    logger.info(
+                        "Minus sign detector for ROI '%s': detected=%s, confidence=%.1f%%",
+                        item.name,
+                        is_minus,
+                        minus_conf,
+                    )
+                    if is_minus:
+                        value = "-"
+                        conf = minus_conf
 
-    def evaluate_cnn_results(self) -> "DigitizerProcessor":
+            result.append(
+                ReadoutResult(
+                    name=item.name,
+                    value=value,
+                    model=model,
+                    confidence=conf,
+                )
+            )
+        logger.debug("Digital CNN results: %s", result)
+        return result
+
+    def _evaluate_cnn_results(
+        self,
+        cnn_results: list[ReadoutResult],
+        min_confidence_threshold: float,
+    ) -> dict[str, int | str]:
         """Evaluate raw CNN predictions into preliminary discrete baseline digits (without predecessor chaining).
 
         Used to establish unprocessed_value before rollover post-processing.
         """
         available_values: dict[str, int | str] = {}
 
-        for result in self.cnn_analog_results + self.cnn_digital_results:
+        for result in cnn_results:
             if result.value == "-":
                 digit: int | str = "-"
-            elif result.confidence < self.min_confidence_threshold or (
+            elif result.confidence < min_confidence_threshold or (
                 isinstance(result.value, float) and math.isnan(result.value)
             ):
                 digit = INVALID_DIGIT
@@ -278,35 +304,88 @@ class DigitizerProcessor:
                 )
             available_values[result.name] = digit
 
-        self.available_values = available_values
         logger.debug("Available values: %s", available_values)
+        return available_values
+
+    @log_execution_time
+    def execute_analog_cnn(self, images: list[CutImage]) -> "DigitizerProcessor":
+        self.cnn_analog_results = self._run_analog_cnn(images)
         return self
 
-    def _evaluate_counters(self, values: list[ReadoutResult]) -> dict[str, str]:
+    @log_execution_time
+    def execute_digital_cnn(self, images: list[CutImage]) -> "DigitizerProcessor":
+        self.cnn_digital_results = self._run_digital_cnn(
+            images,
+            detect_negative_sign=self.detect_negative_sign,
+            min_confidence_threshold=self.min_confidence_threshold,
+        )
+        return self
+
+    def evaluate_cnn_results(self) -> "DigitizerProcessor":
+        self.available_values = self._evaluate_cnn_results(
+            self.cnn_analog_results + self.cnn_digital_results,
+            min_confidence_threshold=self.min_confidence_threshold,
+        )
+        return self
+
+    def _evaluate_counters(
+        self, values: list[ReadoutResult], min_confidence_threshold: float | None = None
+    ) -> dict[str, str]:
+        thresh = (
+            min_confidence_threshold
+            if min_confidence_threshold is not None
+            else self.min_confidence_threshold
+        )
         return RolloverCorrector.evaluate_counters(
             values=values,
-            min_confidence_threshold=self.min_confidence_threshold,
+            min_confidence_threshold=thresh,
         )
 
     # ------------------------------------------------------------------
     # Meter post-processing
     # ------------------------------------------------------------------
 
-    def get_meter_values(self, meter_configs: list[MeterConfig]) -> MeterResult:
-        meters = self._get_meter_values(meter_configs)
+    def _build_meter_values(
+        self,
+        meter_configs: list[MeterConfig],
+        analog_results: list[ReadoutResult],
+        digital_results: list[ReadoutResult],
+        available_values: dict[str, int | str],
+        min_confidence_threshold: float,
+    ) -> MeterResult:
+        meters = self._get_meter_values(meter_configs, available_values)
         self._postprocess_meter_values(
             meters=meters,
-            values=self.available_values,
-            cnn_results=(self.cnn_digital_results + self.cnn_analog_results),
+            values=available_values,
+            cnn_results=(digital_results + analog_results),
+            min_confidence_threshold=min_confidence_threshold,
         )
-        return self._gen_result(meters)
+        return self._gen_result(
+            meters,
+            analog_results=analog_results,
+            digital_results=digital_results,
+        )
 
-    def _get_meter_values(self, meter_configs: list[MeterConfig]) -> list[Meter]:
+    def get_meter_values(self, meter_configs: list[MeterConfig]) -> MeterResult:
+        return self._build_meter_values(
+            meter_configs=meter_configs,
+            analog_results=self.cnn_analog_results,
+            digital_results=self.cnn_digital_results,
+            available_values=self.available_values,
+            min_confidence_threshold=self.min_confidence_threshold,
+        )
+
+    def _get_meter_values(
+        self,
+        meter_configs: list[MeterConfig],
+        available_values: dict[str, int | str] | None = None,
+    ) -> list[Meter]:
+        vals = (
+            available_values if available_values is not None else self.available_values
+        )
         meters: list[Meter] = []
         for meter_config in meter_configs:
-            value = FormatParser.format_template(
-                meter_config.format, self.available_values
-            )
+            value = FormatParser.format_template(meter_config.format, vals)
             meter = Meter(
                 name=meter_config.name,
                 value=value,
@@ -322,6 +401,7 @@ class DigitizerProcessor:
         meters: list[Meter],
         values: dict,
         cnn_results: list[ReadoutResult],
+        min_confidence_threshold: float | None = None,
     ) -> None:
         cnn_results_dict = {item.name: item for item in cnn_results}
         for meter in meters:
@@ -329,6 +409,7 @@ class DigitizerProcessor:
                 meter,
                 values,
                 cnn_results_dict,
+                min_confidence_threshold=min_confidence_threshold,
             )
 
     def _postprocess_meter_value(
@@ -336,11 +417,14 @@ class DigitizerProcessor:
         meter: Meter,
         values: dict,
         cnn_results: dict[str, ReadoutResult],
+        min_confidence_threshold: float | None = None,
     ) -> None:
         results = self._get_readout_results(meter, cnn_results)
         logger.info(" Postprocess meter: %s, readout results: %s", meter, results)
 
-        evaluated_values = self._evaluate_counters(results)
+        evaluated_values = self._evaluate_counters(
+            results, min_confidence_threshold=min_confidence_threshold
+        )
         meter.value = FormatParser.format_template(
             meter.config.format, evaluated_values
         )
@@ -395,29 +479,38 @@ class DigitizerProcessor:
     # Result generation
     # ------------------------------------------------------------------
 
-    def _gen_result(self, meters: list[Meter]) -> MeterResult:
-        analog_results = {}
+    def _gen_result(
+        self,
+        meters: list[Meter],
+        analog_results: list[ReadoutResult] | None = None,
+        digital_results: list[ReadoutResult] | None = None,
+    ) -> MeterResult:
+        if analog_results is None:
+            analog_results = self.cnn_analog_results
+        if digital_results is None:
+            digital_results = self.cnn_digital_results
+
+        analog_dict = {}
         confidence_scores = {}
         if self.analog_counter_reader is not None:
-            for item in self.cnn_analog_results:
+            for item in analog_results:
                 val = f"{item.value:.2f}"
-                analog_results[item.name] = val
+                analog_dict[item.name] = val
                 confidence_scores[item.name] = item.confidence
-        digital_results = {}
+        digital_dict = {}
         if self.digital_counter_reader is not None:
-            for item in self.cnn_digital_results:
+            for item in digital_results:
                 if item.value == "-":
                     val = "-"
                 elif isinstance(item.value, float) and math.isnan(item.value):
                     val = INVALID_DIGIT
                 else:
                     val = str(item.value)
-                digital_results[item.name] = val
+                digital_dict[item.name] = val
                 confidence_scores[item.name] = item.confidence
 
         all_results_dict = {
-            item.name: item
-            for item in (self.cnn_digital_results + self.cnn_analog_results)
+            item.name: item for item in (digital_results + analog_results)
         }
 
         meter_results = []
@@ -460,8 +553,8 @@ class DigitizerProcessor:
 
         return MeterResult(
             meters=meter_results,
-            digital_results=digital_results,
-            analog_results=analog_results,
+            digital_results=digital_dict,
+            analog_results=analog_dict,
             confidence_scores=confidence_scores,
             error="",
         )

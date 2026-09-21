@@ -130,7 +130,18 @@ class SystemHealth(BaseModel):
 
 
 class DictAccessMixin:
-    """Mixin allowing Pydantic models to support dictionary subscripting and .get() for legacy interoperability."""
+    """Backward-compatibility mixin providing dict subscripting and .get() on Pydantic models.
+
+    .. note:: Technical Debt / Migration Guidance
+        This mixin allows legacy code and templates expecting dictionary-like access
+        (e.g. `model["field"]`, `model.get("field")`, `'field' in model`) to operate on
+        Pydantic v2 `BaseModel` instances without immediate refactoring.
+
+        For new code:
+        - Prefer direct typed attribute access: `model.field`
+        - For dictionary serialization: use `model.model_dump()`
+        - For dynamic attribute lookup: use `getattr(model, "field", default)`
+    """
 
     def get(self, key: str, default: Any = None) -> Any:
         return getattr(self, key, default)

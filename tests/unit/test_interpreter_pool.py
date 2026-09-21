@@ -177,3 +177,23 @@ def test_cnn_base_properties_and_fallbacks():
     base_invalid.pool = None
     with pytest.raises(RuntimeError, match="not loaded"):
         base_invalid._readout(Image.new("RGB", (20, 20)))
+
+
+def test_interpreter_pool_clear_concurrency():
+    pool = InterpreterPool(DIGITAL_MODEL, max_size=4)
+
+    def worker():
+        try:
+            with pool.acquire(timeout=0.5):
+                pass
+        except Exception:
+            pass
+
+    with ThreadPoolExecutor(max_workers=8) as executor:
+        futures = [executor.submit(worker) for _ in range(20)]
+        pool.clear()
+        for f in futures:
+            f.result()
+
+    stats = pool.get_stats()
+    assert stats["inferences"] == 0

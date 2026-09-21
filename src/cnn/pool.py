@@ -199,11 +199,7 @@ class InterpreterPool:
     def clear(self) -> None:
         """Drain and clear the pool."""
         with self._lock:
-            while not self._pool.empty():
-                try:
-                    self._pool.get_nowait()
-                except queue.Empty:
-                    break
+            self._pool = queue.Queue(maxsize=self.max_size)
             self._created_count = 0
             self._active_inferences = 0
             self._model_details = None

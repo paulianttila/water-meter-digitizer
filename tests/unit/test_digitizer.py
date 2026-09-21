@@ -678,3 +678,42 @@ def test_process_uninitialized():
     processor = DigitizerProcessor()
     with pytest.raises(ValueError, match="No CNN reader initialized"):
         processor.process([], [], [])
+
+
+def test_concurrent_digitizer_process():
+    from concurrent.futures import ThreadPoolExecutor
+
+    from PIL import Image
+
+    from data_classes import CutImage
+
+    processor = DigitizerProcessor()
+    mock_digital = MagicMock(spec=DigitalCounterCNN)
+    mock_digital.get_model_details.return_value = ModelDetails(
+        name="test.tflite", xsize=20, ysize=32, channels=3, num_outputs=11
+    )
+    # Return different values based on image size or name
+    mock_digital.readout_with_confidence.side_effect = lambda img: (5.0, 95.0)
+
+    processor.digital_counter_reader = mock_digital
+    processor.digital_model = MODEL_DIGITAL
+
+    meter_cfg = MeterConfig(
+        name="main",
+        format="{digit1}",
+        value_names=["digit1"],
+        use_previous_value=False,
+    )
+    test_img = CutImage(name="digit1", image=Image.new("RGB", (20, 32)))
+
+    def worker(idx: int):
+        return processor.process([], [test_img], [meter_cfg])
+
+    with ThreadPoolExecutor(max_workers=8) as executor:
+        futures = [executor.submit(worker, i) for i in range(20)]
+        results = [f.result() for f in futures]
+
+    assert len(results) == 20
+    for r in results:
+        assert len(r.meters) == 1
+        assert r.meters[0].value == "5"
