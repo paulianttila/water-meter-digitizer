@@ -12,6 +12,7 @@ from src.processor.digitizer import (
     MODEL_DIGITAL,
     MODEL_DIGITAL100,
     DigitizerProcessor,
+    FormatParser,
     Meter,
     MeterConfig,
     ReadoutResult,
@@ -753,3 +754,69 @@ def test_get_meter_values_valid_success(mock_save, mock_load) -> None:
     assert result.valid is True
     assert result.warning == ""
     mock_save.assert_called_once_with("test-prev.ini", "total", "105")
+
+
+@patch("src.processor.digitizer.load_previous_value_from_file", return_value="123.500")
+@patch(
+    "src.processor.digitizer.save_previous_value_to_file",
+    side_effect=OSError("Disk full / permission denied"),
+)
+def test_postprocessing_save_previous_value_failure_handled_gracefully(
+    mock_save, mock_load
+) -> None:
+    """Verify that a disk write error during save_previous_value does not crash postprocessing."""
+    meter = get_default_meter()
+    meter.config.max_rate_value = 1.0
+    processor = get_default_processor()
+    # Should not raise OSError, but log warning and continue
+    processor._postprocess_meter_value(meter, {}, get_default_cnn_results())
+    assert meter.value == "123.567"
+    assert meter.valid is True
+    assert meter.warning == ""
+    mock_save.assert_called_once()
+
+
+def test_postprocessing_missing_previous_value_file_raises_value_error() -> None:
+    """Verify that attempting to use previous value without a configured file raises ValueError."""
+    meter = get_default_meter()
+    meter.config.use_previous_value = True
+    processor = DigitizerProcessor()
+    processor.previous_value_file = None
+
+    with pytest.raises(
+        ValueError,
+        match="Previous value file must be configured when use_previous_value is enabled",
+    ):
+        processor._postprocess_meter_value(meter, {}, get_default_cnn_results())
+
+
+def test_get_meter_values_with_unresolved_question_mark_digit() -> None:
+    """Verify that an unresolved digit ('?') results in valid=False and quality='uncertain'."""
+    processor = DigitizerProcessor()
+    processor.available_values = {"digit1": 1, "digit2": "?", "digit3": 5}
+    processor.cnn_digital_results = [
+        ReadoutResult(name="digit1", value=1, model=MODEL_DIGITAL, confidence=95.0),
+        ReadoutResult(name="digit2", value="?", model=MODEL_DIGITAL, confidence=20.0),
+        ReadoutResult(name="digit3", value=5, model=MODEL_DIGITAL, confidence=95.0),
+    ]
+
+    meter_cfg = MeterConfig(
+        name="main",
+        format="{digit1}{digit2}{digit3}",
+        value_names=["digit1", "digit2", "digit3"],
+        use_previous_value=False,
+    )
+
+    result = processor.get_meter_values([meter_cfg])
+    assert len(result.meters) == 1
+    m = result.meters[0]
+    assert m.value == "1?5"
+    assert m.valid is False
+    assert m.quality == "uncertain"
+    assert result.valid is False
+
+
+def test_format_parser_graceful_missing_slot_fallback() -> None:
+    """Verify that format_template falls back to template string when a slot is missing from values."""
+    res = FormatParser.format_template("{digit1}.{missing_slot}", {"digit1": "123"})
+    assert res == "{digit1}.{missing_slot}"
