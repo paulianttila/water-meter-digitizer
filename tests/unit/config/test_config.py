@@ -393,3 +393,44 @@ def test_init_config_logging_level(monkeypatch, tmp_path):
     test_ini.write_text("[DEFAULT]\nLogLevel=INFO\n")
     main.init_config()
     assert logging.getLogger().level == logging.INFO
+
+
+def test_config_meter_custom_quality_thresholds(tmp_path):
+    """Verify loading and serializing custom QualityHighMinConfidence and related thresholds."""
+    ini_content = """[DEFAULT]
+LogLevel = INFO
+
+[Meters]
+Names = main
+
+[Meter.main]
+Value = {digit1}
+QualityHighMinConfidence = 72.5
+QualityHighAvgConfidence = 78.0
+QualityWarningMinConfidence = 52.0
+QualityWarningAvgConfidence = 58.5
+"""
+    test_ini = tmp_path / "config.ini"
+    test_ini.write_text(ini_content)
+
+    cfg = Config().load_from_file(str(test_ini))
+    assert len(cfg.meter_configs) == 1
+    m = cfg.meter_configs[0]
+    assert m.name == "main"
+    assert m.quality_high_min_confidence == 72.5
+    assert m.quality_high_avg_confidence == 78.0
+    assert m.quality_warning_min_confidence == 52.0
+    assert m.quality_warning_avg_confidence == 58.5
+
+    saved = cfg.save_to_string()
+    assert "QualityHighMinConfidence=72.5" in saved
+    assert "QualityHighAvgConfidence=78.0" in saved
+    assert "QualityWarningMinConfidence=52.0" in saved
+    assert "QualityWarningAvgConfidence=58.5" in saved
+
+    reloaded = Config().load_from_string(saved)
+    m_reloaded = reloaded.meter_configs[0]
+    assert m_reloaded.quality_high_min_confidence == 72.5
+    assert m_reloaded.quality_high_avg_confidence == 78.0
+    assert m_reloaded.quality_warning_min_confidence == 52.0
+    assert m_reloaded.quality_warning_avg_confidence == 58.5

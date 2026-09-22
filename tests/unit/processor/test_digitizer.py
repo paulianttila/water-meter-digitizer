@@ -18,6 +18,7 @@ from src.processor.digitizer import (
     Meter,
     MeterConfig,
     ReadoutResult,
+    determine_quality,
 )
 
 
@@ -1284,3 +1285,103 @@ def test_postprocessing_out_of_bounds_roi_invalidates_and_skips_save(
     assert meter.valid is False
     assert "ROI out of image bounds: digit2" in meter.warning
     mock_save.assert_not_called()
+
+
+def test_determine_quality_custom_thresholds():
+    """Verify custom thresholds promote lower confidence scores to good or warning."""
+    # Under defaults (80 min / 85 avg):
+    # min_conf=75, avg_conf=75 is classified as 'warning'
+    assert (
+        determine_quality(
+            value="123", valid=True, warning="", min_conf=75.0, avg_conf=75.0
+        )
+        == "warning"
+    )
+
+    # With custom thresholds: high_min=70, high_avg=70 -> classified as 'good'
+    assert (
+        determine_quality(
+            value="123",
+            valid=True,
+            warning="",
+            min_conf=75.0,
+            avg_conf=75.0,
+            quality_high_min_confidence=70.0,
+            quality_high_avg_confidence=70.0,
+        )
+        == "good"
+    )
+
+    # Under defaults (60 min / 65 avg):
+    # min_conf=55, avg_conf=58 is classified as 'uncertain'
+    assert (
+        determine_quality(
+            value="123", valid=True, warning="", min_conf=55.0, avg_conf=58.0
+        )
+        == "uncertain"
+    )
+
+    # With custom warning thresholds: warn_min=50, warn_avg=55 -> classified as 'warning'
+    assert (
+        determine_quality(
+            value="123",
+            valid=True,
+            warning="",
+            min_conf=55.0,
+            avg_conf=58.0,
+            quality_warning_min_confidence=50.0,
+            quality_warning_avg_confidence=55.0,
+        )
+        == "warning"
+    )
+
+
+def test_process_custom_meter_quality_thresholds():
+    """Verify that custom quality thresholds in MeterConfig promote a 75% score to 'good'."""
+    from PIL import Image
+
+    from data_classes import CutImage
+
+    processor = DigitizerProcessor()
+    mock_digital = MagicMock(spec=DigitalCounterCNN)
+    mock_digital.get_model_details.return_value = ModelDetails(
+        name="test.tflite", xsize=20, ysize=32, channels=3, num_outputs=11
+    )
+    # Return 75.0 confidence
+    mock_digital.readout_with_confidence.return_value = (5.0, 75.0)
+    processor.digital_counter_reader = mock_digital
+    processor.digital_model = MODEL_DIGITAL
+
+    # Meter with default thresholds (80/85) -> should be 'warning'
+    default_cfg = MeterConfig(
+        name="default_thresh",
+        format="{digit1}",
+        value_names=["digit1"],
+        use_previous_value=False,
+    )
+    # Meter with custom thresholds (70/70) -> should be promoted to 'good'
+    custom_cfg = MeterConfig(
+        name="custom_thresh",
+        format="{digit1}",
+        value_names=["digit1"],
+        use_previous_value=False,
+        quality_high_min_confidence=70.0,
+        quality_high_avg_confidence=70.0,
+    )
+    test_img = CutImage(name="digit1", image=Image.new("RGB", (20, 32)))
+
+    res = processor.process([], [test_img], [default_cfg, custom_cfg])
+    assert res.meters[0].quality == "warning"
+    assert res.meters[1].quality == "good"
+
+
+def test_digitizer_processor_set_quality_thresholds():
+    """Verify DigitizerProcessor.set_quality_thresholds configures processor-level fallback thresholds."""
+    processor = DigitizerProcessor()
+    processor.set_quality_thresholds(
+        high_min=70.0, high_avg=72.0, warning_min=50.0, warning_avg=52.0
+    )
+    assert processor.quality_high_min_confidence == 70.0
+    assert processor.quality_high_avg_confidence == 72.0
+    assert processor.quality_warning_min_confidence == 50.0
+    assert processor.quality_warning_avg_confidence == 52.0

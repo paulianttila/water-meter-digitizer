@@ -30,6 +30,10 @@ class MeterConfig(BaseModel):
     use_extended_resolution: bool = False
     unit: str = ""
     detect_negative_sign: bool = False
+    quality_high_min_confidence: float = Field(default=80.0, ge=0.0, le=100.0)
+    quality_high_avg_confidence: float = Field(default=85.0, ge=0.0, le=100.0)
+    quality_warning_min_confidence: float = Field(default=60.0, ge=0.0, le=100.0)
+    quality_warning_avg_confidence: float = Field(default=65.0, ge=0.0, le=100.0)
 
     @property
     def value_names(self) -> list[str]:

@@ -68,6 +68,10 @@ def determine_quality(
     warning: str,
     min_conf: float,
     avg_conf: float,
+    quality_high_min_confidence: float = QUALITY_HIGH_MIN_CONFIDENCE,
+    quality_high_avg_confidence: float = QUALITY_HIGH_AVG_CONFIDENCE,
+    quality_warning_min_confidence: float = QUALITY_WARNING_MIN_CONFIDENCE,
+    quality_warning_avg_confidence: float = QUALITY_WARNING_AVG_CONFIDENCE,
 ) -> Literal["good", "warning", "uncertain"]:
     """Classify readout quality based on unreadable digits, warnings, validity, and confidence thresholds."""
     if INVALID_DIGIT in value:
@@ -77,13 +81,13 @@ def determine_quality(
     elif not valid:
         return "uncertain"
     elif (
-        min_conf >= QUALITY_HIGH_MIN_CONFIDENCE
-        and avg_conf >= QUALITY_HIGH_AVG_CONFIDENCE
+        min_conf >= quality_high_min_confidence
+        and avg_conf >= quality_high_avg_confidence
     ):
         return "good"
     elif (
-        min_conf >= QUALITY_WARNING_MIN_CONFIDENCE
-        and avg_conf >= QUALITY_WARNING_AVG_CONFIDENCE
+        min_conf >= quality_warning_min_confidence
+        and avg_conf >= quality_warning_avg_confidence
     ):
         return "warning"
     else:
@@ -128,6 +132,65 @@ class DigitizerProcessor:
         self.cnn_analog_results: list[ReadoutResult] = []
         self.available_values: dict[str, int | str] = {}
         self.out_of_bounds_rois: set[str] = set()
+        self.quality_high_min_confidence: float = QUALITY_HIGH_MIN_CONFIDENCE
+        self.quality_high_avg_confidence: float = QUALITY_HIGH_AVG_CONFIDENCE
+        self.quality_warning_min_confidence: float = QUALITY_WARNING_MIN_CONFIDENCE
+        self.quality_warning_avg_confidence: float = QUALITY_WARNING_AVG_CONFIDENCE
+
+    def set_quality_thresholds(
+        self,
+        high_min: float | None = None,
+        high_avg: float | None = None,
+        warning_min: float | None = None,
+        warning_avg: float | None = None,
+    ) -> "DigitizerProcessor":
+        if high_min is not None:
+            self.quality_high_min_confidence = high_min
+        if high_avg is not None:
+            self.quality_high_avg_confidence = high_avg
+        if warning_min is not None:
+            self.quality_warning_min_confidence = warning_min
+        if warning_avg is not None:
+            self.quality_warning_avg_confidence = warning_avg
+        return self
+
+    def _resolve_quality_thresholds(
+        self, meter: Meter
+    ) -> tuple[float, float, float, float]:
+        cfg = getattr(meter, "config", None)
+        high_min = (
+            getattr(cfg, "quality_high_min_confidence", None)
+            if cfg is not None
+            else None
+        )
+        if high_min is None:
+            high_min = self.quality_high_min_confidence
+
+        high_avg = (
+            getattr(cfg, "quality_high_avg_confidence", None)
+            if cfg is not None
+            else None
+        )
+        if high_avg is None:
+            high_avg = self.quality_high_avg_confidence
+
+        warn_min = (
+            getattr(cfg, "quality_warning_min_confidence", None)
+            if cfg is not None
+            else None
+        )
+        if warn_min is None:
+            warn_min = self.quality_warning_min_confidence
+
+        warn_avg = (
+            getattr(cfg, "quality_warning_avg_confidence", None)
+            if cfg is not None
+            else None
+        )
+        if warn_avg is None:
+            warn_avg = self.quality_warning_avg_confidence
+
+        return high_min, high_avg, warn_min, warn_avg
 
     def set_min_confidence_threshold(self, threshold: float) -> "DigitizerProcessor":
         self.min_confidence_threshold = threshold
@@ -619,12 +682,17 @@ class DigitizerProcessor:
             avg_conf = 100.0
             min_conf = 100.0
 
+        high_min, high_avg, warn_min, warn_avg = self._resolve_quality_thresholds(meter)
         quality = determine_quality(
             value=meter.value,
             valid=meter.valid,
             warning=meter.warning,
             min_conf=min_conf,
             avg_conf=avg_conf,
+            quality_high_min_confidence=high_min,
+            quality_high_avg_confidence=high_avg,
+            quality_warning_min_confidence=warn_min,
+            quality_warning_avg_confidence=warn_avg,
         )
 
         warn_field = f' warning="{meter.warning}"' if meter.warning else ""
@@ -714,12 +782,19 @@ class DigitizerProcessor:
                 avg_conf = 100.0
                 min_conf = 100.0
 
+            high_min, high_avg, warn_min, warn_avg = self._resolve_quality_thresholds(
+                meter
+            )
             quality = determine_quality(
                 value=meter.value,
                 valid=meter.valid,
                 warning=meter.warning,
                 min_conf=min_conf,
                 avg_conf=avg_conf,
+                quality_high_min_confidence=high_min,
+                quality_high_avg_confidence=high_avg,
+                quality_warning_min_confidence=warn_min,
+                quality_warning_avg_confidence=warn_avg,
             )
 
             meter_results.append(

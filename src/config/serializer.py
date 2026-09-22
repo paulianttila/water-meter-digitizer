@@ -282,6 +282,34 @@ def load_config_from_parser(cfg: Config, config: configparser.ConfigParser) -> C
         detect_neg_meter = config.getboolean(
             f"Meter.{name}", "DetectNegativeSign", fallback=False
         )
+        quality_high_min_confidence = config.getfloat(
+            f"Meter.{name}",
+            "QualityHighMinConfidence",
+            fallback=config.getfloat(
+                "Meters", "QualityHighMinConfidence", fallback=80.0
+            ),
+        )
+        quality_high_avg_confidence = config.getfloat(
+            f"Meter.{name}",
+            "QualityHighAvgConfidence",
+            fallback=config.getfloat(
+                "Meters", "QualityHighAvgConfidence", fallback=85.0
+            ),
+        )
+        quality_warning_min_confidence = config.getfloat(
+            f"Meter.{name}",
+            "QualityWarningMinConfidence",
+            fallback=config.getfloat(
+                "Meters", "QualityWarningMinConfidence", fallback=60.0
+            ),
+        )
+        quality_warning_avg_confidence = config.getfloat(
+            f"Meter.{name}",
+            "QualityWarningAvgConfidence",
+            fallback=config.getfloat(
+                "Meters", "QualityWarningAvgConfidence", fallback=65.0
+            ),
+        )
 
         if consistency_enabled and max_rate_value <= 0:
             logger.warning(
@@ -317,6 +345,10 @@ def load_config_from_parser(cfg: Config, config: configparser.ConfigParser) -> C
                 use_extended_resolution=use_extended_resolution,
                 unit=unit if unit is not None else "",
                 detect_negative_sign=detect_neg_meter,
+                quality_high_min_confidence=quality_high_min_confidence,
+                quality_high_avg_confidence=quality_high_avg_confidence,
+                quality_warning_min_confidence=quality_warning_min_confidence,
+                quality_warning_avg_confidence=quality_warning_avg_confidence,
             )
         )
     cfg.meter_configs = meter_configs
@@ -574,6 +606,10 @@ def save_config_to_io(cfg: Config, fp: TextIO) -> None:
             "UseExtendedResolution": str(meter.use_extended_resolution),
             "Unit": meter.unit if meter.unit is not None else "",
             "DetectNegativeSign": str(meter.detect_negative_sign),
+            "QualityHighMinConfidence": str(meter.quality_high_min_confidence),
+            "QualityHighAvgConfidence": str(meter.quality_high_avg_confidence),
+            "QualityWarningMinConfidence": str(meter.quality_warning_min_confidence),
+            "QualityWarningAvgConfidence": str(meter.quality_warning_avg_confidence),
         }
 
     config["Digits"] = {
