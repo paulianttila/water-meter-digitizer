@@ -160,3 +160,56 @@ def test_page_meter_poller_trigger():
     res = page.callbacks.trigger_poller()
     assert res == {"status": "ok"}
     callbacks.trigger_poller.assert_called_once()
+
+
+def test_page_meter_min_confidence_rendering():
+    """Test that render_meter_data displays min_confidence in badge and min/avg in tooltip."""
+    callbacks = MagicMock()
+    result = MeterResult(
+        meters=[
+            MeterValue(
+                name="total",
+                value="123.456",
+                confidence=96.2,
+                min_confidence=88.0,
+                quality="good",
+                unit="m3",
+                warning="Check meter flow",
+            )
+        ]
+    )
+    callbacks.get_meter_data.return_value = result
+    callbacks.get_image_as_base64_str.return_value = ""
+    callbacks.get_config.return_value = Config()
+
+    page = MeterPage(callbacks)
+    page.consumption_card = MagicMock()
+    page.history_card = MagicMock()
+    page.time_machine_card = MagicMock()
+
+    with patch("gui.pages.meter.ui") as mock_ui:
+        mock_ui.element.return_value.__enter__ = MagicMock()
+        mock_ui.element.return_value.__exit__ = MagicMock()
+        mock_ui.row.return_value.__enter__ = MagicMock()
+        mock_ui.row.return_value.__exit__ = MagicMock()
+        mock_ui.column.return_value.__enter__ = MagicMock()
+        mock_ui.column.return_value.__exit__ = MagicMock()
+        mock_ui.tab_panels.return_value.__enter__ = MagicMock()
+        mock_ui.tab_panels.return_value.__exit__ = MagicMock()
+        mock_ui.tab_panel.return_value.__enter__ = MagicMock()
+        mock_ui.tab_panel.return_value.__exit__ = MagicMock()
+
+        asyncio.run(page.show())
+
+        # Check that label with min_confidence was rendered
+        label_calls = [c.args[0] for c in mock_ui.label.call_args_list if c.args]
+        assert any("88.0% • Good" in str(arg) for arg in label_calls)
+
+        # Check tooltip contains Min, Avg, and warning message
+        tooltip_calls = [c.args[0] for c in mock_ui.tooltip.call_args_list if c.args]
+        assert any(
+            "Min: 88.0%" in str(arg)
+            and "Avg: 96.2%" in str(arg)
+            and "Check meter flow" in str(arg)
+            for arg in tooltip_calls
+        )

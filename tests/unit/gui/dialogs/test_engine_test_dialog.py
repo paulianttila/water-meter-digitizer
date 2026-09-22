@@ -22,6 +22,7 @@ def test_extract_meter_readouts_with_multiple_meters():
                 unit="m³",
                 quality="good",
                 confidence=98.5,
+                min_confidence=97.0,
             ),
             MeterValue(
                 name="digital",
@@ -51,6 +52,7 @@ def test_extract_meter_readouts_with_multiple_meters():
     assert meters_list[0]["unit"] == "m³"
     assert meters_list[0]["quality"] == "good"
     assert meters_list[0]["confidence"] == 98.5
+    assert meters_list[0]["min_confidence"] == 97.0
 
     assert meters_list[1]["name"] == "digital"
     assert meters_list[1]["value"] == "00452"
@@ -174,3 +176,63 @@ def test_run_engine_test_dialog_failure_handling():
         )
         # Should notify info for start and negative for error
         assert any("Engine test failed" in str(c) for c in mock_notify.call_args_list)
+
+
+def test_show_engine_test_modal():
+    """Test show_engine_test_modal creates badges with min_confidence and tooltips."""
+    from gui.components.engine_test_dialog import show_engine_test_modal
+
+    result = MeterResult(
+        meters=[
+            MeterValue(
+                name="total",
+                value="123.456",
+                unit="m³",
+                quality="good",
+                confidence=98.5,
+                min_confidence=92.0,
+                warning="Warning test",
+            )
+        ],
+        digital_results={"D1": "1"},
+        confidence_scores={"D1": 92.0},
+    )
+
+    from contextlib import contextmanager
+
+    @contextmanager
+    def mock_card_header(*args, **kwargs):
+        yield
+
+    with (
+        patch("gui.components.engine_test_dialog.ui") as mock_ui,
+        patch("gui.components.engine_test_dialog.card_header", mock_card_header),
+    ):
+        mock_dialog = MagicMock()
+        mock_ui.dialog.return_value.__enter__.return_value = mock_dialog
+        mock_ui.card.return_value.__enter__ = MagicMock()
+        mock_ui.card.return_value.__exit__ = MagicMock()
+        mock_ui.row.return_value.__enter__ = MagicMock()
+        mock_ui.row.return_value.__exit__ = MagicMock()
+        mock_ui.grid.return_value.__enter__ = MagicMock()
+        mock_ui.grid.return_value.__exit__ = MagicMock()
+        mock_badge = MagicMock()
+        mock_badge.props.return_value = mock_badge
+        mock_ui.badge.return_value = mock_badge
+
+        show_engine_test_modal(
+            result=result,
+            config=Config(),
+            dur_ms=50.0,
+            roi_overlay_b64="",
+            title_tag="Tag",
+        )
+
+        mock_dialog.open.assert_called_once()
+        badge_calls = [c.args[0] for c in mock_ui.badge.call_args_list if c.args]
+        assert "92.0%" in badge_calls
+        mock_badge.tooltip.assert_called()
+        tooltip_arg = mock_badge.tooltip.call_args[0][0]
+        assert "Min: 92.0%" in tooltip_arg
+        assert "Avg: 98.5%" in tooltip_arg
+        assert "Warning test" in tooltip_arg

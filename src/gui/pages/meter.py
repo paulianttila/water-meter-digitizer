@@ -237,7 +237,14 @@ class MeterPage(BasePage):
                                         )
 
                                 with ui.row().classes(ROW_ITEMS_CENTER):
-                                    conf_val = getattr(meter, "confidence", 100.0)
+                                    conf_val = (
+                                        getattr(meter, "confidence", 100.0) or 100.0
+                                    )
+                                    min_conf_val = getattr(
+                                        meter, "min_confidence", None
+                                    )
+                                    if min_conf_val is None:
+                                        min_conf_val = conf_val
                                     qual = getattr(meter, "quality", "good").lower()
                                     warn_msg = getattr(meter, "warning", "")
                                     badge_cls = (
@@ -251,10 +258,15 @@ class MeterPage(BasePage):
                                     )
                                     with ui.element("span").classes(badge_cls):
                                         ui.label(
-                                            f"{conf_val:.1f}% • {qual.capitalize()}"
+                                            f"{min_conf_val:.1f}% • {qual.capitalize()}"
                                         )
+                                        tooltip_parts = [
+                                            f"Min: {min_conf_val:.1f}%",
+                                            f"Avg: {conf_val:.1f}%",
+                                        ]
                                         if warn_msg:
-                                            ui.tooltip(warn_msg)
+                                            tooltip_parts.append(warn_msg)
+                                        ui.tooltip(" • ".join(tooltip_parts))
 
                             with ui.row().classes(
                                 "w-full justify-between items-baseline gap-2"

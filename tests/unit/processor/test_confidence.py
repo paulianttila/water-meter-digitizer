@@ -228,10 +228,12 @@ def test_meter_result_quality_and_confidence_scores():
     # m_good: min=90.0, avg=92.5 -> good
     assert result.meters[0].quality == "good"
     assert result.meters[0].confidence == 92.5
+    assert result.meters[0].min_confidence == 90.0
 
     # m_warn: min=70.0, avg=82.5 -> warning
     assert result.meters[1].quality == "warning"
     assert result.meters[1].confidence == 82.5
+    assert result.meters[1].min_confidence == 70.0
 
 
 def test_meter_result_uncertain_quality():
@@ -256,3 +258,4 @@ def test_meter_result_uncertain_quality():
 
     assert result.meters[0].quality == "uncertain"
     assert result.meters[0].confidence == 65.0
+    assert result.meters[0].min_confidence == 50.0

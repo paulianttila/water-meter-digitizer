@@ -879,3 +879,27 @@ def test_postprocessing_corrupted_previous_value_rejects_and_does_not_save(
     assert meter.valid is False
     assert meter.warning == "Unreadable digit(s)"
     mock_save.assert_not_called()
+
+
+def test_meter_value_min_confidence_surfaced() -> None:
+    """Verify that MeterValue.min_confidence reflects the lowest digit confidence."""
+    processor = DigitizerProcessor()
+    processor.available_values = {"digit1": 1, "digit2": 2, "digit3": 3}
+    processor.cnn_digital_results = [
+        ReadoutResult(name="digit1", value=1, model=MODEL_DIGITAL, confidence=98.0),
+        ReadoutResult(name="digit2", value=2, model=MODEL_DIGITAL, confidence=45.5),
+        ReadoutResult(name="digit3", value=3, model=MODEL_DIGITAL, confidence=92.0),
+    ]
+
+    meter_cfg = MeterConfig(
+        name="main",
+        format="{digit1}{digit2}{digit3}",
+        value_names=["digit1", "digit2", "digit3"],
+        use_previous_value=False,
+    )
+
+    result = processor.get_meter_values([meter_cfg])
+    assert len(result.meters) == 1
+    m = result.meters[0]
+    assert m.min_confidence == 45.5
+    assert m.confidence == 78.5

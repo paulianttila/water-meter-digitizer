@@ -55,6 +55,7 @@ class MeterValue(BaseModel):
     unit: str = ""
     quality: Literal["good", "warning", "uncertain"] = "good"
     confidence: float = 100.0
+    min_confidence: float = 100.0
     warning: str = ""
     valid: bool = True
 
@@ -572,7 +573,7 @@ class DigitizerProcessor:
             ]
             if component_confs:
                 avg_conf = round(sum(component_confs) / len(component_confs), 1)
-                min_conf = min(component_confs)
+                min_conf = round(min(component_confs), 1)
             else:
                 avg_conf = 100.0
                 min_conf = 100.0
@@ -604,6 +605,7 @@ class DigitizerProcessor:
                     unit=meter.config.unit,
                     quality=quality,
                     confidence=avg_conf,
+                    min_confidence=min_conf,
                     warning=meter.warning,
                     valid=meter.valid,
                 )

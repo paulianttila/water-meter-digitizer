@@ -47,6 +47,11 @@ def extract_meter_readouts(
         m_unit = getattr(m, "unit", "")
         m_qual = getattr(m, "quality", "good")
         m_conf = getattr(m, "confidence", 100.0)
+        if m_conf is None:
+            m_conf = 100.0
+        m_min_conf = getattr(m, "min_confidence", None)
+        if m_min_conf is None:
+            m_min_conf = m_conf
         m_warn = getattr(m, "warning", "")
         m_valid = getattr(m, "valid", True)
         meters_list.append(
@@ -56,6 +61,7 @@ def extract_meter_readouts(
                 "unit": m_unit,
                 "quality": m_qual,
                 "confidence": m_conf,
+                "min_confidence": m_min_conf,
                 "warning": m_warn,
                 "valid": m_valid,
             }
@@ -71,6 +77,7 @@ def extract_meter_readouts(
                 "unit": "",
                 "quality": "good",
                 "confidence": 100.0,
+                "min_confidence": 100.0,
             }
         )
 
@@ -212,6 +219,8 @@ def show_engine_test_modal(
                 m_unit = m["unit"]
                 m_qual = m["quality"]
                 m_conf = m["confidence"]
+                m_min_conf = m.get("min_confidence", m_conf)
+                m_warn = m.get("warning", "")
                 q_color = (
                     "emerald"
                     if m_qual == "good"
@@ -229,7 +238,15 @@ def show_engine_test_modal(
                             )
                         with ui.row().classes("items-center gap-1"):
                             ui.badge(f"{m_qual}", color=q_color).props("dense")
-                            ui.badge(f"{m_conf:.1f}%", color="cyan").props("dense")
+                            tooltip_parts = [
+                                f"Min: {m_min_conf:.1f}%",
+                                f"Avg: {m_conf:.1f}%",
+                            ]
+                            if m_warn:
+                                tooltip_parts.append(m_warn)
+                            ui.badge(f"{m_min_conf:.1f}%", color="cyan").props(
+                                "dense"
+                            ).tooltip(" • ".join(tooltip_parts))
 
                     with ui.row().classes("items-baseline gap-1.5 py-0.5"):
                         ui.label(str(m_val)).classes(
