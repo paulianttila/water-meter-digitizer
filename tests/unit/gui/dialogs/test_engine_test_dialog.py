@@ -236,3 +236,63 @@ def test_show_engine_test_modal():
         assert "Min: 92.0%" in tooltip_arg
         assert "Avg: 98.5%" in tooltip_arg
         assert "Warning test" in tooltip_arg
+
+
+def test_show_engine_test_modal_filled_digits():
+    """Test show_engine_test_modal creates filled badge and tooltip when filled_digits > 0."""
+    from gui.components.engine_test_dialog import show_engine_test_modal
+
+    result = MeterResult(
+        meters=[
+            MeterValue(
+                name="total",
+                value="123.456",
+                unit="m³",
+                quality="warning",
+                confidence=95.0,
+                min_confidence=30.0,
+                filled_digits=1,
+            )
+        ]
+    )
+
+    from contextlib import contextmanager
+
+    @contextmanager
+    def mock_card_header(*args, **kwargs):
+        yield
+
+    with (
+        patch("gui.components.engine_test_dialog.ui") as mock_ui,
+        patch("gui.components.engine_test_dialog.card_header", mock_card_header),
+    ):
+        mock_dialog = MagicMock()
+        mock_ui.dialog.return_value.__enter__.return_value = mock_dialog
+        mock_ui.card.return_value.__enter__ = MagicMock()
+        mock_ui.card.return_value.__exit__ = MagicMock()
+        mock_ui.row.return_value.__enter__ = MagicMock()
+        mock_ui.row.return_value.__exit__ = MagicMock()
+        mock_ui.grid.return_value.__enter__ = MagicMock()
+        mock_ui.grid.return_value.__exit__ = MagicMock()
+        mock_badge = MagicMock()
+        mock_badge.props.return_value = mock_badge
+        mock_ui.badge.return_value = mock_badge
+
+        show_engine_test_modal(
+            result=result,
+            config=Config(),
+            dur_ms=50.0,
+            roi_overlay_b64="",
+            title_tag="Tag",
+        )
+
+        badge_calls = [c.args[0] for c in mock_ui.badge.call_args_list if c.args]
+        assert "🔁 1 filled" in badge_calls
+        tooltip_calls = [c.args[0] for c in mock_badge.tooltip.call_args_list if c.args]
+        assert any(
+            "1 digit filled from previous reading" in str(arg) for arg in tooltip_calls
+        )
+        assert any(
+            "1 low-confidence digit filled from previous reading" in str(arg)
+            for arg in tooltip_calls
+        )

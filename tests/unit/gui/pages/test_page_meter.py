@@ -213,3 +213,55 @@ def test_page_meter_min_confidence_rendering():
             and "Check meter flow" in str(arg)
             for arg in tooltip_calls
         )
+
+
+def test_page_meter_filled_digits_rendering():
+    """Test that render_meter_data displays filled_digits badge and tooltip when digits are filled."""
+    callbacks = MagicMock()
+    result = MeterResult(
+        meters=[
+            MeterValue(
+                name="total",
+                value="123.456",
+                confidence=96.2,
+                min_confidence=35.0,
+                filled_digits=2,
+                quality="warning",
+                unit="m3",
+            )
+        ]
+    )
+    callbacks.get_meter_data.return_value = result
+    callbacks.get_image_as_base64_str.return_value = ""
+    callbacks.get_config.return_value = Config()
+
+    page = MeterPage(callbacks)
+    page.consumption_card = MagicMock()
+    page.history_card = MagicMock()
+    page.time_machine_card = MagicMock()
+
+    with patch("gui.pages.meter.ui") as mock_ui:
+        mock_ui.element.return_value.__enter__ = MagicMock()
+        mock_ui.element.return_value.__exit__ = MagicMock()
+        mock_ui.row.return_value.__enter__ = MagicMock()
+        mock_ui.row.return_value.__exit__ = MagicMock()
+        mock_ui.column.return_value.__enter__ = MagicMock()
+        mock_ui.column.return_value.__exit__ = MagicMock()
+        mock_ui.tab_panels.return_value.__enter__ = MagicMock()
+        mock_ui.tab_panels.return_value.__exit__ = MagicMock()
+        mock_ui.tab_panel.return_value.__enter__ = MagicMock()
+        mock_ui.tab_panel.return_value.__exit__ = MagicMock()
+
+        asyncio.run(page.show())
+
+        label_calls = [c.args[0] for c in mock_ui.label.call_args_list if c.args]
+        assert any("🔁 2 filled" in str(arg) for arg in label_calls)
+
+        tooltip_calls = [c.args[0] for c in mock_ui.tooltip.call_args_list if c.args]
+        assert any(
+            "2 digits filled from previous reading" in str(arg) for arg in tooltip_calls
+        )
+        assert any(
+            "2 low-confidence digits filled from previous reading" in str(arg)
+            for arg in tooltip_calls
+        )

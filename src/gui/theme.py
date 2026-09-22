@@ -83,6 +83,10 @@ BADGE_PURPLE = (
     "bg-purple-950/60 text-purple-300 border border-purple-500/30 "
     "text-xs px-2.5 py-0.5 rounded-full font-medium"
 )
+BADGE_FILLED = (
+    "bg-indigo-950/60 text-indigo-300 border border-indigo-500/30 "
+    "text-xs px-2.5 py-0.5 rounded-full font-medium"
+)
 
 # --- Config History & Snapshot Tags ---
 TAG_AUTO_CLS = "bg-cyan-500/10 text-cyan-400 border border-cyan-500/20"

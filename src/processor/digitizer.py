@@ -56,6 +56,7 @@ class MeterValue(BaseModel):
     quality: Literal["good", "warning", "uncertain"] = "good"
     confidence: float = 100.0
     min_confidence: float = 100.0
+    filled_digits: int = 0
     warning: str = ""
     valid: bool = True
 
@@ -78,6 +79,7 @@ class Meter(BaseModel):
     previous_value: str = ""
     warning: str = ""
     valid: bool = True
+    filled_digits: int = 0
 
 
 class DigitizerProcessor:
@@ -466,9 +468,12 @@ class DigitizerProcessor:
             meter.previous_value = FormatParser.adapt_previous_value_to_match_length(
                 meter.value, meter.previous_value
             )
+            before_invalids = meter.value.count(INVALID_DIGIT)
             meter.value = fill_with_predecessor_digits(
                 meter.value, meter.previous_value
             )
+            after_invalids = meter.value.count(INVALID_DIGIT)
+            meter.filled_digits = max(0, before_invalids - after_invalids)
 
         if INVALID_DIGIT in meter.value:
             meter.valid = False
@@ -606,6 +611,7 @@ class DigitizerProcessor:
                     quality=quality,
                     confidence=avg_conf,
                     min_confidence=min_conf,
+                    filled_digits=meter.filled_digits,
                     warning=meter.warning,
                     valid=meter.valid,
                 )

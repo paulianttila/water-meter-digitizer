@@ -97,6 +97,7 @@ stages:
             quality: "good"
             confidence: 93.5
             min_confidence: 85.2
+            filled_digits: 0
             warning: ""
             valid: true
           - name: analog
@@ -105,6 +106,7 @@ stages:
             quality: "good"
             confidence: 99.5
             min_confidence: 98.9
+            filled_digits: 0
             warning: ""
             valid: true
           - name: total
@@ -113,6 +115,7 @@ stages:
             quality: "good"
             confidence: 96.2
             min_confidence: 85.2
+            filled_digits: 0
             warning: ""
             valid: true
         digital_results:

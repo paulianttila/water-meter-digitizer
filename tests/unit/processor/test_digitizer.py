@@ -903,3 +903,68 @@ def test_meter_value_min_confidence_surfaced() -> None:
     m = result.meters[0]
     assert m.min_confidence == 45.5
     assert m.confidence == 78.5
+    assert m.filled_digits == 0
+
+
+@patch("src.processor.digitizer.load_previous_value_from_file", return_value="123.567")
+@patch("src.processor.digitizer.save_previous_value_to_file", return_value=None)
+def test_postprocessing_fills_digits_from_previous_value_and_tracks_count(
+    mock_save: MagicMock, mock_load: MagicMock
+) -> None:
+    """Verify that unreadable digits are filled from predecessor and filled_digits count is tracked."""
+    meter = get_default_meter()
+    processor = get_default_processor()
+    cnn_results = {
+        "digit1": ReadoutResult(name="digit1", value=1, model=MODEL_DIGITAL),
+        "digit2": ReadoutResult(
+            name="digit2", value=INVALID_DIGIT, model=MODEL_DIGITAL
+        ),
+        "digit3": ReadoutResult(name="digit3", value=3, model=MODEL_DIGITAL),
+        "analog1": ReadoutResult(name="analog1", value=5.1, model=MODEL_ANALOG),
+        "analog2": ReadoutResult(name="analog2", value=6.2, model=MODEL_ANALOG),
+        "analog3": ReadoutResult(name="analog3", value=7.3, model=MODEL_ANALOG),
+    }
+
+    processor._postprocess_meter_value(meter, {}, cnn_results)
+
+    assert meter.value == "123.567"
+    assert meter.filled_digits == 1
+    assert meter.valid is True
+    assert meter.warning == ""
+    mock_save.assert_called_once_with("test-file.ini", "meter1", "123.567")
+
+
+@patch("src.processor.digitizer.load_previous_value_from_file", return_value="123.567")
+@patch("src.processor.digitizer.save_previous_value_to_file", return_value=None)
+def test_meter_value_filled_digits_populated(
+    mock_save: MagicMock, mock_load: MagicMock
+) -> None:
+    """Verify MeterValue in MeterResult contains filled_digits count."""
+    meter = get_default_meter()
+    processor = get_default_processor()
+    processor.digital_counter_reader = MagicMock()
+    processor.analog_counter_reader = MagicMock()
+    cnn_digital = [
+        ReadoutResult(name="digit1", value=1, model=MODEL_DIGITAL, confidence=95.0),
+        ReadoutResult(
+            name="digit2", value=INVALID_DIGIT, model=MODEL_DIGITAL, confidence=40.0
+        ),
+        ReadoutResult(name="digit3", value=3, model=MODEL_DIGITAL, confidence=95.0),
+    ]
+    cnn_analog = [
+        ReadoutResult(name="analog1", value=5.1, model=MODEL_ANALOG, confidence=99.0),
+        ReadoutResult(name="analog2", value=6.2, model=MODEL_ANALOG, confidence=99.0),
+        ReadoutResult(name="analog3", value=7.3, model=MODEL_ANALOG, confidence=99.0),
+    ]
+
+    cnn_results_dict = {item.name: item for item in cnn_digital + cnn_analog}
+    processor._postprocess_meter_value(meter, {}, cnn_results_dict)
+    res = processor._gen_result(
+        [meter], analog_results=cnn_analog, digital_results=cnn_digital
+    )
+
+    assert len(res.meters) == 1
+    m = res.meters[0]
+    assert m.value == "123.567"
+    assert m.filled_digits == 1
+    assert m.valid is True

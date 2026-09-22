@@ -52,6 +52,7 @@ def extract_meter_readouts(
         m_min_conf = getattr(m, "min_confidence", None)
         if m_min_conf is None:
             m_min_conf = m_conf
+        m_filled = getattr(m, "filled_digits", 0) or 0
         m_warn = getattr(m, "warning", "")
         m_valid = getattr(m, "valid", True)
         meters_list.append(
@@ -62,6 +63,7 @@ def extract_meter_readouts(
                 "quality": m_qual,
                 "confidence": m_conf,
                 "min_confidence": m_min_conf,
+                "filled_digits": m_filled,
                 "warning": m_warn,
                 "valid": m_valid,
             }
@@ -78,6 +80,9 @@ def extract_meter_readouts(
                 "quality": "good",
                 "confidence": 100.0,
                 "min_confidence": 100.0,
+                "filled_digits": 0,
+                "warning": "",
+                "valid": True,
             }
         )
 
@@ -220,6 +225,7 @@ def show_engine_test_modal(
                 m_qual = m["quality"]
                 m_conf = m["confidence"]
                 m_min_conf = m.get("min_confidence", m_conf)
+                m_filled = m.get("filled_digits", 0) or 0
                 m_warn = m.get("warning", "")
                 q_color = (
                     "emerald"
@@ -242,11 +248,21 @@ def show_engine_test_modal(
                                 f"Min: {m_min_conf:.1f}%",
                                 f"Avg: {m_conf:.1f}%",
                             ]
+                            if m_filled > 0:
+                                tooltip_parts.append(
+                                    f"{m_filled} digit{'s' if m_filled > 1 else ''} filled from previous reading"
+                                )
                             if m_warn:
                                 tooltip_parts.append(m_warn)
                             ui.badge(f"{m_min_conf:.1f}%", color="cyan").props(
                                 "dense"
                             ).tooltip(" • ".join(tooltip_parts))
+                            if m_filled > 0:
+                                ui.badge(f"🔁 {m_filled} filled", color="indigo").props(
+                                    "dense"
+                                ).tooltip(
+                                    f"{m_filled} low-confidence digit{'s' if m_filled > 1 else ''} filled from previous reading"
+                                )
 
                     with ui.row().classes("items-baseline gap-1.5 py-0.5"):
                         ui.label(str(m_val)).classes(

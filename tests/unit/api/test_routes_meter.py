@@ -197,6 +197,7 @@ def test_get_meters_endpoint_formatting():
         assert resp_json.status_code == 200
         assert resp_json.json()["meters"][0]["value"] == "543.210"
         assert resp_json.json()["meters"][0]["min_confidence"] == 95.5
+        assert resp_json.json()["meters"][0]["filled_digits"] == 0
 
     # 3. Value format -> 200 plain text
     with patch("api.routes_meter.get_meter_data", return_value=dummy_result):

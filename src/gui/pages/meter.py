@@ -20,6 +20,7 @@ from gui.components import (
 from gui.pages.base import BasePage
 from gui.theme import (
     BADGE_ERROR,
+    BADGE_FILLED,
     BADGE_SUCCESS,
     BADGE_WARNING,
     CLICKABLE_CARD,
@@ -245,6 +246,7 @@ class MeterPage(BasePage):
                                     )
                                     if min_conf_val is None:
                                         min_conf_val = conf_val
+                                    filled_cnt = getattr(meter, "filled_digits", 0) or 0
                                     qual = getattr(meter, "quality", "good").lower()
                                     warn_msg = getattr(meter, "warning", "")
                                     badge_cls = (
@@ -264,9 +266,20 @@ class MeterPage(BasePage):
                                             f"Min: {min_conf_val:.1f}%",
                                             f"Avg: {conf_val:.1f}%",
                                         ]
+                                        if filled_cnt > 0:
+                                            tooltip_parts.append(
+                                                f"{filled_cnt} digit{'s' if filled_cnt > 1 else ''} filled from previous reading"
+                                            )
                                         if warn_msg:
                                             tooltip_parts.append(warn_msg)
                                         ui.tooltip(" • ".join(tooltip_parts))
+
+                                    if filled_cnt > 0:
+                                        with ui.element("span").classes(BADGE_FILLED):
+                                            ui.label(f"🔁 {filled_cnt} filled")
+                                            ui.tooltip(
+                                                f"{filled_cnt} low-confidence digit{'s' if filled_cnt > 1 else ''} filled from previous reading"
+                                            )
 
                             with ui.row().classes(
                                 "w-full justify-between items-baseline gap-2"

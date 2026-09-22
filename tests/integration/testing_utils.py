@@ -102,6 +102,7 @@ def check_mqtt_meter_data(response: requests.Response):
     assert total_meter["value"] == "00452.91241"
     assert total_meter["confidence"] == 96.2
     assert total_meter["min_confidence"] == 85.2
+    assert total_meter["filled_digits"] == 0
     assert readout["confidence_scores"]["digit1"] == 85.2
     assert readout["confidence_scores"]["analog1"] == 99.2
 
