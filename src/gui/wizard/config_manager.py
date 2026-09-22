@@ -252,6 +252,8 @@ class WizardConfigManager:
                 consistency_enabled=meter.consistency_enabled,
                 allow_negative_rates=meter.allow_negative_rates,
                 max_rate_value=meter.max_rate_value,
+                min_rate_value=getattr(meter, "min_rate_value", 0.0),
+                stale_threshold_hours=getattr(meter, "stale_threshold_hours", 0.0),
                 use_previous_value=meter.use_previous_value,
                 pre_value_from_file_max_age=meter.prevalue_from_file_max_age,
                 use_extended_resolution=meter.use_extended_resolution,

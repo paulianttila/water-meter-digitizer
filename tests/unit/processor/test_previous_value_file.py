@@ -117,3 +117,33 @@ def test_load_previous_value_rejects_invalid_digit(tmp_path):
     invalid_file.write_text("[total]\nTime = 2026-09-22T12:00:00\nValue = 12?4.5\n")
     with pytest.raises(ValueError, match="contains invalid digit"):
         load_previous_value_from_file(str(invalid_file), "total")
+
+
+def test_save_and_load_last_change_tracking(tmp_path):
+    from previous_value import load_previous_value_record
+
+    temp_file = str(tmp_path / "last_change_test.ini")
+
+    # 1. Initial save sets both Time and LastChange
+    save_previous_value_to_file(temp_file, "total", "100.0")
+    record1 = load_previous_value_record(temp_file, "total")
+    assert record1["value"] == "100.0"
+    assert record1["time"] != ""
+    assert record1["last_change"] == record1["time"]
+
+    # 2. Resaving with identical value preserves original LastChange
+    first_last_change = record1["last_change"]
+    import time
+
+    time.sleep(0.01)
+
+    save_previous_value_to_file(temp_file, "total", "100.0")
+    record2 = load_previous_value_record(temp_file, "total")
+    assert record2["value"] == "100.0"
+    assert record2["last_change"] == first_last_change
+
+    # 3. Resaving with modified value updates LastChange
+    save_previous_value_to_file(temp_file, "total", "101.5")
+    record3 = load_previous_value_record(temp_file, "total")
+    assert record3["value"] == "101.5"
+    assert record3["last_change"] == record3["time"]

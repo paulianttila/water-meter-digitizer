@@ -265,6 +265,10 @@ def load_config_from_parser(cfg: Config, config: configparser.ConfigParser) -> C
             f"Meter.{name}", "AllowNegativeRates", fallback=False
         )
         max_rate_value = config.getfloat(f"Meter.{name}", "MaxRateValue", fallback=0.0)
+        min_rate_value = config.getfloat(f"Meter.{name}", "MinRateValue", fallback=0.0)
+        stale_threshold_hours = config.getfloat(
+            f"Meter.{name}", "StaleThresholdHours", fallback=0.0
+        )
         use_previous_value = config.getboolean(
             f"Meter.{name}", "UsePreviousValue", fallback=False
         ) or config.getboolean(f"Meter.{name}", "UsePreviuosValue", fallback=False)
@@ -286,6 +290,19 @@ def load_config_from_parser(cfg: Config, config: configparser.ConfigParser) -> C
                 name,
             )
 
+        if (
+            consistency_enabled
+            and min_rate_value > 0
+            and max_rate_value > 0
+            and min_rate_value > max_rate_value
+        ):
+            logger.warning(
+                "Meter '%s': MinRateValue (%.3f) is greater than MaxRateValue (%.3f).",
+                name,
+                min_rate_value,
+                max_rate_value,
+            )
+
         meter_configs.append(
             MeterConfig(
                 name=name,
@@ -293,6 +310,8 @@ def load_config_from_parser(cfg: Config, config: configparser.ConfigParser) -> C
                 consistency_enabled=consistency_enabled,
                 allow_negative_rates=allow_negative_rates,
                 max_rate_value=max_rate_value,
+                min_rate_value=min_rate_value,
+                stale_threshold_hours=stale_threshold_hours,
                 use_previous_value=use_previous_value,
                 pre_value_from_file_max_age=pre_value_from_file_max_age,
                 use_extended_resolution=use_extended_resolution,
@@ -548,6 +567,8 @@ def save_config_to_io(cfg: Config, fp: TextIO) -> None:
             "ConsistencyEnabled": str(meter.consistency_enabled),
             "AllowNegativeRates": str(meter.allow_negative_rates),
             "MaxRateValue": str(meter.max_rate_value),
+            "MinRateValue": str(meter.min_rate_value),
+            "StaleThresholdHours": str(meter.stale_threshold_hours),
             "UsePreviousValue": str(meter.use_previous_value),
             "PreValueFromFileMaxAge": str(meter.pre_value_from_file_max_age),
             "UseExtendedResolution": str(meter.use_extended_resolution),

@@ -1072,3 +1072,100 @@ def test_postprocessing_structured_summary_log_with_filling(
         and "valid=True" in record.message
         for record in caplog.records
     )
+
+
+@patch("src.processor.digitizer.load_previous_value_from_file", return_value="123.567")
+@patch(
+    "src.processor.digitizer.load_previous_value_record",
+    return_value={
+        "value": "123.567",
+        "time": "2026-09-20T10:00:00",
+        "last_change": "2026-09-20T10:00:00",
+    },
+)
+@patch("src.processor.digitizer.save_previous_value_to_file")
+def test_postprocessing_zero_consumption_valid_by_default(
+    mock_save: MagicMock, mock_record: MagicMock, mock_load: MagicMock
+) -> None:
+    """Verify that zero consumption is totally valid and saved when stale threshold is disabled."""
+    meter = get_default_meter()
+    meter.config.min_rate_value = 0.05
+    meter.config.stale_threshold_hours = 0.0
+    processor = get_default_processor()
+
+    cnn_results = {
+        "digit1": ReadoutResult(
+            name="digit1", value=1, model=MODEL_DIGITAL, confidence=95.0
+        ),
+        "digit2": ReadoutResult(
+            name="digit2", value=2, model=MODEL_DIGITAL, confidence=95.0
+        ),
+        "digit3": ReadoutResult(
+            name="digit3", value=3, model=MODEL_DIGITAL, confidence=95.0
+        ),
+        "analog1": ReadoutResult(
+            name="analog1", value=5.1, model=MODEL_ANALOG, confidence=99.0
+        ),
+        "analog2": ReadoutResult(
+            name="analog2", value=6.2, model=MODEL_ANALOG, confidence=99.0
+        ),
+        "analog3": ReadoutResult(
+            name="analog3", value=7.3, model=MODEL_ANALOG, confidence=99.0
+        ),
+    }
+
+    processor._postprocess_meter_value(meter, {}, cnn_results)
+
+    # Current value is 123.567, previous is 123.567 -> delta = 0.000 is valid!
+    assert meter.valid is True
+    assert meter.warning == ""
+    mock_save.assert_called_once()
+
+
+@patch("src.processor.digitizer.load_previous_value_from_file", return_value="123.567")
+@patch(
+    "src.processor.digitizer.load_previous_value_record",
+    return_value={
+        "value": "123.567",
+        "time": "2026-09-20T10:00:00",
+        "last_change": "2026-09-20T10:00:00",
+    },
+)
+@patch("src.processor.digitizer.save_previous_value_to_file")
+def test_postprocessing_stale_reading_invalidates_and_skips_save(
+    mock_save: MagicMock, mock_record: MagicMock, mock_load: MagicMock
+) -> None:
+    """Verify that a reading exceeding StaleThresholdHours receives a Stale reading warning and skips save."""
+    meter = get_default_meter()
+    meter.config.stale_threshold_hours = (
+        1.0  # 1 hour threshold, last change was 2026-09-20 (well over 1h ago)
+    )
+    processor = get_default_processor()
+
+    cnn_results = {
+        "digit1": ReadoutResult(
+            name="digit1", value=1, model=MODEL_DIGITAL, confidence=95.0
+        ),
+        "digit2": ReadoutResult(
+            name="digit2", value=2, model=MODEL_DIGITAL, confidence=95.0
+        ),
+        "digit3": ReadoutResult(
+            name="digit3", value=3, model=MODEL_DIGITAL, confidence=95.0
+        ),
+        "analog1": ReadoutResult(
+            name="analog1", value=5.1, model=MODEL_ANALOG, confidence=99.0
+        ),
+        "analog2": ReadoutResult(
+            name="analog2", value=6.2, model=MODEL_ANALOG, confidence=99.0
+        ),
+        "analog3": ReadoutResult(
+            name="analog3", value=7.3, model=MODEL_ANALOG, confidence=99.0
+        ),
+    }
+
+    processor._postprocess_meter_value(meter, {}, cnn_results)
+
+    # Current value is 123.567, previous is 123.567 -> delta = 0.000, unchanged for days >= 1.0h
+    assert meter.valid is False
+    assert "Stale reading (no change for" in meter.warning
+    mock_save.assert_not_called()

@@ -29,6 +29,8 @@ class MeterParams:
     use_extended_resolution: bool = False
     detect_negative_sign: bool = False
     max_rate_value: float = 0.2
+    min_rate_value: float = 0.0
+    stale_threshold_hours: float = 0.0
     prevalue_from_file_max_age: int = 0
     unit: str = "㎥"
     value: str = ""
@@ -482,6 +484,12 @@ class Meter:
                     "Maximum allowed consumption increase per reading/minute before "
                     "flagging as inconsistent"
                 )
+                ui.number("Min Rate (/min)", value=0.0, min=0, step=0.01).props(
+                    "dense outlined"
+                ).bind_value(self.meter, "min_rate_value").classes("w-36").tooltip(
+                    "Minimum required consumption increase before flagging reading as stale "
+                    "(0 = disabled)"
+                )
                 ui.number("Prevalue Max Age (min)", value=0, min=0, step=1).props(
                     "dense outlined"
                 ).bind_value(self.meter, "prevalue_from_file_max_age").classes(
@@ -489,6 +497,13 @@ class Meter:
                 ).tooltip(
                     "Maximum age in minutes for reading prevalue from persistent file "
                     "(0 = unlimited)"
+                )
+                ui.number("Stale Limit (hours)", value=0.0, min=0, step=1).props(
+                    "dense outlined"
+                ).bind_value(self.meter, "stale_threshold_hours").classes(
+                    "w-40"
+                ).tooltip(
+                    "Hours unchanged before flagging as stale (0 = disabled)"
                 )
 
         self.update_vals()
@@ -569,6 +584,10 @@ class MeterStep(BaseStep):
                     meter_param.use_extended_resolution = m.use_extended_resolution
                     meter_param.detect_negative_sign = m.detect_negative_sign
                     meter_param.max_rate_value = m.max_rate_value
+                    meter_param.min_rate_value = getattr(m, "min_rate_value", 0.0)
+                    meter_param.stale_threshold_hours = getattr(
+                        m, "stale_threshold_hours", 0.0
+                    )
                     meter_param.prevalue_from_file_max_age = (
                         m.pre_value_from_file_max_age
                     )

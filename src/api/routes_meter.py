@@ -165,6 +165,7 @@ def get_previous_values(request: Request) -> Response:
                     "max_age_minutes": getattr(m, "pre_value_from_file_max_age", 0),
                     "consistency_enabled": getattr(m, "consistency_enabled", False),
                     "max_rate_value": getattr(m, "max_rate_value", 0.0),
+                    "min_rate_value": getattr(m, "min_rate_value", 0.0),
                 }
             )
 
@@ -181,6 +182,7 @@ def get_previous_values(request: Request) -> Response:
                         "max_age_minutes": getattr(m, "pre_value_from_file_max_age", 0),
                         "consistency_enabled": getattr(m, "consistency_enabled", False),
                         "max_rate_value": getattr(m, "max_rate_value", 0.0),
+                        "min_rate_value": getattr(m, "min_rate_value", 0.0),
                     }
                 )
 

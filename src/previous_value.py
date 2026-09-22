@@ -28,9 +28,9 @@ def _parse_timestamp(time_str: str) -> datetime:
     raise ValueError(f"Unsupported timestamp format: {time_str}")
 
 
-def load_previous_value_from_file(
+def load_previous_value_record(
     file: str, section: str, max_age_minutes: int | None = None
-) -> str:
+) -> dict[str, str]:
     with _previous_value_lock:
         if not os.path.exists(file):
             raise ValueError(f"File '{file}' does not exist.")
@@ -39,8 +39,8 @@ def load_previous_value_from_file(
         config.read(file)
 
         try:
-            if max_age_minutes is not None and max_age_minutes > 0:
-                time_str = config.get(section, "Time")
+            time_str = config.get(section, "Time", fallback="")
+            if max_age_minutes is not None and max_age_minutes > 0 and time_str:
                 value_time = _parse_timestamp(time_str)
                 diff_minutes = (datetime.now() - value_time).total_seconds() / 60
 
@@ -55,12 +55,23 @@ def load_previous_value_from_file(
                 raise ValueError(
                     f"Previous value for section '{section}' contains invalid digit '{INVALID_DIGIT}': {previous_value}"
                 )
+            last_change = config.get(section, "LastChange", fallback=time_str)
             logger.debug("Previous value loaded from file: %s", previous_value)
-            return previous_value
+            return {
+                "value": previous_value,
+                "time": time_str,
+                "last_change": last_change,
+            }
         except Exception as e:
             raise ValueError(
                 f"Error occured during previous value loading: {e!s}"
             ) from e
+
+
+def load_previous_value_from_file(
+    file: str, section: str, max_age_minutes: int | None = None
+) -> str:
+    return load_previous_value_record(file, section, max_age_minutes)["value"]
 
 
 def save_previous_value_to_file(file: str, section: str, value: str) -> None:
@@ -76,11 +87,15 @@ def save_previous_value_to_file(file: str, section: str, value: str) -> None:
             config.read(file)
             if not config.has_section(section):
                 config.add_section(section)
+            old_value = config.get(section, "Value", fallback="")
+            if old_value != value or not config.has_option(section, "LastChange"):
+                config.set(section, "LastChange", now)
             config.set(section, "Time", now)
             config.set(section, "Value", value)
         else:
             config[section] = {
                 "Time": now,
+                "LastChange": now,
                 "Value": value,
             }
 
@@ -110,6 +125,7 @@ def get_all_previous_values(file: str) -> dict[str, dict[str, str]]:
             for section in config.sections():
                 result[section] = {
                     "time": config.get(section, "Time", fallback=""),
+                    "last_change": config.get(section, "LastChange", fallback=""),
                     "value": config.get(section, "Value", fallback=""),
                 }
             return result

@@ -23,6 +23,8 @@ class MeterConfig(BaseModel):
     consistency_enabled: bool = False
     allow_negative_rates: bool = False
     max_rate_value: float = 0.0
+    min_rate_value: float = 0.0
+    stale_threshold_hours: float = 0.0
     use_previous_value: bool = False
     pre_value_from_file_max_age: int = 0
     use_extended_resolution: bool = False

@@ -12,6 +12,7 @@ from cnn.digital_counter_cnn import DigitalCounterCNN
 from data_classes import CutImage, MeterConfig
 from previous_value import (
     load_previous_value_from_file,
+    load_previous_value_record,
     save_previous_value_to_file,
 )
 from processor.consistency_validator import ConsistencyError, ConsistencyValidator
@@ -105,6 +106,7 @@ class Meter(BaseModel):
     value: str = ""  # value after postprocessing
     unprocessed_value: str = ""  # value without postprocessing
     previous_value: str = ""
+    previous_value_last_change: str = ""
     warning: str = ""
     valid: bool = True
     filled_digits: int = 0
@@ -479,6 +481,17 @@ class DigitizerProcessor:
                     meter.name,
                     meter.config.pre_value_from_file_max_age,
                 )
+                try:
+                    record = load_previous_value_record(
+                        self.previous_value_file,
+                        meter.name,
+                        meter.config.pre_value_from_file_max_age,
+                    )
+                    meter.previous_value_last_change = record.get(
+                        "last_change", ""
+                    ) or record.get("time", "")
+                except Exception:
+                    meter.previous_value_last_change = ""
             except ValueError as e:
                 logger.info(
                     "Previous value could not be loaded for meter '%s': %s",
@@ -486,6 +499,7 @@ class DigitizerProcessor:
                     e,
                 )
                 meter.previous_value = ""
+                meter.previous_value_last_change = ""
 
         if meter.config.use_extended_resolution:
             meter.value = self._append_extended_digit(meter, cnn_results)
@@ -522,7 +536,10 @@ class DigitizerProcessor:
         ):
             try:
                 ConsistencyValidator.validate_reading(
-                    meter.config, meter.value, meter.previous_value
+                    meter.config,
+                    meter.value,
+                    meter.previous_value,
+                    last_change_time=meter.previous_value_last_change,
                 )
             except ConsistencyError as err:
                 logger.warning(
