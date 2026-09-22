@@ -2,7 +2,7 @@ import re
 from typing import Any
 
 from PIL.Image import Image
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 class ImagePosition(BaseModel):
@@ -41,19 +41,27 @@ INVALID_DIGIT = "?"
 
 class CutImageOptions(BaseModel):
     autocontrast: bool = False
-    cutoff_low: int = 2
-    cutoff_high: int = 45
-    ignore: int | None = 2
+    cutoff_low: float = Field(default=2.0, ge=0.0, le=100.0)
+    cutoff_high: float = Field(default=45.0, ge=0.0, le=100.0)
+    ignore: int | None = Field(default=2, ge=0, le=255)
     glare_suppression: bool = False
     glare_mode: str = "clahe"
-    glare_inpaint_threshold: int = 230
-    glare_inpaint_radius: int = 3
-    glare_clahe_clip_limit: float = 2.0
-    glare_clahe_grid_size: int = 8
+    glare_inpaint_threshold: int = Field(default=230, ge=0, le=255)
+    glare_inpaint_radius: int = Field(default=3, ge=1, le=50)
+    glare_clahe_clip_limit: float = Field(default=2.0, ge=0.1, le=40.0)
+    glare_clahe_grid_size: int = Field(default=8, ge=1, le=64)
     unsharp: bool = False
-    unsharp_radius: float = 1.0
-    unsharp_amount: float = 1.5
-    unsharp_threshold: int = 3
+    unsharp_radius: float = Field(default=1.0, ge=0.1, le=20.0)
+    unsharp_amount: float = Field(default=1.5, ge=0.0, le=10.0)
+    unsharp_threshold: int = Field(default=3, ge=0, le=255)
+
+    @model_validator(mode="after")
+    def validate_cutoffs(self) -> "CutImageOptions":
+        if self.cutoff_low + self.cutoff_high >= 100.0:
+            raise ValueError(
+                f"Sum of cutoff_low ({self.cutoff_low}) and cutoff_high ({self.cutoff_high}) must be less than 100"
+            )
+        return self
 
 
 class CutImage(BaseModel):

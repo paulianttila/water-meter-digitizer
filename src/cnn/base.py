@@ -46,11 +46,13 @@ class CNNBase:
         dx: int,
         dy: int,
         pool_size: int | None = None,
+        resampling: Resampling = Resampling.NEAREST,
     ) -> None:
         self.modelfile = modelfile
         self.dx = dx
         self.dy = dy
         self.pool_size = pool_size
+        self.resampling = resampling
         self.pool: InterpreterPool | None = None
         self._load_model()
 
@@ -113,7 +115,7 @@ class CNNBase:
         if self.pool is None:
             raise RuntimeError(f"Model '{self.modelfile}' is not loaded")
 
-        test_image = image.resize((self.dx, self.dy), Resampling.NEAREST)
+        test_image = image.resize((self.dx, self.dy), self.resampling)
         img_array = np.array(test_image, dtype="float32")
         input_data = np.reshape(img_array, [1, self.dy, self.dx, 3])
 

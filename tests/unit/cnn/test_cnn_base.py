@@ -1,8 +1,12 @@
-"""Unit tests for CNNBase model loading, error handling, and ModelLoadError."""
+from unittest.mock import MagicMock, patch
 
+import numpy as np
 import pytest
+from PIL import Image
+from PIL.Image import Resampling
 
 from cnn.analog_needle_cnn import AnalogNeedleCNN
+from cnn.base import CNNBase
 from cnn.digital_counter_cnn import DigitalCounterCNN
 from exceptions import ModelLoadError, PipelineError, WaterMeterError
 
@@ -46,3 +50,44 @@ def test_load_model_unsupported_extension_raises_model_load_error():
 
     assert "Unsupported model file" in str(exc_info.value)
     assert ".onnx" in str(exc_info.value)
+
+
+def test_cnn_base_readout_resampling_configurable():
+    """Verify _readout respects configurable resampling mode (BILINEAR, NEAREST)."""
+    cnn = CNNBase.__new__(CNNBase)
+    cnn.modelfile = "dummy.tflite"
+    cnn.dx = 20
+    cnn.dy = 32
+    cnn.resampling = Resampling.BILINEAR
+
+    mock_inst = MagicMock()
+    mock_inst.input_index = 0
+    mock_inst.output_index = 1
+    mock_inst.interpreter.get_tensor.return_value = np.zeros((1, 10), dtype=np.float32)
+
+    mock_pool = MagicMock()
+    mock_pool.acquire.return_value.__enter__.return_value = mock_inst
+    cnn.pool = mock_pool
+
+    img = Image.new("RGB", (64, 64), color="blue")
+    with patch.object(img, "resize", wraps=img.resize) as spy_resize:
+        output = cnn._readout(img)
+
+        spy_resize.assert_called_once_with((20, 32), Resampling.BILINEAR)
+        assert output.shape == (1, 10)
+
+        # Verify tensor passed to interpreter has shape [1, dy, dx, 3]
+        mock_inst.interpreter.set_tensor.assert_called_once()
+        tensor_arg = mock_inst.interpreter.set_tensor.call_args[0][1]
+        assert tensor_arg.shape == (1, 32, 20, 3)
+
+    # Verify default mode is NEAREST
+    cnn_default = CNNBase.__new__(CNNBase)
+    cnn_default.modelfile = "dummy.tflite"
+    cnn_default.dx = 20
+    cnn_default.dy = 32
+    cnn_default.resampling = Resampling.NEAREST
+    cnn_default.pool = mock_pool
+    with patch.object(img, "resize", wraps=img.resize) as spy_resize_default:
+        cnn_default._readout(img)
+        spy_resize_default.assert_called_once_with((20, 32), Resampling.NEAREST)
