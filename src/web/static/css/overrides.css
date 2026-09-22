@@ -118,3 +118,39 @@ body, body.body--dark {
     background: rgba(255, 255, 255, 0.02);
 }
 
+/* Sidebar Navigation & Responsive Tab Labels */
+.sidebar-splitter > .q-splitter__before {
+    min-width: 56px !important;
+    container-type: inline-size;
+}
+
+.sidebar-tabs .q-tab {
+    padding: 8px 4px !important;
+    min-height: 48px !important;
+    transition: all 0.15s ease-in-out;
+}
+
+.sidebar-tabs .q-tab__icon {
+    font-size: 1.5rem !important;
+}
+
+.sidebar-tabs .q-tab__label {
+    font-size: 0.7rem !important;
+    letter-spacing: -0.01em;
+    line-height: 1.1;
+    white-space: nowrap;
+}
+
+/* Hide tab text labels when sidebar is narrow or on smaller viewports */
+@container (max-width: 95px) {
+    .sidebar-tabs .q-tab__label {
+        display: none !important;
+    }
+}
+
+@media (max-width: 1200px) {
+    .sidebar-tabs .q-tab__label {
+        display: none !important;
+    }
+}
+

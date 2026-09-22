@@ -151,20 +151,52 @@ def init(fastapi_app: FastAPI, callbacks: Callbacks) -> None:
         client_config_version = _callbacks.get_config_version()
 
         with ui.splitter(value=7, limits=(6, 8)).classes(
-            "w-full flex-1 min-h-0"
+            "w-full flex-1 min-h-0 sidebar-splitter"
         ) as splitter:
             with (
                 splitter.before,
-                ui.tabs().props("vertical").classes("w-full") as tabs,
+                ui.tabs().props("vertical").classes("w-full sidebar-tabs") as tabs,
             ):
-                main = ui.tab("Meter", icon="speed")
-                services = ui.tab("Services", icon="hub")
-                setup = ui.tab("Setup", icon="settings")
-                config = ui.tab("Config", icon="build")
-                baselines = ui.tab("Baselines", icon="tune")
-                api_console = ui.tab("API Console", icon="terminal")
-                help_tab = ui.tab("Help", icon="help_outline")
-                about = ui.tab("About", icon="info")
+                main = (
+                    ui.tab("Meter", icon="speed")
+                    .props('aria-label="Meter"')
+                    .tooltip("Meter")
+                )
+                services = (
+                    ui.tab("Services", icon="hub")
+                    .props('aria-label="Services"')
+                    .tooltip("Services")
+                )
+                setup = (
+                    ui.tab("Setup", icon="settings")
+                    .props('aria-label="Setup"')
+                    .tooltip("Setup")
+                )
+                config = (
+                    ui.tab("Config", icon="build")
+                    .props('aria-label="Config"')
+                    .tooltip("Config")
+                )
+                baselines = (
+                    ui.tab("Baselines", icon="tune")
+                    .props('aria-label="Baselines"')
+                    .tooltip("Baselines")
+                )
+                api_console = (
+                    ui.tab("API Console", icon="terminal")
+                    .props('aria-label="API Console"')
+                    .tooltip("API Console")
+                )
+                help_tab = (
+                    ui.tab("Help", icon="help_outline")
+                    .props('aria-label="Help"')
+                    .tooltip("Help")
+                )
+                about = (
+                    ui.tab("About", icon="info")
+                    .props('aria-label="About"')
+                    .tooltip("About")
+                )
             with (
                 splitter.after,
                 ui.column().classes(
