@@ -8,6 +8,8 @@ The **Water Meter Digitizer** provides a modern, responsive web application serv
 
 ## 🧭 Navigation & Core Tabs Overview
 
+The dashboard features a responsive layout where the left navigation sidebar automatically collapses into an icon-only mode on mobile and narrow screen widths.
+
 | Tab | Purpose |
 | :--- | :--- |
 | **Meter** | Live dashboard, primary metrics, confidence badges, cropped dial previews, consumption charts, and Time Machine scrubber. |
@@ -25,7 +27,11 @@ The **Water Meter Digitizer** provides a modern, responsive web application serv
 The **Meter** page is the primary live monitoring view:
 
 ### Live Readout & Hero Metric Cards
-- **Live Value & Confidence**: Large typography displaying the recognized reading with neural network confidence percentages.
+- **Live Value & Quality Badges**: Large typography displaying the recognized readout alongside status and diagnostic badges:
+  - **Minimum Confidence (`min_confidence`)**: Displayed as the primary percentage badge (representing the lowest individual component confidence), with full details (`Min: X% • Avg: Y%`) in the tooltip.
+  - **Quality Badge**: Categorizes the readout status (`GOOD` in green, `WARNING` in amber, or `UNCERTAIN` in slate).
+  - **Predecessor Filled Badge (`🔁 N filled`)**: Displayed when ambiguous or rolling drum digits were recovered and filled from the last validated reading.
+  - **Inline Validation Alerts**: Displays an amber warning message under the reading if consistency rules are violated (e.g. `⚠️ Stale reading (no change for 24.0h)` or `⚠️ Rate too high (0.250)`).
 - **Auto-Refresh & Latency**: Real-time poll freshness counter, live pulse indicator, and inference latency badge (`⚡ 124ms`).
 - **Cropped Digit & Dial Previews**: Visual strip displaying every extracted drum digit and analog needle dial alongside individual model classifications and confidence scores.
 

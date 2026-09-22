@@ -192,13 +192,20 @@ Virtual meter compositions, rate validation, and rollover consistency checking.
 | Parameter | Type | Default | Description |
 | :--- | :--- | :--- | :--- |
 | `Value` | string | template | Value pattern referencing ROIs (e.g. `${Meter.digital:Value}.${Meter.analog:Value}` or `{digit1}{digit2}.{analog1}`). |
-| `ConsistencyEnabled` | boolean | `True` | Enable predecessor rollover consistency validation check. |
+| `ConsistencyEnabled` | boolean | `True` | Enable rate and rollover consistency validation checks. |
 | `AllowNegativeRates` | boolean | `False` | Reject decreasing count anomalies when set to `False`. |
-| `MaxRateValue` | float | `0.2` | Maximum allowable consumption change per readout interval. |
-| `UsePreviousValue` | boolean | `True` | Replace uncertain digits (`?`) with last known valid reading. |
+| `MaxRateValue` | float | `0.2` | Maximum allowable consumption change per readout interval (`0.0` = disable rate-of-change cap). |
+| `MinRateValue` | float | `0.0` | Minimum required consumption change rate threshold when consumption occurs (`0.0` = disabled). |
+| `StaleThresholdHours` | float | `0.0` | Hours without consumption change before flagging meter as stale (`0.0` = disabled). |
+| `UsePreviousValue` | boolean | `True` | Replace unreadable or mid-roll digits (`N` / `?`) with last known valid reading. |
 | `PreValueFromFileMaxAge` | integer | `0` | Max age in minutes to trust previous value from file (`0` = no limit). |
 | `UseExtendedResolution` | boolean | `True` | Append fractional sub-digit decimal resolution from analog needle. |
 | `Unit` | string | `m³` | Measurement unit string reported in MQTT and API (e.g. `m³`, `L`, `kWh`). |
+
+> [!NOTE]
+> **Baseline Persistence & Protection (`prevalue.ini`)**:
+> When `UsePreviousValue` is enabled, validated meter readouts are persisted in `prevalue.ini` under each meter section with `time`, `value`, and `lastchange` (the timestamp of the most recent reading value change).
+> If a reading contains unreadable digits (`N`), fails rate consistency (`Rate too high` / `Rate too low` / `Negative rate`), or is flagged as `Stale reading`, it is marked invalid (`valid=False`), and `prevalue.ini` is **not updated**, protecting the baseline against corruption until a valid reading is obtained.
 
 ---
 

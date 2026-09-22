@@ -53,7 +53,7 @@ This document details the internal system architecture, decoupled module design,
 3. **Adjustment**: Spatial luminance unsharp masking in CIELAB space, LUT non-linear gamma curves, histogram contrast stretching, and CLAHE glare suppression.
 4. **ROI Extraction**: Cuts precise bounding boxes for digital number wheels and analog needle dials.
 5. **LiteRT Neural Inference**: Normalizes tensors and executes CNN inference via worker threads in `InterpreterPool`. Detects minus signs (`-`) when enabled.
-6. **Post-Processing & Validation**: Predecessor consistency engine resolves mid-roll digit transitions, calculates fractional decimal resolution, validates flow rates, records to SQLite, and broadcasts MQTT telemetry.
+6. **Post-Processing & Validation**: Predecessor consistency engine resolves mid-roll digit transitions, calculates fractional decimal resolution, validates flow continuity and stale thresholds, protects baseline states in `prevalue.ini`, emits structured per-meter summary logs, records to SQLite, and broadcasts MQTT telemetry.
 
 ---
 
@@ -106,6 +106,17 @@ Mechanical odometer drums rotate gradually. During a transition (e.g., $4 \right
 - If the lower-order predecessor is at `9.8` (almost completed its rotation), the tens digit has not yet crossed into the next decade. The engine floors it to `4`.
 - If the lower-order predecessor is at `0.1` (just passed zero), the rollover has completed. The engine rounds to `5`.
 - **Extended Resolution**: Appends the continuous fractional position from the lowest-order dial to report ultra-high-precision readings (e.g. `00452.91241 m³`).
+
+### Continuity & Consistency Validation (`ConsistencyValidator`)
+In addition to rollover disambiguation, readouts undergo strict rate-of-change and continuity checks:
+- **Directional Continuity (`AllowNegativeRates`)**: Rejects decreasing count glitches unless negative flow is explicitly enabled.
+- **Maximum Consumption Cap (`MaxRateValue`)**: Rejects implausibly large single-cycle volume jumps caused by optical misclassification.
+- **Minimum Step Threshold (`MinRateValue`)**: When consumption is active ($\Delta \neq 0$), enforces that volume steps meet the meter's minimum physical increment.
+- **Stale Meter Detection (`StaleThresholdHours`)**: Tracks elapsed hours since `LastChange` in `prevalue.ini`. Intermittent zero-consumption periods are allowed freely; however, if the meter reading remains identical beyond `StaleThresholdHours`, a `ConsistencyError("Stale reading")` is raised to alert to a stuck meter or stalled capture feed.
+- **Structured Per-Meter Summary Telemetry**: At the conclusion of post-processing, a single structured summary line is emitted to the log for each meter:
+  ```text
+  INFO - Meter 'total': raw=00442.0134, corrected=00452.91241 prev=00452.91241 filled=0 conf_avg=96.2% conf_min=85.2% quality=good valid=True
+  ```
 
 ---
 

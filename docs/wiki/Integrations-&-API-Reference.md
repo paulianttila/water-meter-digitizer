@@ -127,12 +127,19 @@ All telemetry is published under the configured `TopicPrefix` (default: `waterme
 {
   "timestamp": "2026-09-14T18:30:00+03:00",
   "error": "",
+  "warning": "",
+  "valid": true,
   "meters": [
     {
       "name": "total",
       "value": "00452.91241",
       "unprocessed_value": "00452.91241",
-      "confidence": 98.4,
+      "quality": "good",
+      "confidence": 94.7,
+      "min_confidence": 94.7,
+      "filled_digits": 0,
+      "valid": true,
+      "warning": "",
       "rate": 0.0025,
       "unit": "m³"
     }
@@ -163,8 +170,11 @@ Interactive API documentation and schema inspection are available live at:
 
 #### 1. Digitization & Meter Readout
 - **`GET /meter`**: Trigger capture from camera, run neural inference, update history, and publish to MQTT.
-  - Query params: `format=json|value|html`, `meter=total`, `saveimages=true`.
+  - Query params: `format=json|value|raw`, `saveimages=true`, `url=<override_url>`.
+  - Returns `HTTP 503` if neural network model files fail to load (`ModelLoadError`).
   - Example: `curl "http://localhost:3000/meter?format=json"`
+- **`GET /api/meter/previous_value`**: Retrieve all baseline readings from `prevalue.ini`, including `last_change` timestamp and configured rate/stale thresholds.
+- **`GET /set_previous_value`**: Set or adjust the baseline reading for a meter (`name=total&value=00452.91241`).
 - **`POST /readout`**: Trigger instantaneous digitization and return parsed JSON.
 
 #### 2. Historical Analytics & Time Machine

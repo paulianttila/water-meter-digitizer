@@ -95,15 +95,19 @@ The **Setup Wizard** (accessible via the **Setup** tab at `/setup`) is an intera
 ---
 
 ### Step 7: Meters Definition & Consistency Rules
-- Define virtual meters combining the ROIs using bracket syntax:
+- Define virtual meters combining the ROIs using bracket template syntax:
   ```ini
   [Meter.main]
-  Digits = {digit1}{digit2}{digit3}{digit4}{digit5}.{analog1}{analog2}{analog3}{analog4}
+  Value = {digit1}{digit2}{digit3}{digit4}{digit5}.{analog1}{analog2}{analog3}{analog4}
   ```
 - **Consistency Engine Options**:
   - `Allow Negative Rates`: `False` (prevents backward count glitches).
-  - `Max Rate Value`: Set maximum allowable volume per readout interval (e.g., `0.2 m³`).
-  - `Use Extended Resolution`: Enable fractional sub-digit decimal calculation.
+  - `Max Rate Value`: Set maximum allowable volume change per readout interval (e.g., `0.2 m³`, `0` = disabled).
+  - `Min Rate Value`: Set minimum required volume delta when active consumption occurs (`0` = disabled).
+  - `Stale Limit (hours)`: Set maximum elapsed hours without consumption change before flagging the meter as stale (`0` = disabled).
+  - `Use Previous Value`: Automatically recover ambiguous or rolling digits (`N` / `?`) from the last validated baseline reading.
+  - `Use Extended Resolution`: Enable fractional sub-digit decimal calculation from analog dial needles.
+
 
 ---
 
