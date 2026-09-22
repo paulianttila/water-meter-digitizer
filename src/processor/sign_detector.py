@@ -152,7 +152,7 @@ def detect_minus_sign(
                         best_conf = conf
 
     is_detected = best_conf >= min_confidence
-    logger.info(
+    logger.debug(
         f"detect_minus_sign ({w_img}x{h_img}): detected={is_detected}, "
         f"conf={best_conf:.1f}% (threshold={min_confidence:.1f}%). "
         f"Candidates: {candidates_info[:5]}"

@@ -61,6 +61,34 @@ class MeterValue(BaseModel):
     valid: bool = True
 
 
+def determine_quality(
+    value: str,
+    valid: bool,
+    warning: str,
+    min_conf: float,
+    avg_conf: float,
+) -> Literal["good", "warning", "uncertain"]:
+    """Classify readout quality based on unreadable digits, warnings, validity, and confidence thresholds."""
+    if INVALID_DIGIT in value:
+        return "uncertain"
+    elif warning:
+        return "warning"
+    elif not valid:
+        return "uncertain"
+    elif (
+        min_conf >= QUALITY_HIGH_MIN_CONFIDENCE
+        and avg_conf >= QUALITY_HIGH_AVG_CONFIDENCE
+    ):
+        return "good"
+    elif (
+        min_conf >= QUALITY_WARNING_MIN_CONFIDENCE
+        and avg_conf >= QUALITY_WARNING_AVG_CONFIDENCE
+    ):
+        return "warning"
+    else:
+        return "uncertain"
+
+
 class MeterResult(BaseModel):
     meters: list[MeterValue] = Field(default_factory=list)
     digital_results: dict[str, str] = Field(default_factory=dict)
@@ -265,7 +293,7 @@ class DigitizerProcessor:
                     is_minus, minus_conf = detect_minus_sign(
                         item.image, min_confidence=sign_thresh
                     )
-                    logger.info(
+                    logger.debug(
                         "Minus sign detector for ROI '%s': detected=%s, confidence=%.1f%%",
                         item.name,
                         is_minus,
@@ -429,7 +457,7 @@ class DigitizerProcessor:
         min_confidence_threshold: float | None = None,
     ) -> None:
         results = self._get_readout_results(meter, cnn_results)
-        logger.info(" Postprocess meter: %s, readout results: %s", meter, results)
+        logger.debug(" Postprocess meter: %s, readout results: %s", meter, results)
 
         evaluated_values = self._evaluate_counters(
             results, min_confidence_threshold=min_confidence_threshold
@@ -437,6 +465,8 @@ class DigitizerProcessor:
         meter.value = FormatParser.format_template(
             meter.config.format, evaluated_values
         )
+        if not meter.unprocessed_value or "{" in meter.unprocessed_value:
+            meter.unprocessed_value = meter.value
 
         if meter.config.use_previous_value:
             if self.previous_value_file is None:
@@ -521,6 +551,37 @@ class DigitizerProcessor:
                     e,
                 )
 
+        component_confs = [r.confidence for r in results if r.confidence is not None]
+        if component_confs:
+            avg_conf = round(sum(component_confs) / len(component_confs), 1)
+            min_conf = round(min(component_confs), 1)
+        else:
+            avg_conf = 100.0
+            min_conf = 100.0
+
+        quality = determine_quality(
+            value=meter.value,
+            valid=meter.valid,
+            warning=meter.warning,
+            min_conf=min_conf,
+            avg_conf=avg_conf,
+        )
+
+        warn_field = f' warning="{meter.warning}"' if meter.warning else ""
+        logger.info(
+            "Meter '%s': raw=%s, corrected=%s prev=%s filled=%d conf_avg=%.1f%% conf_min=%.1f%% quality=%s valid=%s%s",
+            meter.name,
+            meter.unprocessed_value,
+            meter.value,
+            meter.previous_value or "none",
+            meter.filled_digits,
+            avg_conf,
+            min_conf,
+            quality,
+            meter.valid,
+            warn_field,
+        )
+
     def _get_readout_results(
         self,
         meter: Meter,
@@ -589,25 +650,13 @@ class DigitizerProcessor:
                 avg_conf = 100.0
                 min_conf = 100.0
 
-            quality: Literal["good", "warning", "uncertain"]
-            if INVALID_DIGIT in meter.value:
-                quality = "uncertain"
-            elif meter.warning:
-                quality = "warning"
-            elif not meter.valid:
-                quality = "uncertain"
-            elif (
-                min_conf >= QUALITY_HIGH_MIN_CONFIDENCE
-                and avg_conf >= QUALITY_HIGH_AVG_CONFIDENCE
-            ):
-                quality = "good"
-            elif (
-                min_conf >= QUALITY_WARNING_MIN_CONFIDENCE
-                and avg_conf >= QUALITY_WARNING_AVG_CONFIDENCE
-            ):
-                quality = "warning"
-            else:
-                quality = "uncertain"
+            quality = determine_quality(
+                value=meter.value,
+                valid=meter.valid,
+                warning=meter.warning,
+                min_conf=min_conf,
+                avg_conf=avg_conf,
+            )
 
             meter_results.append(
                 MeterValue(
@@ -676,4 +725,5 @@ __all__ = [
     "MeterValue",
     "ReadoutResult",
     "RolloverCorrector",
+    "determine_quality",
 ]

@@ -55,7 +55,7 @@ def load_previous_value_from_file(
                 raise ValueError(
                     f"Previous value for section '{section}' contains invalid digit '{INVALID_DIGIT}': {previous_value}"
                 )
-            logger.info("Previous value loaded from file: %s", previous_value)
+            logger.debug("Previous value loaded from file: %s", previous_value)
             return previous_value
         except Exception as e:
             raise ValueError(

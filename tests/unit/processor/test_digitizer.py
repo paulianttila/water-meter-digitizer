@@ -1,5 +1,6 @@
 """Unit tests for DigitizerProcessor and post-processing evaluation."""
 
+import logging
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -989,3 +990,85 @@ def test_postprocessing_truncated_previous_value_invalidates_reading_and_skips_s
     assert meter.valid is False
     assert meter.warning == "Previous value truncated to match format length"
     mock_save.assert_not_called()
+
+
+@patch("src.processor.digitizer.load_previous_value_from_file", return_value="123.450")
+@patch("src.processor.digitizer.save_previous_value_to_file")
+def test_postprocessing_structured_summary_log_success(
+    mock_save: MagicMock, mock_load: MagicMock, caplog: pytest.LogCaptureFixture
+) -> None:
+    """Verify structured INFO summary log is emitted with correct fields for a successful read."""
+    meter = get_default_meter()
+    processor = get_default_processor()
+
+    cnn_results = {
+        "digit1": ReadoutResult(
+            name="digit1", value=1, model=MODEL_DIGITAL, confidence=96.0
+        ),
+        "digit2": ReadoutResult(
+            name="digit2", value=2, model=MODEL_DIGITAL, confidence=92.0
+        ),
+        "digit3": ReadoutResult(
+            name="digit3", value=3, model=MODEL_DIGITAL, confidence=98.0
+        ),
+        "analog1": ReadoutResult(
+            name="analog1", value=5.1, model=MODEL_ANALOG, confidence=99.0
+        ),
+        "analog2": ReadoutResult(
+            name="analog2", value=6.2, model=MODEL_ANALOG, confidence=99.0
+        ),
+        "analog3": ReadoutResult(
+            name="analog3", value=7.3, model=MODEL_ANALOG, confidence=99.0
+        ),
+    }
+
+    with caplog.at_level(logging.INFO):
+        processor._postprocess_meter_value(meter, {}, cnn_results)
+
+    assert any(
+        "Meter 'meter1': raw=123.567, corrected=123.567 prev=123.450 filled=0 conf_avg=97.2% conf_min=92.0% quality=good valid=True"
+        in record.message
+        for record in caplog.records
+    )
+
+
+@patch("src.processor.digitizer.load_previous_value_from_file", return_value="123.567")
+@patch("src.processor.digitizer.save_previous_value_to_file")
+def test_postprocessing_structured_summary_log_with_filling(
+    mock_save: MagicMock, mock_load: MagicMock, caplog: pytest.LogCaptureFixture
+) -> None:
+    """Verify structured INFO summary log tracks filled digit count and raw vs corrected."""
+    meter = get_default_meter()
+    processor = get_default_processor()
+
+    cnn_results = {
+        "digit1": ReadoutResult(
+            name="digit1", value=1, model=MODEL_DIGITAL, confidence=95.0
+        ),
+        "digit2": ReadoutResult(
+            name="digit2", value=INVALID_DIGIT, model=MODEL_DIGITAL, confidence=40.0
+        ),
+        "digit3": ReadoutResult(
+            name="digit3", value=3, model=MODEL_DIGITAL, confidence=95.0
+        ),
+        "analog1": ReadoutResult(
+            name="analog1", value=5.1, model=MODEL_ANALOG, confidence=99.0
+        ),
+        "analog2": ReadoutResult(
+            name="analog2", value=6.2, model=MODEL_ANALOG, confidence=99.0
+        ),
+        "analog3": ReadoutResult(
+            name="analog3", value=7.3, model=MODEL_ANALOG, confidence=99.0
+        ),
+    }
+
+    with caplog.at_level(logging.INFO):
+        processor._postprocess_meter_value(meter, {}, cnn_results)
+
+    assert any(
+        "Meter 'meter1': raw=1?3.567, corrected=123.567 prev=123.567 filled=1"
+        in record.message
+        and "quality=uncertain" in record.message
+        and "valid=True" in record.message
+        for record in caplog.records
+    )
