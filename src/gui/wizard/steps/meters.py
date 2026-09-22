@@ -487,7 +487,7 @@ class Meter:
                 ui.number("Min Rate (/min)", value=0.0, min=0, step=0.01).props(
                     "dense outlined"
                 ).bind_value(self.meter, "min_rate_value").classes("w-36").tooltip(
-                    "Minimum required consumption increase when consumption occurs "
+                    "Minimum required consumption increase before flagging reading as stale "
                     "(0 = disabled)"
                 )
                 ui.number("Prevalue Max Age (min)", value=0, min=0, step=1).props(
