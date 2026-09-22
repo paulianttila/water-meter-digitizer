@@ -125,6 +125,8 @@ def test_wizard_config_manager_gather_config():
     meter_mock.consistency_enabled = True
     meter_mock.allow_negative_rates = False
     meter_mock.max_rate_value = 0.5
+    meter_mock.min_rate_value = 0.05
+    meter_mock.stale_threshold_hours = 24.0
     meter_mock.use_previous_value = True
     meter_mock.prevalue_from_file_max_age = 100
     meter_mock.use_extended_resolution = True
@@ -159,6 +161,8 @@ def test_wizard_config_manager_gather_config():
     assert cfg.analog_readout.enabled is True
     assert len(cfg.meter_configs) == 1
     assert cfg.meter_configs[0].name == "main"
+    assert cfg.meter_configs[0].min_rate_value == 0.05
+    assert cfg.meter_configs[0].stale_threshold_hours == 24.0
     services_step.apply_to_config.assert_called_once_with(cfg)
 
 

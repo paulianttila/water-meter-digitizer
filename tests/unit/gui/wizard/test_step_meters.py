@@ -69,6 +69,8 @@ def test_step_meters_load_and_add_remove():
                 consistency_enabled=True,
                 allow_negative_rates=False,
                 max_rate_value=0.2,
+                min_rate_value=0.05,
+                stale_threshold_hours=24.0,
                 use_previous_value=True,
                 pre_value_from_file_max_age=15,
                 use_extended_resolution=True,
@@ -81,6 +83,8 @@ def test_step_meters_load_and_add_remove():
         assert len(step.meter_params) == 1
         assert step.meter_params[0].name == "total"
         assert step.meter_params[0].consistency_enabled is True
+        assert step.meter_params[0].min_rate_value == 0.05
+        assert step.meter_params[0].stale_threshold_hours == 24.0
 
         # Add another meter
         step._add_meter()
