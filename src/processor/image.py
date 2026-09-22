@@ -34,6 +34,7 @@ class ImageProcessor:
         self.condition: bool | None = None
         self.image: Image
         self.cut_images_list: list[CutImage] = []
+        self.out_of_bounds_rois: list[str] = []
         self.enable_img_saving = False
         self.pictures: dict[str, Image] = {}
         self.alignment_success: bool = True
@@ -255,6 +256,11 @@ class ImageProcessor:
     ) -> "ImageProcessor":
         if options is None:
             options = CutImageOptions(**kwargs)
+        img_w, img_h = self.image.size
+        x, y, w, h = position.x, position.y, position.w, position.h
+        is_oob = x < 0 or y < 0 or (x + w) > img_w or (y + h) > img_h
+        if is_oob:
+            self.out_of_bounds_rois.append(position.name)
         image = utils.image.cut_image(self.image, position)
         if options.autocontrast:
             image = utils.image.autocontrast_image(
@@ -279,7 +285,9 @@ class ImageProcessor:
                 amount=options.unsharp_amount,
                 threshold=options.unsharp_threshold,
             )
-        self.cut_images_list.append(CutImage(name=position.name, image=image))
+        self.cut_images_list.append(
+            CutImage(name=position.name, image=image, out_of_bounds=is_oob)
+        )
         return self
 
     @_conditional_func
@@ -298,6 +306,7 @@ class ImageProcessor:
     @_conditional_func
     def start_image_cutting(self) -> "ImageProcessor":
         self.cut_images_list = []
+        self.out_of_bounds_rois = []
         return self
 
     def get_cut_images(self) -> list[CutImage]:

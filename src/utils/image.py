@@ -273,13 +273,36 @@ def cut_image(
 ) -> Image:
     if image is None:
         raise ValueError("No image to cut")
+    img_w, img_h = image.size
     x, y, w, h = img_position.x, img_position.y, img_position.w, img_position.h
+    if x < 0 or y < 0 or (x + w) > img_w or (y + h) > img_h:
+        logger.warning(
+            "ROI '%s' coordinates [%d, %d, %d, %d] exceed image bounds [%d, %d]",
+            getattr(img_position, "name", "unknown"),
+            x,
+            y,
+            w,
+            h,
+            img_w,
+            img_h,
+        )
     return image.crop((x, y, x + w, y + h))
 
 
 def crop_image(image: Image, x: int, y: int, w: int, h: int) -> Image:
     if image is None:
         raise ValueError("No image to crop")
+    img_w, img_h = image.size
+    if x < 0 or y < 0 or (x + w) > img_w or (y + h) > img_h:
+        logger.warning(
+            "Crop coordinates [%d, %d, %d, %d] exceed image bounds [%d, %d]",
+            x,
+            y,
+            w,
+            h,
+            img_w,
+            img_h,
+        )
     return image.crop((x, y, x + w, y + h))
 
 

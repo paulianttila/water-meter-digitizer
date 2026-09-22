@@ -127,6 +127,7 @@ class DigitizerProcessor:
         self.cnn_digital_results: list[ReadoutResult] = []
         self.cnn_analog_results: list[ReadoutResult] = []
         self.available_values: dict[str, int | str] = {}
+        self.out_of_bounds_rois: set[str] = set()
 
     def set_min_confidence_threshold(self, threshold: float) -> "DigitizerProcessor":
         self.min_confidence_threshold = threshold
@@ -211,10 +212,17 @@ class DigitizerProcessor:
             all_results, min_confidence_threshold=min_conf
         )
 
+        oob_rois = {
+            img.name
+            for img in (analog_images + digital_images)
+            if getattr(img, "out_of_bounds", False)
+        }
+
         # Update instance attributes for backward compatibility / inspection
         self.cnn_analog_results = analog_results
         self.cnn_digital_results = digital_results
         self.available_values = available_values
+        self.out_of_bounds_rois = oob_rois
 
         return self._build_meter_values(
             meter_configs=meter_configs,
@@ -223,6 +231,7 @@ class DigitizerProcessor:
             available_values=available_values,
             min_confidence_threshold=min_conf,
             alignment_error=alignment_error,
+            out_of_bounds_rois=oob_rois,
         )
 
     async def process_async(
@@ -396,13 +405,17 @@ class DigitizerProcessor:
         available_values: dict[str, int | str],
         min_confidence_threshold: float,
         alignment_error: str = "",
+        out_of_bounds_rois: set[str] | None = None,
     ) -> MeterResult:
+        if out_of_bounds_rois is None:
+            out_of_bounds_rois = self.out_of_bounds_rois
         meters = self._get_meter_values(meter_configs, available_values)
         self._postprocess_meter_values(
             meters=meters,
             values=available_values,
             cnn_results=(digital_results + analog_results),
             min_confidence_threshold=min_confidence_threshold,
+            out_of_bounds_rois=out_of_bounds_rois,
         )
         if alignment_error:
             align_warn = f"Alignment failed: {alignment_error}"
@@ -416,6 +429,7 @@ class DigitizerProcessor:
             analog_results=analog_results,
             digital_results=digital_results,
             alignment_error=alignment_error,
+            out_of_bounds_rois=out_of_bounds_rois,
         )
 
     def get_meter_values(
@@ -428,6 +442,7 @@ class DigitizerProcessor:
             available_values=self.available_values,
             min_confidence_threshold=self.min_confidence_threshold,
             alignment_error=alignment_error,
+            out_of_bounds_rois=self.out_of_bounds_rois,
         )
 
     def _get_meter_values(
@@ -457,6 +472,7 @@ class DigitizerProcessor:
         values: dict,
         cnn_results: list[ReadoutResult],
         min_confidence_threshold: float | None = None,
+        out_of_bounds_rois: set[str] | None = None,
     ) -> None:
         cnn_results_dict = {item.name: item for item in cnn_results}
         for meter in meters:
@@ -465,6 +481,7 @@ class DigitizerProcessor:
                 values,
                 cnn_results_dict,
                 min_confidence_threshold=min_confidence_threshold,
+                out_of_bounds_rois=out_of_bounds_rois,
             )
 
     def _postprocess_meter_value(
@@ -473,6 +490,7 @@ class DigitizerProcessor:
         values: dict,
         cnn_results: dict[str, ReadoutResult],
         min_confidence_threshold: float | None = None,
+        out_of_bounds_rois: set[str] | None = None,
     ) -> None:
         results = self._get_readout_results(meter, cnn_results)
         logger.debug(" Postprocess meter: %s, readout results: %s", meter, results)
@@ -539,6 +557,15 @@ class DigitizerProcessor:
             )
             after_invalids = meter.value.count(INVALID_DIGIT)
             meter.filled_digits = max(0, before_invalids - after_invalids)
+
+        oobs = out_of_bounds_rois or set()
+        meter_oob = [name for name in meter.config.value_names if name in oobs]
+        if meter_oob:
+            oob_warn = f"ROI out of image bounds: {', '.join(meter_oob)}"
+            meter.valid = False
+            meter.warning = (
+                f"{oob_warn}, {meter.warning}" if meter.warning else oob_warn
+            )
 
         if INVALID_DIGIT in meter.value:
             meter.valid = False
@@ -641,7 +668,10 @@ class DigitizerProcessor:
         analog_results: list[ReadoutResult] | None = None,
         digital_results: list[ReadoutResult] | None = None,
         alignment_error: str = "",
+        out_of_bounds_rois: set[str] | None = None,
     ) -> MeterResult:
+        if out_of_bounds_rois is None:
+            out_of_bounds_rois = self.out_of_bounds_rois
         if analog_results is None:
             analog_results = self.cnn_analog_results
         if digital_results is None:
@@ -711,11 +741,22 @@ class DigitizerProcessor:
             align_warn = f"Alignment failed: {alignment_error}"
             if align_warn not in all_warnings:
                 all_warnings.insert(0, align_warn)
+        if out_of_bounds_rois:
+            unassigned_oob = [
+                name
+                for name in sorted(out_of_bounds_rois)
+                if not any(name in m.config.value_names for m in meters)
+            ]
+            if unassigned_oob:
+                oob_warn = f"ROI out of image bounds: {', '.join(unassigned_oob)}"
+                if oob_warn not in all_warnings:
+                    all_warnings.append(oob_warn)
         warning_str = ", ".join(all_warnings) if all_warnings else ""
         is_valid = (
             bool(meter_results)
             and all(m.valid for m in meter_results)
             and not bool(alignment_error)
+            and not bool(out_of_bounds_rois)
         )
 
         return MeterResult(

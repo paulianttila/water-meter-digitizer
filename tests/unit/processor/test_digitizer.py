@@ -673,6 +673,71 @@ def test_process_alignment_error_invalidates_result():
     assert "Alignment failed: Marker ref0 not found" in res.meters[0].warning
 
 
+def test_process_out_of_bounds_roi_invalidates_meter():
+    from PIL import Image
+
+    from data_classes import CutImage
+
+    processor = DigitizerProcessor()
+    mock_digital = MagicMock(spec=DigitalCounterCNN)
+    mock_digital.get_model_details.return_value = ModelDetails(
+        name="test.tflite", xsize=20, ysize=32, channels=3, num_outputs=11
+    )
+    mock_digital.readout_with_confidence.return_value = (5.0, 95.0)
+    processor.digital_counter_reader = mock_digital
+    processor.digital_model = MODEL_DIGITAL
+
+    meter_cfg = MeterConfig(
+        name="main",
+        format="{digit1}",
+        value_names=["digit1"],
+        use_previous_value=False,
+    )
+    test_img = CutImage(
+        name="digit1", image=Image.new("RGB", (20, 32)), out_of_bounds=True
+    )
+
+    res = processor.process([], [test_img], [meter_cfg])
+    assert res.valid is False
+    assert "ROI out of image bounds: digit1" in res.warning
+    assert res.meters[0].valid is False
+    assert "ROI out of image bounds: digit1" in res.meters[0].warning
+
+
+def test_process_unassigned_out_of_bounds_roi_invalidates_result():
+    from PIL import Image
+
+    from data_classes import CutImage
+
+    processor = DigitizerProcessor()
+    mock_digital = MagicMock(spec=DigitalCounterCNN)
+    mock_digital.get_model_details.return_value = ModelDetails(
+        name="test.tflite", xsize=20, ysize=32, channels=3, num_outputs=11
+    )
+    mock_digital.readout_with_confidence.return_value = (5.0, 95.0)
+    processor.digital_counter_reader = mock_digital
+    processor.digital_model = MODEL_DIGITAL
+
+    meter_cfg = MeterConfig(
+        name="main",
+        format="{digit1}",
+        value_names=["digit1"],
+        use_previous_value=False,
+    )
+    test_img1 = CutImage(
+        name="digit1", image=Image.new("RGB", (20, 32)), out_of_bounds=False
+    )
+    test_img2 = CutImage(
+        name="digit2_unused", image=Image.new("RGB", (20, 32)), out_of_bounds=True
+    )
+
+    res = processor.process([], [test_img1, test_img2], [meter_cfg])
+    assert res.valid is False
+    assert "ROI out of image bounds: digit2_unused" in res.warning
+    # The meter itself was in-bounds, but overall readout result is invalid
+    assert res.meters[0].valid is True
+
+
 def test_process_uninitialized():
     processor = DigitizerProcessor()
     with pytest.raises(ValueError, match="No CNN reader initialized"):
@@ -1199,4 +1264,23 @@ def test_postprocessing_stale_reading_invalidates_and_skips_save(
     # Current value is 123.567, previous is 123.567 -> delta = 0.000, unchanged for days >= 1.0h
     assert meter.valid is False
     assert "Stale reading (no change for" in meter.warning
+    mock_save.assert_not_called()
+
+
+@patch("src.processor.digitizer.load_previous_value_from_file", return_value="123.450")
+@patch("src.processor.digitizer.save_previous_value_to_file")
+def test_postprocessing_out_of_bounds_roi_invalidates_and_skips_save(
+    mock_save: MagicMock, mock_load: MagicMock
+) -> None:
+    """Verify that an out-of-bounds component ROI invalidates the meter reading and skips saving."""
+    meter = get_default_meter()
+    processor = get_default_processor()
+    cnn_results = get_default_cnn_results()
+
+    processor._postprocess_meter_value(
+        meter, {}, cnn_results, out_of_bounds_rois={"digit2"}
+    )
+
+    assert meter.valid is False
+    assert "ROI out of image bounds: digit2" in meter.warning
     mock_save.assert_not_called()

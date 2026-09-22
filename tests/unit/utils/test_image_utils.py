@@ -1,6 +1,7 @@
 """Unit tests for image utilities in src/utils/image.py."""
 
 import io
+import logging
 from unittest.mock import patch
 
 import numpy as np
@@ -330,3 +331,36 @@ def test_auto_tune_image(sample_pil_image: Image.Image) -> None:
     assert 0.2 <= params["gamma"] <= 3.0
     assert 0.5 <= params["contrast"] <= 2.5
     assert 0.5 <= params["brightness"] <= 2.5
+
+
+def test_cut_image_out_of_bounds(
+    sample_pil_image: Image.Image, caplog: pytest.LogCaptureFixture
+) -> None:
+    """Verify cut_image logs a warning when ROI coordinates exceed image bounds."""
+    # Image size is (100, 100)
+    pos_oob = ImagePosition(name="digit_overflow", x=90, y=90, w=20, h=20)
+    with caplog.at_level(logging.WARNING):
+        cut = img_utils.cut_image(sample_pil_image, pos_oob)
+
+    assert cut.size == (20, 20)
+    assert any(
+        "ROI 'digit_overflow' coordinates [90, 90, 20, 20] exceed image bounds [100, 100]"
+        in record.message
+        for record in caplog.records
+    )
+
+
+def test_crop_image_out_of_bounds(
+    sample_pil_image: Image.Image, caplog: pytest.LogCaptureFixture
+) -> None:
+    """Verify crop_image logs a warning when crop coordinates exceed image bounds."""
+    # Negative coordinates
+    with caplog.at_level(logging.WARNING):
+        cropped = img_utils.crop_image(sample_pil_image, -5, 10, 20, 20)
+
+    assert cropped.size == (20, 20)
+    assert any(
+        "Crop coordinates [-5, 10, 20, 20] exceed image bounds [100, 100]"
+        in record.message
+        for record in caplog.records
+    )

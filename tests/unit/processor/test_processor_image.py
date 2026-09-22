@@ -173,3 +173,28 @@ def test_image_processor_align_status(sample_image: Image.Image):
     ip.align_image(refs)
     assert ip.alignment_success is False
     assert "requires exactly 3 reference markers" in ip.alignment_error
+
+
+def test_image_processor_cut_image_out_of_bounds(sample_image: Image.Image):
+    ip = ImageProcessor()
+    ip.set_image(sample_image)
+    ip.start_image_cutting()
+
+    # In-bounds ROI
+    pos_valid = ImagePosition(name="valid_roi", x=10, y=10, w=20, h=20)
+    # Out-of-bounds ROI (exceeds image size 120x120)
+    pos_oob = ImagePosition(name="oob_roi", x=100, y=100, w=30, h=30)
+
+    ip.cut_images([pos_valid, pos_oob])
+    cuts = ip.get_cut_images()
+    assert len(cuts) == 2
+    assert cuts[0].name == "valid_roi"
+    assert cuts[0].out_of_bounds is False
+    assert cuts[1].name == "oob_roi"
+    assert cuts[1].out_of_bounds is True
+    assert ip.out_of_bounds_rois == ["oob_roi"]
+
+    # Starting a new cutting cycle resets out_of_bounds_rois
+    ip.start_image_cutting()
+    assert ip.out_of_bounds_rois == []
+    assert ip.get_cut_images() == []

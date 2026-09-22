@@ -69,6 +69,7 @@ class CutImage(BaseModel):
 
     name: str
     image: Image
+    out_of_bounds: bool = False
 
 
 class CameraHealth(BaseModel):
