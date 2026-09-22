@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import configparser
+import logging
 from typing import TYPE_CHECKING, TextIO
 
 from config.exceptions import ConfigurationMissing
@@ -27,6 +28,8 @@ from services.leak.models import ValueType
 
 if TYPE_CHECKING:
     from config.main import Config
+
+logger = logging.getLogger(__name__)
 
 
 def load_cnn_params(section: str, config: configparser.ConfigParser) -> CNNParams:
@@ -275,6 +278,13 @@ def load_config_from_parser(cfg: Config, config: configparser.ConfigParser) -> C
         detect_neg_meter = config.getboolean(
             f"Meter.{name}", "DetectNegativeSign", fallback=False
         )
+
+        if consistency_enabled and max_rate_value <= 0:
+            logger.warning(
+                "Meter '%s': ConsistencyEnabled is True but MaxRateValue is 0 (or unset). "
+                "Rate-of-change check is disabled; only negative-rate check will be enforced.",
+                name,
+            )
 
         meter_configs.append(
             MeterConfig(

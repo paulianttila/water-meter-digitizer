@@ -85,3 +85,53 @@ def test_consistency_validator_empty_values_skipped():
     ConsistencyValidator.validate_reading(config, "123.4", "")
     ConsistencyValidator.validate_reading(config, "", "123.4")
     ConsistencyValidator.validate_reading(config, "", "")
+
+
+def test_consistency_validator_zero_max_rate_disables_rate_limit():
+    config = MeterConfig(
+        name="total",
+        format="{digit1}",
+        consistency_enabled=True,
+        allow_negative_rates=False,
+        max_rate_value=0.0,
+    )
+    # With max_rate_value=0.0, rate-of-change check is disabled; large delta passes cleanly
+    ConsistencyValidator.validate_reading(config, "200.0", "100.0")
+
+
+def test_consistency_validator_zero_max_rate_still_enforces_negative_rate():
+    config = MeterConfig(
+        name="total",
+        format="{digit1}",
+        consistency_enabled=True,
+        allow_negative_rates=False,
+        max_rate_value=0.0,
+    )
+    # Negative rate rejection is independent of max_rate_value
+    with pytest.raises(ConsistencyError) as exc_info:
+        ConsistencyValidator.validate_reading(config, "99.0", "100.0")
+
+    assert "Negative rate (-1.000)" in str(exc_info.value)
+
+
+def test_serializer_warns_when_consistency_enabled_with_zero_max_rate(caplog):
+    from configuration import Config
+
+    ini_content = """
+    [Meters]
+    Names = total
+
+    [Meter.total]
+    ConsistencyEnabled = True
+    MaxRateValue = 0.0
+    """
+    with caplog.at_level("WARNING"):
+        Config().load_from_string(ini_content)
+
+    assert (
+        "Rate-of-change check is disabled; only negative-rate check will be enforced."
+        in caplog.text
+    )
+    assert (
+        "Meter 'total': ConsistencyEnabled is True but MaxRateValue is 0" in caplog.text
+    )

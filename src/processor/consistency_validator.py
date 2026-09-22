@@ -37,5 +37,5 @@ class ConsistencyValidator:
         delta = current - previous
         if not meter_config.allow_negative_rates and delta < 0:
             raise ConsistencyError(f"Negative rate ({delta:.3f})")
-        if abs(delta) > meter_config.max_rate_value:
+        if meter_config.max_rate_value > 0 and abs(delta) > meter_config.max_rate_value:
             raise ConsistencyError(f"Rate too high ({delta:.3f})")
