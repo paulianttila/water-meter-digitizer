@@ -457,35 +457,46 @@ class DigitizerProcessor:
         if meter.config.use_extended_resolution:
             meter.value = self._append_extended_digit(meter, cnn_results)
 
-        if meter.config.use_previous_value and meter.previous_value:
+        if (
+            meter.config.use_previous_value
+            and meter.previous_value
+            and INVALID_DIGIT not in meter.previous_value
+        ):
             meter.previous_value = FormatParser.adapt_previous_value_to_match_length(
                 meter.value, meter.previous_value
             )
             meter.value = fill_with_predecessor_digits(
                 meter.value, meter.previous_value
             )
-            if meter.config.consistency_enabled:
-                try:
-                    ConsistencyValidator.validate_reading(
-                        meter.config, meter.value, meter.previous_value
-                    )
-                except ConsistencyError as err:
-                    logger.warning(
-                        "Consistency validation warning for meter '%s': %s",
-                        meter.name,
-                        err,
-                    )
-                    meter.warning = str(err)
-                    meter.valid = False
 
         if INVALID_DIGIT in meter.value:
             meter.valid = False
+            if not meter.warning:
+                meter.warning = "Unreadable digit(s)"
+        elif (
+            meter.config.use_previous_value
+            and meter.previous_value
+            and meter.config.consistency_enabled
+        ):
+            try:
+                ConsistencyValidator.validate_reading(
+                    meter.config, meter.value, meter.previous_value
+                )
+            except ConsistencyError as err:
+                logger.warning(
+                    "Consistency validation warning for meter '%s': %s",
+                    meter.name,
+                    err,
+                )
+                meter.warning = str(err)
+                meter.valid = False
 
         if (
             meter.config.use_previous_value
             and self.previous_value_file
             and meter.valid
             and not meter.warning
+            and INVALID_DIGIT not in meter.value
         ):
             try:
                 save_previous_value_to_file(
@@ -567,7 +578,9 @@ class DigitizerProcessor:
                 min_conf = 100.0
 
             quality: Literal["good", "warning", "uncertain"]
-            if meter.warning:
+            if INVALID_DIGIT in meter.value:
+                quality = "uncertain"
+            elif meter.warning:
                 quality = "warning"
             elif not meter.valid:
                 quality = "uncertain"

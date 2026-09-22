@@ -4,6 +4,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from data_classes import INVALID_DIGIT
 from src.cnn.base import ModelDetails
 from src.cnn.digital_counter_cnn import DigitalCounterCNN
 from src.processor.digitizer import (
@@ -813,6 +814,7 @@ def test_get_meter_values_with_unresolved_question_mark_digit() -> None:
     assert m.value == "1?5"
     assert m.valid is False
     assert m.quality == "uncertain"
+    assert m.warning == "Unreadable digit(s)"
     assert result.valid is False
 
 
@@ -820,3 +822,60 @@ def test_format_parser_graceful_missing_slot_fallback() -> None:
     """Verify that format_template falls back to template string when a slot is missing from values."""
     res = FormatParser.format_template("{digit1}.{missing_slot}", {"digit1": "123"})
     assert res == "{digit1}.{missing_slot}"
+
+
+@patch("src.processor.digitizer.load_previous_value_from_file", return_value="")
+@patch("src.processor.digitizer.save_previous_value_to_file")
+def test_postprocessing_unresolved_invalid_digit_not_saved_and_warning_set(
+    mock_save: MagicMock, mock_load: MagicMock
+) -> None:
+    """Verify unreadable digit sets valid=False, warning='Unreadable digit(s)', and skips saving."""
+    meter = get_default_meter()
+    processor = get_default_processor()
+    cnn_results = {
+        "digit1": ReadoutResult(name="digit1", value=1, model=MODEL_DIGITAL),
+        "digit2": ReadoutResult(
+            name="digit2", value=INVALID_DIGIT, model=MODEL_DIGITAL
+        ),
+        "digit3": ReadoutResult(name="digit3", value=3, model=MODEL_DIGITAL),
+        "analog1": ReadoutResult(name="analog1", value=5.1, model=MODEL_ANALOG),
+        "analog2": ReadoutResult(name="analog2", value=6.2, model=MODEL_ANALOG),
+        "analog3": ReadoutResult(name="analog3", value=7.3, model=MODEL_ANALOG),
+    }
+
+    processor._postprocess_meter_value(meter, {}, cnn_results)
+
+    assert meter.value == "1?3.567"
+    assert meter.valid is False
+    assert meter.warning == "Unreadable digit(s)"
+    mock_save.assert_not_called()
+
+
+@patch(
+    "src.processor.digitizer.load_previous_value_from_file",
+    side_effect=ValueError("Corrupted value with '?'"),
+)
+@patch("src.processor.digitizer.save_previous_value_to_file")
+def test_postprocessing_corrupted_previous_value_rejects_and_does_not_save(
+    mock_save: MagicMock, mock_load: MagicMock
+) -> None:
+    """Verify corrupted previous value is discarded, keeping meter invalid and preventing write."""
+    meter = get_default_meter()
+    processor = get_default_processor()
+    cnn_results = {
+        "digit1": ReadoutResult(name="digit1", value=1, model=MODEL_DIGITAL),
+        "digit2": ReadoutResult(
+            name="digit2", value=INVALID_DIGIT, model=MODEL_DIGITAL
+        ),
+        "digit3": ReadoutResult(name="digit3", value=3, model=MODEL_DIGITAL),
+        "analog1": ReadoutResult(name="analog1", value=5.1, model=MODEL_ANALOG),
+        "analog2": ReadoutResult(name="analog2", value=6.2, model=MODEL_ANALOG),
+        "analog3": ReadoutResult(name="analog3", value=7.3, model=MODEL_ANALOG),
+    }
+
+    processor._postprocess_meter_value(meter, {}, cnn_results)
+
+    assert meter.value == "1?3.567"
+    assert meter.valid is False
+    assert meter.warning == "Unreadable digit(s)"
+    mock_save.assert_not_called()

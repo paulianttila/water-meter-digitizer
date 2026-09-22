@@ -101,3 +101,19 @@ def test_atomic_save_writes_iso_timestamp(tmp_path):
     content = temp_file.read_text()
     assert "value = 42.0" in content
     assert "T" in content  # ISO-8601 has 'T' between date and time
+
+
+def test_save_previous_value_rejects_invalid_digit(tmp_path):
+    temp_file = tmp_path / "reject_invalid.ini"
+    with pytest.raises(
+        ValueError, match="Cannot save previous value containing invalid digit"
+    ):
+        save_previous_value_to_file(str(temp_file), "total", "12?4.5")
+    assert not temp_file.exists()
+
+
+def test_load_previous_value_rejects_invalid_digit(tmp_path):
+    invalid_file = tmp_path / "has_invalid_digit.ini"
+    invalid_file.write_text("[total]\nTime = 2026-09-22T12:00:00\nValue = 12?4.5\n")
+    with pytest.raises(ValueError, match="contains invalid digit"):
+        load_previous_value_from_file(str(invalid_file), "total")

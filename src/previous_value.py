@@ -5,6 +5,8 @@ import threading
 from datetime import datetime
 from pathlib import Path
 
+from data_classes import INVALID_DIGIT
+
 logger = logging.getLogger(__name__)
 
 _previous_value_lock = threading.Lock()
@@ -49,6 +51,10 @@ def load_previous_value_from_file(
                     )
 
             previous_value = config.get(section, "Value")
+            if INVALID_DIGIT in previous_value:
+                raise ValueError(
+                    f"Previous value for section '{section}' contains invalid digit '{INVALID_DIGIT}': {previous_value}"
+                )
             logger.info("Previous value loaded from file: %s", previous_value)
             return previous_value
         except Exception as e:
@@ -58,6 +64,10 @@ def load_previous_value_from_file(
 
 
 def save_previous_value_to_file(file: str, section: str, value: str) -> None:
+    if INVALID_DIGIT in value:
+        raise ValueError(
+            f"Cannot save previous value containing invalid digit '{INVALID_DIGIT}': {value}"
+        )
     with _previous_value_lock:
         config = configparser.ConfigParser()
         now = datetime.now().strftime("%Y-%m-%dT%H:%M:%S")
