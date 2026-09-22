@@ -42,7 +42,14 @@ def load_previous_value_record(
             time_str = config.get(section, "Time", fallback="")
             if max_age_minutes is not None and max_age_minutes > 0 and time_str:
                 value_time = _parse_timestamp(time_str)
-                diff_minutes = (datetime.now() - value_time).total_seconds() / 60
+                raw_diff = (datetime.now() - value_time).total_seconds() / 60
+                if raw_diff < 0:
+                    logger.debug(
+                        "Previous value timestamp '%s' is %.1f minutes in the future; clamping age to 0 (clock skew guard)",
+                        time_str,
+                        abs(raw_diff),
+                    )
+                diff_minutes = max(0.0, raw_diff)
 
                 if diff_minutes > max_age_minutes:
                     raise ValueError(

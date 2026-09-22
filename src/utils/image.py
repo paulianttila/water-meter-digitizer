@@ -24,16 +24,43 @@ def save_image(image: Image, file_name: str) -> None:
         cv2.imwrite(file_name, image)
 
 
+SUPPORTED_IMAGE_FORMATS: set[str] = {
+    "JPEG",
+    "PNG",
+    "WEBP",
+    "BMP",
+    "TIFF",
+    "MPO",
+    "GIF",
+}
+
+
 def load_image_from_file(file_name: str) -> Image:
     return PIL.Image.open(file_name)
 
 
 def bytes_to_image(data: bytes) -> Image:
-    image_file = PIL.Image.open(io.BytesIO(data))
-    if image_file.format not in ["JPEG", "PNG"]:
-        raise ValueError("Invalid image format")
-    image: Image = image_file.convert("RGB") if image_file.mode != "RGB" else image_file
-    return image
+    try:
+        image_file = PIL.Image.open(io.BytesIO(data))
+    except Exception as e:
+        raise ValueError(f"Cannot decode image data: {e}") from e
+
+    fmt = image_file.format
+    if fmt and fmt not in SUPPORTED_IMAGE_FORMATS:
+        logger.warning(
+            "Image format '%s' is not in standard supported formats (%s), attempting conversion to RGB.",
+            fmt,
+            ", ".join(sorted(SUPPORTED_IMAGE_FORMATS)),
+        )
+
+    try:
+        image: Image = (
+            image_file.convert("RGB") if image_file.mode != "RGB" else image_file
+        )
+        image.load()
+        return image
+    except Exception as e:
+        raise ValueError(f"Failed to convert image format '{fmt}': {e}") from e
 
 
 def convert_image_base64str(image: Image) -> str:

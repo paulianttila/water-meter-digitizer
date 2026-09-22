@@ -1,5 +1,7 @@
 """Unit tests for image utilities in src/utils/image.py."""
 
+import io
+
 import numpy as np
 import pytest
 from PIL import Image
@@ -107,9 +109,22 @@ def test_conversions(sample_pil_image: Image.Image) -> None:
     assert isinstance(raw_bytes, bytes)
     assert len(raw_bytes) > 0
 
-    # bytes to PIL
+    # bytes to PIL (JPEG)
     reloaded = img_utils.bytes_to_image(raw_bytes)
     assert reloaded.size == sample_pil_image.size
+
+    # bytes to PIL across multiple image formats (WEBP, BMP, TIFF)
+    for fmt in ("WEBP", "BMP", "TIFF", "PNG"):
+        buf = io.BytesIO()
+        sample_pil_image.save(buf, format=fmt)
+        fmt_bytes = buf.getvalue()
+        loaded = img_utils.bytes_to_image(fmt_bytes)
+        assert loaded.size == sample_pil_image.size
+        assert loaded.mode == "RGB"
+
+    # Corrupt data raises ValueError
+    with pytest.raises(ValueError, match="Cannot decode image data"):
+        img_utils.bytes_to_image(b"not_an_image")
 
     # Base64 conversions
     b64_str = img_utils.convert_image_base64str(sample_pil_image)

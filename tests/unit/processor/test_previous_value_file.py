@@ -147,3 +147,16 @@ def test_save_and_load_last_change_tracking(tmp_path):
     record3 = load_previous_value_record(temp_file, "total")
     assert record3["value"] == "101.5"
     assert record3["last_change"] == record3["time"]
+
+
+def test_clock_skew_future_timestamp_clamped_to_zero(tmp_path):
+    from datetime import datetime, timedelta
+
+    # Timestamp 10 minutes in the future (e.g. system clock stepped back via NTP)
+    future_time = (datetime.now() + timedelta(minutes=10)).strftime("%Y-%m-%dT%H:%M:%S")
+    skew_file = tmp_path / "skew_prevalue.ini"
+    skew_file.write_text(f"[total]\nTime = {future_time}\nValue = 42.0\n")
+
+    # max_age_minutes=5 should still load cleanly because diff is clamped to 0.0, not negative or erroring
+    loaded = load_previous_value_from_file(str(skew_file), "total", max_age_minutes=5)
+    assert loaded == "42.0"
