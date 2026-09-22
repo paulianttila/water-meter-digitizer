@@ -399,11 +399,15 @@ def get_meter_data(
             config.digital_readout.model_file, config.digital_readout.model
         )
     proc.use_previous_value_file(config.previous_value_file)
+    alignment_error = (
+        image_processor.alignment_error if not image_processor.alignment_success else ""
+    )
     meter_result = proc.process(
         analog_images=analog_images,
         digital_images=digital_images,
         meter_configs=config.meter_configs,
         detect_negative_sign=detect_neg,
+        alignment_error=alignment_error,
     )
 
     storage = getattr(app.state, "storage", None) if app else None

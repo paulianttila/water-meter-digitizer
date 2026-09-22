@@ -1,6 +1,7 @@
 """Unit tests for image utilities in src/utils/image.py."""
 
 import io
+from unittest.mock import patch
 
 import numpy as np
 import pytest
@@ -90,6 +91,79 @@ def test_align_successful(tmp_path, sample_pil_image: Image.Image) -> None:
     aligned = img_utils.align(sample_pil_image, ref_files)
     assert isinstance(aligned, Image.Image)
     assert aligned.size == sample_pil_image.size
+
+
+def test_align_with_status_missing_ref_file(sample_pil_image: Image.Image) -> None:
+    refs = [
+        RefImage(
+            name=f"ref{i}",
+            x=10 * i,
+            y=10 * i,
+            w=20,
+            h=20,
+            file_name=f"/non/existent/ref{i}.jpg",
+        )
+        for i in range(3)
+    ]
+    img, success, err = img_utils.align_with_status(sample_pil_image, refs)
+    assert img == sample_pil_image
+    assert success is False
+    assert "could not be loaded" in err
+
+
+def test_align_with_status_invalid_ref_count(sample_pil_image: Image.Image) -> None:
+    refs = [RefImage(name="ref1", x=10, y=10, w=20, h=20, file_name="ref1.jpg")]
+    img, success, err = img_utils.align_with_status(sample_pil_image, refs)
+    assert img == sample_pil_image
+    assert success is False
+    assert "requires exactly 3 reference markers" in err
+
+
+def test_align_with_status_empty_refs(sample_pil_image: Image.Image) -> None:
+    img, success, err = img_utils.align_with_status(sample_pil_image, [])
+    assert img == sample_pil_image
+    assert success is True
+    assert err == ""
+
+
+def test_align_with_status_success(tmp_path, sample_pil_image: Image.Image) -> None:
+    ref_files = []
+    positions = [(10, 10), (80, 10), (50, 80)]
+    for i, (rx, ry) in enumerate(positions):
+        ref_path = tmp_path / f"ref_status_{i}.jpg"
+        crop = sample_pil_image.crop((rx, ry, rx + 15, ry + 15))
+        crop.save(str(ref_path))
+        ref_files.append(
+            RefImage(name=f"ref{i}", x=rx, y=ry, w=15, h=15, file_name=str(ref_path))
+        )
+
+    aligned, success, err = img_utils.align_with_status(sample_pil_image, ref_files)
+    assert success is True
+    assert err == ""
+    assert isinstance(aligned, Image.Image)
+    assert aligned.size == sample_pil_image.size
+
+
+def test_align_with_status_affine_exception(
+    tmp_path, sample_pil_image: Image.Image
+) -> None:
+    ref_files = []
+    positions = [(10, 10), (80, 10), (50, 80)]
+    for i, (rx, ry) in enumerate(positions):
+        ref_path = tmp_path / f"ref_exc_{i}.jpg"
+        crop = sample_pil_image.crop((rx, ry, rx + 15, ry + 15))
+        crop.save(str(ref_path))
+        ref_files.append(
+            RefImage(name=f"ref{i}", x=rx, y=ry, w=15, h=15, file_name=str(ref_path))
+        )
+
+    with patch(
+        "cv2.getAffineTransform", side_effect=RuntimeError("Affine matrix singular")
+    ):
+        img, success, err = img_utils.align_with_status(sample_pil_image, ref_files)
+        assert img == sample_pil_image
+        assert success is False
+        assert "Failed to perform affine alignment" in err
 
 
 def test_get_ref_coordinate_none_inputs() -> None:

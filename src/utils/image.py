@@ -135,18 +135,21 @@ def rotate(image: Image, angle: float, keep_org_size: bool = True) -> Image:
     return image.rotate(angle, expand=expand)
 
 
-def align(image: Image, reference_images: Sequence[RefImage]) -> Image:
+def align_with_status(
+    image: Image, reference_images: Sequence[RefImage]
+) -> tuple[Image, bool, str]:
     if image is None:
         raise ValueError("No image to align")
     if not reference_images:
-        return image
+        return image, True, ""
 
     if len(reference_images) != 3:
-        logger.warning(
-            "Image alignment requires exactly 3 reference markers, found %d. Skipping alignment.",
-            len(reference_images),
+        msg = (
+            f"Image alignment requires exactly 3 reference markers, found "
+            f"{len(reference_images)}. Skipping alignment."
         )
-        return image
+        logger.warning(msg)
+        return image, False, msg
 
     data = convert_image_to_np_array(image)
     w, h = image.size
@@ -155,12 +158,12 @@ def align(image: Image, reference_images: Sequence[RefImage]) -> Image:
     for ref in reference_images:
         template = cv2.imread(ref.file_name)
         if template is None:
-            logger.warning(
-                "Alignment reference image file '%s' for marker '%s' could not be loaded. Skipping alignment.",
-                ref.file_name,
-                ref.name,
+            msg = (
+                f"Alignment reference image file '{ref.file_name}' for marker "
+                f"'{ref.name}' could not be loaded. Skipping alignment."
             )
-            return image
+            logger.warning(msg)
+            return image, False, msg
         ref_image_coordinates.append(_get_ref_coordinate(data, template))
 
     alignment_ref_pos = [
@@ -175,10 +178,16 @@ def align(image: Image, reference_images: Sequence[RefImage]) -> Image:
         pts2 = np.float32(alignment_ref_pos)  # type: ignore
         M = cv2.getAffineTransform(pts1, pts2)  # type: ignore
         img = cv2.warpAffine(data, M, (w, h))
-        return convert_np_array_to_image(img)
+        return convert_np_array_to_image(img), True, ""
     except Exception as e:
-        logger.error("Failed to perform affine alignment: %s", e)
-        return image
+        msg = f"Failed to perform affine alignment: {e}"
+        logger.error(msg)
+        return image, False, msg
+
+
+def align(image: Image, reference_images: Sequence[RefImage]) -> Image:
+    aligned_img, _, _ = align_with_status(image, reference_images)
+    return aligned_img
 
 
 def _get_ref_coordinate(image: np.ndarray, template: np.ndarray) -> tuple[int, int]:

@@ -160,3 +160,16 @@ def test_image_processor_draw_rois(tmp_path, sample_image: Image.Image):
 
     drawn = ip.get_image()
     assert drawn.size == sample_image.size
+
+
+def test_image_processor_align_status(sample_image: Image.Image):
+    ip = ImageProcessor()
+    ip.set_image(sample_image)
+    assert ip.alignment_success is True
+    assert ip.alignment_error == ""
+
+    # Invalid ref count -> sets alignment_success=False and records error
+    refs = [RefImage(name="ref1", x=10, y=10, w=20, h=20, file_name="ref1.jpg")]
+    ip.align_image(refs)
+    assert ip.alignment_success is False
+    assert "requires exactly 3 reference markers" in ip.alignment_error

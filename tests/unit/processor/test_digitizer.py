@@ -639,7 +639,38 @@ def test_process_async():
         mock_proc.return_value = MagicMock()
         res = asyncio.run(processor.process_async([], [], []))
         assert res is not None
-        mock_proc.assert_called_once_with([], [], [], None, None)
+        mock_proc.assert_called_once_with([], [], [], None, None, "")
+
+
+def test_process_alignment_error_invalidates_result():
+    from PIL import Image
+
+    from data_classes import CutImage
+
+    processor = DigitizerProcessor()
+    mock_digital = MagicMock(spec=DigitalCounterCNN)
+    mock_digital.get_model_details.return_value = ModelDetails(
+        name="test.tflite", xsize=20, ysize=32, channels=3, num_outputs=11
+    )
+    mock_digital.readout_with_confidence.return_value = (5.0, 95.0)
+    processor.digital_counter_reader = mock_digital
+    processor.digital_model = MODEL_DIGITAL
+
+    meter_cfg = MeterConfig(
+        name="main",
+        format="{digit1}",
+        value_names=["digit1"],
+        use_previous_value=False,
+    )
+    test_img = CutImage(name="digit1", image=Image.new("RGB", (20, 32)))
+
+    res = processor.process(
+        [], [test_img], [meter_cfg], alignment_error="Marker ref0 not found"
+    )
+    assert res.valid is False
+    assert "Alignment failed: Marker ref0 not found" in res.warning
+    assert res.meters[0].valid is False
+    assert "Alignment failed: Marker ref0 not found" in res.meters[0].warning
 
 
 def test_process_uninitialized():

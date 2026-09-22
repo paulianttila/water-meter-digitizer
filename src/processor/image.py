@@ -36,6 +36,8 @@ class ImageProcessor:
         self.cut_images_list: list[CutImage] = []
         self.enable_img_saving = False
         self.pictures: dict[str, Image] = {}
+        self.alignment_success: bool = True
+        self.alignment_error: str = ""
 
     def if_(self, a) -> "ImageProcessor":
         self.condition = a
@@ -236,9 +238,11 @@ class ImageProcessor:
         align_images: Sequence[RefImage],
     ) -> "ImageProcessor":
         logger.debug("Align image to %s", align_images)
-        self.image = utils.image.align(
-            self.image,
-            list(align_images),
+        self.image, self.alignment_success, self.alignment_error = (
+            utils.image.align_with_status(
+                self.image,
+                list(align_images),
+            )
         )
         return self
 

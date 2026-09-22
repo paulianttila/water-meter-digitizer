@@ -183,6 +183,7 @@ class DigitizerProcessor:
         meter_configs: list[MeterConfig],
         min_confidence_threshold: float | None = None,
         detect_negative_sign: bool | None = None,
+        alignment_error: str = "",
     ) -> MeterResult:
         if self.analog_counter_reader is None and self.digital_counter_reader is None:
             raise ValueError("No CNN reader initialized")
@@ -221,6 +222,7 @@ class DigitizerProcessor:
             digital_results=digital_results,
             available_values=available_values,
             min_confidence_threshold=min_conf,
+            alignment_error=alignment_error,
         )
 
     async def process_async(
@@ -230,6 +232,7 @@ class DigitizerProcessor:
         meter_configs: list[MeterConfig],
         min_confidence_threshold: float | None = None,
         detect_negative_sign: bool | None = None,
+        alignment_error: str = "",
     ) -> MeterResult:
         """Asynchronously process meter images off the main event loop."""
         import asyncio
@@ -241,6 +244,7 @@ class DigitizerProcessor:
             meter_configs,
             min_confidence_threshold,
             detect_negative_sign,
+            alignment_error,
         )
 
     def _run_analog_cnn(self, images: list[CutImage]) -> list[ReadoutResult]:
@@ -391,6 +395,7 @@ class DigitizerProcessor:
         digital_results: list[ReadoutResult],
         available_values: dict[str, int | str],
         min_confidence_threshold: float,
+        alignment_error: str = "",
     ) -> MeterResult:
         meters = self._get_meter_values(meter_configs, available_values)
         self._postprocess_meter_values(
@@ -399,19 +404,30 @@ class DigitizerProcessor:
             cnn_results=(digital_results + analog_results),
             min_confidence_threshold=min_confidence_threshold,
         )
+        if alignment_error:
+            align_warn = f"Alignment failed: {alignment_error}"
+            for meter in meters:
+                meter.valid = False
+                meter.warning = (
+                    f"{align_warn}, {meter.warning}" if meter.warning else align_warn
+                )
         return self._gen_result(
             meters,
             analog_results=analog_results,
             digital_results=digital_results,
+            alignment_error=alignment_error,
         )
 
-    def get_meter_values(self, meter_configs: list[MeterConfig]) -> MeterResult:
+    def get_meter_values(
+        self, meter_configs: list[MeterConfig], alignment_error: str = ""
+    ) -> MeterResult:
         return self._build_meter_values(
             meter_configs=meter_configs,
             analog_results=self.cnn_analog_results,
             digital_results=self.cnn_digital_results,
             available_values=self.available_values,
             min_confidence_threshold=self.min_confidence_threshold,
+            alignment_error=alignment_error,
         )
 
     def _get_meter_values(
@@ -624,6 +640,7 @@ class DigitizerProcessor:
         meters: list[Meter],
         analog_results: list[ReadoutResult] | None = None,
         digital_results: list[ReadoutResult] | None = None,
+        alignment_error: str = "",
     ) -> MeterResult:
         if analog_results is None:
             analog_results = self.cnn_analog_results
@@ -690,8 +707,16 @@ class DigitizerProcessor:
             )
 
         all_warnings = [m.warning for m in meter_results if m.warning]
+        if alignment_error:
+            align_warn = f"Alignment failed: {alignment_error}"
+            if align_warn not in all_warnings:
+                all_warnings.insert(0, align_warn)
         warning_str = ", ".join(all_warnings) if all_warnings else ""
-        is_valid = bool(meter_results) and all(m.valid for m in meter_results)
+        is_valid = (
+            bool(meter_results)
+            and all(m.valid for m in meter_results)
+            and not bool(alignment_error)
+        )
 
         return MeterResult(
             meters=meter_results,
