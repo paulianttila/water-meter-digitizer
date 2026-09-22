@@ -7,6 +7,7 @@ from fastapi.testclient import TestClient
 from PIL import Image
 
 from configuration import Config, MeterConfig, ZeroFlowMonitor
+from exceptions import ModelLoadError
 from main import app
 from processor.digitizer import MeterResult, MeterValue
 from utils.download import DownloadFailure
@@ -380,3 +381,15 @@ def test_get_meter_data_conditional_model_init():
         assert res == dummy_result
         mock_dig.init_analog_model.assert_not_called()
         mock_dig.init_digital_model.assert_called_once_with("test.tflite", "auto")
+
+
+def test_get_meters_model_load_error_returns_503():
+    """Verify that a ModelLoadError during meter processing returns HTTP 503."""
+    client = TestClient(app)
+    with patch(
+        "api.routes_meter.get_meter_data",
+        side_effect=ModelLoadError("Model failed to load"),
+    ):
+        resp = client.get("/meter")
+        assert resp.status_code == 503
+        assert "Model failed to load" in resp.json()["error"]

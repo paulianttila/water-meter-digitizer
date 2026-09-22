@@ -161,14 +161,11 @@ async def test_async_model_readouts():
 
 def test_cnn_base_properties_and_fallbacks():
     from cnn.base import CNNBase
+    from exceptions import ModelLoadError
 
-    # Non-tflite model error
-    base_invalid = CNNBase("invalid_model.h5", dx=20, dy=20)
-    assert base_invalid.pool is None
-    assert base_invalid.interpreter is None
-    assert base_invalid.input_details == []
-    assert base_invalid.output_details == []
-    assert base_invalid.get_model_details().xsize == 20
+    # Non-tflite model error raises ModelLoadError
+    with pytest.raises(ModelLoadError):
+        CNNBase("invalid_model.h5", dx=20, dy=20)
 
     # Valid model properties
     base_valid = CNNBase(DIGITAL_MODEL, dx=32, dy=20)
@@ -177,9 +174,9 @@ def test_cnn_base_properties_and_fallbacks():
     assert len(base_valid.output_details) > 0
 
     # Readout without loaded pool raises RuntimeError
-    base_invalid.pool = None
+    base_valid.pool = None
     with pytest.raises(RuntimeError, match="not loaded"):
-        base_invalid._readout(Image.new("RGB", (20, 20)))
+        base_valid._readout(Image.new("RGB", (20, 20)))
 
 
 def test_interpreter_pool_clear_concurrency():

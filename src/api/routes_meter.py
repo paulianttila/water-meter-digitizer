@@ -11,6 +11,7 @@ import previous_value
 import utils.image
 from configuration import Config
 from data_classes import CutImageOptions
+from exceptions import ModelLoadError
 from processor.digitizer import DigitizerProcessor, MeterResult
 from processor.image import (
     ImageProcessor,
@@ -210,6 +211,9 @@ def get_meters(
 
     try:
         result = get_meter_data(url=url, saveimages=saveimages, request=request)
+    except ModelLoadError as e:
+        logger.error(f"Model load error: {e!s}")
+        return JSONResponse({"error": str(e)}, status_code=503)
     except Exception as e:
         logger.warning(f"Error occurred: {e!s}")
         return JSONResponse({"error": str(e)}, status_code=500)

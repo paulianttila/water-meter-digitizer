@@ -12,6 +12,7 @@ from cnn.pool import (
     ModelDetails,
     get_interpreter_pool,
 )
+from exceptions import ModelLoadError
 
 spam_spec = util.find_spec("tensorflow")
 found_tensorflow = spam_spec is not None
@@ -56,11 +57,12 @@ class CNNBase:
     def _load_model(self) -> None:
         _filename, file_extension = os.path.splitext(self.modelfile)
         if file_extension != ".tflite":
-            logger.error(
-                "Only TFLite-Model (*.tflite) are supported since "
-                "version 7.0.0 and higher"
+            msg = (
+                f"Unsupported model file '{self.modelfile}' with extension '{file_extension}'. "
+                "Only TFLite models (*.tflite) are supported."
             )
-            return
+            logger.error(msg)
+            raise ModelLoadError(msg)
 
         try:
             self.pool = get_interpreter_pool(self.modelfile, max_size=self.pool_size)
@@ -74,9 +76,9 @@ class CNNBase:
                 details.num_outputs,
             )
         except Exception as e:
-            logger.error(
-                "Error occurred during model '%s' loading: %s", self.modelfile, e
-            )
+            msg = f"Failed to load model '{self.modelfile}': {e}"
+            logger.error(msg)
+            raise ModelLoadError(msg) from e
 
     @property
     def interpreter(self):

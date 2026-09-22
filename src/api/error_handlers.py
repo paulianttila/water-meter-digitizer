@@ -6,6 +6,7 @@ from fastapi.responses import JSONResponse
 from exceptions import (
     ConfigurationError,
     ImageCaptureError,
+    ModelLoadError,
     StorageQuotaExceededError,
     WaterMeterError,
 )
@@ -24,6 +25,20 @@ def register_exception_handlers(app: FastAPI) -> None:
                 "type": "https://errors.watermeter.local/image-capture",
                 "title": "Camera Image Capture Failed",
                 "status": 502,
+                "detail": exc.message,
+                "instance": str(request.url),
+                "details": exc.details,
+            },
+        )
+
+    @app.exception_handler(ModelLoadError)
+    async def model_load_handler(request: Request, exc: ModelLoadError) -> JSONResponse:
+        return JSONResponse(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            content={
+                "type": "https://errors.watermeter.local/model-load-error",
+                "title": "CNN Model Load Failed",
+                "status": 503,
                 "detail": exc.message,
                 "instance": str(request.url),
                 "details": exc.details,

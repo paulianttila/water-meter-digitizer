@@ -44,6 +44,10 @@ class InferenceError(PipelineError):
     """Raised when LiteRT CNN model inference fails or outputs invalid shapes."""
 
 
+class ModelLoadError(PipelineError, RuntimeError):
+    """Raised when a neural network model file cannot be loaded or initialized."""
+
+
 class ConsistencyValidationError(PipelineError):
     """Raised when a meter reading violates monotonicity, max rate, or sanity bounds."""
 
@@ -74,6 +78,7 @@ __all__ = [
     "DatabaseConnectionError",
     "ImageCaptureError",
     "InferenceError",
+    "ModelLoadError",
     "PipelineError",
     "RetentionPruneError",
     "StorageError",
