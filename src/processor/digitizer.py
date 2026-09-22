@@ -465,9 +465,14 @@ class DigitizerProcessor:
             and meter.previous_value
             and INVALID_DIGIT not in meter.previous_value
         ):
+            orig_prev_len = len(meter.previous_value)
             meter.previous_value = FormatParser.adapt_previous_value_to_match_length(
                 meter.value, meter.previous_value
             )
+            if len(meter.previous_value) < orig_prev_len:
+                meter.warning = "Previous value truncated to match format length"
+                meter.valid = False
+
             before_invalids = meter.value.count(INVALID_DIGIT)
             meter.value = fill_with_predecessor_digits(
                 meter.value, meter.previous_value
@@ -483,6 +488,7 @@ class DigitizerProcessor:
             meter.config.use_previous_value
             and meter.previous_value
             and meter.config.consistency_enabled
+            and meter.valid
         ):
             try:
                 ConsistencyValidator.validate_reading(

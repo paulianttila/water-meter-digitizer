@@ -43,10 +43,12 @@ class FormatParser:
             )
             return fill_value_with_ending_zeros(len(number), previous_value)
         elif len(number) < len(previous_value):
-            logger.debug(
-                "Remove digits from previous value %s to match new value %s len",
+            logger.warning(
+                "Truncating previous value '%s' (len %d) to match new value '%s' (len %d)",
                 previous_value,
+                len(previous_value),
                 number,
+                len(number),
             )
             return previous_value[: len(number)]
         return previous_value

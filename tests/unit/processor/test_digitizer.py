@@ -686,7 +686,7 @@ def test_concurrent_digitizer_process():
         assert r.meters[0].value == "5"
 
 
-@patch("src.processor.digitizer.load_previous_value_from_file", return_value="100.0")
+@patch("src.processor.digitizer.load_previous_value_from_file", return_value="100")
 @patch("src.processor.digitizer.save_previous_value_to_file")
 def test_get_meter_values_with_rate_too_high(mock_save, mock_load) -> None:
     processor = DigitizerProcessor()
@@ -722,7 +722,7 @@ def test_get_meter_values_with_rate_too_high(mock_save, mock_load) -> None:
     mock_save.assert_not_called()
 
 
-@patch("src.processor.digitizer.load_previous_value_from_file", return_value="100.0")
+@patch("src.processor.digitizer.load_previous_value_from_file", return_value="100")
 @patch("src.processor.digitizer.save_previous_value_to_file")
 def test_get_meter_values_valid_success(mock_save, mock_load) -> None:
     processor = DigitizerProcessor()
@@ -968,3 +968,24 @@ def test_meter_value_filled_digits_populated(
     assert m.value == "123.567"
     assert m.filled_digits == 1
     assert m.valid is True
+
+
+@patch(
+    "src.processor.digitizer.load_previous_value_from_file",
+    return_value="12345.678",
+)
+@patch("src.processor.digitizer.save_previous_value_to_file")
+def test_postprocessing_truncated_previous_value_invalidates_reading_and_skips_save(
+    mock_save: MagicMock, mock_load: MagicMock
+) -> None:
+    """Verify that when stored previous value is longer than current format, it is marked invalid with warning and not saved."""
+    meter = get_default_meter()
+    processor = get_default_processor()
+
+    # Default meter format is {digit1}{digit2}{digit3}.{analog1}{analog2}{analog3} (length 7, e.g. "123.567")
+    # previous value loaded is "12345.678" (length 9)
+    processor._postprocess_meter_value(meter, {}, get_default_cnn_results())
+
+    assert meter.valid is False
+    assert meter.warning == "Previous value truncated to match format length"
+    mock_save.assert_not_called()
