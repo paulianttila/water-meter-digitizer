@@ -112,7 +112,7 @@ The **Setup Wizard** (accessible via the **Setup** tab at `/setup`) is an intera
 ---
 
 ### Step 8: Services & Integrations
-- **Poller**: Enable automated background interval capture (e.g., every `60` seconds).
+- **Poller**: Enable automated background cron schedule capture (e.g., `*/15 * * * * *` for every 15 seconds, or `0 */5 * * * *` for every 5 minutes).
 - **MQTT**: Configure broker host, port, topic prefix (`watermeter`), and Home Assistant Auto-Discovery.
 
 ---

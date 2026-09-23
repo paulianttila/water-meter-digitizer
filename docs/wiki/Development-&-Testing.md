@@ -52,7 +52,7 @@ uv run playwright install --with-deps chromium
 │   └── web/static/         # Static assets served by FastAPI
 ├── config/                 # Default INI config, reference marker images, neural net models
 ├── tests/
-│   ├── unit/               # ~590+ pytest unit tests mirroring src/ hierarchy
+│   ├── unit/               # ~760+ pytest unit tests mirroring src/ hierarchy
 │   └── integration/        # Tavern REST + Playwright UI + end-to-end tests
 ├── docs/wiki/              # GitHub Wiki source (synced by CI to repo.wiki)
 ├── README.md               # User documentation, features, hardware & quick start
@@ -69,7 +69,7 @@ The repository includes an all-in-one test runner script `./run_tests.sh`:
 
 | Command | Suite | Purpose |
 | :--- | :--- | :--- |
-| **`./run_tests.sh -u`** | Unit Tests | Runs all 590+ fast isolated unit tests (`tests/unit/`). |
+| **`./run_tests.sh -u`** | Unit Tests | Runs all 760+ fast isolated unit tests (`tests/unit/`). |
 | **`./run_tests.sh -c`** | Code Coverage | Runs unit tests and reports line coverage (target: $\ge 80\%$). |
 | **`./run_tests.sh --ui`** | Playwright UI Tests | Executes automated headless browser tests across all Web UI tabs. |
 | **`./run_tests.sh -i`** | Integration Tests | Runs Tavern REST and live MQTT broker integration scenarios. |

@@ -2,9 +2,6 @@
 
 import logging
 import math
-from typing import Literal
-
-from pydantic import BaseModel, Field
 
 from cnn.analog_needle_cnn import AnalogNeedleCNN
 from cnn.base import ModelDetails
@@ -17,6 +14,21 @@ from previous_value import (
 )
 from processor.consistency_validator import ConsistencyError, ConsistencyValidator
 from processor.format_parser import FormatParser
+from processor.models import (
+    DEFAULT_MIN_CONFIDENCE_THRESHOLD,
+    MIN_CONFIDENCE_THRESHOLD,
+    MODEL_AUTO,
+    QUALITY_HIGH_AVG_CONFIDENCE,
+    QUALITY_HIGH_MIN_CONFIDENCE,
+    QUALITY_WARNING_AVG_CONFIDENCE,
+    QUALITY_WARNING_MIN_CONFIDENCE,
+    Meter,
+    MeterResult,
+    MeterValue,
+    ReadoutResult,
+)
+from processor.quality import determine_quality
+from processor.result_builder import build_meter_result
 from processor.rollover_corrector import (
     ANALOG_MODELS,
     DIGITAL_MODELS,
@@ -31,89 +43,23 @@ from processor.sign_detector import detect_minus_sign
 from utils.decorators import log_execution_time
 from utils.math import fill_with_predecessor_digits
 
+__all__ = [
+    "DEFAULT_MIN_CONFIDENCE_THRESHOLD",
+    "MIN_CONFIDENCE_THRESHOLD",
+    "MODEL_AUTO",
+    "QUALITY_HIGH_AVG_CONFIDENCE",
+    "QUALITY_HIGH_MIN_CONFIDENCE",
+    "QUALITY_WARNING_AVG_CONFIDENCE",
+    "QUALITY_WARNING_MIN_CONFIDENCE",
+    "DigitizerProcessor",
+    "Meter",
+    "MeterResult",
+    "MeterValue",
+    "ReadoutResult",
+    "determine_quality",
+]
+
 logger = logging.getLogger(__name__)
-
-DEFAULT_MIN_CONFIDENCE_THRESHOLD = 60.0
-MIN_CONFIDENCE_THRESHOLD = DEFAULT_MIN_CONFIDENCE_THRESHOLD
-MODEL_AUTO = "auto"
-
-QUALITY_HIGH_MIN_CONFIDENCE = 80.0
-QUALITY_HIGH_AVG_CONFIDENCE = 85.0
-QUALITY_WARNING_MIN_CONFIDENCE = 60.0
-QUALITY_WARNING_AVG_CONFIDENCE = 65.0
-
-
-class ReadoutResult(BaseModel):
-    name: str
-    value: float | str
-    model: str
-    confidence: float = 100.0
-
-
-class MeterValue(BaseModel):
-    name: str
-    value: str
-    unit: str = ""
-    quality: Literal["good", "warning", "uncertain"] = "good"
-    confidence: float = 100.0
-    min_confidence: float = 100.0
-    filled_digits: int = 0
-    warning: str = ""
-    valid: bool = True
-
-
-def determine_quality(
-    value: str,
-    valid: bool,
-    warning: str,
-    min_conf: float,
-    avg_conf: float,
-    quality_high_min_confidence: float = QUALITY_HIGH_MIN_CONFIDENCE,
-    quality_high_avg_confidence: float = QUALITY_HIGH_AVG_CONFIDENCE,
-    quality_warning_min_confidence: float = QUALITY_WARNING_MIN_CONFIDENCE,
-    quality_warning_avg_confidence: float = QUALITY_WARNING_AVG_CONFIDENCE,
-) -> Literal["good", "warning", "uncertain"]:
-    """Classify readout quality based on unreadable digits, warnings, validity, and confidence thresholds."""
-    if INVALID_DIGIT in value:
-        return "uncertain"
-    elif warning:
-        return "warning"
-    elif not valid:
-        return "uncertain"
-    elif (
-        min_conf >= quality_high_min_confidence
-        and avg_conf >= quality_high_avg_confidence
-    ):
-        return "good"
-    elif (
-        min_conf >= quality_warning_min_confidence
-        and avg_conf >= quality_warning_avg_confidence
-    ):
-        return "warning"
-    else:
-        return "uncertain"
-
-
-class MeterResult(BaseModel):
-    meters: list[MeterValue] = Field(default_factory=list)
-    digital_results: dict[str, str] = Field(default_factory=dict)
-    analog_results: dict[str, str] = Field(default_factory=dict)
-    confidence_scores: dict[str, float] = Field(default_factory=dict)
-    error: str = ""
-    warning: str = ""
-    valid: bool = True
-
-
-class Meter(BaseModel):
-    config: MeterConfig
-    name: str = ""
-    value: str = ""  # value after postprocessing
-    unprocessed_value: str = ""  # value without postprocessing
-    previous_value: str = ""
-    previous_value_last_change: str = ""
-    warning: str = ""
-    valid: bool = True
-    filled_digits: int = 0
 
 
 class DigitizerProcessor:
@@ -738,110 +684,27 @@ class DigitizerProcessor:
         alignment_error: str = "",
         out_of_bounds_rois: set[str] | None = None,
     ) -> MeterResult:
-        if out_of_bounds_rois is None:
-            out_of_bounds_rois = self.out_of_bounds_rois
-        if analog_results is None:
-            analog_results = self.cnn_analog_results
-        if digital_results is None:
-            digital_results = self.cnn_digital_results
-
-        analog_dict = {}
-        confidence_scores = {}
-        if self.analog_counter_reader is not None:
-            for item in analog_results:
-                val = f"{item.value:.2f}"
-                analog_dict[item.name] = val
-                confidence_scores[item.name] = item.confidence
-        digital_dict = {}
-        if self.digital_counter_reader is not None:
-            for item in digital_results:
-                if item.value == "-":
-                    val = "-"
-                elif isinstance(item.value, float) and math.isnan(item.value):
-                    val = INVALID_DIGIT
-                else:
-                    val = str(item.value)
-                digital_dict[item.name] = val
-                confidence_scores[item.name] = item.confidence
-
-        all_results_dict = {
-            item.name: item for item in (digital_results + analog_results)
-        }
-
-        meter_results = []
-        for meter in meters:
-            component_confs = [
-                all_results_dict[name].confidence
-                for name in meter.config.value_names
-                if name in all_results_dict
-            ]
-            if component_confs:
-                avg_conf = round(sum(component_confs) / len(component_confs), 1)
-                min_conf = round(min(component_confs), 1)
-            else:
-                avg_conf = 100.0
-                min_conf = 100.0
-
-            high_min, high_avg, warn_min, warn_avg = self._resolve_quality_thresholds(
-                meter
-            )
-            quality = determine_quality(
-                value=meter.value,
-                valid=meter.valid,
-                warning=meter.warning,
-                min_conf=min_conf,
-                avg_conf=avg_conf,
-                quality_high_min_confidence=high_min,
-                quality_high_avg_confidence=high_avg,
-                quality_warning_min_confidence=warn_min,
-                quality_warning_avg_confidence=warn_avg,
-            )
-
-            meter_results.append(
-                MeterValue(
-                    name=meter.name,
-                    value=meter.value,
-                    unit=meter.config.unit,
-                    quality=quality,
-                    confidence=avg_conf,
-                    min_confidence=min_conf,
-                    filled_digits=meter.filled_digits,
-                    warning=meter.warning,
-                    valid=meter.valid,
-                )
-            )
-
-        all_warnings = [m.warning for m in meter_results if m.warning]
-        if alignment_error:
-            align_warn = f"Alignment failed: {alignment_error}"
-            if align_warn not in all_warnings:
-                all_warnings.insert(0, align_warn)
-        if out_of_bounds_rois:
-            unassigned_oob = [
-                name
-                for name in sorted(out_of_bounds_rois)
-                if not any(name in m.config.value_names for m in meters)
-            ]
-            if unassigned_oob:
-                oob_warn = f"ROI out of image bounds: {', '.join(unassigned_oob)}"
-                if oob_warn not in all_warnings:
-                    all_warnings.append(oob_warn)
-        warning_str = ", ".join(all_warnings) if all_warnings else ""
-        is_valid = (
-            bool(meter_results)
-            and all(m.valid for m in meter_results)
-            and not bool(alignment_error)
-            and not bool(out_of_bounds_rois)
-        )
-
-        return MeterResult(
-            meters=meter_results,
-            digital_results=digital_dict,
-            analog_results=analog_dict,
-            confidence_scores=confidence_scores,
-            error="",
-            warning=warning_str,
-            valid=is_valid,
+        return build_meter_result(
+            meters=meters,
+            analog_results=(
+                analog_results
+                if analog_results is not None
+                else self.cnn_analog_results
+            ),
+            digital_results=(
+                digital_results
+                if digital_results is not None
+                else self.cnn_digital_results
+            ),
+            alignment_error=alignment_error,
+            out_of_bounds_rois=(
+                out_of_bounds_rois
+                if out_of_bounds_rois is not None
+                else self.out_of_bounds_rois
+            ),
+            has_analog_reader=self.analog_counter_reader is not None,
+            has_digital_reader=self.digital_counter_reader is not None,
+            resolve_thresholds_fn=self._resolve_quality_thresholds,
         )
 
     # ------------------------------------------------------------------

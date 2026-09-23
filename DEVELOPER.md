@@ -56,7 +56,7 @@ The web dashboard and setup wizard will be available at **`http://localhost:3000
 │   └── web/static/         # Static assets served by FastAPI
 ├── config/                 # Default INI config, reference marker images, neural net models
 ├── tests/
-│   ├── unit/               # ~590+ pytest unit tests mirroring src/ hierarchy
+│   ├── unit/               # ~760+ pytest unit tests mirroring src/ hierarchy
 │   └── integration/        # Tavern REST + Playwright UI + end-to-end tests
 ├── docs/wiki/              # GitHub Wiki source (synced by CI to repo.wiki)
 ├── README.md               # User documentation, features, hardware & quick start

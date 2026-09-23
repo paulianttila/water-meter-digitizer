@@ -15,7 +15,6 @@ import logging
 import math
 from typing import Any
 
-import numpy as np
 import PIL.Image
 import PIL.ImageDraw
 import PIL.ImageEnhance
@@ -25,30 +24,32 @@ from PIL.Image import Image
 
 from configuration import Config
 from data_classes import ImagePosition, MeterConfig, RefImage
+from services.simulator.rendering import (
+    apply_perturbations as _apply_perturbations,
+)
+from services.simulator.rendering import (
+    draw_7segment_digit as _draw_7segment_digit_fn,
+)
+from services.simulator.rendering import (
+    draw_needle_patch as _draw_needle_patch_fn,
+)
+from services.simulator.rendering import (
+    inject_glare as _inject_glare_fn,
+)
+from services.simulator.rendering import (
+    overlay_analog_needles as _overlay_analog_needles_fn,
+)
+from services.simulator.rendering import (
+    overlay_lcd_digits as _overlay_lcd_digits_fn,
+)
+from services.simulator.rendering import (
+    resolve_lcd_bg_color as _resolve_lcd_bg_color_fn,
+)
+from services.simulator.rendering import (
+    resolve_lcd_theme as _resolve_lcd_theme_fn,
+)
 
 logger = logging.getLogger(__name__)
-
-# Segment mapping for 0-9 in standard 7-segment display (a, b, c, d, e, f, g)
-SEGMENTS_7 = {
-    -1: (False, False, False, False, False, False, True),  # Minus sign '-'
-    0: (True, True, True, True, True, True, False),
-    1: (False, True, True, False, False, False, False),
-    2: (True, True, False, True, True, False, True),
-    3: (True, True, True, True, False, False, True),
-    4: (False, True, True, False, False, True, True),
-    5: (True, False, True, True, False, True, True),
-    6: (True, False, True, True, True, True, True),
-    7: (True, True, True, False, False, False, False),
-    8: (True, True, True, True, True, True, True),
-    9: (True, True, True, True, False, True, True),
-}
-
-COLOR_THEMES = {
-    "black": {"active": (15, 20, 25), "ghost": (192, 202, 192), "bg": (205, 218, 205)},
-    "dark": {"active": (50, 220, 50), "ghost": (20, 45, 20), "bg": (15, 25, 15)},
-    "amber": {"active": (255, 170, 0), "ghost": (60, 40, 10), "bg": (30, 20, 10)},
-    "blue": {"active": (20, 40, 90), "ghost": (195, 210, 230), "bg": (210, 225, 245)},
-}
 
 METER_BG_THEMES: dict[str, dict[str, Any]] = {
     "white": {
@@ -442,45 +443,7 @@ class MeterImageGenerator:
         lcd_bg: str = "grey",
     ) -> None:
         """Render 5 authentic 7-segment LCD digits inside the LCD counter window."""
-        center_x = canvas.width // 2
-        center_y = canvas.height // 2
-        win_w = 264
-        win_x = center_x - win_w // 2
-        win_y = center_y - 100
-
-        dw, dh = 39, 66
-        gap = 10
-        start_dx = win_x + 14
-        dy = win_y + 10
-
-        theme = self._resolve_lcd_theme(lcd_color, lcd_bg)
-        active_col = theme["active"]
-        ghost_col = theme["ghost"]
-
-        pad_x = 4
-        pad_y = 5
-        inner_w = dw - pad_x * 2
-        inner_h = dh - pad_y * 2
-
-        draw = PIL.ImageDraw.Draw(canvas)
-
-        for i in range(5):
-            digit_name = f"digit{i+1}"
-            raw_val = int(digit_states.get(digit_name, 0.0))
-            val = -1 if raw_val == -1 else (raw_val % 10)
-            x = start_dx + i * (dw + gap) + pad_x
-            y = dy + pad_y
-            self._draw_7segment_digit(
-                draw,
-                x=x,
-                y=y,
-                w=inner_w,
-                h=inner_h,
-                digit=val,
-                active_color=active_col,
-                ghost_color=ghost_col,
-                slant=0,
-            )
+        _overlay_lcd_digits_fn(canvas, digit_states, lcd_color, lcd_bg)
 
     def _draw_7segment_digit(
         self,
@@ -495,100 +458,17 @@ class MeterImageGenerator:
         slant: int = 0,
     ) -> None:
         """Draw an authentic 7-segment LCD digit with tight, polygonal segment geometry."""
-        sw = max(
-            4, int(w * 0.22)
-        )  # Segment stroke thickness (~7px on 31px inner width)
-        gap = 1  # Tight 1px separation between segments
-        half_h = h // 2
-
-        # 7 segment state flags: (a, b, c, d, e, f, g)
-        seg_active = SEGMENTS_7.get(digit, (True, True, True, True, True, True, False))
-
-        def color_for(seg_idx: int) -> tuple[int, int, int]:
-            return active_color if seg_active[seg_idx] else ghost_color
-
-        # Segment A (Top horizontal trapezoid)
-        draw.polygon(
-            [
-                (x + sw * 0.6 + gap + slant, y),
-                (x + w - sw * 0.6 - gap + slant, y),
-                (x + w - sw - gap + slant, y + sw),
-                (x + sw + gap + slant, y + sw),
-            ],
-            fill=color_for(0),
+        _draw_7segment_digit_fn(
+            draw=draw,
+            x=x,
+            y=y,
+            w=w,
+            h=h,
+            digit=digit,
+            active_color=active_color,
+            ghost_color=ghost_color,
+            slant=slant,
         )
-
-        # Segment B (Top-Right vertical)
-        draw.polygon(
-            [
-                (x + w + slant, y + sw * 0.6 + gap),
-                (x + w + (slant // 2), y + half_h - gap),
-                (x + w - sw + (slant // 2), y + half_h - sw // 2 - gap),
-                (x + w - sw + slant, y + sw + gap),
-            ],
-            fill=color_for(1),
-        )
-
-        # Segment C (Bottom-Right vertical)
-        draw.polygon(
-            [
-                (x + w + (slant // 2), y + half_h + gap),
-                (x + w, y + h - sw * 0.6 - gap),
-                (x + w - sw, y + h - sw - gap),
-                (x + w - sw + (slant // 2), y + half_h + sw // 2 + gap),
-            ],
-            fill=color_for(2),
-        )
-
-        # Segment D (Bottom horizontal trapezoid)
-        draw.polygon(
-            [
-                (x + sw + gap, y + h - sw),
-                (x + w - sw - gap, y + h - sw),
-                (x + w - sw * 0.6 - gap, y + h),
-                (x + sw * 0.6 + gap, y + h),
-            ],
-            fill=color_for(3),
-        )
-
-        # Segment E (Bottom-Left vertical)
-        draw.polygon(
-            [
-                (x + (slant // 2), y + half_h + gap),
-                (x + sw + (slant // 2), y + half_h + sw // 2 + gap),
-                (x + sw, y + h - sw - gap),
-                (x, y + h - sw * 0.6 - gap),
-            ],
-            fill=color_for(4),
-        )
-
-        # Segment F (Top-Left vertical)
-        draw.polygon(
-            [
-                (x + slant, y + sw * 0.6 + gap),
-                (x + sw + slant, y + sw + gap),
-                (x + sw + (slant // 2), y + half_h - sw // 2 - gap),
-                (x + (slant // 2), y + half_h - gap),
-            ],
-            fill=color_for(5),
-        )
-
-        # Segment G (Middle horizontal pointed hexagon)
-        draw.polygon(
-            [
-                (x + sw * 0.7 + gap + (slant // 2), y + half_h),
-                (x + sw + gap + (slant // 2), y + half_h - sw // 2),
-                (x + w - sw - gap + (slant // 2), y + half_h - sw // 2),
-                (x + w - sw * 0.7 - gap + (slant // 2), y + half_h),
-                (x + w - sw - gap + (slant // 2), y + half_h + sw // 2),
-                (x + sw + gap + (slant // 2), y + half_h + sw // 2),
-            ],
-            fill=color_for(6),
-        )
-
-    # -------------------------------------------------------------------------
-    # Analog Needle Rendering
-    # -------------------------------------------------------------------------
 
     def _overlay_analog_needles(
         self,
@@ -597,20 +477,7 @@ class MeterImageGenerator:
         needle_color: str = "red",
     ) -> None:
         """Render rotating needles on the 4 analog dial faces."""
-        dial_centers = [
-            ("analog1", 430, 300),
-            ("analog2", 360, 365),
-            ("analog3", 280, 365),
-            ("analog4", 210, 300),
-        ]
-        dial_size = 76
-
-        for name, cx, cy in dial_centers:
-            val = dial_states.get(name, 0.0)
-            ax, ay = cx - dial_size // 2, cy - dial_size // 2
-            patch = canvas.crop((ax, ay, ax + dial_size, ay + dial_size))
-            self._draw_needle_patch(patch, dial_size, dial_size, val, needle_color)
-            canvas.paste(patch, (ax, ay))
+        _overlay_analog_needles_fn(canvas, dial_states, needle_color)
 
     def _draw_needle_patch(
         self,
@@ -621,55 +488,7 @@ class MeterImageGenerator:
         needle_color: str = "red",
     ) -> None:
         """Draw pointer needle on an analog dial patch."""
-        draw = PIL.ImageDraw.Draw(patch)
-        cx, cy = width // 2, height // 2
-        radius = min(width, height) // 2 - 4
-
-        # Angle: 0.0 = 12 o'clock (-90°), clockwise
-        angle_deg = (value % 10.0) * 36.0 - 90.0
-        angle_rad = math.radians(angle_deg)
-        perp_rad = angle_rad + math.pi / 2
-
-        tip_x = cx + radius * 0.88 * math.cos(angle_rad)
-        tip_y = cy + radius * 0.88 * math.sin(angle_rad)
-        tail_x = cx - radius * 0.24 * math.cos(angle_rad)
-        tail_y = cy - radius * 0.24 * math.sin(angle_rad)
-
-        base_half_w = max(2.0, radius * 0.09)
-        b1_x = cx + base_half_w * math.cos(perp_rad)
-        b1_y = cy + base_half_w * math.sin(perp_rad)
-        b2_x = cx - base_half_w * math.cos(perp_rad)
-        b2_y = cy - base_half_w * math.sin(perp_rad)
-
-        body_col = (225, 25, 25) if needle_color.lower() == "red" else (25, 25, 30)
-        outline_col = (140, 15, 15) if needle_color.lower() == "red" else (10, 10, 15)
-
-        # Shadow
-        draw.polygon(
-            [
-                (tip_x + 2, tip_y + 2),
-                (b1_x + 2, b1_y + 2),
-                (tail_x + 2, tail_y + 2),
-                (b2_x + 2, b2_y + 2),
-            ],
-            fill=(30, 30, 35),
-        )
-
-        # Needle Body
-        draw.polygon(
-            [(tip_x, tip_y), (b1_x, b1_y), (tail_x, tail_y), (b2_x, b2_y)],
-            fill=body_col,
-            outline=outline_col,
-        )
-
-        # Pivot Cap
-        cap_r = max(3.0, radius * 0.14)
-        draw.ellipse(
-            (cx - cap_r, cy - cap_r, cx + cap_r, cy + cap_r),
-            fill=(35, 38, 45),
-            outline=(180, 185, 195),
-            width=1,
-        )
+        _draw_needle_patch_fn(patch, width, height, value, needle_color)
 
     # -------------------------------------------------------------------------
     # Color Resolvers
@@ -691,29 +510,10 @@ class MeterImageGenerator:
         return METER_BG_THEMES.get(resolved, METER_BG_THEMES["white"])
 
     def _resolve_lcd_theme(self, lcd_color: str, lcd_bg: str) -> dict[str, Any]:
-        key = lcd_color.lower()
-        theme = COLOR_THEMES.get(key, COLOR_THEMES["black"]).copy()
-        if lcd_bg:
-            theme["bg"] = self._resolve_lcd_bg_color(lcd_bg)
-        bg = theme["bg"]
-        act = theme["active"]
-        # Ghost segments: subtle 12% blend of active color onto background
-        theme["ghost"] = (
-            int(bg[0] * 0.88 + act[0] * 0.12),
-            int(bg[1] * 0.88 + act[1] * 0.12),
-            int(bg[2] * 0.88 + act[2] * 0.12),
-        )
-        return theme
+        return _resolve_lcd_theme_fn(lcd_color, lcd_bg)
 
     def _resolve_lcd_bg_color(self, lcd_bg: str) -> tuple[int, int, int]:
-        bg_map = {
-            "grey": (210, 216, 210),
-            "green": (195, 218, 195),
-            "amber": (230, 205, 155),
-            "dark": (18, 26, 20),
-            "blue": (205, 220, 240),
-        }
-        return bg_map.get(lcd_bg.lower(), (210, 216, 210))
+        return _resolve_lcd_bg_color_fn(lcd_bg)
 
     # -------------------------------------------------------------------------
     # Perturbations & Realism Augmentation
@@ -732,32 +532,17 @@ class MeterImageGenerator:
         blur: float = 0.0,
     ) -> Image:
         """Apply camera and environmental artifacts for CV robustness testing."""
-        img = image.copy()
-
-        if glare:
-            img = self._inject_glare(img, glare_pos, glare_intensity)
-
-        if rotate != 0.0:
-            img = img.rotate(
-                rotate, resample=PIL.Image.Resampling.BICUBIC, expand=False
-            )
-
-        if brightness != 1.0:
-            img = PIL.ImageEnhance.Brightness(img).enhance(brightness)
-        if contrast != 1.0:
-            img = PIL.ImageEnhance.Contrast(img).enhance(contrast)
-
-        if blur > 0.0:
-            img = img.filter(PIL.ImageFilter.GaussianBlur(radius=blur))
-
-        if noise > 0.0:
-            img_np = np.array(img, dtype=np.float32)
-            sigma = (noise / 100.0) * 255.0
-            gauss = np.random.normal(0, sigma, img_np.shape)
-            noisy = np.clip(img_np + gauss, 0, 255).astype(np.uint8)
-            img = PIL.Image.fromarray(noisy)
-
-        return img
+        return _apply_perturbations(
+            image=image,
+            rotate=rotate,
+            glare=glare,
+            glare_pos=glare_pos,
+            glare_intensity=glare_intensity,
+            noise=noise,
+            brightness=brightness,
+            contrast=contrast,
+            blur=blur,
+        )
 
     def _inject_glare(
         self,
@@ -766,31 +551,7 @@ class MeterImageGenerator:
         intensity: float = 1.0,
     ) -> Image:
         """Overlay a specular glare hotspot."""
-        w, h = image.size
-        if pos is not None:
-            gx, gy = pos
-            if 0.0 <= gx <= 1.0 and 0.0 <= gy <= 1.0:
-                glare_x = int(gx * w)
-                glare_y = int(gy * h)
-            else:
-                glare_x = int(gx)
-                glare_y = int(gy)
-        else:
-            glare_x = int(0.45 * w)
-            glare_y = int(0.35 * h)
-
-        radius = int(min(w, h) * 0.22)
-
-        y, x = np.ogrid[:h, :w]
-        dist_from_center = np.sqrt(((x - glare_x) ** 2) / 1.5 + ((y - glare_y) ** 2))
-        glare_mask = np.clip(1.0 - dist_from_center / radius, 0.0, 1.0)
-        glare_mask = np.power(glare_mask, 1.8) * min(2.0, max(0.2, intensity))
-
-        img_np = np.array(image, dtype=np.float32)
-        for c in range(3):
-            img_np[:, :, c] = np.clip(img_np[:, :, c] + glare_mask * 235.0, 0, 255)
-
-        return PIL.Image.fromarray(img_np.astype(np.uint8))
+        return _inject_glare_fn(image, pos, intensity)
 
     # -------------------------------------------------------------------------
     # Synthetic Template Config Helper
