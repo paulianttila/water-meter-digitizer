@@ -14,7 +14,7 @@ from services.poller.scheduler import BackgroundPoller
 async def test_background_poller_lifecycle_and_run():
     poller_cfg = Poller(
         enabled=True,
-        interval_seconds=10,
+        cron="*/10 * * * * *",
         run_on_startup=False,
     )
 
@@ -62,7 +62,7 @@ async def test_background_poller_lifecycle_and_run():
 async def test_background_poller_error_handling():
     poller_cfg = Poller(
         enabled=True,
-        interval_seconds=10,
+        cron="*/10 * * * * *",
         run_on_startup=False,
     )
 
@@ -88,7 +88,7 @@ async def test_background_poller_error_handling():
 async def test_background_poller_manual_trigger_when_disabled():
     poller_cfg = Poller(
         enabled=False,
-        interval_seconds=60,
+        cron="0 * * * * *",
         run_on_startup=False,
     )
 
@@ -119,7 +119,7 @@ async def test_background_poller_manual_trigger_when_disabled():
 def test_background_poller_start_without_loop():
     poller_cfg = Poller(
         enabled=True,
-        interval_seconds=60,
+        cron="0 * * * * *",
         run_on_startup=False,
     )
 
@@ -136,7 +136,7 @@ def test_background_poller_start_without_loop():
 async def test_background_poller_consensus_filtering():
     poller_cfg = Poller(
         enabled=True,
-        interval_seconds=10,
+        cron="*/10 * * * * *",
         consensus_reads=3,
         run_on_startup=False,
     )
@@ -197,7 +197,7 @@ def test_poller_and_mqtt_api_endpoints():
     mock_poller.get_status.return_value = {
         "enabled": True,
         "running": True,
-        "interval_seconds": 300,
+        "cron": "0 */5 * * * *",
         "consensus_reads": 1,
         "consensus_buffer_size": 0,
     }
@@ -219,7 +219,7 @@ def test_poller_and_mqtt_api_endpoints():
     data = resp.json()
     assert "enabled" in data
     assert "running" in data
-    assert "interval_seconds" in data
+    assert "cron" in data
     assert "consensus_reads" in data
 
     # Test /poller/trigger
@@ -236,44 +236,51 @@ def test_poller_and_mqtt_api_endpoints():
     assert "topic_prefix" in data_mqtt
 
 
-def test_calculate_next_aligned_delay_quarter_minute():
-    from services.poller.scheduler import calculate_next_aligned_delay
+def test_calculate_next_cron_delay_seconds():
+    from datetime import UTC, datetime
 
-    # At t=12.3, interval=15: next boundary is 15.0 -> delay=2.7
-    delay, target_dt = calculate_next_aligned_delay(now=12.3, interval_seconds=15)
+    from services.poller.scheduler import calculate_next_cron_delay
+
+    base = datetime(2026, 9, 23, 12, 0, 12, 300000, tzinfo=UTC)
+    delay, next_dt = calculate_next_cron_delay("*/15 * * * * *", now=base)
     assert abs(delay - 2.7) < 1e-4
-    assert target_dt.second == 15
+    assert next_dt.second == 15
 
-    # At t=15.0, interval=15: next boundary is 30.0 -> delay=15.0
-    delay2, target_dt2 = calculate_next_aligned_delay(now=15.0, interval_seconds=15)
+    # At boundary 15.0s, targets 30.0s
+    base2 = datetime(2026, 9, 23, 12, 0, 15, 0, tzinfo=UTC)
+    delay2, next_dt2 = calculate_next_cron_delay("*/15 * * * * *", now=base2)
     assert abs(delay2 - 15.0) < 1e-4
-    assert target_dt2.second == 30
+    assert next_dt2.second == 30
 
-    # At t=44.98 with min_delay=0.05: too close to 45.0, targets 60.0 (:00)
-    delay3, target_dt3 = calculate_next_aligned_delay(
-        now=44.98, interval_seconds=15, min_delay=0.05
+    # At 44.98s with min_delay=0.05, skips 45.0s to 12:01:00
+    base3 = datetime(2026, 9, 23, 12, 0, 44, 980000, tzinfo=UTC)
+    delay3, next_dt3 = calculate_next_cron_delay(
+        "*/15 * * * * *", now=base3, min_delay=0.05
     )
     assert abs(delay3 - 15.02) < 1e-4
-    assert target_dt3.second == 0
+    assert next_dt3.second == 0
+    assert next_dt3.minute == 1
 
 
-def test_calculate_next_aligned_delay_full_minute():
-    from services.poller.scheduler import calculate_next_aligned_delay
+def test_calculate_next_cron_delay_standard_5_field():
+    from datetime import UTC, datetime
 
-    # Sub-minute into 60s interval: at t=35.0, delay=25.0, target second=0
-    delay, target_dt = calculate_next_aligned_delay(now=35.0, interval_seconds=60)
-    assert abs(delay - 25.0) < 1e-4
-    assert target_dt.second == 0
+    from services.poller.scheduler import calculate_next_cron_delay
+
+    base = datetime(2026, 9, 23, 12, 3, 20, tzinfo=UTC)
+    delay, next_dt = calculate_next_cron_delay("*/5 * * * *", now=base)
+    assert next_dt.minute == 5
+    assert next_dt.second == 0
+    assert abs(delay - 100.0) < 1e-4
 
 
 @pytest.mark.anyio
-async def test_background_poller_clock_sync_schedule():
+async def test_background_poller_cron_schedule():
     from services.poller.scheduler import BackgroundPoller
 
     poller_cfg = Poller(
         enabled=True,
-        interval_seconds=15,
-        sync_to_clock=True,
+        cron="*/15 * * * * *",
         run_on_startup=False,
     )
     mock_readout = MagicMock(
@@ -285,13 +292,17 @@ async def test_background_poller_clock_sync_schedule():
         )
     )
     poller = BackgroundPoller(config=poller_cfg, readout_func=mock_readout)
-    assert poller.get_status()["sync_to_clock"] is True
+    assert poller.get_status()["cron"] == "*/15 * * * * *"
 
     poller.start()
     assert poller._running is True
     await asyncio.sleep(0.05)
     assert poller.next_run is not None
-    # Next run second should be one of :00, :15, :30, :45
     assert poller.next_run.second in (0, 15, 30, 45)
 
     poller.stop()
+
+
+def test_poller_invalid_cron():
+    with pytest.raises(ValueError, match="Invalid cron expression"):
+        Poller(cron="invalid cron expression")

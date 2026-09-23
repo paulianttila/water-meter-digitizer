@@ -80,7 +80,7 @@ def test_get_app_context_from_request():
 
 def test_dict_access_mixin_on_typed_models():
     # 1. PollerStatus
-    poller = PollerStatus(enabled=True, running=True, interval_seconds=120)
+    poller = PollerStatus(enabled=True, running=True, cron="0 */2 * * * *")
     assert poller.enabled is True
     assert poller["enabled"] is True
     assert poller.get("enabled") is True

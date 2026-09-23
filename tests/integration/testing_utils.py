@@ -62,11 +62,11 @@ def check_poller_status_response(response: requests.Response):
     data = response.json()
     assert "enabled" in data
     assert "running" in data
-    assert "interval_seconds" in data
+    assert "cron" in data
     assert "total_runs" in data
     assert isinstance(data["enabled"], bool)
     assert isinstance(data["running"], bool)
-    assert isinstance(data["interval_seconds"], int)
+    assert isinstance(data["cron"], str)
     assert isinstance(data["total_runs"], int)
 
 

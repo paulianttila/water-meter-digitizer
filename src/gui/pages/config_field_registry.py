@@ -248,20 +248,14 @@ FIELD_OVERRIDES: dict[tuple[str, str], dict[str, Any]] = {
         "step": 1,
     },
     # [Poller]
-    ("poller", "intervalseconds"): {
-        "type": "int",
-        "min": 1,
-        "step": 10,
-        "description": "Polling interval in seconds",
+    ("poller", "cron"): {
+        "type": "str",
+        "description": "Cron schedule with second resolution (6 fields: s m h d m wd) or 5 fields (e.g. '*/15 * * * * *')",
     },
     ("poller", "retryintervalseconds"): {
         "type": "int",
         "min": 1,
         "step": 5,
-    },
-    ("poller", "synctoclock"): {
-        "type": "bool",
-        "description": "Align background polls to wall-clock second boundaries (e.g. 15s intervals run at :00, :15, :30, :45)",
     },
     ("poller", "consensusreads"): {
         "type": "int",

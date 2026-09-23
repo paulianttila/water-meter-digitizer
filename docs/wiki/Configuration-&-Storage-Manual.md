@@ -244,17 +244,22 @@ Time Machine image frame recording and WebP compression settings.
 ---
 
 ### `[Poller]`
-Automated background interval scheduling.
+Automated background scheduling via cron expressions with second-level resolution.
 
 | Parameter | Type | Default | Description |
 | :--- | :--- | :--- | :--- |
 | `Enabled` | boolean | `False` | Enable scheduled background poller. |
-| `IntervalSeconds` | integer | `300` | Interval in seconds between background readouts (e.g. 60–300s). |
-| `SyncToClock` | boolean | `True` | Align background polls to wall-clock second boundaries (e.g., 15s intervals run at `:00`, `:15`, `:30`, `:45`). |
+| `Cron` | string | `0 */5 * * * *` | Cron schedule expression. Supports 6-field second resolution (`s m h d m wd`) or standard 5-field minute resolution (`m h d m wd` at second `:00`). |
 | `RunOnStartup` | boolean | `True` | Trigger an immediate readout cycle upon application startup. |
 | `SaveImages` | boolean | `False` | Save intermediate debug images during polled readouts. |
 | `RetryIntervalSeconds` | integer | `30` | Retry interval in seconds following a capture failure or outlier detection. |
 | `ConsensusReads` | integer | `1` | Number of consecutive reads in sliding window for median temporal consensus filtering (1=disabled, 2–10=active). |
+
+#### Cron Schedule Examples
+- `*/15 * * * * *`: Every 15 seconds (at `:00`, `:15`, `:30`, `:45`).
+- `0,30 * * * * *`: Twice a minute (at `:00` and `:30`).
+- `0 */5 * * * *` or `*/5 * * * *`: Every 5 minutes at second `:00`.
+- `0 0 6,18 * * *`: Twice daily at exactly 06:00:00 and 18:00:00.
 
 ---
 
@@ -308,7 +313,7 @@ Any parameter in `config.ini` can be overridden via environment variables using 
 | `METER_MQTT_BROKER` | `[MQTT] Broker` | `192.168.1.100` |
 | `METER_MQTT_PORT` | `[MQTT] Port` | `1883` |
 | `METER_MQTT_TOPIC_PREFIX` | `[MQTT] TopicPrefix` | `watermeter` |
-| `METER_POLLER_INTERVAL_SECONDS` | `[Poller] IntervalSeconds` | `60` |
+| `METER_POLLER_CRON` | `[Poller] Cron` | `*/15 * * * * *` |
 | `TZ` | Container Timezone | `Europe/Helsinki` |
 
 ---

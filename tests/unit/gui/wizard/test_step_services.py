@@ -12,7 +12,7 @@ def test_services_step_load_and_apply():
 
     # Mock UI elements
     step.poller_enabled = MagicMock(value=False)
-    step.poller_interval = MagicMock(value=300)
+    step.poller_cron = MagicMock(value="0 */5 * * * *")
     step.poller_run_on_startup = MagicMock(value=True)
     step.poller_save_images = MagicMock(value=False)
     step.poller_retry_interval = MagicMock(value=30)
@@ -62,7 +62,7 @@ def test_services_step_load_and_apply():
     # Test load from config
     config = Config()
     config.poller.enabled = True
-    config.poller.interval_seconds = 600
+    config.poller.cron = "0 */10 * * * *"
     config.mqtt.enabled = True
     config.mqtt.broker = "192.168.1.50"
     config.history.retention_days = 60
@@ -74,7 +74,7 @@ def test_services_step_load_and_apply():
     step.load_from_config(config)
 
     assert step.poller_enabled.value is True
-    assert step.poller_interval.value == 600
+    assert step.poller_cron.value == "0 */10 * * * *"
     assert step.mqtt_enabled.value is True
     assert step.mqtt_broker.value == "192.168.1.50"
     assert step.history_retention_days.value == 60
@@ -86,7 +86,7 @@ def test_services_step_load_and_apply():
     # Test apply to config
     new_config = Config()
     step.poller_enabled.value = True
-    step.poller_interval.value = 120
+    step.poller_cron.value = "*/15 * * * * *"
     step.mqtt_enabled.value = True
     step.mqtt_broker.value = "mqtt.local"
     step.history_backend.value = "memory"
@@ -101,7 +101,7 @@ def test_services_step_load_and_apply():
     step.apply_to_config(new_config)
 
     assert new_config.poller.enabled is True
-    assert new_config.poller.interval_seconds == 120
+    assert new_config.poller.cron == "*/15 * * * * *"
     assert new_config.mqtt.enabled is True
     assert new_config.mqtt.broker == "mqtt.local"
     assert new_config.history.retention_days == 14
@@ -140,3 +140,28 @@ def test_services_step_show():
         assert step.poller_enabled is not None
         assert step.mqtt_enabled is not None
         assert step.history_enabled is not None
+
+
+def test_services_step_cron_preview_and_presets():
+    step = ServicesStep(name="Services", set_image_callback=MagicMock())
+    step.poller_cron = MagicMock(value="*/15 * * * * *")
+    step.poller_cron_preview = MagicMock(text="")
+
+    # Valid cron preview
+    step._update_cron_preview()
+    assert "Next runs:" in step.poller_cron_preview.text
+
+    # Invalid cron preview
+    step.poller_cron.value = "not a valid cron"
+    step._update_cron_preview()
+    assert step.poller_cron_preview.text == "Invalid cron syntax"
+
+    # Empty cron preview
+    step.poller_cron.value = ""
+    step._update_cron_preview()
+    assert step.poller_cron_preview.text == "Enter a valid cron expression"
+
+    # Preset selection
+    step._set_cron_preset("0 */5 * * * *")
+    assert step.poller_cron.value == "0 */5 * * * *"
+    assert "Next runs:" in step.poller_cron_preview.text

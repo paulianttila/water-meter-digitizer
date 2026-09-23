@@ -151,7 +151,7 @@ def test_config():
     ]
 
     assert config.poller.enabled is False
-    assert config.poller.interval_seconds == 300
+    assert config.poller.cron == "0 */5 * * * *"
     assert config.poller.run_on_startup is True
     assert config.poller.save_images is False
     assert config.poller.retry_interval_seconds == 30
@@ -443,7 +443,7 @@ LogLevel = INFO
 
 [Poller]
 Enabled = True
-IntervalSeconds = 60
+Cron = 0 * * * * *
 ConsensusReads = 3
 """
     test_ini = tmp_path / "config.ini"
@@ -459,23 +459,22 @@ ConsensusReads = 3
     assert reloaded.poller.consensus_reads == 3
 
 
-def test_config_poller_sync_to_clock_roundtrip(tmp_path):
+def test_config_poller_cron_roundtrip(tmp_path):
     ini_content = """[DEFAULT]
 LogLevel = INFO
 
 [Poller]
 Enabled = True
-IntervalSeconds = 15
-SyncToClock = False
+Cron = */15 * * * * *
 """
     test_ini = tmp_path / "config.ini"
     test_ini.write_text(ini_content)
 
     cfg = Config().load_from_file(str(test_ini))
-    assert cfg.poller.sync_to_clock is False
+    assert cfg.poller.cron == "*/15 * * * * *"
 
     saved = cfg.save_to_string()
-    assert "SyncToClock=False" in saved
+    assert "Cron=*/15 * * * * *" in saved
 
     reloaded = Config().load_from_string(saved)
-    assert reloaded.poller.sync_to_clock is False
+    assert reloaded.poller.cron == "*/15 * * * * *"

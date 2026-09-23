@@ -18,6 +18,7 @@ dependencies = [
     "sqlalchemy>=2.0.0",
     "paho-mqtt>=2.0.0",
     "uvicorn>=0.29.0",
+    "croniter>=6.2.4",
 ]
 
 [project.optional-dependencies]

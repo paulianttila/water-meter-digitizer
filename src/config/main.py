@@ -143,7 +143,7 @@ class Config(BaseSettings):
             ),
             poller=Poller(
                 enabled=False,
-                interval_seconds=300,
+                cron="0 */5 * * * *",
                 run_on_startup=True,
                 save_images=False,
                 retry_interval_seconds=30,

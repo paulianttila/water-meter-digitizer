@@ -1,6 +1,5 @@
-"""Pydantic data models for configuration sections."""
-
-from pydantic import BaseModel, Field
+import croniter
+from pydantic import BaseModel, Field, field_validator
 
 from data_classes import ImagePosition, RefImage
 from services.leak.models import ValueType
@@ -103,12 +102,21 @@ class Snapshots(BaseModel):
 
 class Poller(BaseModel):
     enabled: bool = False
-    interval_seconds: int = 300
-    sync_to_clock: bool = True
+    cron: str = "0 */5 * * * *"
     run_on_startup: bool = True
     save_images: bool = False
     retry_interval_seconds: int = 30
     consensus_reads: int = Field(default=1, ge=1, le=10)
+
+    @field_validator("cron")
+    @classmethod
+    def validate_cron(cls, v: str) -> str:
+        if not v or not v.strip():
+            raise ValueError("Poller cron expression cannot be empty")
+        v_clean = v.strip()
+        if not croniter.croniter.is_valid(v_clean, second_at_beginning=True):
+            raise ValueError(f"Invalid cron expression: '{v_clean}'")
+        return v_clean
 
 
 class MQTT(BaseModel):

@@ -74,7 +74,7 @@ def test_poller_status_and_trigger():
     mock_poller.get_status.return_value = {
         "enabled": True,
         "running": True,
-        "interval_seconds": 30,
+        "cron": "*/30 * * * * *",
     }
     app.state.poller = mock_poller
 

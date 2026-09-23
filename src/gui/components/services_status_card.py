@@ -120,7 +120,7 @@ class ServicesStatusCard(BaseComponent):
     def _render_content(self) -> None:
         p_enabled = self._poller_data.get("enabled", False)
         p_running = self._poller_data.get("running", False)
-        p_interval = self._poller_data.get("interval_seconds", 0)
+        p_cron = self._poller_data.get("cron", "—")
         p_total = self._poller_data.get("total_runs", 0)
         p_success = self._poller_data.get("successful_runs", 0)
         p_failed = self._poller_data.get("failed_runs", 0)
@@ -180,10 +180,10 @@ class ServicesStatusCard(BaseComponent):
                             ui.label(p_badge_label)
 
                     with ui.row().classes("items-baseline gap-2 my-1"):
-                        ui.label(f"{p_interval}s").classes(
+                        ui.label(p_cron or "—").classes(
                             f"{FONT_MONO_VALUE} text-cyan-300"
                         )
-                        ui.label("poll interval").classes("text-xs text-gray-400")
+                        ui.label("schedule").classes("text-xs text-gray-400")
 
                     with ui.row().classes(ROW_HEADER):
                         ui.label(

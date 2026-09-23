@@ -80,7 +80,7 @@ def mock_callbacks():
     cb.get_poller_status.return_value = {
         "enabled": True,
         "running": True,
-        "interval_seconds": 30,
+        "cron": "*/30 * * * * *",
         "total_runs": 10,
         "successful_runs": 10,
         "failed_runs": 0,
@@ -738,7 +738,7 @@ def test_services_status_card_with_error(mock_callbacks):
     poller_err_data = {
         "enabled": True,
         "running": True,
-        "interval_seconds": 60,
+        "cron": "0 * * * * *",
         "total_runs": 5,
         "successful_runs": 4,
         "failed_runs": 1,

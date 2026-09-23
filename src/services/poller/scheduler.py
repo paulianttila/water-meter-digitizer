@@ -1,11 +1,12 @@
 import asyncio
 import contextlib
 import logging
-import math
 import time
 from collections.abc import Callable
-from datetime import datetime, timedelta
+from datetime import datetime
 from typing import Any
+
+import croniter
 
 from config.models import Poller
 from processor.digitizer import MeterResult
@@ -15,30 +16,35 @@ from services.poller.consensus import ConsensusFilter
 logger = logging.getLogger(__name__)
 
 
-def calculate_next_aligned_delay(
-    now: float,
-    interval_seconds: int,
+def calculate_next_cron_delay(
+    cron_expr: str,
+    now: datetime | None = None,
     min_delay: float = 0.05,
 ) -> tuple[float, datetime]:
-    """Compute seconds to wait until next wall-clock modulo boundary and return target datetime.
+    """Compute delay in seconds and target datetime for the next execution of a cron expression.
+
+    Supports 6 fields (second resolution: 'second minute hour day month day_of_week')
+    and standard 5 fields ('minute hour day month day_of_week' evaluated at second :00).
 
     Args:
-        now: Current Unix epoch timestamp in seconds.
-        interval_seconds: Polling interval in seconds (>= 1).
-        min_delay: Minimum acceptable delay before targeting next interval (avoids double-firing).
+        cron_expr: Cron expression string.
+        now: Optional reference datetime (defaults to current time with local timezone).
+        min_delay: Minimum acceptable delay before targeting next boundary (avoids duplicate runs).
 
     Returns:
         tuple[float, datetime]: (seconds_to_wait, target_datetime_with_timezone)
     """
-    interval = max(1, interval_seconds)
-    next_boundary = (math.floor(now / interval) + 1) * interval
-    delay = next_boundary - now
-    if delay <= min_delay:
-        next_boundary += interval
-        delay = next_boundary - now
+    if now is None:
+        now = datetime.now().astimezone()
 
-    target_dt = datetime.fromtimestamp(next_boundary).astimezone()
-    return delay, target_dt
+    it = croniter.croniter(cron_expr.strip(), now, second_at_beginning=True)
+    next_dt = it.get_next(datetime)
+    delay = (next_dt - now).total_seconds()
+    if delay <= min_delay:
+        next_dt = it.get_next(datetime)
+        delay = (next_dt - now).total_seconds()
+
+    return max(0.0, delay), next_dt
 
 
 class BackgroundPoller:
@@ -89,8 +95,8 @@ class BackgroundPoller:
         self._trigger_event.clear()
         self._task = loop.create_task(self._run_loop())
         logger.info(
-            "Background poller started with interval %ds",
-            self.config.interval_seconds,
+            "Background poller started with cron schedule '%s'",
+            self.config.cron,
         )
 
     def stop(self) -> None:
@@ -122,21 +128,14 @@ class BackgroundPoller:
             await self._execute_poll()
 
         while self._running:
-            interval = max(1, self.config.interval_seconds)
-            if getattr(self.config, "sync_to_clock", True):
-                delay, next_dt = calculate_next_aligned_delay(time.time(), interval)
-                self.next_run = next_dt
-            else:
-                delay = float(interval)
-                self.next_run = datetime.now().astimezone() + timedelta(
-                    seconds=interval
-                )
+            delay, next_dt = calculate_next_cron_delay(self.config.cron)
+            self.next_run = next_dt
 
             try:
-                # Wait for interval or immediate trigger
+                # Wait for cron delay or immediate trigger
                 await asyncio.wait_for(self._trigger_event.wait(), timeout=delay)
                 self._trigger_event.clear()
-                logger.debug("Poller triggered ahead of interval timer")
+                logger.debug("Poller triggered ahead of cron schedule")
             except TimeoutError:
                 pass
             except asyncio.CancelledError:
@@ -213,8 +212,7 @@ class BackgroundPoller:
             "enabled": self.config.enabled,
             "running": self._running,
             "is_polling": self._is_polling,
-            "interval_seconds": self.config.interval_seconds,
-            "sync_to_clock": getattr(self.config, "sync_to_clock", True),
+            "cron": self.config.cron,
             "consensus_reads": self.config.consensus_reads,
             "consensus_buffer_size": self.consensus_filter.current_size,
             "last_run": self.last_run.isoformat() if self.last_run else None,

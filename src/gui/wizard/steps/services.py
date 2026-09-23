@@ -1,8 +1,11 @@
 from collections.abc import Callable
+from datetime import datetime
 
+import croniter
 from nicegui import ui
 
 from configuration import Config
+from gui.theme import ROW_ITEMS_CENTER, TEXT_MONO_MUTED
 from services.leak.models import ValueType
 
 from .base import BaseStep
@@ -35,7 +38,8 @@ class ServicesStep(BaseStep):
     def load_from_config(self, config: Config) -> None:
         # Poller
         self.poller_enabled.value = config.poller.enabled
-        self.poller_interval.value = config.poller.interval_seconds
+        self.poller_cron.value = config.poller.cron
+        self._update_cron_preview()
         self.poller_run_on_startup.value = config.poller.run_on_startup
         self.poller_save_images.value = config.poller.save_images
         self.poller_retry_interval.value = config.poller.retry_interval_seconds
@@ -120,10 +124,37 @@ class ServicesStep(BaseStep):
         self.data_dir.value = config.data_dir
         self.min_confidence_threshold.value = config.min_confidence_threshold
 
+    def _set_cron_preset(self, expr: str) -> None:
+        if hasattr(self, "poller_cron") and self.poller_cron is not None:
+            self.poller_cron.value = expr
+            self._update_cron_preview()
+
+    def _update_cron_preview(self) -> None:
+        if not hasattr(self, "poller_cron_preview") or self.poller_cron_preview is None:
+            return
+        expr = str(getattr(self.poller_cron, "value", "") or "").strip()
+        if not expr:
+            self.poller_cron_preview.text = "Enter a valid cron expression"
+            return
+        if not croniter.croniter.is_valid(expr, second_at_beginning=True):
+            self.poller_cron_preview.text = "Invalid cron syntax"
+            return
+        try:
+            now = datetime.now().astimezone()
+            it = croniter.croniter(expr, now, second_at_beginning=True)
+            runs = [it.get_next(datetime).strftime("%H:%M:%S") for _ in range(3)]
+            self.poller_cron_preview.text = f"Next runs: {', '.join(runs)}"
+        except Exception:
+            self.poller_cron_preview.text = "Invalid cron syntax"
+
     def apply_to_config(self, config: Config) -> None:
         # Poller
         config.poller.enabled = bool(self.poller_enabled.value)
-        config.poller.interval_seconds = int(self.poller_interval.value or 300)
+        val = str(self.poller_cron.value or "0 */5 * * * *").strip()
+        if val and croniter.croniter.is_valid(val, second_at_beginning=True):
+            config.poller.cron = val
+        else:
+            config.poller.cron = "0 */5 * * * *"
         config.poller.run_on_startup = bool(self.poller_run_on_startup.value)
         config.poller.save_images = bool(self.poller_save_images.value)
         config.poller.retry_interval_seconds = int(
@@ -255,15 +286,54 @@ class ServicesStep(BaseStep):
                         )
 
                     with ui.grid(
-                        columns="repeat(auto-fit, minmax(180px, 1fr))"
+                        columns="repeat(auto-fit, minmax(220px, 1fr))"
                     ).classes("w-full gap-2.5"):
-                        self.poller_interval = (
-                            ui.number("Interval (seconds)", value=300, min=5, step=10)
-                            .props("dense outlined")
-                            .tooltip(
-                                "Time between automatic readouts (e.g. 300 = 5 minutes)"
+                        with ui.column().classes("gap-1"):
+                            self.poller_cron = (
+                                ui.input(
+                                    "Cron Schedule",
+                                    value="0 */5 * * * *",
+                                    validation={
+                                        "Invalid cron (requires 5 or 6 fields)": lambda v: bool(
+                                            v
+                                            and croniter.croniter.is_valid(
+                                                str(v).strip(), second_at_beginning=True
+                                            )
+                                        )
+                                    },
+                                    on_change=lambda _: self._update_cron_preview(),
+                                )
+                                .props("dense outlined")
+                                .tooltip(
+                                    "Cron expression with second resolution (6 fields: s m h d m wd) or standard 5 fields"
+                                )
                             )
-                        )
+                            with ui.row().classes(f"{ROW_ITEMS_CENTER} flex-wrap"):
+                                ui.label("Presets:").classes(
+                                    "text-[11px] text-gray-400 font-medium"
+                                )
+                                for label, expr in [
+                                    ("15s", "*/15 * * * * *"),
+                                    ("30s", "*/30 * * * * *"),
+                                    ("1m", "0 * * * * *"),
+                                    ("5m", "0 */5 * * * *"),
+                                ]:
+                                    ui.button(
+                                        label,
+                                        on_click=lambda _, e=expr: self._set_cron_preset(
+                                            e
+                                        ),
+                                    ).props(
+                                        "dense outline size=xs color=primary"
+                                    ).classes(
+                                        "text-[10px]"
+                                    )
+
+                            self.poller_cron_preview = ui.label("").classes(
+                                TEXT_MONO_MUTED
+                            )
+                            self._update_cron_preview()
+
                         self.poller_retry_interval = (
                             ui.number(
                                 "Retry Interval (seconds)", value=30, min=5, step=5
