@@ -191,7 +191,7 @@ Interactive API documentation and schema inspection are available live at:
 
 #### 4. Service & Poller Control
 - **`POST /poller/trigger`**: Force immediate background polling cycle.
-- **`GET /poller/status`**: Active polling interval and next execution timestamp.
+- **`GET /poller/status`**: Active polling interval, consensus window size/buffer, and execution timestamps.
 - **`GET /mqtt/status`**: Broker connection health and message statistics.
 
 #### 5. System Health & Probes

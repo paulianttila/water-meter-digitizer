@@ -252,7 +252,8 @@ Automated background interval scheduling.
 | `IntervalSeconds` | integer | `300` | Interval in seconds between background readouts (e.g. 60–300s). |
 | `RunOnStartup` | boolean | `True` | Trigger an immediate readout cycle upon application startup. |
 | `SaveImages` | boolean | `False` | Save intermediate debug images during polled readouts. |
-| `RetryIntervalSeconds` | integer | `30` | Retry interval in seconds following a capture failure. |
+| `RetryIntervalSeconds` | integer | `30` | Retry interval in seconds following a capture failure or outlier detection. |
+| `ConsensusReads` | integer | `1` | Number of consecutive reads in sliding window for median temporal consensus filtering (1=disabled, 2–10=active). |
 
 ---
 
