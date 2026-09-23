@@ -195,6 +195,8 @@ class PollerStatus(BaseModel, DictAccessMixin):
     successful_runs: int = 0
     failed_runs: int = 0
     last_error: str = ""
+    consensus_reads: int = 1
+    consensus_buffer_size: int = 0
 
 
 class MQTTStatus(BaseModel, DictAccessMixin):
@@ -205,8 +207,8 @@ class MQTTStatus(BaseModel, DictAccessMixin):
     topic_prefix: str = "watermeter"
     homeassistant_discovery: bool = True
     client_id: str = "water-meter-digitizer"
-    last_published_topics: list[str] = Field(default_factory=list)
-    last_published_readout: str | None = None
+    last_published_topics: dict[str, str] | list[str] = Field(default_factory=dict)
+    last_published_readout: dict[str, Any] | str | None = None
 
 
 class ConfigBackupInfo(BaseModel, DictAccessMixin):

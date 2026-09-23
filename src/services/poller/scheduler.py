@@ -1,4 +1,5 @@
 import asyncio
+import contextlib
 import logging
 import time
 from collections.abc import Callable
@@ -8,6 +9,7 @@ from typing import Any
 from config.models import Poller
 from processor.digitizer import MeterResult
 from services.mqtt.client import MQTTService
+from services.poller.consensus import ConsensusFilter
 
 logger = logging.getLogger(__name__)
 
@@ -24,6 +26,7 @@ class BackgroundPoller:
         self.config = config
         self.readout_func = readout_func
         self.mqtt_service = mqtt_service
+        self.consensus_filter = ConsensusFilter(window_size=self.config.consensus_reads)
 
         self._task: asyncio.Task | None = None
         self._trigger_event = asyncio.Event()
@@ -69,6 +72,7 @@ class BackgroundPoller:
         self._trigger_event.set()
         if self._task and not self._task.done():
             self._task.cancel()
+        self.consensus_filter.clear()
         logger.info("Background poller stopped")
 
     def trigger_now(self) -> None:
@@ -91,7 +95,7 @@ class BackgroundPoller:
             await self._execute_poll()
 
         while self._running:
-            interval = max(5, self.config.interval_seconds)
+            interval = max(1, self.config.interval_seconds)
             self.next_run = datetime.now().astimezone() + timedelta(seconds=interval)
 
             try:
@@ -128,20 +132,34 @@ class BackgroundPoller:
                 saveimages=self.config.save_images,
             )
 
+            # Apply temporal consensus / median filter
+            consensus_result, is_outlier = self.consensus_filter.filter(result)
+
             duration = time.time() - start_time
             self.successful_runs += 1
             self.last_error = ""
 
             logger.info("Meter readout completed in %.2fs", duration)
 
+            if is_outlier:
+                logger.warning(
+                    "Poller detected transient outlier reading; using consensus result"
+                )
+                if self._running and self.config.consensus_reads > 1:
+                    retry_delay = max(1, min(self.config.retry_interval_seconds, 5))
+                    with contextlib.suppress(RuntimeError):
+                        asyncio.get_running_loop().call_later(
+                            retry_delay, self._trigger_event.set
+                        )
+
             # Publish to MQTT if service is active
             if self.mqtt_service:
                 self.mqtt_service.publish_meter_result(
-                    meter_result=result,
+                    meter_result=consensus_result,
                     processing_time_sec=duration,
                 )
 
-            return result
+            return consensus_result
         except Exception as e:
             duration = time.time() - start_time
             self.failed_runs += 1
@@ -162,6 +180,8 @@ class BackgroundPoller:
             "running": self._running,
             "is_polling": self._is_polling,
             "interval_seconds": self.config.interval_seconds,
+            "consensus_reads": self.config.consensus_reads,
+            "consensus_buffer_size": self.consensus_filter.current_size,
             "last_run": self.last_run.isoformat() if self.last_run else None,
             "next_run": self.next_run.isoformat() if self.next_run else None,
             "total_runs": self.total_runs,

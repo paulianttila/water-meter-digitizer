@@ -107,6 +107,7 @@ class Poller(BaseModel):
     run_on_startup: bool = True
     save_images: bool = False
     retry_interval_seconds: int = 30
+    consensus_reads: int = Field(default=1, ge=1, le=10)
 
 
 class MQTT(BaseModel):

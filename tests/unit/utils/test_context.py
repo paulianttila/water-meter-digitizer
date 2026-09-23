@@ -88,11 +88,19 @@ def test_dict_access_mixin_on_typed_models():
     assert "running" in poller
 
     # 2. MQTTStatus
-    mqtt = MQTTStatus(enabled=True, connected=True, broker="mqtt.local")
+    mqtt = MQTTStatus(
+        enabled=True,
+        connected=True,
+        broker="mqtt.local",
+        last_published_topics={"watermeter/total/value": "123.45"},
+        last_published_readout={"total": 123.45},
+    )
     assert mqtt.broker == "mqtt.local"
     assert mqtt["broker"] == "mqtt.local"
     assert mqtt.get("broker") == "mqtt.local"
     assert "connected" in mqtt
+    assert mqtt.last_published_topics["watermeter/total/value"] == "123.45"
+    assert mqtt.last_published_readout["total"] == 123.45
 
     # 3. ConfigBackupInfo
     backup = ConfigBackupInfo(name="backup_1.ini", size_bytes=1024)

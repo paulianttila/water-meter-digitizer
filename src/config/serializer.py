@@ -389,6 +389,7 @@ def load_config_from_parser(cfg: Config, config: configparser.ConfigParser) -> C
         retry_interval_seconds=config.getint(
             "Poller", "RetryIntervalSeconds", fallback=30
         ),
+        consensus_reads=config.getint("Poller", "ConsensusReads", fallback=1),
     )
 
     # MQTT Parameters
@@ -678,6 +679,7 @@ def save_config_to_io(cfg: Config, fp: TextIO) -> None:
         "RunOnStartup": str(cfg.poller.run_on_startup),
         "SaveImages": str(cfg.poller.save_images),
         "RetryIntervalSeconds": str(cfg.poller.retry_interval_seconds),
+        "ConsensusReads": str(cfg.poller.consensus_reads),
     }
 
     config["MQTT"] = {

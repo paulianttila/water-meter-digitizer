@@ -2,6 +2,7 @@
 
 import asyncio
 import logging
+from typing import Any
 
 from nicegui import ui
 
@@ -80,10 +81,19 @@ class ServicesPage(BasePage):
                 logger.warning("Failed to fetch leak status telemetry", exc_info=True)
 
             try:
-                p_data, m_data = await asyncio.gather(
+                results = await asyncio.gather(
                     asyncio.to_thread(self.callbacks.get_poller_status),
                     asyncio.to_thread(self.callbacks.get_mqtt_status),
+                    return_exceptions=True,
                 )
+                p_res: Any = results[0]
+                m_res: Any = results[1]
+                p_data = p_res if not isinstance(p_res, Exception) else {}
+                m_data = m_res if not isinstance(m_res, Exception) else {}
+                if isinstance(p_res, Exception):
+                    logger.warning("Failed to fetch poller telemetry: %s", p_res)
+                if isinstance(m_res, Exception):
+                    logger.warning("Failed to fetch MQTT telemetry: %s", m_res)
                 self.services_card.update_data(p_data, m_data)
             except Exception:
                 logger.warning("Failed to fetch poller/MQTT telemetry", exc_info=True)

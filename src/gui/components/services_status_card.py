@@ -69,10 +69,16 @@ class ServicesStatusCard(BaseComponent):
                 self._render_content()
 
     async def _fetch_status_data(self) -> tuple[Any, Any]:
-        return await asyncio.gather(
+        results = await asyncio.gather(
             asyncio.to_thread(self.callbacks.get_poller_status),
             asyncio.to_thread(self.callbacks.get_mqtt_status),
+            return_exceptions=True,
         )
+        p_res: Any = results[0]
+        m_res: Any = results[1]
+        p_data = p_res if not isinstance(p_res, Exception) else {}
+        m_data = m_res if not isinstance(m_res, Exception) else {}
+        return p_data, m_data
 
     async def fetch_and_update(self) -> None:
         """Fetch fresh poller and MQTT data asynchronously."""

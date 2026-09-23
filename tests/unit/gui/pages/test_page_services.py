@@ -71,3 +71,21 @@ def test_services_page_fetch_all_telemetry_errors():
     # Should not raise exception
     asyncio.run(page.fetch_all_telemetry())
     assert page.spinner.visible is False
+
+
+def test_services_page_fetch_partial_telemetry_resilience():
+    mock_callbacks = MagicMock(spec=Callbacks)
+    mock_callbacks.get_health_data.return_value = {"status": "ok"}
+    mock_callbacks.get_leak_status.return_value = {"enabled": False}
+    mock_callbacks.get_poller_status.return_value = {"enabled": True, "running": True}
+    mock_callbacks.get_mqtt_status.side_effect = RuntimeError("MQTT error")
+
+    page = ServicesPage(mock_callbacks)
+    page.spinner = MagicMock()
+    page.services_card = MagicMock(spec=ServicesStatusCard)
+
+    asyncio.run(page.fetch_all_telemetry())
+    page.services_card.update_data.assert_called_once_with(
+        {"enabled": True, "running": True},
+        {},
+    )

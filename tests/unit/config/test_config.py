@@ -155,6 +155,7 @@ def test_config():
     assert config.poller.run_on_startup is True
     assert config.poller.save_images is False
     assert config.poller.retry_interval_seconds == 30
+    assert config.poller.consensus_reads == 1
 
     assert config.mqtt.enabled is True
     assert config.mqtt.broker == "localhost"
@@ -434,3 +435,25 @@ QualityWarningAvgConfidence = 58.5
     assert m_reloaded.quality_high_avg_confidence == 78.0
     assert m_reloaded.quality_warning_min_confidence == 52.0
     assert m_reloaded.quality_warning_avg_confidence == 58.5
+
+
+def test_config_poller_consensus_reads_roundtrip(tmp_path):
+    ini_content = """[DEFAULT]
+LogLevel = INFO
+
+[Poller]
+Enabled = True
+IntervalSeconds = 60
+ConsensusReads = 3
+"""
+    test_ini = tmp_path / "config.ini"
+    test_ini.write_text(ini_content)
+
+    cfg = Config().load_from_file(str(test_ini))
+    assert cfg.poller.consensus_reads == 3
+
+    saved = cfg.save_to_string()
+    assert "ConsensusReads=3" in saved
+
+    reloaded = Config().load_from_string(saved)
+    assert reloaded.poller.consensus_reads == 3

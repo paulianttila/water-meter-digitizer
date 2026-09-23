@@ -6,6 +6,7 @@ from typing import Annotated
 from fastapi import APIRouter, Depends, HTTPException, Response
 
 from context import AppContext, get_app_context
+from data_classes import PollerStatus
 from utils.decorators import log_execution_time
 
 router = APIRouter(tags=["services"])
@@ -41,7 +42,7 @@ def get_poller_status(
     ctx: Annotated[AppContext, Depends(get_app_context)],
 ) -> Response:
     poller = ctx.poller
-    status = poller.get_status() if poller else {"enabled": False, "running": False}
+    status = poller.get_status() if poller else PollerStatus().model_dump()
     return Response(json.dumps(status), media_type="application/json")
 
 

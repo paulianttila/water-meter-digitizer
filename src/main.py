@@ -140,10 +140,16 @@ def start_services(
     else:
         mqtt_svc = app_inst.state.mqtt_service
 
+    existing_poller = getattr(app_inst.state, "poller", None)
+    poller_needs_start = bool(
+        cfg.poller.enabled
+        and (existing_poller is None or not getattr(existing_poller, "_running", False))
+    )
     poller_changed = (
         previous_config.poller != cfg.poller
         or mqtt_changed
-        or getattr(app_inst.state, "poller", None) is None
+        or existing_poller is None
+        or poller_needs_start
     )
     if poller_changed:
         old_poller = getattr(app_inst.state, "poller", None)

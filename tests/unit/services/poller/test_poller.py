@@ -132,10 +132,84 @@ def test_background_poller_start_without_loop():
     assert poller._task is None
 
 
+@pytest.mark.anyio
+async def test_background_poller_consensus_filtering():
+    poller_cfg = Poller(
+        enabled=True,
+        interval_seconds=10,
+        consensus_reads=3,
+        run_on_startup=False,
+    )
+
+    readings = [
+        MeterResult(meters=[MeterValue(name="total", value="50.0")]),
+        MeterResult(meters=[MeterValue(name="total", value="50.0")]),
+        MeterResult(meters=[MeterValue(name="total", value="999.0")]),  # spike anomaly
+        MeterResult(meters=[MeterValue(name="total", value="50.1")]),
+    ]
+    readings_iter = iter(readings)
+
+    def mock_readout(*args, **kwargs):
+        return next(readings_iter)
+
+    mock_mqtt = MagicMock()
+    poller = BackgroundPoller(
+        config=poller_cfg,
+        readout_func=mock_readout,
+        mqtt_service=mock_mqtt,
+    )
+
+    status = poller.get_status()
+    assert status["consensus_reads"] == 3
+    assert status["consensus_buffer_size"] == 0
+
+    # Poll 1
+    r1 = await poller._execute_poll()
+    assert r1.meters[0].value == "50.0"
+
+    # Poll 2
+    r2 = await poller._execute_poll()
+    assert r2.meters[0].value == "50.0"
+
+    # Poll 3 (Spike frame): consensus should return 50.0 instead of 999.0
+    r3 = await poller._execute_poll()
+    assert r3.meters[0].value == "50.0"
+
+    # Poll 4: progression to 50.1
+    r4 = await poller._execute_poll()
+    assert r4.meters[0].value == "50.1"
+
+    # Verify 999.0 was never published to MQTT
+    published_values = [
+        call.kwargs["meter_result"].meters[0].value
+        for call in mock_mqtt.publish_meter_result.call_args_list
+    ]
+    assert "999.0" not in published_values
+    assert published_values == ["50.0", "50.0", "50.0", "50.1"]
+
+
 def test_poller_and_mqtt_api_endpoints():
     from fastapi.testclient import TestClient
 
     from main import app
+
+    mock_poller = MagicMock()
+    mock_poller.get_status.return_value = {
+        "enabled": True,
+        "running": True,
+        "interval_seconds": 300,
+        "consensus_reads": 1,
+        "consensus_buffer_size": 0,
+    }
+    app.state.poller = mock_poller
+
+    mock_mqtt = MagicMock()
+    mock_mqtt.get_status.return_value = {
+        "enabled": True,
+        "connected": True,
+        "topic_prefix": "watermeter",
+    }
+    app.state.mqtt_service = mock_mqtt
 
     client = TestClient(app)
 
@@ -146,6 +220,7 @@ def test_poller_and_mqtt_api_endpoints():
     assert "enabled" in data
     assert "running" in data
     assert "interval_seconds" in data
+    assert "consensus_reads" in data
 
     # Test /poller/trigger
     resp_trig = client.post("/poller/trigger")

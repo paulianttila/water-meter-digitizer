@@ -259,6 +259,13 @@ FIELD_OVERRIDES: dict[tuple[str, str], dict[str, Any]] = {
         "min": 1,
         "step": 5,
     },
+    ("poller", "consensusreads"): {
+        "type": "int",
+        "min": 1,
+        "max": 10,
+        "step": 1,
+        "description": "Number of consecutive reads for temporal consensus/median filter (1=disabled)",
+    },
     # [MQTT]
     ("mqtt", "port"): {
         "type": "int",

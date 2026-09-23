@@ -142,6 +142,27 @@ def test_main_selective_start_services():
         MockPoller.assert_called_once()
 
 
+def test_main_start_services_deferred_poller():
+    mock_app = FastAPI()
+    old_poller = MagicMock()
+    old_poller._running = False  # simulated deferred startup (no loop)
+    mock_app.state.poller = old_poller
+    mock_app.state.mqtt_service = MagicMock()
+    mock_app.state.zero_flow_tracker = MagicMock()
+
+    with (
+        patch("main.app", mock_app),
+        patch("main.BackgroundPoller") as MockPoller,
+    ):
+        main.config.poller.enabled = True
+        main.config.mqtt.enabled = False
+
+        # Same config, but poller is not running -> must recreate and start
+        main.start_services(previous_config=main.config)
+        old_poller.stop.assert_called_once()
+        MockPoller.return_value.start.assert_called_once()
+
+
 def test_main_create_app(tmp_path):
     test_cfg_file = tmp_path / "custom_config.ini"
     test_cfg_file.write_text("[DEFAULT]\nLogLevel = DEBUG\n")
