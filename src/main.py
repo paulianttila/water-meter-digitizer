@@ -86,83 +86,30 @@ def start_services(
     previous_config: Config | None = None,
     target_app: FastAPI | None = None,
 ) -> None:
-    """Start or selectively reload MQTT service and background poller based on active config."""
+    """Stop existing services and restart active services based on current configuration."""
     app_inst = target_app or app
     cfg = getattr(app_inst.state, "config", config)
-    if previous_config is None:
-        stop_services(target_app=app_inst)
-        app_inst.state.zero_flow_tracker = ZeroFlowTracker(cfg.zero_flow_monitor)
 
-        mqtt_svc = MQTTService(
-            config=cfg.mqtt,
-            meter_configs=cfg.meter_configs,
-            version=VERSION,
-        )
-        if cfg.mqtt.enabled:
-            mqtt_svc.start()
-        app_inst.state.mqtt_service = mqtt_svc
+    stop_services(target_app=app_inst)
+    app_inst.state.zero_flow_tracker = ZeroFlowTracker(cfg.zero_flow_monitor)
 
-        poller = BackgroundPoller(
-            config=cfg.poller,
-            readout_func=get_meter_data,
-            mqtt_service=mqtt_svc if cfg.mqtt.enabled else None,
-        )
-        if cfg.poller.enabled:
-            poller.start()
-        app_inst.state.poller = poller
-        _sync_app_context(app_inst)
-        return
-
-    # Selective service restart
-    if (
-        previous_config.zero_flow_monitor != cfg.zero_flow_monitor
-        or getattr(app_inst.state, "zero_flow_tracker", None) is None
-    ):
-        app_inst.state.zero_flow_tracker = ZeroFlowTracker(cfg.zero_flow_monitor)
-
-    mqtt_changed = (
-        previous_config.mqtt != cfg.mqtt
-        or previous_config.meter_configs != cfg.meter_configs
-        or getattr(app_inst.state, "mqtt_service", None) is None
+    mqtt_svc = MQTTService(
+        config=cfg.mqtt,
+        meter_configs=cfg.meter_configs,
+        version=VERSION,
     )
-    if mqtt_changed:
-        old_mqtt = getattr(app_inst.state, "mqtt_service", None)
-        if old_mqtt is not None:
-            old_mqtt.stop()
-        mqtt_svc = MQTTService(
-            config=cfg.mqtt,
-            meter_configs=cfg.meter_configs,
-            version=VERSION,
-        )
-        if cfg.mqtt.enabled:
-            mqtt_svc.start()
-        app_inst.state.mqtt_service = mqtt_svc
-    else:
-        mqtt_svc = app_inst.state.mqtt_service
+    if cfg.mqtt.enabled:
+        mqtt_svc.start()
+    app_inst.state.mqtt_service = mqtt_svc
 
-    existing_poller = getattr(app_inst.state, "poller", None)
-    poller_needs_start = bool(
-        cfg.poller.enabled
-        and (existing_poller is None or not getattr(existing_poller, "_running", False))
+    poller = BackgroundPoller(
+        config=cfg.poller,
+        readout_func=get_meter_data,
+        mqtt_service=mqtt_svc if cfg.mqtt.enabled else None,
     )
-    poller_changed = (
-        previous_config.poller != cfg.poller
-        or mqtt_changed
-        or existing_poller is None
-        or poller_needs_start
-    )
-    if poller_changed:
-        old_poller = getattr(app_inst.state, "poller", None)
-        if old_poller is not None:
-            old_poller.stop()
-        poller = BackgroundPoller(
-            config=cfg.poller,
-            readout_func=get_meter_data,
-            mqtt_service=mqtt_svc if cfg.mqtt.enabled else None,
-        )
-        if cfg.poller.enabled:
-            poller.start()
-        app_inst.state.poller = poller
+    if cfg.poller.enabled:
+        poller.start()
+    app_inst.state.poller = poller
 
     _sync_app_context(app_inst)
 
