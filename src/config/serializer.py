@@ -384,6 +384,7 @@ def load_config_from_parser(cfg: Config, config: configparser.ConfigParser) -> C
     cfg.poller = Poller(
         enabled=config.getboolean("Poller", "Enabled", fallback=False),
         interval_seconds=config.getint("Poller", "IntervalSeconds", fallback=300),
+        sync_to_clock=config.getboolean("Poller", "SyncToClock", fallback=True),
         run_on_startup=config.getboolean("Poller", "RunOnStartup", fallback=True),
         save_images=config.getboolean("Poller", "SaveImages", fallback=False),
         retry_interval_seconds=config.getint(
@@ -676,6 +677,7 @@ def save_config_to_io(cfg: Config, fp: TextIO) -> None:
     config["Poller"] = {
         "Enabled": str(cfg.poller.enabled),
         "IntervalSeconds": str(cfg.poller.interval_seconds),
+        "SyncToClock": str(cfg.poller.sync_to_clock),
         "RunOnStartup": str(cfg.poller.run_on_startup),
         "SaveImages": str(cfg.poller.save_images),
         "RetryIntervalSeconds": str(cfg.poller.retry_interval_seconds),

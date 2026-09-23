@@ -104,6 +104,7 @@ class Snapshots(BaseModel):
 class Poller(BaseModel):
     enabled: bool = False
     interval_seconds: int = 300
+    sync_to_clock: bool = True
     run_on_startup: bool = True
     save_images: bool = False
     retry_interval_seconds: int = 30

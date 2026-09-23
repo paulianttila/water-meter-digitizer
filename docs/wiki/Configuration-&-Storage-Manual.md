@@ -250,6 +250,7 @@ Automated background interval scheduling.
 | :--- | :--- | :--- | :--- |
 | `Enabled` | boolean | `False` | Enable scheduled background poller. |
 | `IntervalSeconds` | integer | `300` | Interval in seconds between background readouts (e.g. 60–300s). |
+| `SyncToClock` | boolean | `True` | Align background polls to wall-clock second boundaries (e.g., 15s intervals run at `:00`, `:15`, `:30`, `:45`). |
 | `RunOnStartup` | boolean | `True` | Trigger an immediate readout cycle upon application startup. |
 | `SaveImages` | boolean | `False` | Save intermediate debug images during polled readouts. |
 | `RetryIntervalSeconds` | integer | `30` | Retry interval in seconds following a capture failure or outlier detection. |

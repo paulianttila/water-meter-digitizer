@@ -234,3 +234,64 @@ def test_poller_and_mqtt_api_endpoints():
     assert "enabled" in data_mqtt
     assert "connected" in data_mqtt
     assert "topic_prefix" in data_mqtt
+
+
+def test_calculate_next_aligned_delay_quarter_minute():
+    from services.poller.scheduler import calculate_next_aligned_delay
+
+    # At t=12.3, interval=15: next boundary is 15.0 -> delay=2.7
+    delay, target_dt = calculate_next_aligned_delay(now=12.3, interval_seconds=15)
+    assert abs(delay - 2.7) < 1e-4
+    assert target_dt.second == 15
+
+    # At t=15.0, interval=15: next boundary is 30.0 -> delay=15.0
+    delay2, target_dt2 = calculate_next_aligned_delay(now=15.0, interval_seconds=15)
+    assert abs(delay2 - 15.0) < 1e-4
+    assert target_dt2.second == 30
+
+    # At t=44.98 with min_delay=0.05: too close to 45.0, targets 60.0 (:00)
+    delay3, target_dt3 = calculate_next_aligned_delay(
+        now=44.98, interval_seconds=15, min_delay=0.05
+    )
+    assert abs(delay3 - 15.02) < 1e-4
+    assert target_dt3.second == 0
+
+
+def test_calculate_next_aligned_delay_full_minute():
+    from services.poller.scheduler import calculate_next_aligned_delay
+
+    # Sub-minute into 60s interval: at t=35.0, delay=25.0, target second=0
+    delay, target_dt = calculate_next_aligned_delay(now=35.0, interval_seconds=60)
+    assert abs(delay - 25.0) < 1e-4
+    assert target_dt.second == 0
+
+
+@pytest.mark.anyio
+async def test_background_poller_clock_sync_schedule():
+    from services.poller.scheduler import BackgroundPoller
+
+    poller_cfg = Poller(
+        enabled=True,
+        interval_seconds=15,
+        sync_to_clock=True,
+        run_on_startup=False,
+    )
+    mock_readout = MagicMock(
+        return_value=MeterResult(
+            meters=[MeterValue(name="main", value="10.0")],
+            digital_results={},
+            analog_results={},
+            error="",
+        )
+    )
+    poller = BackgroundPoller(config=poller_cfg, readout_func=mock_readout)
+    assert poller.get_status()["sync_to_clock"] is True
+
+    poller.start()
+    assert poller._running is True
+    await asyncio.sleep(0.05)
+    assert poller.next_run is not None
+    # Next run second should be one of :00, :15, :30, :45
+    assert poller.next_run.second in (0, 15, 30, 45)
+
+    poller.stop()

@@ -457,3 +457,25 @@ ConsensusReads = 3
 
     reloaded = Config().load_from_string(saved)
     assert reloaded.poller.consensus_reads == 3
+
+
+def test_config_poller_sync_to_clock_roundtrip(tmp_path):
+    ini_content = """[DEFAULT]
+LogLevel = INFO
+
+[Poller]
+Enabled = True
+IntervalSeconds = 15
+SyncToClock = False
+"""
+    test_ini = tmp_path / "config.ini"
+    test_ini.write_text(ini_content)
+
+    cfg = Config().load_from_file(str(test_ini))
+    assert cfg.poller.sync_to_clock is False
+
+    saved = cfg.save_to_string()
+    assert "SyncToClock=False" in saved
+
+    reloaded = Config().load_from_string(saved)
+    assert reloaded.poller.sync_to_clock is False

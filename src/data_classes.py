@@ -189,6 +189,7 @@ class PollerStatus(BaseModel, DictAccessMixin):
     running: bool = False
     is_polling: bool = False
     interval_seconds: int = 300
+    sync_to_clock: bool = True
     last_run: str | None = None
     next_run: str | None = None
     total_runs: int = 0

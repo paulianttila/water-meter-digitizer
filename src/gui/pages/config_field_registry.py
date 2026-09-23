@@ -259,6 +259,10 @@ FIELD_OVERRIDES: dict[tuple[str, str], dict[str, Any]] = {
         "min": 1,
         "step": 5,
     },
+    ("poller", "synctoclock"): {
+        "type": "bool",
+        "description": "Align background polls to wall-clock second boundaries (e.g. 15s intervals run at :00, :15, :30, :45)",
+    },
     ("poller", "consensusreads"): {
         "type": "int",
         "min": 1,
