@@ -5,7 +5,7 @@ from pathlib import Path
 
 import pytest
 
-from config_history import BackupEntry, ConfigHistoryManager
+from config.history_manager import BackupEntry, ConfigHistoryManager
 
 
 @pytest.fixture

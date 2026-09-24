@@ -10,7 +10,7 @@ from collections.abc import Callable
 from pathlib import Path
 from typing import Any
 
-import config_history
+from config.history_manager import ConfigHistoryManager
 from configuration import Config
 
 logger = logging.getLogger(__name__)
@@ -56,7 +56,7 @@ class ConfigFileService:
 
             # 2. Create timestamped backup if existing file exists
             if target_path.exists():
-                config_history.ConfigHistoryManager.create_backup(str(target_path))
+                ConfigHistoryManager.create_backup(str(target_path))
 
             # 3. Atomically write using temporary file in same directory and os.replace
             target_dir = target_path.parent
@@ -86,47 +86,39 @@ class ConfigFileService:
         with self._lock:
             return [
                 b.model_dump()
-                for b in config_history.ConfigHistoryManager.list_backups(
-                    self.config_file
-                )
+                for b in ConfigHistoryManager.list_backups(self.config_file)
             ]
 
     def restore_backup(self, backup_name: str) -> None:
         """Restore configuration from an existing backup entry."""
         with self._lock:
-            config_history.ConfigHistoryManager.restore_backup(
-                self.config_file, backup_name
-            )
+            ConfigHistoryManager.restore_backup(self.config_file, backup_name)
 
     def undo_last(self) -> str | None:
         """Revert configuration to the most recent backup."""
         with self._lock:
-            return config_history.ConfigHistoryManager.undo_last(self.config_file)
+            return ConfigHistoryManager.undo_last(self.config_file)
 
     def create_snapshot(self, tag: str = "") -> str | None:
         """Create a tagged snapshot backup."""
         with self._lock:
-            return config_history.ConfigHistoryManager.create_backup(
-                self.config_file, tag=tag
-            )
+            return ConfigHistoryManager.create_backup(self.config_file, tag=tag)
 
     def delete_backup(self, backup_name: str) -> bool:
         """Delete a specified backup entry."""
         with self._lock:
-            return config_history.ConfigHistoryManager.delete_backup(
-                self.config_file, backup_name
-            )
+            return ConfigHistoryManager.delete_backup(self.config_file, backup_name)
 
     def diff_backup(self, backup_name: str) -> list[str]:
         """Compute visual diff between current configuration and a backup."""
         with self._lock:
-            return config_history.ConfigHistoryManager.get_diff(
+            return ConfigHistoryManager.get_diff(
                 self.load(), backup_name, config_file=self.config_file
             )
 
     def load_backup(self, backup_name: str) -> str:
         """Load raw contents of a specific backup file."""
         with self._lock:
-            return config_history.ConfigHistoryManager.get_backup_content(
+            return ConfigHistoryManager.get_backup_content(
                 backup_name, config_file=self.config_file
             )

@@ -489,3 +489,71 @@ Cron = */15 * * * * *
 
     reloaded = Config().load_from_string(saved)
     assert reloaded.poller.cron == "*/15 * * * * *"
+
+
+def test_config_env_override_precedence_over_file(monkeypatch):
+    """Verify that METER_* environment variables override values read from INI files."""
+    monkeypatch.setenv("METER_LOG_LEVEL", "DEBUG")
+    monkeypatch.setenv("METER_MQTT__PORT", "1884")
+    monkeypatch.setenv("METER_MIN_CONFIDENCE_THRESHOLD", "75.5")
+
+    cfg = Config().load_from_file("config/config.ini")
+    assert cfg.log_level == "DEBUG"
+    assert cfg.mqtt.port == 1884
+    assert cfg.min_confidence_threshold == 75.5
+
+
+def test_config_safe_getter_diagnostics_int(tmp_path):
+    """Verify that malformed integer values in INI raise descriptive ValueError with section and key."""
+    import pytest
+
+    bad_ini = tmp_path / "bad.ini"
+    bad_ini.write_text("[ImageSource]\nTimeout = not_a_number\n")
+
+    with pytest.raises(ValueError) as excinfo:
+        Config().load_from_file(str(bad_ini))
+    assert "Invalid integer value 'not_a_number' for [ImageSource] -> Timeout" in str(
+        excinfo.value
+    )
+
+
+def test_config_safe_getter_diagnostics_float(tmp_path):
+    """Verify that malformed float values in INI raise descriptive ValueError with section and key."""
+    import pytest
+
+    bad_ini = tmp_path / "bad.ini"
+    bad_ini.write_text("[ImageProcessing]\nContrast = bad_float\n")
+
+    with pytest.raises(ValueError) as excinfo:
+        Config().load_from_file(str(bad_ini))
+    assert "Invalid float value 'bad_float' for [ImageProcessing] -> Contrast" in str(
+        excinfo.value
+    )
+
+
+def test_config_safe_getter_diagnostics_bool(tmp_path):
+    """Verify that malformed boolean values in INI raise descriptive ValueError with section and key."""
+    import pytest
+
+    bad_ini = tmp_path / "bad.ini"
+    bad_ini.write_text("[Crop]\nEnabled = maybe\n")
+
+    with pytest.raises(ValueError) as excinfo:
+        Config().load_from_file(str(bad_ini))
+    assert "Invalid boolean value 'maybe' for [Crop] -> Enabled" in str(excinfo.value)
+
+
+def test_config_load_cnn_params_method():
+    """Verify Config.load_cnn_params loads parameters correctly from a parser."""
+    import configparser
+
+    parser = configparser.ConfigParser()
+    parser.read_string(
+        "[Digits]\nEnabled = True\nNames = d1\n[Digits.d1]\nx = 10\ny = 20\nw = 30\nh = 40\n"
+    )
+    cfg = Config()
+    params = cfg.load_cnn_params("Digits", parser)
+    assert params.enabled is True
+    assert len(params.cut_images) == 1
+    assert params.cut_images[0].name == "d1"
+    assert params.cut_images[0].x == 10

@@ -32,13 +32,49 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 
+def _safe_getint(
+    config: configparser.ConfigParser, section: str, option: str, fallback: int = 0
+) -> int:
+    try:
+        return config.getint(section, option, fallback=fallback)
+    except ValueError as e:
+        raw_val = config.get(section, option, fallback=None)
+        raise ValueError(
+            f"Invalid integer value '{raw_val}' for [{section}] -> {option}"
+        ) from e
+
+
+def _safe_getfloat(
+    config: configparser.ConfigParser, section: str, option: str, fallback: float = 0.0
+) -> float:
+    try:
+        return config.getfloat(section, option, fallback=fallback)
+    except ValueError as e:
+        raw_val = config.get(section, option, fallback=None)
+        raise ValueError(
+            f"Invalid float value '{raw_val}' for [{section}] -> {option}"
+        ) from e
+
+
+def _safe_getboolean(
+    config: configparser.ConfigParser, section: str, option: str, fallback: bool = False
+) -> bool:
+    try:
+        return config.getboolean(section, option, fallback=fallback)
+    except ValueError as e:
+        raw_val = config.get(section, option, fallback=None)
+        raise ValueError(
+            f"Invalid boolean value '{raw_val}' for [{section}] -> {option}"
+        ) from e
+
+
 def load_cnn_params(section: str, config: configparser.ConfigParser) -> CNNParams:
     """Load CNN readout parameters from an INI section."""
-    readout_enabled = config.getboolean(section, "Enabled", fallback=False)
+    readout_enabled = _safe_getboolean(config, section, "Enabled", fallback=False)
     model_file = config.get(section, "Modelfile", fallback="")
     model = config.get(section, "Model", fallback="auto").lower()
-    detect_negative_sign = config.getboolean(
-        section, "DetectNegativeSign", fallback=False
+    detect_negative_sign = _safe_getboolean(
+        config, section, "DetectNegativeSign", fallback=False
     )
     images = []
     if readout_enabled:
@@ -50,10 +86,10 @@ def load_cnn_params(section: str, config: configparser.ConfigParser) -> CNNParam
                 f"the {section} readout."
             )
         for name in [x.strip() for x in names.split(",") if x.strip()]:
-            x = config.getint(f"{section}.{name}", "x", fallback=0)
-            y = config.getint(f"{section}.{name}", "y", fallback=0)
-            w = config.getint(f"{section}.{name}", "w", fallback=0)
-            h = config.getint(f"{section}.{name}", "h", fallback=0)
+            x = _safe_getint(config, f"{section}.{name}", "x", fallback=0)
+            y = _safe_getint(config, f"{section}.{name}", "y", fallback=0)
+            w = _safe_getint(config, f"{section}.{name}", "w", fallback=0)
+            h = _safe_getint(config, f"{section}.{name}", "h", fallback=0)
             images.append(ImagePosition(name=name, x=x, y=y, w=w, h=h))
     return CNNParams(
         enabled=readout_enabled,
@@ -79,14 +115,14 @@ def load_config_from_parser(cfg: Config, config: configparser.ConfigParser) -> C
     cfg.previous_value_file = config.get(
         "DEFAULT", "PreviousValueFile", fallback="/config/prevalue.ini"
     )
-    cfg.min_confidence_threshold = config.getfloat(
-        "DEFAULT", "MinConfidenceThreshold", fallback=60.0
+    cfg.min_confidence_threshold = _safe_getfloat(
+        config, "DEFAULT", "MinConfidenceThreshold", fallback=60.0
     )
 
     # Image Source Parameters
     url = config.get("ImageSource", "URL", fallback="")
-    timeout = config.getint("ImageSource", "Timeout", fallback=30)
-    min_size = config.getint("ImageSource", "MinSize", fallback=10000)
+    timeout = _safe_getint(config, "ImageSource", "Timeout", fallback=30)
+    min_size = _safe_getint(config, "ImageSource", "MinSize", fallback=10000)
     cfg.image_source = ImageSource(
         url=url,
         timeout=timeout,
@@ -98,17 +134,19 @@ def load_config_from_parser(cfg: Config, config: configparser.ConfigParser) -> C
     cfg.analog_readout = load_cnn_params("Analog", config)
 
     # Alignment Parameters
-    rotate_angle = config.getfloat("Alignment", "RotationAngle", fallback=0.0)
-    post_rotate_angle = config.getfloat("Alignment", "PostRotationAngle", fallback=0.0)
+    rotate_angle = _safe_getfloat(config, "Alignment", "RotationAngle", fallback=0.0)
+    post_rotate_angle = _safe_getfloat(
+        config, "Alignment", "PostRotationAngle", fallback=0.0
+    )
 
     refs = config.get("Alignment", "Refs", fallback="")
     ref_images = []
     for name in [x.strip() for x in refs.split(",") if x.strip()]:
         image = config.get(f"Alignment.{name}", "image", fallback="")
-        x = config.getint(f"Alignment.{name}", "x", fallback=0)
-        y = config.getint(f"Alignment.{name}", "y", fallback=0)
-        w = config.getint(f"Alignment.{name}", "w", fallback=0)
-        h = config.getint(f"Alignment.{name}", "h", fallback=0)
+        x = _safe_getint(config, f"Alignment.{name}", "x", fallback=0)
+        y = _safe_getint(config, f"Alignment.{name}", "y", fallback=0)
+        w = _safe_getint(config, f"Alignment.{name}", "w", fallback=0)
+        h = _safe_getint(config, f"Alignment.{name}", "h", fallback=0)
         ref_images.append(RefImage(name=name, x=x, y=y, w=w, h=h, file_name=image))
     cfg.alignment = Alignment(
         rotate_angle=rotate_angle,
@@ -117,104 +155,108 @@ def load_config_from_parser(cfg: Config, config: configparser.ConfigParser) -> C
     )
 
     # Crop Parameters
-    crop_enabled = config.getboolean("Crop", "Enabled", fallback=False)
-    crop_x = config.getint("Crop", "x", fallback=0)
-    crop_y = config.getint("Crop", "y", fallback=0)
-    crop_w = config.getint("Crop", "w", fallback=0)
-    crop_h = config.getint("Crop", "h", fallback=0)
+    crop_enabled = _safe_getboolean(config, "Crop", "Enabled", fallback=False)
+    crop_x = _safe_getint(config, "Crop", "x", fallback=0)
+    crop_y = _safe_getint(config, "Crop", "y", fallback=0)
+    crop_w = _safe_getint(config, "Crop", "w", fallback=0)
+    crop_h = _safe_getint(config, "Crop", "h", fallback=0)
     cfg.crop = Crop(enabled=crop_enabled, x=crop_x, y=crop_y, w=crop_w, h=crop_h)
 
     # Resize Parameters
-    resize_enabled = config.getboolean("Resize", "Enabled", fallback=False)
-    resize_w = config.getint("Resize", "w", fallback=0)
-    resize_h = config.getint("Resize", "h", fallback=0)
+    resize_enabled = _safe_getboolean(config, "Resize", "Enabled", fallback=False)
+    resize_w = _safe_getint(config, "Resize", "w", fallback=0)
+    resize_h = _safe_getint(config, "Resize", "h", fallback=0)
     cfg.resize = Resize(enabled=resize_enabled, w=resize_w, h=resize_h)
 
     # Image Processing Parameters
-    image_processing_enabled = config.getboolean(
-        "ImageProcessing", "Enabled", fallback=False
+    image_processing_enabled = _safe_getboolean(
+        config, "ImageProcessing", "Enabled", fallback=False
     )
-    image_processing_contrast = config.getfloat(
-        "ImageProcessing", "Contrast", fallback=1.0
+    image_processing_contrast = _safe_getfloat(
+        config, "ImageProcessing", "Contrast", fallback=1.0
     )
-    image_processing_brightness = config.getfloat(
-        "ImageProcessing", "Brightness", fallback=1.0
+    image_processing_brightness = _safe_getfloat(
+        config, "ImageProcessing", "Brightness", fallback=1.0
     )
-    image_processing_color = config.getfloat("ImageProcessing", "Color", fallback=1.0)
-    image_processing_sharpness = config.getfloat(
-        "ImageProcessing", "Sharpness", fallback=1.0
+    image_processing_color = _safe_getfloat(
+        config, "ImageProcessing", "Color", fallback=1.0
     )
-    image_processing_grayscale = config.getboolean(
-        "ImageProcessing", "GrayScale", fallback=False
+    image_processing_sharpness = _safe_getfloat(
+        config, "ImageProcessing", "Sharpness", fallback=1.0
     )
-    image_processing_autocontrast = config.getboolean(
-        "ImageProcessing", "AutoContrast", fallback=False
+    image_processing_grayscale = _safe_getboolean(
+        config, "ImageProcessing", "GrayScale", fallback=False
     )
-    image_processing_autocontrast_cutoff_low = config.getfloat(
-        "ImageProcessing", "AutoContrastCutoffLow", fallback=2
+    image_processing_autocontrast = _safe_getboolean(
+        config, "ImageProcessing", "AutoContrast", fallback=False
     )
-    image_processing_autocontrast_cutoff_high = config.getfloat(
-        "ImageProcessing", "AutoContrastCutoffHigh", fallback=45
+    image_processing_autocontrast_cutoff_low = _safe_getfloat(
+        config, "ImageProcessing", "AutoContrastCutoffLow", fallback=2
+    )
+    image_processing_autocontrast_cutoff_high = _safe_getfloat(
+        config, "ImageProcessing", "AutoContrastCutoffHigh", fallback=45
     )
     val = config.get("ImageProcessing", "AutoContrastIgnore", fallback="None")
     if val == "None":
         image_processing_autocontrast_ignore = None
     else:
-        image_processing_autocontrast_ignore = config.getint(
-            "ImageProcessing", "AutoContrastIgnore", fallback=0
+        image_processing_autocontrast_ignore = _safe_getint(
+            config, "ImageProcessing", "AutoContrastIgnore", fallback=0
         )
-    image_processing_autocontrast_cut_images = config.getboolean(
-        "ImageProcessing", "AutoContrastCutImages", fallback=False
+    image_processing_autocontrast_cut_images = _safe_getboolean(
+        config, "ImageProcessing", "AutoContrastCutImages", fallback=False
     )
-    image_processing_autocontrast_cut_images_cutoff_low = config.getfloat(
-        "ImageProcessing", "AutoContrastCutImagesCutoffLow", fallback=2
+    image_processing_autocontrast_cut_images_cutoff_low = _safe_getfloat(
+        config, "ImageProcessing", "AutoContrastCutImagesCutoffLow", fallback=2
     )
-    image_processing_autocontrast_cut_images_cutoff_high = config.getfloat(
-        "ImageProcessing", "AutoContrastCutImagesCutoffHigh", fallback=45
+    image_processing_autocontrast_cut_images_cutoff_high = _safe_getfloat(
+        config, "ImageProcessing", "AutoContrastCutImagesCutoffHigh", fallback=45
     )
     val = config.get("ImageProcessing", "AutoContrastCutImagesIgnore", fallback="None")
     if val == "None":
         image_processing_autocontrast_cut_images_ignore = None
     else:
-        image_processing_autocontrast_cut_images_ignore = config.getint(
-            "ImageProcessing", "AutoContrastCutImagesIgnore", fallback=0
+        image_processing_autocontrast_cut_images_ignore = _safe_getint(
+            config, "ImageProcessing", "AutoContrastCutImagesIgnore", fallback=0
         )
 
-    glare_enabled = config.getboolean(
-        "ImageProcessing", "GlareSuppressionEnabled", fallback=False
+    glare_enabled = _safe_getboolean(
+        config, "ImageProcessing", "GlareSuppressionEnabled", fallback=False
     )
     glare_mode = config.get("ImageProcessing", "GlareSuppressionMode", fallback="clahe")
-    glare_inpaint_threshold = config.getint(
-        "ImageProcessing", "GlareInpaintThreshold", fallback=230
+    glare_inpaint_threshold = _safe_getint(
+        config, "ImageProcessing", "GlareInpaintThreshold", fallback=230
     )
-    glare_inpaint_radius = config.getint(
-        "ImageProcessing", "GlareInpaintRadius", fallback=3
+    glare_inpaint_radius = _safe_getint(
+        config, "ImageProcessing", "GlareInpaintRadius", fallback=3
     )
-    glare_clahe_clip_limit = config.getfloat(
-        "ImageProcessing", "GlareClaheClipLimit", fallback=2.0
+    glare_clahe_clip_limit = _safe_getfloat(
+        config, "ImageProcessing", "GlareClaheClipLimit", fallback=2.0
     )
-    glare_clahe_grid_size = config.getint(
-        "ImageProcessing", "GlareClaheGridSize", fallback=8
+    glare_clahe_grid_size = _safe_getint(
+        config, "ImageProcessing", "GlareClaheGridSize", fallback=8
     )
-    glare_apply_to_cut_images = config.getboolean(
-        "ImageProcessing", "GlareApplyToCutImages", fallback=False
+    glare_apply_to_cut_images = _safe_getboolean(
+        config, "ImageProcessing", "GlareApplyToCutImages", fallback=False
     )
 
-    image_processing_gamma = config.getfloat("ImageProcessing", "Gamma", fallback=1.0)
+    image_processing_gamma = _safe_getfloat(
+        config, "ImageProcessing", "Gamma", fallback=1.0
+    )
     image_processing_sharpness_mode = config.get(
         "ImageProcessing", "SharpnessMode", fallback="standard"
     ).lower()
-    image_processing_unsharp_radius = config.getfloat(
-        "ImageProcessing", "UnsharpRadius", fallback=1.0
+    image_processing_unsharp_radius = _safe_getfloat(
+        config, "ImageProcessing", "UnsharpRadius", fallback=1.0
     )
-    image_processing_unsharp_amount = config.getfloat(
-        "ImageProcessing", "UnsharpAmount", fallback=1.5
+    image_processing_unsharp_amount = _safe_getfloat(
+        config, "ImageProcessing", "UnsharpAmount", fallback=1.5
     )
-    image_processing_unsharp_threshold = config.getint(
-        "ImageProcessing", "UnsharpThreshold", fallback=3
+    image_processing_unsharp_threshold = _safe_getint(
+        config, "ImageProcessing", "UnsharpThreshold", fallback=3
     )
-    image_processing_auto_sharpen_cut = config.getboolean(
-        "ImageProcessing", "AutoSharpenCutImages", fallback=False
+    image_processing_auto_sharpen_cut = _safe_getboolean(
+        config, "ImageProcessing", "AutoSharpenCutImages", fallback=False
     )
 
     cfg.image_processing = ImageProcessing(
@@ -258,56 +300,66 @@ def load_config_from_parser(cfg: Config, config: configparser.ConfigParser) -> C
     meter_vals = config.get("Meters", "Names", fallback="")
     for name in [x.strip() for x in meter_vals.split(",") if x.strip()]:
         format_val = config.get(f"Meter.{name}", "Value", fallback="")
-        consistency_enabled = config.getboolean(
-            f"Meter.{name}", "ConsistencyEnabled", fallback=False
+        consistency_enabled = _safe_getboolean(
+            config, f"Meter.{name}", "ConsistencyEnabled", fallback=False
         )
-        allow_negative_rates = config.getboolean(
-            f"Meter.{name}", "AllowNegativeRates", fallback=False
+        allow_negative_rates = _safe_getboolean(
+            config, f"Meter.{name}", "AllowNegativeRates", fallback=False
         )
-        max_rate_value = config.getfloat(f"Meter.{name}", "MaxRateValue", fallback=0.0)
-        min_rate_value = config.getfloat(f"Meter.{name}", "MinRateValue", fallback=0.0)
-        stale_threshold_hours = config.getfloat(
-            f"Meter.{name}", "StaleThresholdHours", fallback=0.0
+        max_rate_value = _safe_getfloat(
+            config, f"Meter.{name}", "MaxRateValue", fallback=0.0
         )
-        use_previous_value = config.getboolean(
-            f"Meter.{name}", "UsePreviousValue", fallback=False
-        ) or config.getboolean(f"Meter.{name}", "UsePreviuosValue", fallback=False)
-        pre_value_from_file_max_age = config.getint(
-            f"Meter.{name}", "PreValueFromFileMaxAge", fallback=0
+        min_rate_value = _safe_getfloat(
+            config, f"Meter.{name}", "MinRateValue", fallback=0.0
         )
-        use_extended_resolution = config.getboolean(
-            f"Meter.{name}", "UseExtendedResolution", fallback=False
+        stale_threshold_hours = _safe_getfloat(
+            config, f"Meter.{name}", "StaleThresholdHours", fallback=0.0
+        )
+        use_previous_value = _safe_getboolean(
+            config, f"Meter.{name}", "UsePreviousValue", fallback=False
+        ) or _safe_getboolean(
+            config, f"Meter.{name}", "UsePreviuosValue", fallback=False
+        )
+        pre_value_from_file_max_age = _safe_getint(
+            config, f"Meter.{name}", "PreValueFromFileMaxAge", fallback=0
+        )
+        use_extended_resolution = _safe_getboolean(
+            config, f"Meter.{name}", "UseExtendedResolution", fallback=False
         )
         unit = config.get(f"Meter.{name}", "Unit", fallback=None)
-        detect_neg_meter = config.getboolean(
-            f"Meter.{name}", "DetectNegativeSign", fallback=False
+        detect_neg_meter = _safe_getboolean(
+            config, f"Meter.{name}", "DetectNegativeSign", fallback=False
         )
-        quality_high_min_confidence = config.getfloat(
+        quality_high_min_confidence = _safe_getfloat(
+            config,
             f"Meter.{name}",
             "QualityHighMinConfidence",
-            fallback=config.getfloat(
-                "Meters", "QualityHighMinConfidence", fallback=80.0
+            fallback=_safe_getfloat(
+                config, "Meters", "QualityHighMinConfidence", fallback=80.0
             ),
         )
-        quality_high_avg_confidence = config.getfloat(
+        quality_high_avg_confidence = _safe_getfloat(
+            config,
             f"Meter.{name}",
             "QualityHighAvgConfidence",
-            fallback=config.getfloat(
-                "Meters", "QualityHighAvgConfidence", fallback=85.0
+            fallback=_safe_getfloat(
+                config, "Meters", "QualityHighAvgConfidence", fallback=85.0
             ),
         )
-        quality_warning_min_confidence = config.getfloat(
+        quality_warning_min_confidence = _safe_getfloat(
+            config,
             f"Meter.{name}",
             "QualityWarningMinConfidence",
-            fallback=config.getfloat(
-                "Meters", "QualityWarningMinConfidence", fallback=60.0
+            fallback=_safe_getfloat(
+                config, "Meters", "QualityWarningMinConfidence", fallback=60.0
             ),
         )
-        quality_warning_avg_confidence = config.getfloat(
+        quality_warning_avg_confidence = _safe_getfloat(
+            config,
             f"Meter.{name}",
             "QualityWarningAvgConfidence",
-            fallback=config.getfloat(
-                "Meters", "QualityWarningAvgConfidence", fallback=65.0
+            fallback=_safe_getfloat(
+                config, "Meters", "QualityWarningAvgConfidence", fallback=65.0
             ),
         )
 
@@ -354,14 +406,14 @@ def load_config_from_parser(cfg: Config, config: configparser.ConfigParser) -> C
     cfg.meter_configs = meter_configs
 
     # History / Storage Parameters
-    history_enabled = config.getboolean("History", "Enabled", fallback=True)
+    history_enabled = _safe_getboolean(config, "History", "Enabled", fallback=True)
     history_backend = config.get("History", "Backend", fallback="sqlite")
     db_url = config.get("History", "DBUrl", fallback="")
-    max_memory_mb = config.getfloat("History", "MaxMemoryMB", fallback=20.0)
-    max_records = config.getint("History", "MaxRecords", fallback=50000)
-    retention_days = config.getint("History", "RetentionDays", fallback=30)
-    auto_vacuum = config.getboolean("History", "AutoVacuum", fallback=True)
-    prune_interval = config.getint("History", "PruneInterval", fallback=50)
+    max_memory_mb = _safe_getfloat(config, "History", "MaxMemoryMB", fallback=20.0)
+    max_records = _safe_getint(config, "History", "MaxRecords", fallback=50000)
+    retention_days = _safe_getint(config, "History", "RetentionDays", fallback=30)
+    auto_vacuum = _safe_getboolean(config, "History", "AutoVacuum", fallback=True)
+    prune_interval = _safe_getint(config, "History", "PruneInterval", fallback=50)
 
     if not db_url:
         if history_backend.lower() == "memory":
@@ -382,14 +434,16 @@ def load_config_from_parser(cfg: Config, config: configparser.ConfigParser) -> C
 
     # Poller Parameters
     cfg.poller = Poller(
-        enabled=config.getboolean("Poller", "Enabled", fallback=False),
+        enabled=_safe_getboolean(config, "Poller", "Enabled", fallback=False),
         cron=config.get("Poller", "Cron", fallback="0 */5 * * * *").strip(),
-        run_on_startup=config.getboolean("Poller", "RunOnStartup", fallback=True),
-        save_images=config.getboolean("Poller", "SaveImages", fallback=False),
-        retry_interval_seconds=config.getint(
-            "Poller", "RetryIntervalSeconds", fallback=30
+        run_on_startup=_safe_getboolean(
+            config, "Poller", "RunOnStartup", fallback=True
         ),
-        consensus_reads=config.getint("Poller", "ConsensusReads", fallback=1),
+        save_images=_safe_getboolean(config, "Poller", "SaveImages", fallback=False),
+        retry_interval_seconds=_safe_getint(
+            config, "Poller", "RetryIntervalSeconds", fallback=30
+        ),
+        consensus_reads=_safe_getint(config, "Poller", "ConsensusReads", fallback=1),
     )
 
     # MQTT Parameters
@@ -398,29 +452,29 @@ def load_config_from_parser(cfg: Config, config: configparser.ConfigParser) -> C
         raw_protocol = "3.1.1"
 
     cfg.mqtt = MQTT(
-        enabled=config.getboolean("MQTT", "Enabled", fallback=False),
+        enabled=_safe_getboolean(config, "MQTT", "Enabled", fallback=False),
         broker=config.get("MQTT", "Broker", fallback="localhost"),
-        port=config.getint("MQTT", "Port", fallback=1883),
+        port=_safe_getint(config, "MQTT", "Port", fallback=1883),
         username=config.get("MQTT", "Username", fallback=""),
         password=config.get("MQTT", "Password", fallback=""),
         client_id=config.get("MQTT", "ClientID", fallback="water-meter-digitizer"),
         topic_prefix=config.get("MQTT", "TopicPrefix", fallback="watermeter"),
-        keepalive=config.getint("MQTT", "KeepAlive", fallback=60),
-        tls=config.getboolean("MQTT", "TLS", fallback=False),
+        keepalive=_safe_getint(config, "MQTT", "KeepAlive", fallback=60),
+        tls=_safe_getboolean(config, "MQTT", "TLS", fallback=False),
         tls_ca_cert=config.get("MQTT", "TLS_CACert", fallback=""),
-        tls_insecure=config.getboolean("MQTT", "TLS_Insecure", fallback=False),
+        tls_insecure=_safe_getboolean(config, "MQTT", "TLS_Insecure", fallback=False),
         tls_certfile=config.get("MQTT", "TLS_CertFile", fallback=""),
         tls_keyfile=config.get("MQTT", "TLS_KeyFile", fallback=""),
         tls_psk_identity=config.get("MQTT", "TLS_PSK_Identity", fallback=""),
         tls_psk=config.get("MQTT", "TLS_PSK", fallback=""),
         tls_psk_file=config.get("MQTT", "TLS_PSK_File", fallback=""),
         tls_ciphers=config.get("MQTT", "TLS_Ciphers", fallback=""),
-        qos=max(0, min(2, config.getint("MQTT", "QoS", fallback=1))),
-        clean_session=config.getboolean("MQTT", "CleanSession", fallback=True),
+        qos=max(0, min(2, _safe_getint(config, "MQTT", "QoS", fallback=1))),
+        clean_session=_safe_getboolean(config, "MQTT", "CleanSession", fallback=True),
         protocol=raw_protocol,
-        retain=config.getboolean("MQTT", "Retain", fallback=True),
-        homeassistant_discovery=config.getboolean(
-            "MQTT", "HomeAssistantDiscovery", fallback=True
+        retain=_safe_getboolean(config, "MQTT", "Retain", fallback=True),
+        homeassistant_discovery=_safe_getboolean(
+            config, "MQTT", "HomeAssistantDiscovery", fallback=True
         ),
         discovery_prefix=config.get(
             "MQTT", "DiscoveryPrefix", fallback="homeassistant"
@@ -440,23 +494,23 @@ def load_config_from_parser(cfg: Config, config: configparser.ConfigParser) -> C
     )
 
     cfg.zero_flow_monitor = ZeroFlowMonitor(
-        enabled=config.getboolean("ZeroFlowMonitor", "Enabled", fallback=False),
+        enabled=_safe_getboolean(config, "ZeroFlowMonitor", "Enabled", fallback=False),
         meter_name=config.get("ZeroFlowMonitor", "MeterName", fallback="total"),
         value_type=val_type,
-        continuous_flow_hours=config.getfloat(
-            "ZeroFlowMonitor", "ContinuousFlowHours", fallback=2.0
+        continuous_flow_hours=_safe_getfloat(
+            config, "ZeroFlowMonitor", "ContinuousFlowHours", fallback=2.0
         ),
-        min_leak_volume=config.getfloat(
-            "ZeroFlowMonitor", "MinLeakVolume", fallback=0.010
+        min_leak_volume=_safe_getfloat(
+            config, "ZeroFlowMonitor", "MinLeakVolume", fallback=0.010
         ),
-        flow_threshold=config.getfloat(
-            "ZeroFlowMonitor", "FlowThreshold", fallback=0.001
+        flow_threshold=_safe_getfloat(
+            config, "ZeroFlowMonitor", "FlowThreshold", fallback=0.001
         ),
-        resolve_debounce_count=config.getint(
-            "ZeroFlowMonitor", "ResolveDebounceCount", fallback=2
+        resolve_debounce_count=_safe_getint(
+            config, "ZeroFlowMonitor", "ResolveDebounceCount", fallback=2
         ),
-        max_history_events=config.getint(
-            "ZeroFlowMonitor", "MaxHistoryEvents", fallback=50
+        max_history_events=_safe_getint(
+            config, "ZeroFlowMonitor", "MaxHistoryEvents", fallback=50
         ),
     )
 
@@ -465,22 +519,22 @@ def load_config_from_parser(cfg: Config, config: configparser.ConfigParser) -> C
         "Snapshots", "StorageDir", fallback=f"{cfg.data_dir}/snapshots"
     )
     cfg.snapshots = Snapshots(
-        enabled=config.getboolean("Snapshots", "Enabled", fallback=True),
+        enabled=_safe_getboolean(config, "Snapshots", "Enabled", fallback=True),
         mode=config.get("Snapshots", "Mode", fallback="smart_tiered").lower(),
         format=config.get("Snapshots", "Format", fallback="webp").lower(),
-        quality=config.getint("Snapshots", "Quality", fallback=75),
-        max_disk_mb=config.getfloat("Snapshots", "MaxDiskMB", fallback=500.0),
-        recent_full_frame_days=config.getint(
-            "Snapshots", "RecentFullFrameDays", fallback=2
+        quality=_safe_getint(config, "Snapshots", "Quality", fallback=75),
+        max_disk_mb=_safe_getfloat(config, "Snapshots", "MaxDiskMB", fallback=500.0),
+        recent_full_frame_days=_safe_getint(
+            config, "Snapshots", "RecentFullFrameDays", fallback=2
         ),
-        roi_strip_retention_days=config.getint(
-            "Snapshots", "RoiStripRetentionDays", fallback=14
+        roi_strip_retention_days=_safe_getint(
+            config, "Snapshots", "RoiStripRetentionDays", fallback=14
         ),
-        idle_heartbeat_minutes=config.getint(
-            "Snapshots", "IdleHeartbeatMinutes", fallback=15
+        idle_heartbeat_minutes=_safe_getint(
+            config, "Snapshots", "IdleHeartbeatMinutes", fallback=15
         ),
-        always_save_on_anomaly=config.getboolean(
-            "Snapshots", "AlwaysSaveOnAnomaly", fallback=True
+        always_save_on_anomaly=_safe_getboolean(
+            config, "Snapshots", "AlwaysSaveOnAnomaly", fallback=True
         ),
         storage_dir=snapshot_dir,
     )

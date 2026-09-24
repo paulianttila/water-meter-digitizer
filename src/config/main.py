@@ -198,14 +198,43 @@ class Config(BaseSettings):
             ),
         )
 
-    def load_from_string(self, config_string: str) -> "Config":
+    @staticmethod
+    def _deep_merge_dict(target: dict, source: dict) -> None:
+        """Recursively merge nested dictionary source into target."""
+        for key, value in source.items():
+            if isinstance(value, dict) and isinstance(target.get(key), dict):
+                Config._deep_merge_dict(target[key], value)
+            else:
+                target[key] = value
+
+    def apply_env_overrides(self) -> "Config":
+        """Re-apply environment variable overrides (METER_*) on top of loaded configuration."""
+        from pydantic_settings import EnvSettingsSource
+
+        source = EnvSettingsSource(
+            Config, env_prefix="METER_", env_nested_delimiter="__"
+        )
+        env_data = source()
+        if not env_data:
+            return self
+
+        current_data = self.model_dump()
+        self._deep_merge_dict(current_data, env_data)
+        updated = Config.model_validate(current_data)
+        self.__dict__.update(updated.__dict__)
+        return self
+
+    def load_from_string(self, config_string: str, apply_env: bool = True) -> "Config":
         config = configparser.ConfigParser(
             interpolation=configparser.ExtendedInterpolation(),
             allow_no_value=True,
             inline_comment_prefixes=("#", ";"),
         )
         config.read_string(config_string)
-        return self.load_config(config)
+        loaded = self.load_config(config)
+        if apply_env:
+            loaded.apply_env_overrides()
+        return loaded
 
     def save_to_string(self) -> str:
         output = io.StringIO()
@@ -213,7 +242,10 @@ class Config(BaseSettings):
         return output.getvalue()
 
     def load_from_file(
-        self, ini_file: str = "config.ini", auto_seed: bool = True
+        self,
+        ini_file: str = "config.ini",
+        auto_seed: bool = True,
+        apply_env: bool = True,
     ) -> "Config":
         if not os.path.exists(ini_file) and auto_seed:
             ensure_config_initialized(ini_file)
@@ -240,10 +272,13 @@ class Config(BaseSettings):
         ):
             config.set("DEFAULT", "ConfigDir", ini_dir)
 
-        return self.load_config(config)
+        loaded = self.load_config(config)
+        if apply_env:
+            loaded.apply_env_overrides()
+        return loaded
 
     def create_backup(self, ini_file: str = "config.ini", tag: str = "") -> "Config":
-        from config_history import ConfigHistoryManager
+        from config.history_manager import ConfigHistoryManager
 
         ConfigHistoryManager.create_backup(ini_file, tag=tag)
         return self
@@ -269,16 +304,16 @@ class Config(BaseSettings):
         return self.save_to_string()
 
     @classmethod
-    def from_ini_string(cls, ini_text: str) -> "Config":
+    def from_ini_string(cls, ini_text: str, apply_env: bool = True) -> "Config":
         """Create a new Config instance loaded from an INI string."""
         instance = cls()
-        return instance.load_from_string(ini_text)
+        return instance.load_from_string(ini_text, apply_env=apply_env)
 
     def load_config(self, config: configparser.ConfigParser) -> "Config":
         return load_config_from_parser(self, config)
 
-    def _load_cnn_parames(
+    def load_cnn_params(
         self, section: str, config: configparser.ConfigParser
     ) -> CNNParams:
-        """Alias for backward compatibility."""
+        """Load CNN readout parameters from an INI section."""
         return load_cnn_params(section, config)

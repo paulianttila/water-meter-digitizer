@@ -60,7 +60,7 @@ def test_main_image_and_config_helpers(tmp_path):
         assert "DEBUG" in main.load_config_file()
 
         # Test backup helpers
-        with patch("config_history.ConfigHistoryManager") as MockMgr:
+        with patch("services.config_file_service.ConfigHistoryManager") as MockMgr:
             MockMgr.list_backups.return_value = []
             MockMgr.undo_last.return_value = "undone"
             MockMgr.create_backup.return_value = "created"

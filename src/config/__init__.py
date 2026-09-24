@@ -1,6 +1,7 @@
 """Configuration package for water-meter-digitizer."""
 
 from config.exceptions import ConfigurationMissing
+from config.history_manager import BackupEntry, ConfigHistoryManager
 from config.main import Config
 from config.models import (
     MQTT,
@@ -25,8 +26,10 @@ __all__ = [
     "MQTT",
     "Alignment",
     "AutoContrast",
+    "BackupEntry",
     "CNNParams",
     "Config",
+    "ConfigHistoryManager",
     "ConfigurationMissing",
     "Crop",
     "GlareSuppression",

@@ -32,7 +32,9 @@ def test_config_file_service_save_valid(tmp_path):
     cfg_file.write_text("[DEFAULT]\nLogLevel = INFO\n", encoding="utf-8")
 
     service = ConfigFileService(str(cfg_file))
-    with patch("config_history.ConfigHistoryManager.create_backup") as mock_backup:
+    with patch(
+        "services.config_file_service.ConfigHistoryManager.create_backup"
+    ) as mock_backup:
         service.save("[DEFAULT]\nLogLevel = WARNING\n")
         mock_backup.assert_called_once_with(str(cfg_file.resolve()))
 
@@ -57,7 +59,7 @@ def test_config_file_service_backup_operations(tmp_path):
 
     service = ConfigFileService(str(cfg_file))
 
-    with patch("config_history.ConfigHistoryManager") as MockMgr:
+    with patch("services.config_file_service.ConfigHistoryManager") as MockMgr:
         mock_entry = MagicMock()
         mock_entry.model_dump.return_value = {"name": "backup1.bak"}
         MockMgr.list_backups.return_value = [mock_entry]

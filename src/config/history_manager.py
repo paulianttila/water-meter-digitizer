@@ -1,3 +1,5 @@
+"""Configuration backup management, diffing, and rollback functionality."""
+
 import datetime
 import difflib
 import logging
