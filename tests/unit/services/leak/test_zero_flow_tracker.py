@@ -157,7 +157,7 @@ def test_tracker_jitter_filtering():
 
 
 def test_tracker_outage_gap_reset():
-    """Long gap (>2h) between readings should reset continuous timer."""
+    """Long gap (>2h) between readings should reset continuous timer and re-establish baseline."""
     config = ZeroFlowMonitor(
         enabled=True,
         continuous_flow_hours=2.0,
@@ -175,9 +175,10 @@ def test_tracker_outage_gap_reset():
     # Camera/network outage for 3 hours (gap > 7200s)
     t2 = t1 + timedelta(hours=3)
     status = tracker.evaluate_reading(t2, 100.100)
-    # Continuous flow timer reset
-    assert status.state == LeakState.FLOW_ACTIVE
+    # Continuous flow timer reset and baseline re-established
+    assert status.state == LeakState.OK
     assert status.current_flow_duration_seconds == 0.0
+    assert status.current_flow_volume == 0.0
 
 
 def test_tracker_manual_reset():
@@ -390,3 +391,118 @@ def test_tracker_flow_rate_invalid_and_negative():
     )
     assert st_qual.state == LeakState.FLOW_ACTIVE
     assert st_qual.current_flow_rate == 0.050  # preserved previous valid flow rate
+
+
+def test_tracker_gap_reset_no_stale_delta():
+    """Verify post-gap readings compute delta from post-gap baseline, not stale pre-gap value."""
+    config = ZeroFlowMonitor(
+        enabled=True,
+        continuous_flow_hours=2.0,
+        min_leak_volume=0.010,
+    )
+    tracker = ZeroFlowTracker(config)
+    local_tz = datetime.now().astimezone().tzinfo
+    t0 = datetime(2026, 9, 7, 0, 0, 0, tzinfo=local_tz)
+    tracker.evaluate_reading(t0, 100.000)
+
+    # Small flow before outage
+    t1 = t0 + timedelta(minutes=30)
+    tracker.evaluate_reading(t1, 100.010)
+
+    # Outage for 4 hours; during outage 10 m3 consumed
+    t2 = t1 + timedelta(hours=4)
+    s2 = tracker.evaluate_reading(t2, 110.000)
+    assert s2.state == LeakState.OK
+    assert s2.current_flow_volume == 0.0
+
+    # Next reading 15 minutes later: small usage of 0.005 m3
+    t3 = t2 + timedelta(minutes=15)
+    s3 = tracker.evaluate_reading(t3, 110.005)
+    assert s3.state == LeakState.FLOW_ACTIVE
+    # Delta must be 0.005, NOT 10.005!
+    assert round(s3.current_flow_volume, 3) == 0.005
+
+
+def test_tracker_snapshot_immutability():
+    """Verify ZeroFlowStatus snapshots are independent copies not mutated by tracker state."""
+    config = ZeroFlowMonitor(
+        enabled=True,
+        continuous_flow_hours=1.0,
+        min_leak_volume=0.005,
+    )
+    tracker = ZeroFlowTracker(config)
+    local_tz = datetime.now().astimezone().tzinfo
+    t0 = datetime(2026, 9, 7, 0, 0, 0, tzinfo=local_tz)
+    tracker.evaluate_reading(t0, 100.000)
+
+    # Trigger leak alert
+    t1 = t0 + timedelta(hours=1, minutes=30)
+    tracker.evaluate_reading(t1, 100.020)
+
+    snap1 = tracker.get_status()
+    assert snap1.active_event is not None
+    orig_duration = snap1.active_event.duration_seconds
+    orig_volume = snap1.active_event.leaked_volume
+
+    # Advance flow further
+    t2 = t1 + timedelta(minutes=30)
+    tracker.evaluate_reading(t2, 100.030)
+
+    # Snapshot 1 should remain unaffected
+    assert snap1.active_event.duration_seconds == orig_duration
+    assert snap1.active_event.leaked_volume == orig_volume
+
+    # Fresh snapshot reflects updated values
+    snap2 = tracker.get_status()
+    assert snap2.active_event is not None
+    assert snap2.active_event.duration_seconds > orig_duration
+    assert snap2.active_event.leaked_volume > orig_volume
+
+
+def test_tracker_invalid_reading_watchdog():
+    """Verify gap watchdog resets continuous sequence even when invalid readings arrive after long gap."""
+    config = ZeroFlowMonitor(
+        enabled=True,
+        continuous_flow_hours=2.0,
+        min_leak_volume=0.010,
+    )
+    tracker = ZeroFlowTracker(config)
+    local_tz = datetime.now().astimezone().tzinfo
+    t0 = datetime(2026, 9, 7, 0, 0, 0, tzinfo=local_tz)
+    tracker.evaluate_reading(t0, 100.000)
+
+    # Flow for 1 hour
+    t1 = t0 + timedelta(hours=1)
+    s1 = tracker.evaluate_reading(t1, 100.050)
+    assert s1.state == LeakState.FLOW_ACTIVE
+
+    # Gap of 3 hours, then invalid reading (meter_value=None)
+    t2 = t1 + timedelta(hours=3)
+    s2 = tracker.evaluate_reading(t2, None)
+    assert s2.state == LeakState.OK
+    assert s2.current_flow_volume == 0.0
+
+
+def test_tracker_update_config():
+    """Verify dynamic config update without losing tracking state."""
+    cfg1 = ZeroFlowMonitor(
+        enabled=True,
+        continuous_flow_hours=2.0,
+        min_leak_volume=0.010,
+    )
+    tracker = ZeroFlowTracker(cfg1)
+    local_tz = datetime.now().astimezone().tzinfo
+    t0 = datetime(2026, 9, 7, 0, 0, 0, tzinfo=local_tz)
+    tracker.evaluate_reading(t0, 100.000)
+
+    t1 = t0 + timedelta(minutes=30)
+    s1 = tracker.evaluate_reading(t1, 100.020)
+    assert s1.state == LeakState.FLOW_ACTIVE
+
+    cfg2 = ZeroFlowMonitor(
+        enabled=True,
+        continuous_flow_hours=0.5,
+        min_leak_volume=0.010,
+    )
+    tracker.update_config(cfg2)
+    assert tracker.config.continuous_flow_hours == 0.5

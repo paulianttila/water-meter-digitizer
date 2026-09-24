@@ -8,6 +8,7 @@ import pytest
 from configuration import Config
 from gui.pages.meter import MeterPage
 from processor.digitizer import MeterResult, MeterValue
+from services.leak.models import LeakState, ZeroFlowStatus
 
 
 @pytest.fixture
@@ -265,3 +266,83 @@ def test_page_meter_filled_digits_rendering():
             "2 low-confidence digits filled from previous reading" in str(arg)
             for arg in tooltip_calls
         )
+
+
+def test_page_meter_leak_alert_badge_rendering(mock_meter_result):
+    """Verify leak alert badge renders with LEAK DETECTED and negative color for ZeroFlowStatus object."""
+    callbacks = MagicMock()
+    callbacks.get_meter_data.return_value = mock_meter_result
+    callbacks.get_leak_status.return_value = ZeroFlowStatus(
+        enabled=True,
+        state=LeakState.LEAK_DETECTED,
+        current_flow_duration_seconds=7200.0,
+        current_flow_volume=0.035,
+    )
+    callbacks.get_image_as_base64_str.return_value = ""
+    callbacks.get_config.return_value = Config()
+
+    page = MeterPage(callbacks)
+    page.consumption_card = MagicMock()
+    page.history_card = MagicMock()
+    page.time_machine_card = MagicMock()
+
+    with patch("gui.pages.meter.ui") as mock_ui:
+        mock_ui.element.return_value.__enter__ = MagicMock()
+        mock_ui.element.return_value.__exit__ = MagicMock()
+        mock_ui.row.return_value.__enter__ = MagicMock()
+        mock_ui.row.return_value.__exit__ = MagicMock()
+        mock_ui.column.return_value.__enter__ = MagicMock()
+        mock_ui.column.return_value.__exit__ = MagicMock()
+        mock_ui.tab_panels.return_value.__enter__ = MagicMock()
+        mock_ui.tab_panels.return_value.__exit__ = MagicMock()
+        mock_ui.tab_panel.return_value.__enter__ = MagicMock()
+        mock_ui.tab_panel.return_value.__exit__ = MagicMock()
+
+        asyncio.run(page.show())
+
+        badge_calls = [
+            (call.args[0], call.kwargs.get("color"))
+            for call in mock_ui.badge.call_args_list
+            if call.args
+        ]
+        assert ("LEAK DETECTED", "negative") in badge_calls
+
+
+def test_page_meter_leak_active_flow_badge(mock_meter_result):
+    """Verify active flow badge renders with FLOW ACTIVE and amber color for ZeroFlowStatus object."""
+    callbacks = MagicMock()
+    callbacks.get_meter_data.return_value = mock_meter_result
+    callbacks.get_leak_status.return_value = ZeroFlowStatus(
+        enabled=True,
+        state=LeakState.FLOW_ACTIVE,
+        current_flow_duration_seconds=900.0,
+        current_flow_volume=0.010,
+    )
+    callbacks.get_image_as_base64_str.return_value = ""
+    callbacks.get_config.return_value = Config()
+
+    page = MeterPage(callbacks)
+    page.consumption_card = MagicMock()
+    page.history_card = MagicMock()
+    page.time_machine_card = MagicMock()
+
+    with patch("gui.pages.meter.ui") as mock_ui:
+        mock_ui.element.return_value.__enter__ = MagicMock()
+        mock_ui.element.return_value.__exit__ = MagicMock()
+        mock_ui.row.return_value.__enter__ = MagicMock()
+        mock_ui.row.return_value.__exit__ = MagicMock()
+        mock_ui.column.return_value.__enter__ = MagicMock()
+        mock_ui.column.return_value.__exit__ = MagicMock()
+        mock_ui.tab_panels.return_value.__enter__ = MagicMock()
+        mock_ui.tab_panels.return_value.__exit__ = MagicMock()
+        mock_ui.tab_panel.return_value.__enter__ = MagicMock()
+        mock_ui.tab_panel.return_value.__exit__ = MagicMock()
+
+        asyncio.run(page.show())
+
+        badge_calls = [
+            (call.args[0], call.kwargs.get("color"))
+            for call in mock_ui.badge.call_args_list
+            if call.args
+        ]
+        assert ("FLOW ACTIVE", "amber") in badge_calls

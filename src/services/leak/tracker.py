@@ -31,6 +31,11 @@ class ZeroFlowTracker:
             maxlen=getattr(config, "max_history_events", 50)
         )
 
+    def update_config(self, config: Any) -> None:
+        """Update tracker configuration dynamically while preserving tracking state."""
+        with self._lock:
+            self.config = config
+
     def evaluate_reading(
         self,
         timestamp: datetime,
@@ -40,10 +45,20 @@ class ZeroFlowTracker:
         min_confidence_threshold: float = 50.0,
         max_gap_seconds: float = 7200.0,
     ) -> ZeroFlowStatus:
-        """Evaluate a new meter reading for continuous flow and zero-flow events."""
+        """Evaluate a new meter reading for continuous flow and zero-flow events.
+
+        Baseline is initialized on the first valid reading where last_zero_flow_time
+        is set to timestamp. Readings after an outage gap (> max_gap_seconds) reset
+        the flow window and re-establish a fresh baseline.
+        """
         with self._lock:
             if not getattr(self.config, "enabled", False):
                 return self._build_status(enabled=False)
+
+            if timestamp.tzinfo is None:
+                timestamp = timestamp.astimezone()
+            else:
+                timestamp = timestamp.astimezone()
 
             # Quality & Confidence filter
             if (
@@ -58,12 +73,24 @@ class ZeroFlowTracker:
                     quality,
                     confidence,
                 )
+                if self._last_reading_time is not None:
+                    dt_gap = (timestamp - self._last_reading_time).total_seconds()
+                    if dt_gap > max_gap_seconds:
+                        logger.warning(
+                            "ZeroFlowTracker detected sample gap of %.1fs > %.1fs during invalid reading; "
+                            "resetting continuous flow sequence",
+                            dt_gap,
+                            max_gap_seconds,
+                        )
+                        if self._active_event is not None:
+                            self._resolve_active_event(timestamp, "outage_reset")
+                        self._last_zero_flow_time = timestamp
+                        self._continuous_flow_start_time = None
+                        self._continuous_flow_volume = 0.0
+                        self._peak_flow_rate = 0.0
+                        self._consecutive_zero_count = 0
+                        self._state = LeakState.OK
                 return self._build_status(enabled=True)
-
-            if timestamp.tzinfo is None:
-                timestamp = timestamp.astimezone()
-            else:
-                timestamp = timestamp.astimezone()
 
             # First reading initialization
             if self._last_reading_value is None or self._last_reading_time is None:
@@ -83,11 +110,11 @@ class ZeroFlowTracker:
                 logger.debug("Ignoring non-increasing timestamp in ZeroFlowTracker")
                 return self._build_status(enabled=True)
 
-            # Outage / gap watchdog: if gap is too large, reset continuous window
+            # Outage / gap watchdog: if gap is too large, reset continuous window and re-establish baseline
             if dt_seconds > max_gap_seconds:
                 logger.warning(
                     "ZeroFlowTracker detected sample gap of %.1fs > %.1fs; "
-                    "resetting continuous flow sequence",
+                    "resetting continuous flow sequence and re-establishing baseline",
                     dt_seconds,
                     max_gap_seconds,
                 )
@@ -99,6 +126,9 @@ class ZeroFlowTracker:
                 self._peak_flow_rate = 0.0
                 self._consecutive_zero_count = 0
                 self._state = LeakState.OK
+                self._last_reading_time = timestamp
+                self._last_reading_value = meter_value
+                return self._build_status(enabled=True)
 
             val_type = getattr(self.config, "value_type", ValueType.CUMULATIVE)
             if isinstance(val_type, str):
@@ -298,6 +328,8 @@ class ZeroFlowTracker:
             current_flow_volume=self._continuous_flow_volume,
             current_flow_rate=self._current_flow_rate,
             consecutive_zero_readings=self._consecutive_zero_count,
-            active_event=self._active_event,
-            recent_events=list(self._event_history),
+            active_event=(
+                self._active_event.model_copy() if self._active_event else None
+            ),
+            recent_events=[e.model_copy() for e in self._event_history],
         )

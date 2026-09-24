@@ -396,3 +396,64 @@ def test_get_meters_model_load_error_returns_503():
         resp = client.get("/meter")
         assert resp.status_code == 503
         assert "Model failed to load" in resp.json()["error"]
+
+
+def test_get_meter_data_evaluates_leak_tracker_when_value_invalid():
+    """Verify leak tracker is evaluated with meter_value=None when reading cannot be parsed as float."""
+    from api.routes_meter import get_meter_data
+
+    cfg = Config()
+    cfg.image_source.url = "http://fake-camera.local/stream.jpg"
+    cfg.zero_flow_monitor = ZeroFlowMonitor(enabled=True, meter_name="total")
+    cfg.mqtt.enabled = True
+    app.state.config = cfg
+
+    mock_tracker = MagicMock()
+    mock_mqtt = MagicMock()
+    app.state.zero_flow_tracker = mock_tracker
+    app.state.mqtt_service = mock_mqtt
+
+    dummy_frame = Image.new("RGB", (100, 100), color="green")
+    dummy_result = MeterResult(
+        meters=[
+            MeterValue(
+                name="total",
+                value="N/A",  # Unparseable float value
+                unit="m3",
+                quality="uncertain",
+                confidence=20.0,
+            )
+        ],
+        digital_results={},
+        analog_results={},
+        error="",
+    )
+
+    with (
+        patch("api.routes_meter.ImageProcessor") as mock_proc_cls,
+        patch("api.routes_meter.DigitizerProcessor") as mock_dig_cls,
+    ):
+        mock_proc = MagicMock()
+        mock_proc.pictures = {"final": dummy_frame}
+        mock_proc.get_pictures.return_value = {"final": dummy_frame}
+        mock_proc.get_cut_images.return_value = {}
+        mock_proc_cls.return_value = mock_proc
+
+        mock_dig = MagicMock()
+        mock_dig.set_min_confidence_threshold.return_value = mock_dig
+        mock_dig.set_detect_negative_sign.return_value = mock_dig
+        mock_dig.init_analog_model.return_value = mock_dig
+        mock_dig.init_digital_model.return_value = mock_dig
+        mock_dig.use_previous_value_file.return_value = mock_dig
+        mock_dig.process.return_value = dummy_result
+        mock_dig_cls.return_value = mock_dig
+
+        res = get_meter_data(url="", app_instance=app)
+        assert res == dummy_result
+
+        # Tracker should be evaluated with meter_value=None
+        mock_tracker.evaluate_reading.assert_called_once()
+        kcall = mock_tracker.evaluate_reading.call_args.kwargs
+        assert kcall["meter_value"] is None
+        assert kcall["confidence"] == 20.0
+        assert kcall["quality"] == "uncertain"

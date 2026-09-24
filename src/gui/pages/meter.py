@@ -193,7 +193,13 @@ class MeterPage(BasePage):
             # Check leak / flow telemetry
             leak_status: dict[str, Any] = {}
             try:
-                leak_status = self.callbacks.get_leak_status() or {}
+                raw_leak = self.callbacks.get_leak_status()
+                if hasattr(raw_leak, "to_dict"):
+                    leak_status = raw_leak.to_dict()
+                elif hasattr(raw_leak, "model_dump"):
+                    leak_status = raw_leak.model_dump()
+                elif isinstance(raw_leak, dict):
+                    leak_status = raw_leak
             except Exception:
                 logger.debug("Leak status unavailable", exc_info=True)
                 leak_status = {}
@@ -321,9 +327,13 @@ class MeterPage(BasePage):
                                     ui.label(meter.warning)
 
                     # Flow & Leak Telemetry Card
-                    is_flowing = leak_status.get("flow_active", False)
-                    leak_state = leak_status.get("state", "OK")
-                    flow_dur = leak_status.get("continuous_flow_seconds", 0)
+                    is_flowing = bool(leak_status.get("flow_active", False))
+                    leak_state = str(leak_status.get("state", "OK"))
+                    flow_dur = float(
+                        leak_status.get("continuous_flow_seconds")
+                        or leak_status.get("current_flow_duration_seconds", 0.0)
+                        or 0.0
+                    )
                     with ui.element("div").classes(
                         "p-4 rounded-2xl border border-white/10 bg-slate-900/70 shadow-lg min-w-[200px] flex-1 backdrop-blur-md"
                     ):
@@ -331,8 +341,12 @@ class MeterPage(BasePage):
                             ui.label("FLOW MONITOR").classes(
                                 "text-xs font-bold text-gray-400 tracking-wider font-mono"
                             )
-                            if leak_state in ("LEAK_ALERT", "SUSPECTED_LEAK"):
-                                ui.badge(leak_state, color="negative").classes(
+                            if leak_state == "LEAK_DETECTED" or "LEAK" in leak_state:
+                                ui.badge("LEAK DETECTED", color="negative").classes(
+                                    "text-[10px] font-bold"
+                                )
+                            elif is_flowing:
+                                ui.badge("FLOW ACTIVE", color="amber").classes(
                                     "text-[10px] font-bold"
                                 )
                             else:

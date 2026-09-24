@@ -443,16 +443,15 @@ def get_meter_data(
                     target_qual = getattr(m, "quality", "good")
                     break
 
-            if target_val is not None:
-                zero_status = zero_flow_tracker.evaluate_reading(
-                    timestamp=datetime.now().astimezone(),
-                    meter_value=target_val,
-                    confidence=target_conf,
-                    quality=target_qual,
-                    min_confidence_threshold=config.min_confidence_threshold,
-                )
-                if mqtt_service is not None and getattr(config.mqtt, "enabled", False):
-                    mqtt_service.publish_zero_flow_status(zero_status)
+            zero_status = zero_flow_tracker.evaluate_reading(
+                timestamp=datetime.now().astimezone(),
+                meter_value=target_val,
+                confidence=target_conf,
+                quality=target_qual,
+                min_confidence_threshold=config.min_confidence_threshold,
+            )
+            if mqtt_service is not None and getattr(config.mqtt, "enabled", False):
+                mqtt_service.publish_zero_flow_status(zero_status)
         except Exception as e:
             logger.warning(f"Error evaluating zero-flow leak status: {e}")
 
