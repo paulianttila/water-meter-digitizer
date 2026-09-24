@@ -36,8 +36,8 @@ def inject_glare(
     glare_mask = np.power(glare_mask, 1.8) * min(2.0, max(0.2, intensity))
 
     img_np = np.array(image, dtype=np.float32)
-    for c in range(3):
-        img_np[:, :, c] = np.clip(img_np[:, :, c] + glare_mask * 235.0, 0, 255)
+    img_np += glare_mask[:, :, np.newaxis] * 235.0
+    np.clip(img_np, 0, 255, out=img_np)
 
     return PIL.Image.fromarray(img_np.astype(np.uint8))
 
@@ -52,6 +52,7 @@ def apply_perturbations(
     brightness: float = 1.0,
     contrast: float = 1.0,
     blur: float = 0.0,
+    fillcolor: tuple[int, int, int] | None = None,
 ) -> Image:
     """Apply camera and environmental artifacts for CV robustness testing."""
     img = image.copy()
@@ -60,7 +61,12 @@ def apply_perturbations(
         img = inject_glare(img, glare_pos, glare_intensity)
 
     if rotate != 0.0:
-        img = img.rotate(rotate, resample=PIL.Image.Resampling.BICUBIC, expand=False)
+        img = img.rotate(
+            rotate,
+            resample=PIL.Image.Resampling.BICUBIC,
+            expand=False,
+            fillcolor=fillcolor,
+        )
 
     if brightness != 1.0:
         img = PIL.ImageEnhance.Brightness(img).enhance(brightness)
@@ -73,7 +79,8 @@ def apply_perturbations(
     if noise > 0.0:
         img_np = np.array(img, dtype=np.float32)
         sigma = (noise / 100.0) * 255.0
-        gauss = np.random.normal(0, sigma, img_np.shape)
+        rng = np.random.default_rng()
+        gauss = rng.normal(0, sigma, img_np.shape)
         noisy = np.clip(img_np + gauss, 0, 255).astype(np.uint8)
         img = PIL.Image.fromarray(noisy)
 

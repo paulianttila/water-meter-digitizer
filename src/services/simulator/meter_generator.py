@@ -11,14 +11,11 @@ Completely autonomous and decoupled from config.ini.
 
 from __future__ import annotations
 
-import logging
 import math
-from typing import Any
+from typing import Any, ClassVar
 
 import PIL.Image
 import PIL.ImageDraw
-import PIL.ImageEnhance
-import PIL.ImageFilter
 import PIL.ImageFont
 from PIL.Image import Image
 
@@ -48,8 +45,6 @@ from services.simulator.rendering import (
 from services.simulator.rendering import (
     resolve_lcd_theme as _resolve_lcd_theme_fn,
 )
-
-logger = logging.getLogger(__name__)
 
 METER_BG_THEMES: dict[str, dict[str, Any]] = {
     "white": {
@@ -97,6 +92,24 @@ METER_BG_THEMES: dict[str, dict[str, Any]] = {
         "text_sub": (170, 180, 195),
         "border": (70, 78, 90),
     },
+    "metal": {
+        "dial": (214, 220, 228),
+        "casing": (188, 195, 205),
+        "canvas": (172, 180, 190),
+        "dial_sub": (224, 230, 238),
+        "text": (28, 34, 44),
+        "text_sub": (58, 68, 80),
+        "border": (135, 145, 160),
+    },
+    "worn": {
+        "dial": (236, 226, 204),
+        "casing": (210, 196, 168),
+        "canvas": (192, 180, 156),
+        "dial_sub": (240, 232, 212),
+        "text": (60, 50, 40),
+        "text_sub": (90, 80, 68),
+        "border": (160, 145, 120),
+    },
     "aged": {
         "dial": (242, 236, 220),
         "casing": (230, 222, 202),
@@ -112,8 +125,15 @@ METER_BG_THEMES: dict[str, dict[str, Any]] = {
 class MeterImageGenerator:
     """Procedural rounded water meter image generator."""
 
+    _base_cache: ClassVar[dict[tuple[int, int, str, str], Image]] = {}
+
     def __init__(self, config: Config | None = None) -> None:
         self.config = config or Config()
+
+    @classmethod
+    def clear_base_cache(cls) -> None:
+        """Clear the cached static base meter images."""
+        cls._base_cache.clear()
 
     # -------------------------------------------------------------------------
     # Public Generation API
@@ -146,13 +166,22 @@ class MeterImageGenerator:
             value, custom_digital_values, custom_analog_values
         )
 
-        # 2. Build Base Rounded Water Meter Canvas on Canonical 640x480 Frame
+        # 2. Build Base Rounded Water Meter Canvas on Canonical 640x480 Frame (using template cache)
         base_w, base_h = 640, 480
-        canvas = (
-            base_image.copy().convert("RGB")
-            if base_image is not None
-            else self._draw_meter_base(base_w, base_h, lcd_bg=lcd_bg, meter_bg=meter_bg)
-        )
+        if base_image is not None:
+            canvas = base_image.copy().convert("RGB")
+        else:
+            cache_key = (
+                base_w,
+                base_h,
+                meter_bg.lower().strip(),
+                lcd_bg.lower().strip(),
+            )
+            if cache_key not in self._base_cache:
+                self._base_cache[cache_key] = self._draw_meter_base(
+                    base_w, base_h, lcd_bg=lcd_bg, meter_bg=meter_bg
+                )
+            canvas = self._base_cache[cache_key].copy()
 
         # 3. Draw 5 LCD Digital Counter Drums
         self._overlay_lcd_digits(
@@ -182,6 +211,7 @@ class MeterImageGenerator:
             )
 
         # 6. Apply Optical Perturbations at Target Resolution
+        theme = self._resolve_meter_bg_theme(meter_bg)
         canvas = self.apply_perturbations(
             canvas,
             rotate=rotate,
@@ -192,6 +222,7 @@ class MeterImageGenerator:
             brightness=brightness,
             contrast=contrast,
             blur=blur,
+            fillcolor=theme.get("canvas"),
         )
 
         return canvas
@@ -231,6 +262,13 @@ class MeterImageGenerator:
         integer_part = parts[0]
         fractional_part = parts[1] if len(parts) > 1 else ""
 
+        def _parse_digit_char(c: str) -> float:
+            if c.isdigit():
+                return float(c)
+            if c == "-":
+                return -1.0
+            return -2.0  # Blank / off segment for spaces, unreadable characters, etc.
+
         # 5 digital digits
         dig_names = ["digit1", "digit2", "digit3", "digit4", "digit5"]
         digit_states: dict[str, float] = {}
@@ -239,11 +277,11 @@ class MeterImageGenerator:
             pad_int = integer_part.zfill(4)[-4:]
             digit_states["digit1"] = -1.0
             for i, name in enumerate(dig_names[1:]):
-                digit_states[name] = float(pad_int[i])
+                digit_states[name] = _parse_digit_char(pad_int[i])
         else:
             pad_int = integer_part.zfill(5)[-5:]
             for i, name in enumerate(dig_names):
-                digit_states[name] = float(pad_int[i])
+                digit_states[name] = _parse_digit_char(pad_int[i])
 
         # 4 analog dials
         ana_names = ["analog1", "analog2", "analog3", "analog4"]
@@ -251,11 +289,11 @@ class MeterImageGenerator:
         dial_states: dict[str, float] = {}
         for i, name in enumerate(ana_names):
             if i < len(pad_frac):
-                sub_val = (
-                    float(pad_frac[i : i + 2]) / 10.0
-                    if len(pad_frac) > i + 1
-                    else float(pad_frac[i])
-                )
+                chunk = pad_frac[i : i + 2] if len(pad_frac) > i + 1 else pad_frac[i]
+                try:
+                    sub_val = float(chunk) / 10.0 if len(chunk) > 1 else float(chunk)
+                except ValueError:
+                    sub_val = 0.0
                 dial_states[name] = sub_val
             else:
                 dial_states[name] = 0.0
@@ -497,13 +535,21 @@ class MeterImageGenerator:
     def _resolve_meter_bg_theme(self, meter_bg: str) -> dict[str, Any]:
         key = (meter_bg or "white").lower().strip()
         alias_map = {
-            "silver": "grey",
+            "metal": "metal",
+            "metallic": "metal",
+            "steel": "metal",
+            "zinc": "metal",
+            "silver": "metal",
             "gray": "grey",
+            "worn": "worn",
+            "aged": "worn",
+            "weathered": "worn",
+            "patina": "worn",
+            "vintage": "worn",
+            "cream": "worn",
             "gold": "brass",
             "yellow": "brass",
             "black": "dark",
-            "cream": "aged",
-            "vintage": "aged",
             "light": "white",
         }
         resolved = alias_map.get(key, key)
@@ -530,6 +576,7 @@ class MeterImageGenerator:
         brightness: float = 1.0,
         contrast: float = 1.0,
         blur: float = 0.0,
+        fillcolor: tuple[int, int, int] | None = None,
     ) -> Image:
         """Apply camera and environmental artifacts for CV robustness testing."""
         return _apply_perturbations(
@@ -542,6 +589,7 @@ class MeterImageGenerator:
             brightness=brightness,
             contrast=contrast,
             blur=blur,
+            fillcolor=fillcolor,
         )
 
     def _inject_glare(
@@ -558,16 +606,12 @@ class MeterImageGenerator:
     # -------------------------------------------------------------------------
 
     @classmethod
-    def create_synthetic_template(
+    def _compute_standard_rois(
         cls,
         width: int = 640,
         height: int = 480,
-        config: Config | None = None,
-    ) -> tuple[Image, Config]:
-        """Create a complete standardized rounded water meter canvas and matching Config."""
-        gen = cls(config=config)
-        img = gen.generate(value="00000.0000", width=width, height=height)
-
+    ) -> tuple[list[ImagePosition], list[ImagePosition], list[RefImage]]:
+        """Compute scaled digital, analog, and reference marker ROIs for given resolution."""
         scale_x = width / 640.0
         scale_y = height / 480.0
 
@@ -620,6 +664,21 @@ class MeterImageGenerator:
             sx, sy, sw, sh = _scale_pos(rx, ry, rw, rh)
             ref_images.append(RefImage(name=name, x=sx, y=sy, w=sw, h=sh, file_name=fn))
 
+        return cut_digits, cut_analogs, ref_images
+
+    @classmethod
+    def create_synthetic_template(
+        cls,
+        width: int = 640,
+        height: int = 480,
+        config: Config | None = None,
+    ) -> tuple[Image, Config]:
+        """Create a complete standardized rounded water meter canvas and matching Config."""
+        gen = cls(config=config)
+        img = gen.generate(value="00000.0000", width=width, height=height)
+
+        cut_digits, cut_analogs, ref_images = cls._compute_standard_rois(width, height)
+
         cfg = Config(
             digital_readout=Config().digital_readout.model_copy(
                 update={"cut_images": cut_digits, "enabled": True}
@@ -653,47 +712,7 @@ class MeterImageGenerator:
     ) -> Config:
         """Create a dedicated Config matching the procedural mock meter dimensions and ROIs."""
         base = base_config or Config()
-        scale_x = width / 640.0
-        scale_y = height / 480.0
-
-        def _scale_pos(
-            x: int | float, y: int | float, w: int | float, h: int | float
-        ) -> tuple[int, int, int, int]:
-            return (
-                round(x * scale_x),
-                round(y * scale_y),
-                round(w * scale_x),
-                round(h * scale_y),
-            )
-
-        base_win_w = 264
-        base_win_x = 320 - base_win_w // 2
-        base_win_y = 240 - 100
-        base_dw, base_dh = 39, 66
-        base_gap = 10
-        base_start_dx = base_win_x + 14
-        base_dy = base_win_y + 10
-
-        cut_digits = []
-        for i in range(5):
-            bx = base_start_dx + i * (base_dw + base_gap)
-            by = base_dy
-            sx, sy, sw, sh = _scale_pos(bx, by, base_dw, base_dh)
-            cut_digits.append(ImagePosition(name=f"digit{i+1}", x=sx, y=sy, w=sw, h=sh))
-
-        base_dial_size = 76
-        dial_centers = [
-            ("analog1", 430, 300),
-            ("analog2", 360, 365),
-            ("analog3", 280, 365),
-            ("analog4", 210, 300),
-        ]
-        cut_analogs = []
-        for name, cx, cy in dial_centers:
-            bx = cx - base_dial_size // 2
-            by = cy - base_dial_size // 2
-            sx, sy, sw, sh = _scale_pos(bx, by, base_dial_size, base_dial_size)
-            cut_analogs.append(ImagePosition(name=name, x=sx, y=sy, w=sw, h=sh))
+        cut_digits, cut_analogs, _ = cls._compute_standard_rois(width, height)
 
         dig_update: dict[str, Any] = {"cut_images": cut_digits, "enabled": True}
         if not base.digital_readout.model_file:

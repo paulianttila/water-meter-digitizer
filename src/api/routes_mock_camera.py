@@ -246,6 +246,7 @@ def get_mock_camera_frame(
         contrast=contrast,
         lcd_color=lcd_color,
         lcd_bg=lcd_bg,
+        meter_bg=meter_bg,
         needle_color=needle_color,
         width=width,
         height=height,

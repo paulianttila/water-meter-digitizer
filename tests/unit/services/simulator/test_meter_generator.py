@@ -48,18 +48,38 @@ def test_generator_lcd_digits_overlay():
 
 def test_generator_meter_bg_themes():
     generator = MeterImageGenerator()
-    themes = ["white", "grey", "blue", "brass", "dark", "aged", "silver", "gold"]
+    themes = [
+        "white",
+        "metal",
+        "worn",
+        "grey",
+        "blue",
+        "brass",
+        "dark",
+        "aged",
+        "silver",
+        "gold",
+    ]
     for theme_name in themes:
         img = generator.generate(value="00123.4567", meter_bg=theme_name)
         assert isinstance(img, Image.Image)
         assert img.size == (640, 480)
 
-    # Verify dark background has different pixel characteristics from white
+    # Verify metal, worn, and dark backgrounds have distinct pixel characteristics from white
     img_white = generator.generate(value="00000.0000", meter_bg="white")
+    img_metal = generator.generate(value="00000.0000", meter_bg="metal")
+    img_worn = generator.generate(value="00000.0000", meter_bg="worn")
     img_dark = generator.generate(value="00000.0000", meter_bg="dark")
+
     # Dial face area (320, 80) is above the LCD window
     p_white = img_white.getpixel((320, 80))
+    p_metal = img_metal.getpixel((320, 80))
+    p_worn = img_worn.getpixel((320, 80))
     p_dark = img_dark.getpixel((320, 80))
+
+    assert p_white != p_metal
+    assert p_white != p_worn
+    assert p_metal != p_worn
     assert sum(p_white) > sum(p_dark)
 
 
@@ -275,3 +295,131 @@ def test_meter_generator_glare_injection():
     )
     # Normalized (0.5, 0.5) and absolute (320, 240) on 640x480 should be identical
     np.testing.assert_allclose(arr_glare_pixel, arr_glare_norm, atol=1.0)
+
+
+def test_mock_camera_endpoint_meter_bg_param():
+    client = TestClient(app)
+    resp_white = client.get("/api/mock_camera?meter_bg=white")
+    assert resp_white.status_code == 200
+
+    resp_dark = client.get("/api/mock_camera?meter_bg=dark")
+    assert resp_dark.status_code == 200
+
+    # Ensure white and dark themes produce different images
+    assert resp_white.content != resp_dark.content
+
+    import io
+
+    img_white = Image.open(io.BytesIO(resp_white.content))
+    img_dark = Image.open(io.BytesIO(resp_dark.content))
+
+    p_white = img_white.getpixel((320, 80))
+    p_dark = img_dark.getpixel((320, 80))
+    assert sum(p_white) > sum(p_dark)
+
+
+def test_base_canvas_caching_and_clear():
+    MeterImageGenerator.clear_base_cache()
+    assert len(MeterImageGenerator._base_cache) == 0
+
+    generator = MeterImageGenerator()
+    img1 = generator.generate(value="00111.1111", meter_bg="white", lcd_bg="grey")
+    assert len(MeterImageGenerator._base_cache) == 1
+    assert (640, 480, "white", "grey") in MeterImageGenerator._base_cache
+
+    # Subsequent generation with different value reuses cached canvas
+    img2 = generator.generate(value="00222.2222", meter_bg="white", lcd_bg="grey")
+    assert len(MeterImageGenerator._base_cache) == 1
+    assert isinstance(img1, Image.Image)
+    assert isinstance(img2, Image.Image)
+
+    MeterImageGenerator.clear_base_cache()
+    assert len(MeterImageGenerator._base_cache) == 0
+
+
+def test_parse_meter_values_resilience():
+    generator = MeterImageGenerator()
+
+    # Partial / unreadable digit
+    dig_states, _ = generator._parse_meter_values("0045N.1234")
+    assert dig_states["digit1"] == 0.0
+    assert dig_states["digit2"] == 0.0
+    assert dig_states["digit3"] == 4.0
+    assert dig_states["digit4"] == 5.0
+    assert dig_states["digit5"] == -2.0  # Blank / off segment
+
+    # Entirely non-numeric string (e.g. "ERROR")
+    dig_err, dial_err = generator._parse_meter_values("ERROR")
+    assert all(v == -2.0 for v in dig_err.values())
+    assert all(v == 0.0 for v in dial_err.values())
+
+    # Generate image with "ERROR" should succeed without raising ValueError
+    img = generator.generate(value="ERROR")
+    assert isinstance(img, Image.Image)
+    assert img.size == (640, 480)
+
+
+def test_blank_and_negative_segment_digits():
+    from PIL import ImageDraw
+
+    from services.simulator.rendering.digits import SEGMENTS_7, draw_7segment_digit
+
+    # Verify blank state has all segments off
+    assert SEGMENTS_7[-2] == (False, False, False, False, False, False, False)
+
+    # Test drawing blank digit
+    img = Image.new("RGB", (50, 70), (200, 200, 200))
+    draw = ImageDraw.Draw(img)
+    draw_7segment_digit(
+        draw,
+        x=5,
+        y=5,
+        w=40,
+        h=60,
+        digit=-2,
+        active_color=(0, 0, 0),
+        ghost_color=(180, 180, 180),
+    )
+    assert isinstance(img, Image.Image)
+
+
+def test_direct_needle_drawing_overlay():
+    from PIL import ImageDraw
+
+    from services.simulator.rendering.dials import draw_needle, overlay_analog_needles
+
+    canvas = Image.new("RGB", (640, 480), (240, 240, 240))
+    dials = {"analog1": 1.5, "analog2": 4.2, "analog3": 7.8, "analog4": 0.0}
+
+    overlay_analog_needles(canvas, dials, needle_color="red")
+    assert isinstance(canvas, Image.Image)
+
+    # Test draw_needle helper directly
+    draw = ImageDraw.Draw(canvas)
+    draw_needle(draw, cx=100, cy=100, radius=30, value=5.0, needle_color="black")
+    draw_needle(draw, cx=150, cy=100, radius=30, value=5.0, needle_color="blue")
+
+
+def test_cli_synthetic_template_with_reference_crops(tmp_path, monkeypatch):
+    out_img = tmp_path / "custom_template.jpg"
+    out_ini = tmp_path / "custom_template.ini"
+
+    test_args = [
+        "meter-generator",
+        "--synthetic-template",
+        "--output",
+        str(out_img),
+    ]
+    monkeypatch.setattr("sys.argv", test_args)
+    cli_main()
+
+    assert out_img.exists()
+    assert out_ini.exists()
+
+    # Companion reference images should also be exported
+    ref0 = tmp_path / "ref0.jpg"
+    ref1 = tmp_path / "ref1.jpg"
+    ref2 = tmp_path / "ref2.jpg"
+    assert ref0.exists() and ref0.stat().st_size > 0
+    assert ref1.exists() and ref1.stat().st_size > 0
+    assert ref2.exists() and ref2.stat().st_size > 0

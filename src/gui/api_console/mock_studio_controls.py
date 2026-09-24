@@ -292,7 +292,7 @@ def render_mock_studio_controls(panel: MockStudioPanel) -> None:
 
                 panel.mock_meter_bg_select = (
                     ui.select(
-                        options=["white", "metal", "worn", "dark"],
+                        options=["white", "metal", "worn", "dark", "blue", "brass"],
                         value=panel.mock_meter_bg,
                         label="Meter Faceplate",
                         on_change=_on_mbg_change,

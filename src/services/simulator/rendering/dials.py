@@ -8,18 +8,15 @@ import PIL.ImageDraw
 from PIL.Image import Image
 
 
-def draw_needle_patch(
-    patch: Image,
-    width: int,
-    height: int,
+def draw_needle(
+    draw: PIL.ImageDraw.ImageDraw,
+    cx: float,
+    cy: float,
+    radius: float,
     value: float,
     needle_color: str = "red",
 ) -> None:
-    """Draw pointer needle on an analog dial patch."""
-    draw = PIL.ImageDraw.Draw(patch)
-    cx, cy = width // 2, height // 2
-    radius = min(width, height) // 2 - 4
-
+    """Draw pointer needle directly onto an ImageDraw context."""
     # Angle: 0.0 = 12 o'clock (-90°), clockwise
     angle_deg = (value % 10.0) * 36.0 - 90.0
     angle_rad = math.radians(angle_deg)
@@ -36,8 +33,16 @@ def draw_needle_patch(
     b2_x = cx - base_half_w * math.cos(perp_rad)
     b2_y = cy - base_half_w * math.sin(perp_rad)
 
-    body_col = (225, 25, 25) if needle_color.lower() == "red" else (25, 25, 30)
-    outline_col = (140, 15, 15) if needle_color.lower() == "red" else (10, 10, 15)
+    nc = needle_color.lower().strip()
+    if nc == "red":
+        body_col = (225, 25, 25)
+        outline_col = (140, 15, 15)
+    elif nc == "blue":
+        body_col = (30, 80, 205)
+        outline_col = (15, 40, 110)
+    else:  # black / dark
+        body_col = (25, 25, 30)
+        outline_col = (10, 10, 15)
 
     # Shadow
     draw.polygon(
@@ -67,12 +72,26 @@ def draw_needle_patch(
     )
 
 
+def draw_needle_patch(
+    patch: Image,
+    width: int,
+    height: int,
+    value: float,
+    needle_color: str = "red",
+) -> None:
+    """Draw pointer needle on an analog dial patch."""
+    draw = PIL.ImageDraw.Draw(patch)
+    cx, cy = width // 2, height // 2
+    radius = min(width, height) // 2 - 4
+    draw_needle(draw, cx, cy, radius, value, needle_color)
+
+
 def overlay_analog_needles(
     canvas: Image,
     dial_states: dict[str, float],
     needle_color: str = "red",
 ) -> None:
-    """Render rotating needles on the 4 analog dial faces."""
+    """Render rotating needles on the 4 analog dial faces directly onto canvas."""
     dial_centers = [
         ("analog1", 430, 300),
         ("analog2", 360, 365),
@@ -80,10 +99,9 @@ def overlay_analog_needles(
         ("analog4", 210, 300),
     ]
     dial_size = 76
+    radius = dial_size // 2 - 4
 
+    draw = PIL.ImageDraw.Draw(canvas)
     for name, cx, cy in dial_centers:
         val = dial_states.get(name, 0.0)
-        ax, ay = cx - dial_size // 2, cy - dial_size // 2
-        patch = canvas.crop((ax, ay, ax + dial_size, ay + dial_size))
-        draw_needle_patch(patch, dial_size, dial_size, val, needle_color)
-        canvas.paste(patch, (ax, ay))
+        draw_needle(draw, cx, cy, radius, val, needle_color)

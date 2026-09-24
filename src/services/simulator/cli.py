@@ -2,6 +2,7 @@
 
 import argparse
 import logging
+from pathlib import Path
 
 from services.simulator.meter_generator import MeterImageGenerator
 
@@ -64,13 +65,13 @@ def main() -> None:
         "--meter-bg",
         type=str,
         default="white",
-        help="Meter background/dial color (white, grey, blue, brass, dark, aged)",
+        help="Meter background/dial color (white, metal, worn, dark, grey, blue, brass, aged)",
     )
     parser.add_argument(
         "--needle-color",
         type=str,
         default="red",
-        help="Analog dial needle color (red, black)",
+        help="Analog dial needle color (red, black, blue)",
     )
     parser.add_argument(
         "--synthetic-template",
@@ -86,9 +87,24 @@ def main() -> None:
         img, cfg = MeterImageGenerator.create_synthetic_template()
         img.save(args.output)
         ini_path = args.output.rsplit(".", 1)[0] + ".ini"
+
+        # Also crop and save the 3 reference image patches companion to the synthetic template
+        out_path = Path(args.output)
+        out_dir = out_path.parent
+        updated_refs = []
+        for ref in cfg.alignment.ref_images:
+            ref_crop = img.crop((ref.x, ref.y, ref.x + ref.w, ref.y + ref.h))
+            ref_filename = f"{ref.name}.jpg"
+            ref_filepath = out_dir / ref_filename
+            ref_crop.save(ref_filepath, quality=95)
+            updated_refs.append(
+                ref.model_copy(update={"file_name": str(ref_filepath.resolve())})
+            )
+        cfg.alignment.ref_images = updated_refs
+
         cfg.save_to_file(ini_path)
         logger.info(
-            f"Generated synthetic template to {args.output} and config to {ini_path}"
+            f"Generated synthetic template to {args.output}, config to {ini_path}, and reference patches"
         )
         return
 

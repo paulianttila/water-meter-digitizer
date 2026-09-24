@@ -1,6 +1,6 @@
 """Simulator rendering modules (digits, dials, and optical effects)."""
 
-from .dials import draw_needle_patch, overlay_analog_needles
+from .dials import draw_needle, draw_needle_patch, overlay_analog_needles
 from .digits import (
     SEGMENTS_7,
     draw_7segment_digit,
@@ -14,6 +14,7 @@ __all__ = [
     "SEGMENTS_7",
     "apply_perturbations",
     "draw_7segment_digit",
+    "draw_needle",
     "draw_needle_patch",
     "inject_glare",
     "overlay_analog_needles",

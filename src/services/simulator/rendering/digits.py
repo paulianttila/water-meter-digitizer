@@ -9,6 +9,7 @@ from PIL.Image import Image
 
 # Segment mapping for 0-9 in standard 7-segment display (a, b, c, d, e, f, g)
 SEGMENTS_7 = {
+    -2: (False, False, False, False, False, False, False),  # Blank / off
     -1: (False, False, False, False, False, False, True),  # Minus sign '-'
     0: (True, True, True, True, True, True, False),
     1: (False, True, True, False, False, False, False),
@@ -38,6 +39,8 @@ def resolve_lcd_bg_color(lcd_bg: str) -> tuple[int, int, int]:
         "amber": (230, 205, 155),
         "dark": (18, 26, 20),
         "blue": (205, 220, 240),
+        "white": (245, 248, 245),
+        "black": (18, 26, 20),
     }
     return bg_map.get(lcd_bg.lower(), (210, 216, 210))
 
@@ -76,7 +79,7 @@ def draw_7segment_digit(
     half_h = h // 2
 
     # 7 segment state flags: (a, b, c, d, e, f, g)
-    seg_active = SEGMENTS_7.get(digit, (True, True, True, True, True, True, False))
+    seg_active = SEGMENTS_7.get(digit, SEGMENTS_7[-2])
 
     def color_for(seg_idx: int) -> tuple[int, int, int]:
         return active_color if seg_active[seg_idx] else ghost_color
@@ -193,7 +196,7 @@ def overlay_lcd_digits(
     for i in range(5):
         digit_name = f"digit{i+1}"
         raw_val = int(digit_states.get(digit_name, 0.0))
-        val = -1 if raw_val == -1 else (raw_val % 10)
+        val = raw_val if raw_val in (-1, -2) else raw_val % 10
         x = start_dx + i * (dw + gap) + pad_x
         y = dy + pad_y
         draw_7segment_digit(
