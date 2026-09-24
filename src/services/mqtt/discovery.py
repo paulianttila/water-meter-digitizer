@@ -21,6 +21,7 @@ def build_homeassistant_discovery_payloads(
         "identifiers": [device_id],
         "name": device_name,
         "model": "AI Edge Water Meter Digitizer",
+        "manufacturer": "Water Meter Digitizer",
         "sw_version": version,
     }
 
@@ -41,23 +42,35 @@ def build_homeassistant_discovery_payloads(
             rate_mark in unit_lower
             for rate_mark in ("/h", "/m", "/s", "gpm", "lpm", "flow")
         )
-        if (
-            "gal" in unit_lower
-            or "m3" in unit_lower
-            or "m³" in unit_lower
-            or "l" in unit_lower
-            or "water" in meter_slug
-        ):
-            device_class = "volume_flow_rate" if is_flow_rate else "water"
-            icon = "mdi:water-pump" if is_flow_rate else "mdi:water"
-        elif "gas" in meter_slug or "gas" in unit_lower:
+        is_water_unit = unit_lower in (
+            "l",
+            "liter",
+            "liters",
+            "litre",
+            "litres",
+            "gal",
+            "gallon",
+            "gallons",
+            "m3",
+            "m³",
+            "ft3",
+            "ft³",
+            "cf",
+            "ccf",
+        ) or any(u in unit_lower for u in ("m3", "m³", "gal", "ccf", "liter", "litre"))
+
+        device_class: str | None
+        if "gas" in meter_slug or "gas" in unit_lower:
             device_class = "gas"
             icon = "mdi:fire"
         elif "kwh" in unit_lower or "wh" in unit_lower or "energy" in meter_slug:
             device_class = "energy"
             icon = "mdi:lightning-bolt"
-        else:
+        elif is_water_unit or "water" in meter_slug:
             device_class = "volume_flow_rate" if is_flow_rate else "water"
+            icon = "mdi:water-pump" if is_flow_rate else "mdi:water"
+        else:
+            device_class = "volume_flow_rate" if is_flow_rate else None
             icon = "mdi:gauge"
 
         state_class = "measurement" if is_flow_rate else "total_increasing"
@@ -73,11 +86,12 @@ def build_homeassistant_discovery_payloads(
             "payload_available": "online",
             "payload_not_available": "offline",
             "unit_of_measurement": unit,
-            "device_class": device_class,
             "state_class": state_class,
             "icon": icon,
             "device": device_block,
         }
+        if device_class is not None:
+            value_payload["device_class"] = device_class
         payloads.append((value_topic, value_payload))
 
         # 2. Confidence Sensor (Diagnostic)

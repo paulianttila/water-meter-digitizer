@@ -9,6 +9,7 @@ import paho.mqtt.client as mqtt
 from config.models import MQTT
 from data_classes import MeterConfig
 from processor.digitizer import MeterResult
+from services.leak.models import ZeroFlowStatus
 from version import __version__
 
 from .discovery import build_homeassistant_discovery_payloads
@@ -180,8 +181,8 @@ class MQTTService:
                     qos=1,
                     retain=self.config.retain,
                 )
-            self._client.loop_stop()
             self._client.disconnect()
+            self._client.loop_stop()
         except Exception as e:
             logger.warning("Error stopping MQTT client: %s", e)
         finally:
@@ -230,10 +231,10 @@ class MQTTService:
             for meter in meter_result.meters:
                 if meter.value is not None:
                     # Clean numerical state for HA / openHAB
-                    topics_published[f"{prefix}/{meter.name}/value"] = str(meter.value)
+                    topics_published[f"{prefix}/{meter.name}/value"] = meter.value
                     self._client.publish(
                         topic=f"{prefix}/{meter.name}/value",
-                        payload=str(meter.value),
+                        payload=meter.value,
                         qos=1,
                         retain=retain,
                     )
@@ -260,6 +261,8 @@ class MQTTService:
                         "timestamp": now_iso,
                     }
                     attrs_json = json.dumps(attrs)
+
+                    # Published for Home Assistant entity attributes (json_attributes_topic)
                     topics_published[f"{prefix}/{meter.name}/attributes"] = attrs_json
                     self._client.publish(
                         topic=f"{prefix}/{meter.name}/attributes",
@@ -268,7 +271,7 @@ class MQTTService:
                         retain=retain,
                     )
 
-                    # Single meter JSON payload
+                    # Published for documented external integrations / custom consumers
                     topics_published[f"{prefix}/{meter.name}/json"] = attrs_json
                     self._client.publish(
                         topic=f"{prefix}/{meter.name}/json",
@@ -333,13 +336,13 @@ class MQTTService:
         except Exception as e:
             logger.warning("Failed to publish error to MQTT: %s", e)
 
-    def publish_zero_flow_status(self, status: Any) -> None:
+    def publish_zero_flow_status(self, status: ZeroFlowStatus | Any) -> None:
         """Publish zero-flow tracking and leak status metrics to MQTT."""
         if not self.config.enabled or not self.is_connected or self._client is None:
             return
 
         try:
-            prefix = self.config.topic_prefix or "watermeter"
+            prefix = self.config.topic_prefix
             retain = self.config.retain
             status_dict = status.to_dict() if hasattr(status, "to_dict") else status
 

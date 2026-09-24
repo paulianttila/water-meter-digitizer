@@ -23,6 +23,7 @@ def test_discovery_payload_device_classes():
         MeterConfig(name="gas_meter", format="{d1}", unit="ccf"),
         MeterConfig(name="power_meter", format="{d1}", unit="kWh"),
         MeterConfig(name="generic_dial", format="{d1}", unit="counts"),
+        MeterConfig(name="level_dial", format="{d1}", unit="electrical"),
     ]
 
     payloads = build_homeassistant_discovery_payloads(mqtt_cfg, meters)
@@ -33,6 +34,7 @@ def test_discovery_payload_device_classes():
     ]
     assert water_p["device_class"] == "water"
     assert water_p["icon"] == "mdi:water"
+    assert water_p["device"]["manufacturer"] == "Water Meter Digitizer"
 
     gas_p = payload_dict["homeassistant/sensor/digitizer_test/gas_meter_value/config"]
     assert gas_p["device_class"] == "gas"
@@ -48,6 +50,14 @@ def test_discovery_payload_device_classes():
         "homeassistant/sensor/digitizer_test/generic_dial_value/config"
     ]
     assert generic_p["icon"] == "mdi:gauge"
+    assert "device_class" not in generic_p
+
+    # Word containing 'l' (like 'electrical') should not falsely trigger water device_class
+    level_p = payload_dict[
+        "homeassistant/sensor/digitizer_test/level_dial_value/config"
+    ]
+    assert level_p["icon"] == "mdi:gauge"
+    assert "device_class" not in level_p
 
 
 def test_discovery_empty_meter_fallback():

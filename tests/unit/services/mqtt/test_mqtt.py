@@ -52,6 +52,7 @@ def test_homeassistant_discovery_payload_generation():
     assert main_val_payload["device_class"] == "water"
     assert main_val_payload["unit_of_measurement"] == "m³"
     assert main_val_payload["device"]["identifiers"] == ["water_meter_digitizer"]
+    assert main_val_payload["device"]["manufacturer"] == "Water Meter Digitizer"
 
 
 def test_mqtt_service_publishing():
@@ -132,3 +133,40 @@ def test_mqtt_on_connect_fail():
     service._on_connect(None, None, None, 0)
     assert service.is_connected is True
     assert service._connect_failed_logged is False
+
+
+def test_mqtt_service_publishing_when_disconnected():
+    mqtt_cfg = MQTT(enabled=True, broker="localhost", port=1883)
+    service = MQTTService(config=mqtt_cfg)
+    mock_client = MagicMock()
+    service._client = mock_client
+    service.is_connected = False
+
+    res = MeterResult(
+        meters=[MeterValue(name="main", value="100.0", unit="m³")],
+        error="",
+    )
+
+    # All publish methods should safely no-op when disconnected
+    service.publish_meter_result(res)
+    service.publish_error("Test error")
+    service.publish_discovery()
+    service.publish_zero_flow_status({"state": "OK"})
+
+    mock_client.publish.assert_not_called()
+
+
+def test_mqtt_service_stop_when_disconnected():
+    mqtt_cfg = MQTT(enabled=True, broker="localhost", port=1883)
+    service = MQTTService(config=mqtt_cfg)
+    mock_client = MagicMock()
+    service._client = mock_client
+    service.is_connected = False
+
+    service.stop()
+
+    # Disconnect & loop_stop should be called, but offline message should not be published
+    mock_client.publish.assert_not_called()
+    mock_client.disconnect.assert_called_once()
+    mock_client.loop_stop.assert_called_once()
+    assert service.is_connected is False
