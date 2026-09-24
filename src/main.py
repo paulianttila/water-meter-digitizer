@@ -1,7 +1,6 @@
 """Main application entry point and service orchestrator for water-meter-digitizer."""
 
 import argparse
-import contextlib
 import logging
 import os
 import sys
@@ -16,7 +15,6 @@ import uvicorn
 from fastapi import FastAPI, HTTPException
 from fastapi.staticfiles import StaticFiles
 
-import utils.image
 from api.error_handlers import register_exception_handlers
 from api.routes_health import router as health_router
 from api.routes_history import router as history_router
@@ -27,13 +25,14 @@ from api.routes_services import router as services_router
 from api.routes_system import router as system_router
 from configuration import Config, ensure_config_initialized
 from context import AppContext
-from processor.image import ImageProcessor
+from services.config_file_service import ConfigFileService
 from services.leak.tracker import ZeroFlowTracker
 from services.mqtt.client import MQTTService
 from services.poller.scheduler import BackgroundPoller
 from storage import get_storage_backend
 from utils.cache import ImageCache
 from utils.decorators import log_execution_time
+from utils.image_service import get_cached_image_base64
 from version import __version__ as VERSION
 
 config_file = os.environ.get("CONFIG_FILE", "/config/config.ini")
@@ -52,6 +51,14 @@ if os.path.exists(config_file):
         )
 
 _config_lock = threading.RLock()
+config_file_service = ConfigFileService(lambda: config_file, _config_lock)
+
+
+def _configure_third_party_loggers() -> None:
+    """Suppress verbose logs from third-party libraries."""
+    for name in ("urllib3", "asyncio", "PIL"):
+        logging.getLogger(name).setLevel(logging.WARNING)
+
 
 init_log_level = getattr(logging, config.log_level.upper(), logging.INFO)
 logging.basicConfig(
@@ -59,6 +66,7 @@ logging.basicConfig(
     level=init_log_level,
     format="%(asctime)s - %(levelname)s - %(name)s - %(message)s",
 )
+_configure_third_party_loggers()
 logger = logging.getLogger(__name__)
 
 BASE_DIR = Path(__file__).resolve().parent
@@ -67,18 +75,11 @@ BASE_DIR = Path(__file__).resolve().parent
 def _sync_app_context(target_app: FastAPI | None = None) -> None:
     """Synchronize app.state.context with active application state."""
     app_inst = target_app or app
-    app_inst.state.context = AppContext(
-        config=getattr(app_inst.state, "config", config),
-        config_file=getattr(app_inst.state, "config_file", config_file),
-        config_version=getattr(app_inst.state, "config_version", 1),
-        storage=getattr(app_inst.state, "storage", None),
-        cache=getattr(app_inst.state, "image_cache", None),
-        zero_flow_tracker=getattr(app_inst.state, "zero_flow_tracker", None),
-        mqtt_service=getattr(app_inst.state, "mqtt_service", None),
-        poller=getattr(app_inst.state, "poller", None),
-        version=getattr(app_inst.state, "version", VERSION),
-        start_time=getattr(app_inst.state, "start_time", 0.0),
-        started_at=getattr(app_inst.state, "started_at", ""),
+    app_inst.state.context = AppContext.from_app_state(
+        app_inst.state,
+        default_config=getattr(app_inst.state, "config", None) or config,
+        default_config_file=getattr(app_inst.state, "config_file", None) or config_file,
+        default_version=getattr(app_inst.state, "version", None) or VERSION,
     )
 
 
@@ -191,12 +192,16 @@ def create_app(custom_config_file: str | None = None) -> FastAPI:
     )
     set_app_ref(app_instance)
 
+    app_config = (
+        Config().load_from_file(ini_file=cfg_path) if custom_config_file else config
+    )
+
     app_instance.state.version = VERSION
     app_instance.state.config_file = cfg_path
-    app_instance.state.config = config
+    app_instance.state.config = app_config
     app_instance.state.config_version = 1
     app_instance.state.image_cache = ImageCache(max_size=50, ttl_seconds=300.0)
-    app_instance.state.storage = get_storage_backend(config)
+    app_instance.state.storage = get_storage_backend(app_config)
     app_instance.state.zero_flow_tracker = None
     app_instance.state.start_time = time.time()
     app_instance.state.started_at = datetime.now().astimezone().isoformat()
@@ -231,210 +236,65 @@ app = create_app()
 
 # --- Helper Functions for NiceGUI Bridge ---
 def get_image_as_base64_str(image_name: str) -> str:
-    img = app.state.image_cache.get(image_name)
-    if img is None:
-        if image_name == "roi":
-            with contextlib.suppress(Exception):
-                cfg = getattr(app.state, "config", config)
-                source_img = app.state.image_cache.get(
-                    "final"
-                ) or app.state.image_cache.get("aligned")
-                if source_img is not None and cfg is not None:
-                    proc = (
-                        ImageProcessor()
-                        .set_image(source_img.copy())
-                        .draw_meter_rois(cfg)
-                    )
-                    return proc.get_image_as_base64_str()
+    cache = getattr(app.state, "image_cache", None)
+    cfg = getattr(app.state, "config", None) or config
+    b64 = get_cached_image_base64(cache, image_name, cfg)
+    if b64 is None:
         raise HTTPException(status_code=404, detail="Image not found")
-    return utils.image.convert_image_base64str(img)
+    return b64
 
 
 def load_config_file() -> str:
-    with _config_lock, open(config_file) as f:
-        return f.read()
+    return config_file_service.load()
 
 
 def save_config_file(data: str) -> None:
-    from config_history import ConfigHistoryManager
-
-    with _config_lock:
-        # Validate syntax before writing
-        Config().load_from_string(data)
-        if os.path.exists(config_file):
-            ConfigHistoryManager.create_backup(config_file)
-        with open(config_file, "w") as f:
-            f.write(data)
+    config_file_service.save(data)
 
 
 def list_config_backups() -> list[dict[str, Any]]:
-    from config_history import ConfigHistoryManager
-
-    with _config_lock:
-        return [b.model_dump() for b in ConfigHistoryManager.list_backups(config_file)]
+    return config_file_service.list_backups()
 
 
 def restore_config_backup(backup_name: str) -> None:
-    from config_history import ConfigHistoryManager
-
-    with _config_lock:
-        ConfigHistoryManager.restore_backup(config_file, backup_name)
+    config_file_service.restore_backup(backup_name)
 
 
 def undo_last_config() -> str | None:
-    from config_history import ConfigHistoryManager
-
-    with _config_lock:
-        return ConfigHistoryManager.undo_last(config_file)
+    return config_file_service.undo_last()
 
 
 def create_config_snapshot(tag: str = "") -> str | None:
-    from config_history import ConfigHistoryManager
-
-    with _config_lock:
-        return ConfigHistoryManager.create_backup(config_file, tag=tag)
+    return config_file_service.create_snapshot(tag=tag)
 
 
 def delete_config_backup(backup_name: str) -> bool:
-    from config_history import ConfigHistoryManager
-
-    with _config_lock:
-        return ConfigHistoryManager.delete_backup(config_file, backup_name)
+    return config_file_service.delete_backup(backup_name)
 
 
 def diff_config_backup(backup_name: str) -> list[str]:
-    from config_history import ConfigHistoryManager
-
-    with _config_lock:
-        return ConfigHistoryManager.get_diff(
-            load_config_file(), backup_name, config_file=config_file
-        )
+    return config_file_service.diff_backup(backup_name)
 
 
 def load_config_backup(backup_name: str) -> str:
-    from config_history import ConfigHistoryManager
-
-    with _config_lock:
-        return ConfigHistoryManager.get_backup_content(
-            backup_name, config_file=config_file
-        )
+    return config_file_service.load_backup(backup_name)
 
 
 def init_gui(app_instance: FastAPI) -> None:
     """Initialize NiceGUI interface with delegated backend callbacks."""
-    from gui.callbacks_impl import CallbacksImpl
-    from storage.frame_service import FrameService
-
-    def _get_health_data() -> dict[str, Any]:
-        from utils.diagnostics import collect_health_status
-
-        cfg = getattr(app_instance.state, "config", config)
-        ver = getattr(app_instance.state, "version", VERSION)
-        return collect_health_status(app_instance.state, cfg, ver)
-
-    def _get_leak_status() -> dict[str, Any]:
-        tracker = getattr(app_instance.state, "zero_flow_tracker", None)
-        return (
-            tracker.get_status().to_dict()
-            if tracker
-            else {"enabled": False, "state": "OK"}
-        )
-
-    def _reset_leak_status() -> dict[str, Any]:
-        tracker = getattr(app_instance.state, "zero_flow_tracker", None)
-        if tracker:
-            return tracker.reset().to_dict()
-        return {"enabled": False, "state": "OK"}
-
-    def _get_poller_status() -> dict[str, Any]:
-        poller = getattr(app_instance.state, "poller", None)
-        return poller.get_status() if poller else {"enabled": False, "running": False}
-
-    def _trigger_poller() -> dict[str, Any]:
-        poller = getattr(app_instance.state, "poller", None)
-        if poller:
-            poller.trigger_now()
-            return {"status": "success", "message": "Poller triggered successfully"}
-        return {"status": "error", "message": "Poller service not initialized"}
-
-    def _get_mqtt_status() -> dict[str, Any]:
-        mqtt_svc = getattr(app_instance.state, "mqtt_service", None)
-        return (
-            mqtt_svc.get_status()
-            if mqtt_svc
-            else {"enabled": False, "connected": False}
-        )
-
-    def _get_previous_values() -> dict[str, dict[str, str]]:
-        import previous_value
-
-        cfg = getattr(app_instance.state, "config", config)
-        pv_file = getattr(cfg, "previous_value_file", "/config/prevalue.ini")
-        return previous_value.get_all_previous_values(pv_file)
-
-    def _set_previous_value(name: str, value: str) -> dict[str, Any]:
-        import previous_value
-
-        cfg = getattr(app_instance.state, "config", config)
-        pv_file = getattr(cfg, "previous_value_file", "/config/prevalue.ini")
-        if not value or not isinstance(value, str):
-            raise ValueError("Value cannot be empty")
-        cleaned_value = value.strip()
-        val_float = float(cleaned_value)
-        if val_float < 0:
-            raise ValueError("Value cannot be negative")
-        if not name or not name.strip():
-            raise ValueError("Meter name cannot be empty")
-        cleaned_name = name.strip()
-        previous_value.save_previous_value_to_file(pv_file, cleaned_name, cleaned_value)
-        return {
-            "status": "success",
-            "message": (
-                f"Successfully updated baseline for '{cleaned_name}' to "
-                f"{cleaned_value}"
-            ),
-            "meter": cleaned_name,
-            "value": cleaned_value,
-            "error": "",
-        }
-
-    frame_service = FrameService(
-        storage=lambda: getattr(app_instance.state, "storage", None)
-    )
-
-    callbacks = CallbacksImpl(
-        get_meter_data_fn=lambda url="", saveimages=False, config=None: get_meter_data(
-            url=url,
-            saveimages=saveimages,
-            app_instance=app_instance,
-            config=config,
-        ),
-        get_image_base64_fn=get_image_as_base64_str,
-        get_config_fn=lambda: getattr(app_instance.state, "config", config),
-        load_config_file_fn=load_config_file,
-        save_config_file_fn=save_config_file,
-        use_config_fn=init_config,
-        get_storage_fn=lambda: getattr(app_instance.state, "storage", None),
-        list_backups_fn=list_config_backups,
-        restore_backup_fn=restore_config_backup,
-        undo_backup_fn=undo_last_config,
-        create_snapshot_fn=create_config_snapshot,
-        delete_backup_fn=delete_config_backup,
-        diff_backup_fn=diff_config_backup,
-        load_backup_fn=load_config_backup,
-        get_health_data_fn=_get_health_data,
-        get_leak_status_fn=_get_leak_status,
-        reset_leak_status_fn=_reset_leak_status,
-        get_poller_status_fn=_get_poller_status,
-        trigger_poller_fn=_trigger_poller,
-        get_mqtt_status_fn=_get_mqtt_status,
-        get_previous_values_fn=_get_previous_values,
-        set_previous_value_fn=_set_previous_value,
-        get_config_version_fn=lambda: getattr(app_instance.state, "config_version", 1),
-        frame_service=frame_service,
-    )
     import gui.frontend as frontend
+    from gui.callbacks_impl import CallbacksImpl
+    from gui.service_accessor import ServiceAccessor
 
+    accessor = ServiceAccessor(
+        app_instance,
+        config_file_service=config_file_service,
+        default_config=getattr(app_instance.state, "config", None) or config,
+    )
+    callbacks = CallbacksImpl.from_service_accessor(
+        accessor,
+        use_config_fn=lambda: init_config(app_instance),
+    )
     frontend.init(app_instance, callbacks)
 
 
@@ -464,9 +324,7 @@ def init_config(target_app: FastAPI | None = None) -> None:
         app_inst.state.storage = get_storage_backend(config)
         start_services(previous_config=old_config, target_app=app_inst)
 
-        logging.getLogger("urllib3").setLevel(logging.WARNING)
-        logging.getLogger("asyncio").setLevel(logging.WARNING)
-        logging.getLogger("PIL").setLevel(logging.WARNING)
+        _configure_third_party_loggers()
 
 
 if __name__ == "__main__":
@@ -481,13 +339,21 @@ if __name__ == "__main__":
         help="Configuration file",
         default=config_file,
     )
+    parser.add_argument(
+        "-p",
+        "--port",
+        dest="port",
+        type=int,
+        help="Server port",
+        default=int(os.environ.get("SERVER_PORT", "3000")),
+    )
 
     args = parser.parse_args()
     config_file = args.config_file
     init_config()
     init_gui(app)
 
-    port = 3000
+    port = args.port
     logger.info(f"Meter is serving at port {port}")
     uvicorn.run(
         app,

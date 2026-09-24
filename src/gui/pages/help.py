@@ -9,8 +9,8 @@ import gui.theme as theme
 from callbacks import Callbacks
 from gui.components import page_header
 from gui.pages.base import BasePage
-from main import VERSION
 from utils.diagnostics import get_process_memory_info, get_system_info
+from version import __version__ as VERSION
 
 logger = logging.getLogger(__name__)
 

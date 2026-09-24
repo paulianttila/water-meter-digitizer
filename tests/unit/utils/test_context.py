@@ -78,6 +78,26 @@ def test_get_app_context_from_request():
     assert ctx.version == "2.0.0"
 
 
+def test_app_context_from_app_state_defaults():
+    class DummyState:
+        pass
+
+    state = DummyState()
+    default_cfg = MagicMock()
+    ctx = AppContext.from_app_state(
+        state,
+        default_config=default_cfg,
+        default_config_file="/custom.ini",
+        default_version="3.0.0",
+    )
+    assert ctx.config == default_cfg
+    assert ctx.config_file == "/custom.ini"
+    assert ctx.version == "3.0.0"
+    assert ctx.config_version == 1
+    assert ctx.storage is None
+    assert ctx.cache is None
+
+
 def test_dict_access_mixin_on_typed_models():
     # 1. PollerStatus
     poller = PollerStatus(enabled=True, running=True, cron="0 */2 * * * *")

@@ -21,7 +21,7 @@ from gui.pages import (
     ServicesPage,
     SetupPage,
 )
-from main import VERSION
+from version import __version__ as VERSION
 
 logger = logging.getLogger(__name__)
 

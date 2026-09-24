@@ -20,7 +20,7 @@ from storage.base import StorageBackend
 from storage.frame_service import FrameService
 
 if TYPE_CHECKING:
-    pass
+    from gui.service_accessor import ServiceAccessor
 
 logger = logging.getLogger(__name__)
 
@@ -81,6 +81,44 @@ class CallbacksImpl(Callbacks):
         self._get_previous_values = get_previous_values_fn
         self._set_previous_value = set_previous_value_fn
         self._frame_service = frame_service or FrameService(storage=self.get_storage)
+
+    @classmethod
+    def from_service_accessor(
+        cls,
+        accessor: ServiceAccessor,
+        use_config_fn: Callable[[], None] | None = None,
+        frame_service: FrameService | None = None,
+    ) -> CallbacksImpl:
+        """Factory creating CallbacksImpl connected to a ServiceAccessor."""
+        cfg_svc = accessor.config_file_service
+        return cls(
+            get_meter_data_fn=accessor.get_meter_data,
+            get_image_base64_fn=accessor.get_image_as_base64_str,
+            get_config_fn=accessor.get_config,
+            load_config_file_fn=cfg_svc.load if cfg_svc else (lambda: ""),
+            save_config_file_fn=cfg_svc.save if cfg_svc else (lambda _d: None),
+            use_config_fn=use_config_fn or (lambda: None),
+            get_storage_fn=accessor.get_storage,
+            list_backups_fn=cfg_svc.list_backups if cfg_svc else (lambda: []),
+            restore_backup_fn=cfg_svc.restore_backup if cfg_svc else (lambda _n: None),
+            undo_backup_fn=cfg_svc.undo_last if cfg_svc else (lambda: None),
+            create_snapshot_fn=(
+                cfg_svc.create_snapshot if cfg_svc else (lambda _t: None)
+            ),
+            delete_backup_fn=cfg_svc.delete_backup if cfg_svc else (lambda _n: False),
+            diff_backup_fn=cfg_svc.diff_backup if cfg_svc else (lambda _n: []),
+            load_backup_fn=cfg_svc.load_backup if cfg_svc else (lambda _n: ""),
+            get_health_data_fn=accessor.get_health_data,
+            get_leak_status_fn=accessor.get_leak_status,
+            reset_leak_status_fn=accessor.reset_leak_status,
+            get_poller_status_fn=accessor.get_poller_status,
+            trigger_poller_fn=accessor.trigger_poller,
+            get_mqtt_status_fn=accessor.get_mqtt_status,
+            get_previous_values_fn=accessor.get_previous_values,
+            set_previous_value_fn=accessor.set_previous_value,
+            get_config_version_fn=accessor.get_config_version,
+            frame_service=frame_service or FrameService(storage=accessor.get_storage),
+        )
 
     def get_meter_data(
         self,
