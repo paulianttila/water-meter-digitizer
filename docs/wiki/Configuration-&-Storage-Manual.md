@@ -264,24 +264,63 @@ Automated background scheduling via cron expressions with second-level resolutio
 ---
 
 ### `[MQTT]`
-MQTT telemetry broadcasting and Home Assistant Auto-Discovery.
+MQTT telemetry broadcasting, TLS/PSK security, and Home Assistant Auto-Discovery.
 
 | Parameter | Type | Default | Description |
 | :--- | :--- | :--- | :--- |
 | `Enabled` | boolean | `True` | Enable MQTT client service. |
 | `Broker` | string | `localhost` | MQTT broker hostname or IP address. |
-| `Port` | integer | `1883` | MQTT broker port. |
+| `Port` | integer | `1883` | MQTT broker port (e.g. 1883 for plaintext, 8883 for TLS/PSK). |
 | `Username` | string | `""` | MQTT authentication username (optional). |
 | `Password` | string | `""` | MQTT authentication password (optional). |
 | `ClientID` | string | `water-meter-digitizer` | Client identifier presented to MQTT broker. |
 | `TopicPrefix` | string | `watermeter` | Base MQTT topic prefix for published readings and status. |
 | `KeepAlive` | integer | `60` | MQTT keepalive ping interval in seconds. |
 | `TLS` | boolean | `False` | Enable TLS/SSL connection encryption. |
+| `TLS_CACert` | string | `""` | Path to custom CA certificate file (`.crt` / `.pem`) for self-hosted CAs. |
+| `TLS_Insecure` | boolean | `False` | Allow self-signed broker certs or bypass hostname verification. |
+| `TLS_CertFile` | string | `""` | Client certificate file path for mutual TLS (mTLS). |
+| `TLS_KeyFile` | string | `""` | Client private key file path for mutual TLS (mTLS). |
+| `TLS_PSK_Identity`| string | `""` | Pre-Shared Key (PSK) identity string. |
+| `TLS_PSK` | string | `""` | Pre-Shared Key (hex string or secret). Prefer `TLS_PSK_File` or env vars in Docker. |
+| `TLS_PSK_File` | string | `""` | Path to mounted Docker/Kubernetes secret file (e.g. `/run/secrets/mqtt_psk`). |
+| `TLS_Ciphers` | string | `""` | Custom OpenSSL cipher suite (e.g. `PSK-AES128-CBC-SHA256:PSK`). |
+| `QoS` | integer | `1` | Publish Quality of Service level (`0`, `1`, or `2`). |
+| `CleanSession` | boolean | `True` | Clean session flag for persistent connection management. |
+| `Protocol` | string | `3.1.1` | MQTT protocol version (`3.1.1`, `5.0`, or `3.1`). |
 | `Retain` | boolean | `True` | Publish telemetry messages with MQTT retain flag. |
 | `HomeAssistantDiscovery`| boolean | `True` | Publish Home Assistant MQTT auto-discovery configuration topics. |
 | `DiscoveryPrefix` | string | `homeassistant` | Home Assistant MQTT discovery topic prefix. |
 | `DeviceName` | string | `Water Meter Digitizer` | Friendly device name reported in Home Assistant. |
 | `DeviceID` | string | `water_meter_digitizer` | Unique device identifier reported in Home Assistant. |
+
+#### Docker Secrets & Environment Variable Overrides
+In accordance with 12-Factor App and Docker security best practices, sensitive MQTT credentials can be passed dynamically without storing them in plaintext inside `config.ini`:
+
+1. **Environment Variables**:
+   Any setting can be overridden using the `METER_MQTT__<KEY>` convention:
+   ```bash
+   docker run -d \
+     -e METER_MQTT__BROKER="mqtt.lan" \
+     -e METER_MQTT__TLS_PSK_IDENTITY="watermeter_node1" \
+     -e METER_MQTT__TLS_PSK="a1b2c3d4e5f60718" \
+     -p 3000:3000 water-meter-digitizer
+   ```
+
+2. **Docker Secrets / Kubernetes Secret Mounts**:
+   Mount sensitive secrets as runtime files and reference the path:
+   ```ini
+   [MQTT]
+   Enabled = True
+   Broker = mqtt.lan
+   Port = 8883
+   TLS_PSK_Identity = watermeter_node1
+   TLS_PSK_File = /run/secrets/mqtt_psk
+   ```
+   Or via environment variable:
+   ```bash
+   -e METER_MQTT__TLS_PSK_FILE="/run/secrets/mqtt_psk"
+   ```
 
 ---
 

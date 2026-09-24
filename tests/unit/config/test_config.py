@@ -163,6 +163,17 @@ def test_config():
     assert config.mqtt.topic_prefix == "watermeter"
     assert config.mqtt.keepalive == 60
     assert config.mqtt.tls is False
+    assert config.mqtt.tls_ca_cert == ""
+    assert config.mqtt.tls_insecure is False
+    assert config.mqtt.tls_certfile == ""
+    assert config.mqtt.tls_keyfile == ""
+    assert config.mqtt.tls_psk_identity == ""
+    assert config.mqtt.tls_psk == ""
+    assert config.mqtt.tls_psk_file == ""
+    assert config.mqtt.tls_ciphers == ""
+    assert config.mqtt.qos == 1
+    assert config.mqtt.clean_session is True
+    assert config.mqtt.protocol == "3.1.1"
     assert config.mqtt.retain is True
     assert config.mqtt.homeassistant_discovery is True
     assert config.mqtt.discovery_prefix == "homeassistant"

@@ -1,5 +1,6 @@
 import json
 import logging
+import os
 import ssl
 from datetime import datetime
 from typing import Any
@@ -41,16 +42,31 @@ class MQTTService:
     def _setup_client(self) -> None:
         client_id = self.config.client_id or "water-meter-digitizer"
 
+        # Protocol mapping
+        protocol_map = {
+            "5.0": mqtt.MQTTv5,
+            "3.1": mqtt.MQTTv31,
+            "3.1.1": mqtt.MQTTv311,
+        }
+        protocol = protocol_map.get(self.config.protocol, mqtt.MQTTv311)
+
+        client_kwargs: dict[str, Any] = {
+            "client_id": client_id,
+            "protocol": protocol,
+        }
+        if protocol != mqtt.MQTTv5:
+            client_kwargs["clean_session"] = self.config.clean_session
+
         # Compatibility with paho-mqtt v1 and v2 CallbackAPIVersion if available
         try:
             from paho.mqtt.enums import CallbackAPIVersion
 
             self._client = mqtt.Client(
                 CallbackAPIVersion.VERSION2,
-                client_id=client_id,
+                **client_kwargs,
             )
         except (ImportError, AttributeError):
-            self._client = mqtt.Client(client_id=client_id)
+            self._client = mqtt.Client(**client_kwargs)
 
         if self.config.username:
             self._client.username_pw_set(
@@ -58,15 +74,42 @@ class MQTTService:
                 password=self.config.password or None,
             )
 
-        if self.config.tls:
-            self._client.tls_set(cert_reqs=ssl.CERT_REQUIRED)
+        # Check TLS Pre-Shared Key (PSK) first
+        resolved_psk = self.config.get_resolved_psk()
+        if resolved_psk and self.config.tls_psk_identity:
+            from .tls_psk import configure_tls_psk
+
+            psk_ctx = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+            configure_tls_psk(
+                context=psk_ctx,
+                identity=self.config.tls_psk_identity,
+                psk=resolved_psk,
+                ciphers=self.config.tls_ciphers,
+            )
+            self._client.tls_set_context(psk_ctx)
+        elif self.config.tls:
+            tls_kwargs: dict[str, Any] = {}
+            if self.config.tls_ca_cert and os.path.exists(self.config.tls_ca_cert):
+                tls_kwargs["ca_certs"] = self.config.tls_ca_cert
+            if self.config.tls_certfile and os.path.exists(self.config.tls_certfile):
+                tls_kwargs["certfile"] = self.config.tls_certfile
+            if self.config.tls_keyfile and os.path.exists(self.config.tls_keyfile):
+                tls_kwargs["keyfile"] = self.config.tls_keyfile
+            if self.config.tls_ciphers:
+                tls_kwargs["ciphers"] = self.config.tls_ciphers
+
+            cert_reqs = ssl.CERT_NONE if self.config.tls_insecure else ssl.CERT_REQUIRED
+            self._client.tls_set(cert_reqs=cert_reqs, **tls_kwargs)
+
+            if self.config.tls_insecure:
+                self._client.tls_insecure_set(True)
 
         # Last Will and Testament (LWT)
         status_topic = f"{self.config.topic_prefix}/status"
         self._client.will_set(
             topic=status_topic,
             payload="offline",
-            qos=1,
+            qos=self.config.qos,
             retain=self.config.retain,
         )
 
@@ -104,7 +147,7 @@ class MQTTService:
                 self._client.publish(
                     topic=status_topic,
                     payload="online",
-                    qos=1,
+                    qos=self.config.qos,
                     retain=self.config.retain,
                 )
 
@@ -222,6 +265,7 @@ class MQTTService:
 
         prefix = self.config.topic_prefix
         retain = self.config.retain
+        qos = self.config.qos
         now_iso = datetime.now().astimezone().isoformat()
 
         topics_published: dict[str, str] = {}
@@ -235,7 +279,7 @@ class MQTTService:
                     self._client.publish(
                         topic=f"{prefix}/{meter.name}/value",
                         payload=meter.value,
-                        qos=1,
+                        qos=qos,
                         retain=retain,
                     )
 
@@ -247,7 +291,7 @@ class MQTTService:
                     self._client.publish(
                         topic=f"{prefix}/{meter.name}/confidence",
                         payload=f"{conf:.1f}",
-                        qos=1,
+                        qos=qos,
                         retain=retain,
                     )
 
@@ -267,7 +311,7 @@ class MQTTService:
                     self._client.publish(
                         topic=f"{prefix}/{meter.name}/attributes",
                         payload=attrs_json,
-                        qos=1,
+                        qos=qos,
                         retain=retain,
                     )
 
@@ -276,7 +320,7 @@ class MQTTService:
                     self._client.publish(
                         topic=f"{prefix}/{meter.name}/json",
                         payload=attrs_json,
-                        qos=1,
+                        qos=qos,
                         retain=retain,
                     )
 
@@ -286,7 +330,7 @@ class MQTTService:
             self._client.publish(
                 topic=f"{prefix}/error",
                 payload=err,
-                qos=1,
+                qos=qos,
                 retain=retain,
             )
 
@@ -297,7 +341,7 @@ class MQTTService:
                 self._client.publish(
                     topic=f"{prefix}/processing_time",
                     payload=f"{processing_time_sec:.2f}",
-                    qos=1,
+                    qos=qos,
                     retain=retain,
                 )
 
@@ -311,7 +355,7 @@ class MQTTService:
             self._client.publish(
                 topic=f"{prefix}/readout/json",
                 payload=readout_json,
-                qos=1,
+                qos=qos,
                 retain=retain,
             )
 
@@ -330,7 +374,7 @@ class MQTTService:
             self._client.publish(
                 topic=f"{self.config.topic_prefix}/error",
                 payload=error_msg,
-                qos=1,
+                qos=self.config.qos,
                 retain=self.config.retain,
             )
         except Exception as e:
@@ -352,28 +396,29 @@ class MQTTService:
             duration_min = str(status_dict.get("current_flow_duration_minutes", 0.0))
             json_payload = json.dumps(status_dict)
 
+            qos = self.config.qos
             self._client.publish(
                 topic=f"{prefix}/leak/alert",
                 payload=alert_payload,
-                qos=1,
+                qos=qos,
                 retain=retain,
             )
             self._client.publish(
                 topic=f"{prefix}/leak/state",
                 payload=state_str,
-                qos=1,
+                qos=qos,
                 retain=retain,
             )
             self._client.publish(
                 topic=f"{prefix}/leak/duration",
                 payload=duration_min,
-                qos=1,
+                qos=qos,
                 retain=retain,
             )
             self._client.publish(
                 topic=f"{prefix}/leak/status",
                 payload=json_payload,
-                qos=1,
+                qos=qos,
                 retain=retain,
             )
             logger.debug("Published zero-flow status to MQTT: state=%s", state_str)
@@ -390,6 +435,13 @@ class MQTTService:
             "topic_prefix": self.config.topic_prefix,
             "homeassistant_discovery": self.config.homeassistant_discovery,
             "client_id": self.config.client_id,
+            "qos": self.config.qos,
+            "protocol": self.config.protocol,
+            "tls": self.config.tls,
+            "tls_insecure": self.config.tls_insecure,
+            "has_psk": bool(
+                self.config.get_resolved_psk() and self.config.tls_psk_identity
+            ),
             "last_published_topics": self.last_published_topics,
             "last_published_readout": self.last_published_readout,
         }

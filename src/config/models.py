@@ -1,3 +1,6 @@
+import os
+from typing import Literal
+
 import croniter
 from pydantic import BaseModel, Field, field_validator
 
@@ -129,11 +132,31 @@ class MQTT(BaseModel):
     topic_prefix: str = "watermeter"
     keepalive: int = 60
     tls: bool = False
+    tls_ca_cert: str = ""
+    tls_insecure: bool = False
+    tls_certfile: str = ""
+    tls_keyfile: str = ""
+    tls_psk_identity: str = ""
+    tls_psk: str = ""
+    tls_psk_file: str = ""
+    tls_ciphers: str = ""
+    qos: int = Field(default=1, ge=0, le=2)
+    clean_session: bool = True
+    protocol: Literal["3.1.1", "5.0", "3.1"] = "3.1.1"
     retain: bool = True
     homeassistant_discovery: bool = True
     discovery_prefix: str = "homeassistant"
     device_name: str = "Water Meter Digitizer"
     device_id: str = "water_meter_digitizer"
+
+    def get_resolved_psk(self) -> str:
+        """Resolve PSK secret from direct value or Docker secret file."""
+        if self.tls_psk:
+            return self.tls_psk.strip()
+        if self.tls_psk_file and os.path.exists(self.tls_psk_file):
+            with open(self.tls_psk_file, encoding="utf-8") as f:
+                return f.read().strip()
+        return ""
 
 
 class ZeroFlowMonitor(BaseModel):

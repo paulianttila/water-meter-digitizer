@@ -108,19 +108,45 @@ String WaterMeter_Status "Digitizer Status [%s]" <status> { channel="mqtt:topic:
 
 ## 📡 3. MQTT Topic & Telemetry Schema
 
+### Connection & Security Modes
+
+The digitizer's embedded MQTT client supports standard, TLS-encrypted, and pre-shared key (PSK) connections:
+
+- **Plaintext (Default)**: Standard TCP port `1883`.
+- **TLS/SSL Encryption (`TLS = True`)**: Standard secure port `8883`. Validates broker certificates against the system CA store.
+- **Custom CA Certificate (`TLS_CACert = /path/to/ca.crt`)**: For self-hosted PKI or private Mosquitto instances (e.g. Home Assistant Mosquitto add-on with custom CA).
+- **Self-Signed / Insecure (`TLS_Insecure = True`)**: Disables certificate verification and hostname checking for lab or IP-only brokers.
+- **Mutual TLS (`TLS_CertFile` & `TLS_KeyFile`)**: Two-way certificate authentication for enterprise brokers or cloud gateways.
+- **Pre-Shared Key (`TLS_PSK_Identity` & `TLS_PSK`)**: High-performance symmetric encryption without certificate overhead:
+  ```ini
+  [MQTT]
+  Enabled = True
+  Broker = mqtt.lan
+  Port = 8883
+  TLS_PSK_Identity = watermeter_node1
+  TLS_PSK = a1b2c3d4e5f60718
+  ```
+- **Docker Secrets (`TLS_PSK_File = /run/secrets/mqtt_psk`)**: In Docker/Kubernetes environments, secrets can be mounted as runtime files or injected via environment variables (`METER_MQTT__TLS_PSK` / `METER_MQTT__TLS_PSK_FILE`).
+- **Configurable QoS (`QoS = 0 | 1 | 2`)**: Configures the Quality of Service level applied to all published telemetry and status messages.
+
+### Published Topics
+
 All telemetry is published under the configured `TopicPrefix` (default: `watermeter/`):
 
 | Topic | Example Payload | Retained | Description |
 | :--- | :--- | :--- | :--- |
 | `<prefix>/status` | `online` / `offline` | Yes | LWT (Last Will and Testament) availability topic. |
 | `<prefix>/<meter_name>/value` | `00452.91241` | Yes | Processed, validated numerical meter reading. |
-| `<prefix>/<meter_name>/raw` | `00452.91241` | Yes | Raw uncorrected vision readout string. |
-| `<prefix>/<meter_name>/rate` | `0.015` | Yes | Computed flow rate per time delta. |
-| `<prefix>/<meter_name>/confidence` | `98.6` | Yes | Lowest individual neural classification confidence (%). |
-| `<prefix>/<meter_name>/json` | `{"value": 452.91, ...}` | Yes | Structured JSON payload for the specific meter. |
+| `<prefix>/<meter_name>/confidence` | `98.6` | Yes | Neural classification confidence (%). |
+| `<prefix>/<meter_name>/attributes` | `{"value": "00452.91241", ...}` | Yes | JSON entity attributes for Home Assistant. |
+| `<prefix>/<meter_name>/json` | `{"value": "00452.91241", ...}` | Yes | Structured JSON payload for specific meter integrations. |
 | `<prefix>/readout/json` | *(See JSON schema below)* | Yes | Comprehensive full-system telemetry payload. |
-| `<prefix>/leak/state` | `OK` / `LEAK_ALERT` | Yes | Zero-flow continuous leak monitor state. |
-| `<prefix>/leak/detected` | `false` / `true` | Yes | Boolean leak alarm indicator. |
+| `<prefix>/error` | `""` or error message | Yes | Last system error string (empty if healthy). |
+| `<prefix>/processing_time` | `1.45` | Yes | Neural processing duration in seconds. |
+| `<prefix>/leak/alert` | `OFF` / `ON` | Yes | Continuous leak alert binary status. |
+| `<prefix>/leak/state` | `OK` / `LEAK_DETECTED` | Yes | Zero-flow monitor state string. |
+| `<prefix>/leak/duration` | `125.4` | Yes | Current continuous flow duration in minutes. |
+| `<prefix>/leak/status` | `{"state": "OK", ...}` | Yes | Complete zero-flow tracking diagnostic JSON. |
 
 ### Comprehensive Readout JSON Payload (`<prefix>/readout/json`)
 ```json

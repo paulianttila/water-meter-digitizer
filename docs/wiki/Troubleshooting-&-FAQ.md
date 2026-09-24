@@ -12,7 +12,7 @@
 | **`Alignment failed / Low alignment match score`** | Reference marker templates are obstructed, moved, or reflect LED light. | Redefine reference markers in Step 3 of Setup Wizard on static, high-contrast, non-moving landmarks. |
 | **`Reading rate exceeds max rate / Rejected`** | Physical rate limit tripped due to single-frame digit misclassification. | Verify digit bounding boxes. Enable `UsePreviousValue = True` so system falls back to cached baseline. |
 | **`Digits misread as adjacent numbers (e.g. 4 read as 5)`** | Rolling odometer digit is halfway between positions. | Verify that predecessor ordering is configured properly from left (MSD) to right (LSD) and analog dials are linked. |
-| **`MQTT Disconnected / Reconnecting`** | Broker credentials, port, or firewall blocking connection. | Check `/mqtt/status` endpoint for error logs. Verify MQTT host and authentication in `[MQTT]` section. |
+| **`MQTT Disconnected / Reconnecting`** | Broker credentials, port, firewall, or TLS configuration mismatch. | Check `/mqtt/status` endpoint for error logs. Verify MQTT host and credentials in `[MQTT]`. If using TLS, verify `TLS_CACert` path or set `TLS_Insecure = True` for self-signed certificates. If using TLS-PSK, ensure `TLS_PSK` is a valid even-length hex string matching broker's PSK identity. |
 | **`Database locked / disk I/O slow`** | SD card write latency on edge device. | Ensure SQLite is running in `WAL` mode (default). Set `SnapshotMode = anomalies_only` to reduce disk writes. |
 
 ---

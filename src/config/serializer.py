@@ -393,6 +393,10 @@ def load_config_from_parser(cfg: Config, config: configparser.ConfigParser) -> C
     )
 
     # MQTT Parameters
+    raw_protocol = config.get("MQTT", "Protocol", fallback="3.1.1").strip()
+    if raw_protocol not in ("3.1.1", "5.0", "3.1"):
+        raw_protocol = "3.1.1"
+
     cfg.mqtt = MQTT(
         enabled=config.getboolean("MQTT", "Enabled", fallback=False),
         broker=config.get("MQTT", "Broker", fallback="localhost"),
@@ -403,6 +407,17 @@ def load_config_from_parser(cfg: Config, config: configparser.ConfigParser) -> C
         topic_prefix=config.get("MQTT", "TopicPrefix", fallback="watermeter"),
         keepalive=config.getint("MQTT", "KeepAlive", fallback=60),
         tls=config.getboolean("MQTT", "TLS", fallback=False),
+        tls_ca_cert=config.get("MQTT", "TLS_CACert", fallback=""),
+        tls_insecure=config.getboolean("MQTT", "TLS_Insecure", fallback=False),
+        tls_certfile=config.get("MQTT", "TLS_CertFile", fallback=""),
+        tls_keyfile=config.get("MQTT", "TLS_KeyFile", fallback=""),
+        tls_psk_identity=config.get("MQTT", "TLS_PSK_Identity", fallback=""),
+        tls_psk=config.get("MQTT", "TLS_PSK", fallback=""),
+        tls_psk_file=config.get("MQTT", "TLS_PSK_File", fallback=""),
+        tls_ciphers=config.get("MQTT", "TLS_Ciphers", fallback=""),
+        qos=max(0, min(2, config.getint("MQTT", "QoS", fallback=1))),
+        clean_session=config.getboolean("MQTT", "CleanSession", fallback=True),
+        protocol=raw_protocol,
         retain=config.getboolean("MQTT", "Retain", fallback=True),
         homeassistant_discovery=config.getboolean(
             "MQTT", "HomeAssistantDiscovery", fallback=True
@@ -692,6 +707,17 @@ def save_config_to_io(cfg: Config, fp: TextIO) -> None:
         "TopicPrefix": cfg.mqtt.topic_prefix,
         "KeepAlive": str(cfg.mqtt.keepalive),
         "TLS": str(cfg.mqtt.tls),
+        "TLS_CACert": cfg.mqtt.tls_ca_cert,
+        "TLS_Insecure": str(cfg.mqtt.tls_insecure),
+        "TLS_CertFile": cfg.mqtt.tls_certfile,
+        "TLS_KeyFile": cfg.mqtt.tls_keyfile,
+        "TLS_PSK_Identity": cfg.mqtt.tls_psk_identity,
+        "TLS_PSK": cfg.mqtt.tls_psk,
+        "TLS_PSK_File": cfg.mqtt.tls_psk_file,
+        "TLS_Ciphers": cfg.mqtt.tls_ciphers,
+        "QoS": str(cfg.mqtt.qos),
+        "CleanSession": str(cfg.mqtt.clean_session),
+        "Protocol": cfg.mqtt.protocol,
         "Retain": str(cfg.mqtt.retain),
         "HomeAssistantDiscovery": str(cfg.mqtt.homeassistant_discovery),
         "DiscoveryPrefix": cfg.mqtt.discovery_prefix,

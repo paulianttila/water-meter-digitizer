@@ -278,6 +278,48 @@ FIELD_OVERRIDES: dict[tuple[str, str], dict[str, Any]] = {
         "max": 3600,
         "step": 5,
     },
+    ("mqtt", "qos"): {
+        "type": "select",
+        "options": [0, 1, 2],
+        "description": "MQTT Publish Quality of Service (0=at most once, 1=at least once, 2=exactly once)",
+    },
+    ("mqtt", "protocol"): {
+        "type": "select",
+        "options": ["3.1.1", "5.0", "3.1"],
+        "description": "MQTT protocol version",
+    },
+    ("mqtt", "tls_insecure"): {
+        "type": "bool",
+        "description": "Allow self-signed broker certs or skip hostname check (insecure)",
+    },
+    ("mqtt", "tls_ca_cert"): {
+        "type": "str",
+        "description": "Path to custom CA certificate file (.crt / .pem)",
+    },
+    ("mqtt", "tls_certfile"): {
+        "type": "str",
+        "description": "Client certificate path for mutual TLS (mTLS)",
+    },
+    ("mqtt", "tls_keyfile"): {
+        "type": "str",
+        "description": "Client private key path for mutual TLS (mTLS)",
+    },
+    ("mqtt", "tls_psk_identity"): {
+        "type": "str",
+        "description": "Pre-Shared Key (PSK) identity string",
+    },
+    ("mqtt", "tls_psk"): {
+        "type": "str",
+        "description": "Pre-Shared Key (hex format or secret string)",
+    },
+    ("mqtt", "tls_psk_file"): {
+        "type": "str",
+        "description": "Docker secret file path containing the PSK (e.g. /run/secrets/mqtt_psk)",
+    },
+    ("mqtt", "tls_ciphers"): {
+        "type": "str",
+        "description": "Custom OpenSSL cipher suite specification",
+    },
     # [ZeroFlowMonitor]
     ("zeroflowmonitor", "valuetype"): {
         "type": "select",
