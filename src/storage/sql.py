@@ -5,6 +5,7 @@ import logging
 import os
 import re
 import threading
+import time
 from collections import OrderedDict
 from datetime import datetime
 from pathlib import Path
@@ -88,7 +89,10 @@ class SQLAlchemyStorageBackend(StorageBackend):
         self._last_saved_snapshot_ts: datetime | None = None
         self._last_meter_values: dict[str, float] = {}
         self._memory_frames: OrderedDict[int, tuple[bytes, str]] = OrderedDict()
-        self._lock = threading.Lock()
+        self._lock = threading.RLock()
+        self._cached_snap_disk_bytes: int = 0
+        self._cached_snap_disk_ts: float = 0.0
+        self._snap_disk_cache_ttl: float = 30.0
 
         self.is_memory = (
             self.db_url.lower() == "memory"
@@ -420,12 +424,14 @@ class SQLAlchemyStorageBackend(StorageBackend):
         max_disk_mb: float | None = None,
     ) -> int:
         """Prune snapshot files exceeding max disk limit or age threshold."""
+        self._cached_snap_disk_ts = 0.0
         return prune_disk_snapshots(
             self.snapshots_dir, max_disk_mb or DEFAULT_SNAPSHOT_MAX_DISK_MB
         )
 
     def prune(self) -> None:
         """Manually trigger pruning and vacuuming."""
+        self._cached_snap_disk_ts = 0.0
         with self._lock, self.Session() as session:
             self._prune_and_vacuum(session)
 
@@ -442,6 +448,8 @@ class SQLAlchemyStorageBackend(StorageBackend):
                 query = query.where(ReadingModel.timestamp >= _to_local(start))
             if end is not None:
                 query = query.where(ReadingModel.timestamp <= _to_local(end))
+            if meter_name:
+                query = query.where(ReadingModel.meters_json.like(f'%"{meter_name}":%'))
 
             if limit is not None and limit > 0:
                 query = query.order_by(ReadingModel.timestamp.desc()).limit(limit)
@@ -608,10 +616,14 @@ class SQLAlchemyStorageBackend(StorageBackend):
         interval: Literal["hourly", "daily", "weekly", "monthly"] = "daily",
         start: datetime | None = None,
         end: datetime | None = None,
+        is_flow_rate: bool = False,
     ) -> list[ConsumptionRecord]:
         readings = self.get_readings(meter_name=meter_name, start=start, end=end)
         return aggregate_consumption(
-            readings=readings, meter_name=meter_name, interval=interval
+            readings=readings,
+            meter_name=meter_name,
+            interval=interval,
+            is_flow_rate=is_flow_rate,
         )
 
     def get_summary(self) -> StorageSummary:
@@ -662,21 +674,27 @@ class SQLAlchemyStorageBackend(StorageBackend):
         else:
             mem_bytes = total_records * 300
 
-        # Measure snapshot disk usage
+        # Measure snapshot disk usage with TTL caching
         snap_disk_bytes = 0
         if (
             not self.is_memory
             and self.snapshots_dir
             and os.path.exists(self.snapshots_dir)
         ):
-            try:
-                snap_disk_bytes = sum(
-                    f.stat().st_size
-                    for f in Path(self.snapshots_dir).glob("*.*")
-                    if f.is_file()
-                )
-            except Exception:
-                snap_disk_bytes = 0
+            now_mono = time.monotonic()
+            if now_mono - self._cached_snap_disk_ts < self._snap_disk_cache_ttl:
+                snap_disk_bytes = self._cached_snap_disk_bytes
+            else:
+                try:
+                    snap_disk_bytes = sum(
+                        f.stat().st_size
+                        for f in Path(self.snapshots_dir).glob("*.*")
+                        if f.is_file()
+                    )
+                except Exception:
+                    snap_disk_bytes = 0
+                self._cached_snap_disk_bytes = snap_disk_bytes
+                self._cached_snap_disk_ts = now_mono
         else:
             snap_disk_bytes = sum(len(b) for b, _ in self._memory_frames.values())
 
@@ -700,6 +718,8 @@ class SQLAlchemyStorageBackend(StorageBackend):
         )
 
     def clear(self) -> None:
+        self._cached_snap_disk_ts = 0.0
+        self._cached_snap_disk_bytes = 0
         with self._lock, self.Session() as session:
             session.execute(delete(ReadingModel))
             session.commit()

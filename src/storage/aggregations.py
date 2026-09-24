@@ -11,6 +11,7 @@ def aggregate_consumption(
     readings: list[ReadingRecord],
     meter_name: str = "total",
     interval: Literal["hourly", "daily", "weekly", "monthly"] = "daily",
+    is_flow_rate: bool = False,
 ) -> list[ConsumptionRecord]:
     """Group chronological meter readings into regular time bins and calculate consumption."""
     if not readings:
@@ -37,6 +38,7 @@ def aggregate_consumption(
     consumption_records: list[ConsumptionRecord] = []
 
     prev_end_value: float | None = None
+    prev_end_time: datetime | None = None
 
     for b_key in sorted_buckets:
         items = bucket_groups[b_key]
@@ -46,7 +48,8 @@ def aggregate_consumption(
         items_sorted = sorted(items, key=lambda x: x[0])
         start_t = items_sorted[0][0]
         end_t = items_sorted[-1][0]
-        unit = items_sorted[0][2]
+        raw_unit = items_sorted[0][2]
+        unit = raw_unit.split("/")[0] if is_flow_rate and "/" in raw_unit else raw_unit
         values = [x[1] for x in items_sorted]
 
         start_v = values[0]
@@ -55,20 +58,44 @@ def aggregate_consumption(
         max_v = max(values)
         cnt = len(values)
 
-        # Delta within bucket
         bucket_delta = 0.0
-        for i in range(1, len(values)):
-            diff = values[i] - values[i - 1]
-            if diff > 0:
-                bucket_delta += diff
 
-        # If there was a previous bucket reading, include cross-bucket jump
-        if prev_end_value is not None:
-            cross_diff = start_v - prev_end_value
-            if 0 < cross_diff < 1000.0:
-                bucket_delta += cross_diff
+        if is_flow_rate:
+            divisor = 3600.0  # default per hour
+            lower_u = raw_unit.lower()
+            if "min" in lower_u:
+                divisor = 60.0
+            elif "/s" in lower_u or "sec" in lower_u:
+                divisor = 1.0
+
+            # Cross-bucket trapezoidal segment if previous reading is available
+            if prev_end_time is not None and prev_end_value is not None:
+                cross_dt = (start_t - prev_end_time).total_seconds()
+                if 0 < cross_dt <= 7200.0:
+                    avg_cross = (prev_end_value + start_v) / 2.0
+                    bucket_delta += max(0.0, avg_cross * (cross_dt / divisor))
+
+            # Within-bucket trapezoidal integration
+            for i in range(1, len(items_sorted)):
+                dt = (items_sorted[i][0] - items_sorted[i - 1][0]).total_seconds()
+                if dt > 0:
+                    avg_rate = (values[i] + values[i - 1]) / 2.0
+                    bucket_delta += max(0.0, avg_rate * (dt / divisor))
+        else:
+            # Delta within bucket for cumulative meters
+            for i in range(1, len(values)):
+                diff = values[i] - values[i - 1]
+                if diff > 0:
+                    bucket_delta += diff
+
+            # If there was a previous bucket reading, include cross-bucket jump
+            if prev_end_value is not None:
+                cross_diff = start_v - prev_end_value
+                if 0 < cross_diff < 1000.0:
+                    bucket_delta += cross_diff
 
         prev_end_value = end_v
+        prev_end_time = end_t
 
         consumption_records.append(
             ConsumptionRecord(

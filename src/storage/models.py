@@ -5,6 +5,7 @@ from datetime import datetime
 from sqlalchemy import (
     Boolean,
     DateTime,
+    Index,
     Integer,
     LargeBinary,
     String,
@@ -21,6 +22,10 @@ class ReadingModel(Base):
     """Historical meter reading record and associated snapshot telemetry."""
 
     __tablename__ = "readings"
+    __table_args__ = (
+        Index("idx_readings_timestamp_error", "timestamp", "error"),
+        Index("idx_readings_timestamp_frame_type", "timestamp", "frame_type"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     timestamp: Mapped[datetime] = mapped_column(

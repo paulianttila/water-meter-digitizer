@@ -286,3 +286,109 @@ def test_sqlite_memory_frame_and_mime_types(tmp_path: Path):
     assert rid2 is not None
     _data, mime = storage.get_frame_bytes(rid2)
     assert mime == "image/jpeg"
+
+
+def test_sqlite_meter_name_pushdown_filter(tmp_path: Path):
+    storage = SQLAlchemyStorageBackend(db_url="sqlite:///:memory:")
+    now = datetime.now().astimezone()
+
+    storage.record_reading(
+        timestamp=now,
+        meters={"main": MeterReading(value=10.0)},
+    )
+    storage.record_reading(
+        timestamp=now + timedelta(minutes=1),
+        meters={"secondary": MeterReading(value=20.0)},
+    )
+    storage.record_reading(
+        timestamp=now + timedelta(minutes=2),
+        meters={
+            "main": MeterReading(value=11.0),
+            "secondary": MeterReading(value=21.0),
+        },
+    )
+
+    main_readings = storage.get_readings(meter_name="main")
+    assert len(main_readings) == 2
+    assert [r.meters["main"].value for r in main_readings] == [10.0, 11.0]
+
+    sec_readings = storage.get_readings(meter_name="secondary")
+    assert len(sec_readings) == 2
+    assert [r.meters["secondary"].value for r in sec_readings] == [20.0, 21.0]
+
+    none_readings = storage.get_readings(meter_name="nonexistent")
+    assert len(none_readings) == 0
+
+
+def test_sqlite_snapshot_disk_cache_and_invalidation(tmp_path: Path):
+    snap_dir = tmp_path / "snaps"
+    snap_dir.mkdir()
+    db_path = tmp_path / "cache_test.db"
+    storage = SQLAlchemyStorageBackend(
+        db_url=f"sqlite:///{db_path}",
+        snapshots_dir=str(snap_dir),
+    )
+
+    f1 = snap_dir / "f1.webp"
+    f1.write_bytes(b"x" * 100)
+
+    summary1 = storage.get_summary()
+    assert summary1.snapshot_disk_bytes == 100
+
+    # Add a second file behind the scenes
+    f2 = snap_dir / "f2.webp"
+    f2.write_bytes(b"y" * 200)
+
+    # Within TTL (30s), summary should return cached 100 bytes
+    summary2 = storage.get_summary()
+    assert summary2.snapshot_disk_bytes == 100
+
+    # Invalidate cache via prune_snapshots
+    storage.prune_snapshots()
+    summary3 = storage.get_summary()
+    assert summary3.snapshot_disk_bytes == 300
+
+    # Invalidate cache via clear
+    storage.clear()
+    summary4 = storage.get_summary()
+    assert summary4.snapshot_disk_bytes == 0
+
+
+def test_flow_rate_consumption_integration(tmp_path: Path):
+    storage = SQLAlchemyStorageBackend(db_url="sqlite:///:memory:")
+    base_t = datetime(2026, 9, 24, 10, 0, 0).astimezone()
+
+    # Flow rate in l/min over 20 minutes:
+    # at t=0m: 10 l/min
+    # at t=10m: 10 l/min -> (10+10)/2 * 10min = 100 liters
+    # at t=20m: 20 l/min -> (10+20)/2 * 10min = 150 liters
+    # Total consumption = 250 liters
+    storage.record_reading(
+        timestamp=base_t,
+        meters={"flow": MeterReading(value=10.0, unit="l/min")},
+    )
+    storage.record_reading(
+        timestamp=base_t + timedelta(minutes=10),
+        meters={"flow": MeterReading(value=10.0, unit="l/min")},
+    )
+    storage.record_reading(
+        timestamp=base_t + timedelta(minutes=20),
+        meters={"flow": MeterReading(value=20.0, unit="l/min")},
+    )
+
+    records = storage.get_consumption(
+        meter_name="flow",
+        interval="hourly",
+        is_flow_rate=True,
+    )
+    assert len(records) == 1
+    assert records[0].unit == "l"
+    assert records[0].consumption == 250.0
+
+
+def test_reading_model_composite_indexes():
+    from storage.models import ReadingModel
+
+    index_names = [idx.name for idx in ReadingModel.__table_args__]
+    assert "idx_readings_timestamp_error" in index_names
+    assert "idx_readings_timestamp_frame_type" in index_names

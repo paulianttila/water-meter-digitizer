@@ -109,6 +109,7 @@ class StorageBackend(ABC):
         interval: Literal["hourly", "daily", "weekly", "monthly"] = "daily",
         start: datetime | None = None,
         end: datetime | None = None,
+        is_flow_rate: bool = False,
     ) -> list[ConsumptionRecord]:
         """Aggregate readings into consumption deltas per time bucket."""
         pass
