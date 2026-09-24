@@ -185,6 +185,27 @@ def test_mqtt_service_psk_configuration():
     assert status["protocol"] == "3.1.1"
 
 
+def test_mqtt_service_psk_configuration_without_ssl_file(monkeypatch):
+    """Verify TLS-PSK configuration succeeds when _ssl has no __file__ (e.g. CI environments)."""
+    import ssl
+
+    from services.mqtt.tls_psk import _get_libssl, configure_tls_psk
+
+    _get_libssl.cache_clear()
+    if hasattr(ssl._ssl, "__file__"):
+        monkeypatch.delattr(ssl._ssl, "__file__")
+
+    context = ssl.SSLContext(ssl.PROTOCOL_TLS_CLIENT)
+    configured_ctx = configure_tls_psk(
+        context=context,
+        identity="ci_user",
+        psk="0123456789abcdef",
+    )
+    assert configured_ctx is context
+    assert hasattr(configured_ctx, "_psk_callback_ref")
+    _get_libssl.cache_clear()
+
+
 def test_mqtt_service_psk_via_env_variable(monkeypatch):
     """Verify Docker 12-factor environment variable injection for PSK."""
     from config.main import Config

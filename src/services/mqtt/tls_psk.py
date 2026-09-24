@@ -1,8 +1,10 @@
 """TLS Pre-Shared Key (PSK) context configuration for MQTT connections."""
 
 import ctypes
+import ctypes.util
 import logging
 import ssl
+from functools import lru_cache
 from typing import Any
 
 logger = logging.getLogger(__name__)
@@ -18,6 +20,59 @@ class _PySSLContext(ctypes.Structure):
         ("ob_type", ctypes.c_void_p),
         ("ctx", ctypes.c_void_p),
     ]
+
+
+@lru_cache(maxsize=1)
+def _get_libssl() -> ctypes.CDLL | None:
+    """Dynamically locate and load the OpenSSL library exposing SSL_CTX symbols."""
+    # 1. Check current process symbols (works when OpenSSL is statically linked or already loaded)
+    try:
+        proc_lib = ctypes.CDLL(None)
+        if hasattr(proc_lib, "SSL_CTX_set_psk_client_callback"):
+            return proc_lib
+    except (OSError, AttributeError) as err:
+        logger.debug("Process symbol lookup for libssl skipped: %s", err)
+
+    # 2. Check Python's _ssl C-extension file if available
+    _ssl_file = getattr(getattr(ssl, "_ssl", None), "__file__", None)
+    if _ssl_file:
+        try:
+            lib = ctypes.CDLL(_ssl_file)
+            if hasattr(lib, "SSL_CTX_set_psk_client_callback"):
+                return lib
+        except (OSError, AttributeError) as err:
+            logger.debug("Python _ssl module file lookup failed: %s", err)
+
+    # 3. Locate via system dynamic linker utility
+    lib_name = ctypes.util.find_library("ssl")
+    if lib_name:
+        try:
+            lib = ctypes.CDLL(lib_name)
+            if hasattr(lib, "SSL_CTX_set_psk_client_callback"):
+                return lib
+        except (OSError, AttributeError) as err:
+            logger.debug("System find_library('ssl') lookup failed: %s", err)
+
+    # 4. Check common sonames / dll names across Linux, macOS, and Windows
+    candidate_names = [
+        "libssl.so.3",
+        "libssl.so.1.1",
+        "libssl.so",
+        "libssl.dylib",
+        "libssl.3.dylib",
+        "libssl-3-x64.dll",
+        "libssl-1_1-x64.dll",
+        "libssl.dll",
+    ]
+    for name in candidate_names:
+        try:
+            lib = ctypes.CDLL(name)
+            if hasattr(lib, "SSL_CTX_set_psk_client_callback"):
+                return lib
+        except (OSError, AttributeError) as err:
+            logger.debug("Candidate library %s lookup failed: %s", name, err)
+
+    return None
 
 
 def configure_tls_psk(
@@ -74,8 +129,8 @@ def configure_tls_psk(
 
     # 2. Python 3.11 / 3.12 OpenSSL C-API binding via ctypes
     try:
-        lib = ctypes.CDLL(ssl._ssl.__file__)  # type: ignore[attr-defined]
-        if hasattr(lib, "SSL_CTX_set_psk_client_callback"):
+        lib = _get_libssl()
+        if lib and hasattr(lib, "SSL_CTX_set_psk_client_callback"):
             psk_client_cb_type = ctypes.CFUNCTYPE(
                 ctypes.c_uint,
                 ctypes.c_void_p,  # SSL *ssl
