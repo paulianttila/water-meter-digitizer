@@ -19,6 +19,7 @@ from gui.wizard.navigator import (
     NAME_DRAW_REFS,
     NAME_FINAL,
     NAME_INITIAL_ROTATE,
+    NAME_METER_TYPE,
     NAME_METERS,
     NAME_SERVICES,
     WizardNavigator,
@@ -33,7 +34,9 @@ from gui.wizard.steps import (
     FinalStep,
     InitialRotateStep,
     MeterStep,
+    MeterTypeStep,
     ServicesStep,
+    select_best_model,
 )
 
 logger = logging.getLogger(__name__)
@@ -48,6 +51,7 @@ __all__ = [
     "NAME_FINAL",
     "NAME_INITIAL_ROTATE",
     "NAME_METERS",
+    "NAME_METER_TYPE",
     "NAME_SERVICES",
     "SetupPage",
     "resolve_model_path",
@@ -81,6 +85,7 @@ class SetupPage(BasePage):
         self.spinner: ui.spinner
 
         self.download_image_step: DownloadImageStep
+        self.meter_type_step: MeterTypeStep
         self.initial_rotate_step: InitialRotateStep
         self.draw_refs_step: DrawRefsStep
         self.adjust_step: AdjustStep
@@ -254,7 +259,132 @@ class SetupPage(BasePage):
                     else:
                         self.main_image_header.set_visibility(False)
 
+        _preset_pending: bool = False
+
+        def _apply_meter_type_preset() -> None:
+            preset = self.meter_type_step.selected_preset
+            if preset is None or preset.id == "custom":
+                return
+
+            digital_names = self.meter_type_step.effective_digital_roi_names
+            analog_names = self.meter_type_step.effective_analog_roi_names
+            unit = self.meter_type_step.unit
+
+            # Get actual image dimensions for ROI placement
+            img_w, img_h = 640, 480
+            if self.image:
+                try:
+                    w, h = ImageUtils.image_size(
+                        ImageUtils.convert_base64_str_to_image(self.image)
+                    )
+                    if w > 0 and h > 0:
+                        img_w, img_h = w, h
+                except Exception:
+                    pass
+
+            has_existing = bool(
+                self.draw_digital_rois_step.rois or self.draw_analog_rois_step.rois
+            )
+
+            def do_apply() -> None:
+                flow_split = 0
+                if preset.has_secondary_group:
+                    flow_split = len([n for n in digital_names if n.startswith("flow")])
+                dig_pos = preset.get_digital_roi_positions(
+                    digital_names, img_w, img_h, flow_split
+                )
+                if dig_pos:
+                    self.draw_digital_rois_step.load_rois(dig_pos)
+                ana_pos = preset.get_analog_roi_positions(analog_names, img_w, img_h)
+                if ana_pos:
+                    self.draw_analog_rois_step.load_rois(ana_pos)
+                configs = preset.build_meter_configs(digital_names, analog_names, unit)
+                if configs:
+                    self.meters_step.load_from_config(configs)
+
+                # Auto-select CNN models based on preset recommendation
+                if (
+                    preset.digital_category_preference
+                    and hasattr(self.draw_digital_rois_step, "cnn_file")
+                    and self.draw_digital_rois_step.cnn_file is not None
+                    and isinstance(self.draw_digital_rois_step.cnn_file.options, dict)
+                ):
+                    best_dig_model = select_best_model(
+                        self.draw_digital_rois_step.cnn_file.options,
+                        preset.digital_category_preference,
+                        preset.digital_preferred_filename,
+                    )
+                    if best_dig_model:
+                        self.draw_digital_rois_step.cnn_file.value = best_dig_model
+                    if (
+                        hasattr(self.draw_digital_rois_step, "cnn_type")
+                        and self.draw_digital_rois_step.cnn_type is not None
+                    ):
+                        self.draw_digital_rois_step.cnn_type.value = (
+                            preset.digital_cnn_type
+                        )
+
+                if (
+                    preset.analog_category_preference
+                    and hasattr(self.draw_analog_rois_step, "cnn_file")
+                    and self.draw_analog_rois_step.cnn_file is not None
+                    and isinstance(self.draw_analog_rois_step.cnn_file.options, dict)
+                ):
+                    best_ana_model = select_best_model(
+                        self.draw_analog_rois_step.cnn_file.options,
+                        preset.analog_category_preference,
+                        preset.analog_preferred_filename,
+                    )
+                    if best_ana_model:
+                        self.draw_analog_rois_step.cnn_file.value = best_ana_model
+                    if (
+                        hasattr(self.draw_analog_rois_step, "cnn_type")
+                        and self.draw_analog_rois_step.cnn_type is not None
+                    ):
+                        self.draw_analog_rois_step.cnn_type.value = (
+                            preset.analog_cnn_type
+                        )
+
+                ui.notify(
+                    f"Preset '{preset.label}' applied: {len(dig_pos)} digital, "
+                    f"{len(ana_pos)} analog ROIs, CNN models configured.",
+                    type="positive",
+                    timeout=4000,
+                )
+
+            if has_existing:
+                open_confirm_dialog(
+                    title="Apply Meter Type Preset?",
+                    subtitle="This will replace existing ROI and model configurations",
+                    message=(
+                        f"Applying preset '{preset.label}' will replace existing ROI boxes, "
+                        "CNN model selections, and meter configurations. Continue?"
+                    ),
+                    confirm_label="Apply Preset",
+                    confirm_icon="auto_fix_high",
+                    color_scheme="indigo",
+                    icon="auto_fix_high",
+                    on_confirm=lambda *_: do_apply(),
+                )
+            else:
+                do_apply()
+
         def handle_stepper_change(step: str) -> None:
+            nonlocal _preset_pending
+            prev_step = self.navigator.previous_step
+            # Mark pending when leaving Meter Type step going forward with a non-custom preset
+            if (
+                prev_step == NAME_METER_TYPE
+                and WizardNavigator.is_step_forward(step, NAME_METER_TYPE)
+                and self.meter_type_step.selected_preset_id != "custom"
+            ):
+                _preset_pending = True
+
+            # Apply preset when arriving at Draw Digital ROIs
+            if step == NAME_DRAW_DIGITAL_ROIS and _preset_pending:
+                _preset_pending = False
+                _apply_meter_type_preset()
+
             self.navigator.handle_stepper_change(
                 step=step,
                 download_image_step=self.download_image_step,
@@ -405,6 +535,11 @@ class SetupPage(BasePage):
                     self.stepper.value = NAME_DOWNLOAD_IMAGE
                     update_wizard_nav(NAME_DOWNLOAD_IMAGE)
 
+                nonlocal _preset_pending
+                _preset_pending = False
+                self.meter_type_step.selected_preset_id = "custom"
+                self.meter_type_step._update_ui_state()
+
                 ui.notify("Wizard reset to clean configuration", type="positive")
             except Exception as e:
                 logger.error(f"Failed to reset wizard to clean config: {e}")
@@ -454,6 +589,11 @@ class SetupPage(BasePage):
                 self.previous_step = NAME_DOWNLOAD_IMAGE
                 if hasattr(self, "stepper") and self.stepper is not None:
                     self.stepper.value = NAME_DOWNLOAD_IMAGE
+
+                nonlocal _preset_pending
+                _preset_pending = False
+                self.meter_type_step.selected_preset_id = "custom"
+                self.meter_type_step._update_ui_state()
 
                 if fresh_config.image_source.url:
                     await self.download_image_step.download()
@@ -550,7 +690,7 @@ class SetupPage(BasePage):
                     "Reload all wizard values from saved config file"
                 )
 
-                ui.label("9-Step Setup").classes(
+                ui.label("10-Step Setup").classes(
                     "text-xs font-semibold text-indigo-300 bg-indigo-950/70 "
                     "border border-indigo-500/30 px-3 py-1 rounded-full shadow-inner"
                 )
@@ -559,6 +699,11 @@ class SetupPage(BasePage):
             name=NAME_DOWNLOAD_IMAGE,
             set_image_callback=set_image,
             on_error_callback=on_download_error,
+            spinner=self.spinner,
+        )
+        self.meter_type_step = MeterTypeStep(
+            name=NAME_METER_TYPE,
+            set_image_callback=set_image,
             spinner=self.spinner,
         )
         self.initial_rotate_step = InitialRotateStep(
@@ -760,6 +905,7 @@ class SetupPage(BasePage):
                 ):
                     self.stepper = stepper
                     await self.download_image_step.show(stepper, first_step=True)
+                    await self.meter_type_step.show(stepper)
                     await self.initial_rotate_step.show(stepper)
                     await self.draw_refs_step.show(stepper)
                     await self.adjust_step.show(stepper)

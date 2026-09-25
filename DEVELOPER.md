@@ -44,7 +44,7 @@ The web dashboard and setup wizard will be available at **`http://localhost:3000
 │   ├── gui/                # NiceGUI web UI: pages/, wizard/ (steps/, adjust/), dialogs/, components/
 │   │   ├── components/     # Reusable UI cards (consumption, time_machine, leak, etc.)
 │   │   ├── pages/          # Full page views (meter, config, services, setup, etc.)
-│   │   ├── wizard/         # 9-step calibration wizard (steps/, adjust/)
+│   │   ├── wizard/         # 10-step calibration wizard (steps/, adjust/)
 │   │   ├── dialogs/        # Modal dialogs (benchmark)
 │   │   └── theme.py        # Tailwind CSS class constants for consistent styling
 │   ├── services/           # Background & integration services (mqtt, leak, poller, simulator)

@@ -14,7 +14,7 @@ The dashboard features a responsive layout where the left navigation sidebar aut
 | :--- | :--- |
 | **Meter** | Live dashboard, primary metrics, confidence badges, cropped dial previews, consumption charts, and Time Machine scrubber. |
 | **Services** | Telemetry overview, Zero-Flow Leak Monitor status, background Poller, and MQTT service controls. |
-| **Setup** | 9-step interactive visual wizard for camera calibration, marker alignment, and ROI definition. |
+| **Setup** | 10-step interactive visual wizard for camera calibration, marker alignment, and ROI definition. |
 | **Config** | Raw INI configuration editor with syntax validation, 1-click Undo, snapshots, and color diffs. |
 | **Baselines** | Previous meter baseline editor with fallback value management. |
 | **API Console** | Interactive REST endpoint debugger and dedicated procedural Mock Camera Studio. |

@@ -40,7 +40,7 @@ uv run playwright install --with-deps chromium
 │   ├── gui/                # NiceGUI web UI: pages/, wizard/ (steps/, adjust/), dialogs/, components/
 │   │   ├── components/     # Reusable UI cards (consumption, time_machine, leak, etc.)
 │   │   ├── pages/          # Full page views (meter, config, services, setup, etc.)
-│   │   ├── wizard/         # 9-step calibration wizard (steps/, adjust/)
+│   │   ├── wizard/         # 10-step calibration wizard (steps/, adjust/)
 │   │   ├── dialogs/        # Modal dialogs (benchmark)
 │   │   └── theme.py        # Tailwind CSS class constants for consistent styling
 │   ├── services/           # Background & integration services (mqtt, leak, poller, simulator)
@@ -119,7 +119,7 @@ The test suite leverages the mock camera for true full-system end-to-end integra
 | **Pipeline & ROI** | `test_e2e_mock_camera_pipeline.py` | Live `/meter` readout JSON generation, `/roi` rendering, and synthetic ROI extraction. |
 | **Poller & History** | `test_e2e_mock_camera_poller.py` | Poller readout accumulation, SQLite history database, hourly consumption, and timeline snapshots. |
 | **Leak & MQTT** | `test_e2e_mock_camera_leak_alert.py` | Zero-flow tracking, `/leak/status`, `/leak/reset`, and live MQTT telemetry publishing. |
-| **Setup Wizard UI** | `ui/test_page_setup_mock_camera.py` | Playwright browser test completing the 9-step calibration wizard using mock camera frames. |
+| **Setup Wizard UI** | `ui/test_page_setup_mock_camera.py` | Playwright browser test completing the 10-step calibration wizard using mock camera frames. |
 
 See the full [Dashboard, Features & Tools Guide](Dashboard-&-Features-Guide) for full REST parameters and Mock Camera details.
 

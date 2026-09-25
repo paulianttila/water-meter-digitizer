@@ -28,6 +28,7 @@ if TYPE_CHECKING:
 logger = logging.getLogger(__name__)
 
 NAME_DOWNLOAD_IMAGE = "Download image"
+NAME_METER_TYPE = "Meter type"
 NAME_INITIAL_ROTATE = "Initial rotate"
 NAME_DRAW_REFS = "Draw reference points"
 NAME_ADJUST = "Adjust image"
@@ -39,6 +40,7 @@ NAME_FINAL = "Final"
 
 steps_order = [
     NAME_DOWNLOAD_IMAGE,
+    NAME_METER_TYPE,
     NAME_INITIAL_ROTATE,
     NAME_DRAW_REFS,
     NAME_ADJUST,
@@ -79,7 +81,7 @@ class WizardNavigator:
     ) -> str:
         """Select the appropriate predecessor output image for a given step."""
         raw_img = download_step.get_image() or fallback_image
-        if step_name in (NAME_DOWNLOAD_IMAGE, NAME_INITIAL_ROTATE):
+        if step_name in (NAME_DOWNLOAD_IMAGE, NAME_METER_TYPE, NAME_INITIAL_ROTATE):
             return raw_img
 
         rotated_img = initial_rotate_step.get_image() or raw_img
@@ -103,7 +105,7 @@ class WizardNavigator:
         final_step: Any,
     ) -> str:
         """Fetch step-rendered output image by step name."""
-        if name == NAME_DOWNLOAD_IMAGE:
+        if name in (NAME_DOWNLOAD_IMAGE, NAME_METER_TYPE):
             return download_image_step.get_image()
         if name == NAME_INITIAL_ROTATE:
             return initial_rotate_step.get_image()

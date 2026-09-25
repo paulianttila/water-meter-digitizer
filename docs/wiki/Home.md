@@ -8,7 +8,7 @@ The **Water Meter Digitizer** is an edge-optimized AI vision system that reads a
 
 ### 🚀 Getting Started & Calibration
 - **[[Getting-Started-&-Hardware]]**: Deploy via Docker, Docker Compose, Raspberry Pi (ARM64), hardware mounting, camera selection, and lighting/glare mitigation.
-- **[[Setup-Wizard-&-Calibration]]**: Step-by-step 9-step visual calibration wizard, marker alignment rules, canvas shortcuts, and ROI setup.
+- **[[Setup-Wizard-&-Calibration]]**: Step-by-step 10-step visual calibration wizard, marker alignment rules, canvas shortcuts, and ROI setup.
 - **[[Dashboard-&-Features-Guide]]**: Live monitoring dashboard, Time Machine historical frame scrubber, Zero-Flow continuous leak detection, and Mock Camera Studio.
 
 ### 🏡 Integrations & Automation

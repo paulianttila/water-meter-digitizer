@@ -95,19 +95,19 @@ def test_wizard_navigation_flow():
     # Step 1: Download Image
     update_wizard_nav(NAME_DOWNLOAD_IMAGE)
     page.wizard_prev_btn.set_visibility.assert_called_with(False)
-    assert "Step 1 of 9" in page.wizard_step_badge.text
+    assert "Step 1 of 10" in page.wizard_step_badge.text
     assert page.wizard_next_btn.text == "Continue"
 
-    # Step 5: Draw Digital ROIs
+    # Step 6: Draw Digital ROIs
     update_wizard_nav("Draw digital region of interest")
     page.wizard_prev_btn.set_visibility.assert_called_with(True)
-    assert "Step 5 of 9" in page.wizard_step_badge.text
+    assert "Step 6 of 10" in page.wizard_step_badge.text
     assert page.wizard_next_btn.text == "Continue"
 
-    # Step 9: Final
+    # Step 10: Final
     update_wizard_nav(NAME_FINAL)
     page.wizard_prev_btn.set_visibility.assert_called_with(True)
-    assert "Step 9 of 9" in page.wizard_step_badge.text
+    assert "Step 10 of 10" in page.wizard_step_badge.text
     assert page.wizard_next_btn.text == "Save Config"
 
 
@@ -125,6 +125,7 @@ def test_setup_page_show():
         patch(
             "gui.wizard.steps.download.DownloadImageStep.show", new_callable=AsyncMock
         ),
+        patch("gui.wizard.steps.meter_type.MeterTypeStep.show", new_callable=AsyncMock),
         patch(
             "gui.wizard.steps.initial_rotate.InitialRotateStep.show",
             new_callable=AsyncMock,

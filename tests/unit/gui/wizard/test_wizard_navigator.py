@@ -9,6 +9,7 @@ from gui.wizard.navigator import (
     NAME_DRAW_REFS,
     NAME_FINAL,
     NAME_INITIAL_ROTATE,
+    NAME_METER_TYPE,
     NAME_METERS,
     NAME_SERVICES,
     WizardNavigator,
@@ -16,14 +17,11 @@ from gui.wizard.navigator import (
 
 
 def test_wizard_navigator_is_step_forward():
+    assert WizardNavigator.is_step_forward(NAME_METER_TYPE, NAME_DOWNLOAD_IMAGE) is True
     assert (
-        WizardNavigator.is_step_forward(NAME_INITIAL_ROTATE, NAME_DOWNLOAD_IMAGE)
-        is True
+        WizardNavigator.is_step_forward(NAME_DOWNLOAD_IMAGE, NAME_METER_TYPE) is False
     )
-    assert (
-        WizardNavigator.is_step_forward(NAME_DOWNLOAD_IMAGE, NAME_INITIAL_ROTATE)
-        is False
-    )
+    assert WizardNavigator.is_step_forward(NAME_INITIAL_ROTATE, NAME_METER_TYPE) is True
     assert WizardNavigator.is_step_forward(NAME_FINAL, NAME_SERVICES) is True
     assert WizardNavigator.is_step_forward("unknown", NAME_SERVICES) is False
 
@@ -36,10 +34,16 @@ def test_wizard_navigator_get_source_image():
     adjust_step = MagicMock()
     adjust_step.get_image.return_value = "img_adjust"
 
-    # For download & initial rotate, source is download
+    # For download, meter type, & initial rotate, source is download
     assert (
         WizardNavigator.get_source_image_for_step(
             NAME_DOWNLOAD_IMAGE, download_step, rotate_step, adjust_step
+        )
+        == "img_download"
+    )
+    assert (
+        WizardNavigator.get_source_image_for_step(
+            NAME_METER_TYPE, download_step, rotate_step, adjust_step
         )
         == "img_download"
     )
@@ -87,20 +91,25 @@ def test_wizard_navigator_update_wizard_nav():
     # Step 1
     WizardNavigator.update_wizard_nav(NAME_DOWNLOAD_IMAGE, prev_btn, badge, next_btn)
     prev_btn.set_visibility.assert_called_with(False)
-    assert "Step 1 of 9" in badge.text
+    assert "Step 1 of 10" in badge.text
     next_btn.set_visibility.assert_called_with(True)
     assert next_btn.text == "Continue"
 
-    # Step 5
+    # Step 2
+    WizardNavigator.update_wizard_nav(NAME_METER_TYPE, prev_btn, badge, next_btn)
+    prev_btn.set_visibility.assert_called_with(True)
+    assert "Step 2 of 10" in badge.text
+
+    # Step 6
     WizardNavigator.update_wizard_nav(NAME_DRAW_DIGITAL_ROIS, prev_btn, badge, next_btn)
     prev_btn.set_visibility.assert_called_with(True)
-    assert "Step 5 of 9" in badge.text
+    assert "Step 6 of 10" in badge.text
     next_btn.set_visibility.assert_called_with(True)
 
-    # Step 9 (Final)
+    # Step 10 (Final)
     WizardNavigator.update_wizard_nav(NAME_FINAL, prev_btn, badge, next_btn)
     prev_btn.set_visibility.assert_called_with(True)
-    assert "Step 9 of 9" in badge.text
+    assert "Step 10 of 10" in badge.text
     next_btn.set_visibility.assert_called_with(False)
 
 

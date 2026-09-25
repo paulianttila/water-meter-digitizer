@@ -5,8 +5,8 @@ from playwright.sync_api import Page, expect
 
 
 @pytest.mark.ui
-def test_full_9_step_wizard_traversal(page: Page, live_server_url: str):
-    """Verify complete step-by-step traversal through the 9-step calibration
+def test_full_10_step_wizard_traversal(page: Page, live_server_url: str):
+    """Verify complete step-by-step traversal through the 10-step calibration
     pipeline.
     """
     page.goto(f"{live_server_url}/gui", wait_until="domcontentloaded")
@@ -16,47 +16,53 @@ def test_full_9_step_wizard_traversal(page: Page, live_server_url: str):
     back_btn = page.get_by_role("button", name="Back", exact=True)
 
     # Step 1: Download image
-    expect(page.get_by_text("Step 1 of 9: Download image")).to_be_visible(timeout=10000)
+    expect(page.get_by_text("Step 1 of 10: Download image")).to_be_visible(
+        timeout=10000
+    )
     continue_btn.click()
 
-    # Step 2: Initial rotate
-    expect(page.get_by_text("Step 2 of 9: Initial rotate")).to_be_visible(timeout=5000)
+    # Step 2: Meter type
+    expect(page.get_by_text("Step 2 of 10: Meter type")).to_be_visible(timeout=5000)
     continue_btn.click()
 
-    # Step 3: Draw reference points
-    expect(page.get_by_text("Step 3 of 9: Draw reference points")).to_be_visible(
+    # Step 3: Initial rotate
+    expect(page.get_by_text("Step 3 of 10: Initial rotate")).to_be_visible(timeout=5000)
+    continue_btn.click()
+
+    # Step 4: Draw reference points
+    expect(page.get_by_text("Step 4 of 10: Draw reference points")).to_be_visible(
         timeout=5000
     )
     continue_btn.click()
 
-    # Step 4: Adjust image
-    expect(page.get_by_text("Step 4 of 9: Adjust image")).to_be_visible(timeout=5000)
+    # Step 5: Adjust image
+    expect(page.get_by_text("Step 5 of 10: Adjust image")).to_be_visible(timeout=5000)
     continue_btn.click()
 
-    # Step 5: Draw digital region of interest
+    # Step 6: Draw digital region of interest
     expect(
-        page.get_by_text("Step 5 of 9: Draw digital region of interest")
+        page.get_by_text("Step 6 of 10: Draw digital region of interest")
     ).to_be_visible(timeout=5000)
     continue_btn.click()
 
-    # Step 6: Draw analog region of interest
+    # Step 7: Draw analog region of interest
     expect(
-        page.get_by_text("Step 6 of 9: Draw analog region of interest")
+        page.get_by_text("Step 7 of 10: Draw analog region of interest")
     ).to_be_visible(timeout=5000)
     continue_btn.click()
 
-    # Step 7: Meters
-    expect(page.get_by_text("Step 7 of 9: Meters")).to_be_visible(timeout=5000)
+    # Step 8: Meters
+    expect(page.get_by_text("Step 8 of 10: Meters")).to_be_visible(timeout=5000)
     continue_btn.click()
 
-    # Step 8: Services & Integrations
-    expect(page.get_by_text("Step 8 of 9: Services & Integrations")).to_be_visible(
+    # Step 9: Services & Integrations
+    expect(page.get_by_text("Step 9 of 10: Services & Integrations")).to_be_visible(
         timeout=5000
     )
     continue_btn.click()
 
-    # Step 9: Final / Apply & Finish
-    expect(page.get_by_text("Step 9 of 9: Final")).to_be_visible(timeout=5000)
+    # Step 10: Final / Apply & Finish
+    expect(page.get_by_text("Step 10 of 10: Final")).to_be_visible(timeout=5000)
     expect(page.get_by_text("Configuration not yet saved")).to_be_visible(timeout=5000)
     expect(page.get_by_role("button", name="Save Config")).to_be_visible()
     expect(page.get_by_role("button", name="Test Config")).to_be_visible()
@@ -64,7 +70,7 @@ def test_full_9_step_wizard_traversal(page: Page, live_server_url: str):
 
     # Test backward traversal
     back_btn.click()
-    expect(page.get_by_text("Step 8 of 9: Services & Integrations")).to_be_visible(
+    expect(page.get_by_text("Step 9 of 10: Services & Integrations")).to_be_visible(
         timeout=5000
     )
     expect(continue_btn).to_be_visible()
@@ -75,7 +81,9 @@ def test_setup_wizard_reset_dialog(page: Page, live_server_url: str):
     """Verify reset confirmation dialog."""
     page.goto(f"{live_server_url}/gui", wait_until="domcontentloaded")
     page.get_by_role("tab", name="Setup").click()
-    expect(page.get_by_text("Step 1 of 9: Download image")).to_be_visible(timeout=10000)
+    expect(page.get_by_text("Step 1 of 10: Download image")).to_be_visible(
+        timeout=10000
+    )
 
     reset_btn = page.get_by_role("button", name="Reset to File")
     expect(reset_btn).to_be_visible(timeout=10000)
@@ -93,7 +101,9 @@ def test_setup_wizard_restore_backup_dialog(page: Page, live_server_url: str):
     """Verify restore from backup modal dialog."""
     page.goto(f"{live_server_url}/gui", wait_until="domcontentloaded")
     page.get_by_role("tab", name="Setup").click()
-    expect(page.get_by_text("Step 1 of 9: Download image")).to_be_visible(timeout=10000)
+    expect(page.get_by_text("Step 1 of 10: Download image")).to_be_visible(
+        timeout=10000
+    )
 
     restore_btn = page.get_by_role("button", name="Restore Backup")
     expect(restore_btn).to_be_visible(timeout=10000)
@@ -117,20 +127,24 @@ def test_setup_wizard_adjust_step_side_by_side_preview(
     """Test Step 4 Adjust image dual-card side-by-side comparison mode toggle."""
     page.goto(f"{live_server_url}/gui", wait_until="domcontentloaded")
     page.get_by_role("tab", name="Setup").click()
-    expect(page.get_by_text("Step 1 of 9: Download image")).to_be_visible(timeout=10000)
+    expect(page.get_by_text("Step 1 of 10: Download image")).to_be_visible(
+        timeout=10000
+    )
 
     continue_btn = page.get_by_role("button", name="Continue")
     expect(continue_btn).to_be_visible(timeout=10000)
 
-    # Advance Step 1 -> 2 -> 3 -> 4
-    continue_btn.click()  # -> Step 2
-    expect(page.get_by_text("Step 2 of 9: Initial rotate")).to_be_visible(timeout=5000)
-    continue_btn.click()  # -> Step 3
-    expect(page.get_by_text("Step 3 of 9: Draw reference points")).to_be_visible(
+    # Advance Step 1 -> 2 -> 3 -> 4 -> 5
+    continue_btn.click()  # -> Step 2: Meter type
+    expect(page.get_by_text("Step 2 of 10: Meter type")).to_be_visible(timeout=5000)
+    continue_btn.click()  # -> Step 3: Initial rotate
+    expect(page.get_by_text("Step 3 of 10: Initial rotate")).to_be_visible(timeout=5000)
+    continue_btn.click()  # -> Step 4: Draw reference points
+    expect(page.get_by_text("Step 4 of 10: Draw reference points")).to_be_visible(
         timeout=5000
     )
-    continue_btn.click()  # -> Step 4
-    expect(page.get_by_text("Step 4 of 9: Adjust image")).to_be_visible(timeout=5000)
+    continue_btn.click()  # -> Step 5: Adjust image
+    expect(page.get_by_text("Step 5 of 10: Adjust image")).to_be_visible(timeout=5000)
 
     # In Single mode, header displays "Adjusted Image Preview"
     expect(page.get_by_text("Adjusted Image Preview")).to_be_visible(timeout=5000)
@@ -150,7 +164,9 @@ def test_setup_wizard_start_clean_dialog(page: Page, live_server_url: str):
     """Verify start clean configuration dialog and action."""
     page.goto(f"{live_server_url}/gui", wait_until="domcontentloaded")
     page.get_by_role("tab", name="Setup").click()
-    expect(page.get_by_text("Step 1 of 9: Download image")).to_be_visible(timeout=10000)
+    expect(page.get_by_text("Step 1 of 10: Download image")).to_be_visible(
+        timeout=10000
+    )
 
     clean_btn = page.get_by_role("button", name="Start Clean")
     expect(clean_btn).to_be_visible(timeout=10000)
@@ -166,7 +182,7 @@ def test_setup_wizard_start_clean_dialog(page: Page, live_server_url: str):
 
 @pytest.mark.ui
 def test_setup_wizard_tall_step_scrollability(page: Page, live_server_url: str):
-    """Verify that on tall wizard steps (like Step 4 Adjust image):
+    """Verify that on tall wizard steps (like Step 5 Adjust image):
     - The main page and left image panel remain fixed in view.
     - Only the wizard step container scrolls independently.
     - Docked navigation buttons (Back/Continue) remain visible and functional.
@@ -174,20 +190,24 @@ def test_setup_wizard_tall_step_scrollability(page: Page, live_server_url: str):
     page.set_viewport_size({"width": 1024, "height": 600})
     page.goto(f"{live_server_url}/gui", wait_until="domcontentloaded")
     page.get_by_role("tab", name="Setup").click()
-    expect(page.get_by_text("Step 1 of 9: Download image")).to_be_visible(timeout=10000)
+    expect(page.get_by_text("Step 1 of 10: Download image")).to_be_visible(
+        timeout=10000
+    )
 
     continue_btn = page.get_by_role("button", name="Continue")
     back_btn = page.get_by_role("button", name="Back", exact=True)
 
-    # Advance to Step 4 (Adjust image) which has many sub-cards and exceeds 600px height
+    # Advance to Step 5 (Adjust image) which has many sub-cards and exceeds 600px height
     continue_btn.click()
-    expect(page.get_by_text("Step 2 of 9: Initial rotate")).to_be_visible(timeout=5000)
+    expect(page.get_by_text("Step 2 of 10: Meter type")).to_be_visible(timeout=5000)
     continue_btn.click()
-    expect(page.get_by_text("Step 3 of 9: Draw reference points")).to_be_visible(
+    expect(page.get_by_text("Step 3 of 10: Initial rotate")).to_be_visible(timeout=5000)
+    continue_btn.click()
+    expect(page.get_by_text("Step 4 of 10: Draw reference points")).to_be_visible(
         timeout=5000
     )
     continue_btn.click()
-    expect(page.get_by_text("Step 4 of 9: Adjust image")).to_be_visible(timeout=5000)
+    expect(page.get_by_text("Step 5 of 10: Adjust image")).to_be_visible(timeout=5000)
 
     # Verify that the body is not scrolling, the left panel stays pinned, and the stepper scrolls
     layout_info = page.evaluate("""() => {
@@ -217,15 +237,15 @@ def test_setup_wizard_tall_step_scrollability(page: Page, live_server_url: str):
     expect(continue_btn).to_be_visible()
     continue_btn.click()
 
-    # Verify advance to Step 5
+    # Verify advance to Step 6
     expect(
-        page.get_by_text("Step 5 of 9: Draw digital region of interest")
+        page.get_by_text("Step 6 of 10: Draw digital region of interest")
     ).to_be_visible(timeout=5000)
 
     # Back button remains docked and directly visible
     expect(back_btn).to_be_visible()
     back_btn.click()
-    expect(page.get_by_text("Step 4 of 9: Adjust image")).to_be_visible(timeout=5000)
+    expect(page.get_by_text("Step 5 of 10: Adjust image")).to_be_visible(timeout=5000)
 
 
 @pytest.mark.ui
@@ -235,15 +255,19 @@ def test_setup_wizard_roi_shift_move(page: Page, live_server_url: str):
     """
     page.goto(f"{live_server_url}/gui", wait_until="domcontentloaded")
     page.get_by_role("tab", name="Setup").click()
-    expect(page.get_by_text("Step 1 of 9: Download image")).to_be_visible(timeout=10000)
+    expect(page.get_by_text("Step 1 of 10: Download image")).to_be_visible(
+        timeout=10000
+    )
 
     continue_btn = page.get_by_role("button", name="Continue")
 
-    # Advance to Step 3: Draw reference points
-    continue_btn.click()  # -> Step 2
-    expect(page.get_by_text("Step 2 of 9: Initial rotate")).to_be_visible(timeout=5000)
-    continue_btn.click()  # -> Step 3
-    expect(page.get_by_text("Step 3 of 9: Draw reference points")).to_be_visible(
+    # Advance to Step 4: Draw reference points
+    continue_btn.click()  # -> Step 2: Meter type
+    expect(page.get_by_text("Step 2 of 10: Meter type")).to_be_visible(timeout=5000)
+    continue_btn.click()  # -> Step 3: Initial rotate
+    expect(page.get_by_text("Step 3 of 10: Initial rotate")).to_be_visible(timeout=5000)
+    continue_btn.click()  # -> Step 4: Draw reference points
+    expect(page.get_by_text("Step 4 of 10: Draw reference points")).to_be_visible(
         timeout=5000
     )
 
@@ -305,7 +329,9 @@ def test_setup_wizard_shift_move_cursor_and_hud_indicator(
     """Verify that holding Shift activates move cursor and displays the MOVE MODE HUD badge."""
     page.goto(f"{live_server_url}/gui", wait_until="domcontentloaded")
     page.get_by_role("tab", name="Setup").click()
-    expect(page.get_by_text("Step 1 of 9: Download image")).to_be_visible(timeout=10000)
+    expect(page.get_by_text("Step 1 of 10: Download image")).to_be_visible(
+        timeout=10000
+    )
 
     # Initial state: shift-move-active class absent, indicator hidden
     indicator = page.locator("#roi-move-indicator")
@@ -347,17 +373,23 @@ def test_setup_wizard_canvas_shortcuts_bar(page: Page, live_server_url: str):
     """Verify that the quick canvas shortcuts bar displays in drawing steps and reacts to Shift."""
     page.goto(f"{live_server_url}/gui", wait_until="domcontentloaded")
     page.get_by_role("tab", name="Setup").click()
-    expect(page.get_by_text("Step 1 of 9: Download image")).to_be_visible(timeout=10000)
+    expect(page.get_by_text("Step 1 of 10: Download image")).to_be_visible(
+        timeout=10000
+    )
 
     continue_btn = page.get_by_role("button", name="Continue")
-    # Step 1 -> Step 2 (Initial rotate)
+    # Step 1 -> Step 2 (Meter type)
     continue_btn.click()
-    expect(page.get_by_text("Step 2 of 9: Initial rotate")).to_be_visible(timeout=5000)
+    expect(page.get_by_text("Step 2 of 10: Meter type")).to_be_visible(timeout=5000)
 
-    # Step 2 -> Step 3 (Draw reference points)
+    # Step 2 -> Step 3 (Initial rotate)
+    continue_btn.click()
+    expect(page.get_by_text("Step 3 of 10: Initial rotate")).to_be_visible(timeout=5000)
+
+    # Step 3 -> Step 4 (Draw reference points)
     continue_btn.click()
     expect(
-        page.get_by_text("Step 3 of 9: Draw reference points", exact=False)
+        page.get_by_text("Step 4 of 10: Draw reference points", exact=False)
     ).to_be_visible(timeout=5000)
 
     # Verify shortcut bar elements

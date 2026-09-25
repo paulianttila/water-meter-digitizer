@@ -31,7 +31,7 @@ Automatically read analog needle dials and mechanical odometer digits from utili
 
 - **`/` (Web Dashboard)**: Live readings, primary metrics, confidence badges, cropped dial previews, and consumption charts.
 - **Time Machine**: Interactive historical frame scrubber with side-by-side Historical vs. Live comparison and SSIM metrics.
-- **Setup Wizard (`/setup`)**: 9-step guided visual calibration flow with live canvas, alignment markers, and backup restoration.
+- **Setup Wizard (`/setup`)**: 10-step guided visual calibration flow with preset selection, live canvas, alignment markers, and backup restoration.
 
 <p align="center">
   <img src="docs/images/setup_wizard.png" alt="Setup Wizard & Canvas" width="850">
@@ -78,7 +78,7 @@ Detailed guides, API specifications, and calibration tutorials are available in 
 | Guide | Description |
 | :--- | :--- |
 | 🚀 **[Getting Started & Hardware](docs/wiki/Getting-Started-&-Hardware.md)** | Docker Compose, Raspberry Pi / ARM64, hardware mounting, and camera setup. |
-| 🪜 **[Setup Wizard & Calibration](docs/wiki/Setup-Wizard-&-Calibration.md)** | Step-by-step 9-step visual calibration workflow and marker alignment rules. |
+| 🪜 **[Setup Wizard & Calibration](docs/wiki/Setup-Wizard-&-Calibration.md)** | Step-by-step 10-step visual calibration workflow and marker alignment rules. |
 | 🧭 **[Dashboard & Features Guide](docs/wiki/Dashboard-&-Features-Guide.md)** | Live readouts, Time Machine frame scrubber, leak detection, and Mock Studio. |
 | 🏡 **[Integrations & API Reference](docs/wiki/Integrations-&-API-Reference.md)** | Home Assistant Auto-Discovery, MQTT topic schemas, and REST API docs. |
 | ⚙️ **[Configuration & Storage Manual](docs/wiki/Configuration-&-Storage-Manual.md)** | Full `config.ini` manual, environment variables, safety backups, and SQLite retention. |

@@ -57,10 +57,13 @@ DIALOG_FOOTER_ROW = (
 # --- Stats / Metric Cards ---
 STAT_VALUE_LARGE = "font-['Outfit'] text-3xl font-extrabold tracking-tight"
 
-# --- Interactive ---
+# --- Interactive & Selectable Cards ---
 CLICKABLE_CARD = (
     "cursor-pointer hover:border-cyan-500/50 hover:bg-slate-800/90 transition-all"
 )
+CARD_SELECTABLE = "p-4 rounded-xl border-2 transition-all cursor-pointer flex flex-col justify-between"
+CARD_SELECTABLE_ACTIVE = f"{CARD_SELECTABLE} border-indigo-500 bg-indigo-950/40 shadow-lg shadow-indigo-950/50"
+CARD_SELECTABLE_INACTIVE = f"{CARD_SELECTABLE} border-white/10 bg-slate-900/60 hover:border-white/20 hover:bg-slate-800/60"
 
 # --- Status & Classification Badges ---
 BADGE_SUCCESS = (

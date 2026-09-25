@@ -4,36 +4,39 @@
 
 ---
 
-The **Setup Wizard** (accessible via the **Setup** tab at `/setup`) is an interactive 9-step guided workflow that steps you through acquiring a baseline frame, aligning geometric reference markers, tuning contrast & sharpness, drawing neural network ROIs, configuring virtual meters, and deploying live settings.
+The **Setup Wizard** (accessible via the **Setup** tab at `/setup`) is an interactive 10-step guided workflow that steps you through acquiring a baseline frame, selecting your meter archetype with auto-populated ROIs and CNN models, aligning geometric reference markers, tuning contrast & sharpness, positioning neural network ROIs, configuring virtual meters, and deploying live settings.
 
-## 🧭 9-Step Calibration Flow Overview
+## 🧭 10-Step Calibration Flow Overview
 
 ```
 [Step 1: Download Image]
        │
        ▼
-[Step 2: Initial Rotate]
+[Step 2: Meter Type (Presets & CNN)]
        │
        ▼
-[Step 3: Reference Points]
+[Step 3: Initial Rotate]
        │
        ▼
-[Step 4: Image Adjust]
+[Step 4: Reference Points]
        │
        ▼
-[Step 5: Digital ROIs]
+[Step 5: Image Adjust]
        │
        ▼
-[Step 6: Analog ROIs]
+[Step 6: Digital ROIs]
        │
        ▼
-[Step 7: Meter Definitions]
+[Step 7: Analog ROIs]
        │
        ▼
-[Step 8: Services & MQTT]
+[Step 8: Meter Definitions]
        │
        ▼
-[Step 9: Review & Deploy]
+[Step 9: Services & MQTT]
+       │
+       ▼
+[Step 10: Review & Deploy]
 ```
 
 ---
@@ -47,12 +50,25 @@ The **Setup Wizard** (accessible via the **Setup** tab at `/setup`) is an intera
 
 ---
 
-### Step 2: Initial Rotate
+### Step 2: Meter Type Selection & Guided Presets
+- **Quick-Start Presets**: Choose a hardware preset matching your meter to automatically generate centered placeholder ROI boxes, virtual meter definitions, and optimal CNN models:
+  - **LCD – Cumulative**: Discrete 7-segment digital display. Pre-selects `class11` neural network.
+  - **LCD – Total + Flow**: Dual-reading LCD meter with cumulative total and instantaneous flow rate. Pre-selects `class11` and negative sign detection.
+  - **Mechanical – 5+4**: 5 rolling odometer drums with 4 rotating analog needle dials. Pre-selects `class100` rolling drum CNN and `continuous` needle dial pointer CNN.
+  - **Mechanical – Drums**: Roller counter drums only. Pre-selects `class100` rolling drum CNN.
+  - **Custom (Manual)**: Start from a blank slate with full manual configuration.
+- **Adjustable Counts**: Fine-tune the number of integer digits, decimal digits, analog dials, or engineering units (`㎥`, `L`, `gal`, `kWh`).
+- **Neural Network Recommendations**: View recommended neural network models and architectures matched to your physical hardware.
+- **Live Preview**: Inspect generated virtual meter format strings before continuing.
+
+---
+
+### Step 3: Initial Rotate
 - Rotate the image in 90° increments or use the fine-tuning angle slider until all meter numbers and dials are horizontally and vertically upright.
 
 ---
 
-### Step 3: Reference Points (Geometric Marker Alignment)
+### Step 4: Reference Points (Geometric Marker Alignment)
 - Define **exactly 3 high-contrast stationary reference markers** across the meter face.
 - The digitizer automatically crops template files (`${ConfigDir}/ref0.jpg`, `ref1.jpg`, `ref2.jpg`) and tracks their $(x, y)$ coordinates to compute a 2D affine transformation matrix on every subsequent capture.
 
@@ -67,7 +83,7 @@ The **Setup Wizard** (accessible via the **Setup** tab at `/setup`) is an intera
 
 ---
 
-### Step 4: Image Adjustments & Focus Metric
+### Step 5: Image Adjustments & Focus Metric
 - **⚡ Auto Enhance**: One-click analysis calculating optimal gamma, contrast, brightness, and sharpness parameters.
 - **Environment Presets**: Fast presets (*Crisp Text*, *Basement / Dim*, *Reflective Glass*, *Reset Defaults*).
 - **Gamma & Contrast**: Non-linear gamma curve slider (`0.2`–`3.0`) for recovering shadow details without washing out bright highlights.
@@ -78,24 +94,24 @@ The **Setup Wizard** (accessible via the **Setup** tab at `/setup`) is an intera
 
 ---
 
-### Step 5: Digital Region of Interest (ROIs)
-- Draw bounding boxes over mechanical odometer digits or digital LCD segments (`digit1`, `digit2`, `digit3`, ...).
+### Step 6: Digital Region of Interest (ROIs)
+- Bounding boxes over mechanical odometer digits or digital LCD segments (`digit1`, `digit2`, `digit3`, ...). If a preset was selected in Step 2, placeholder boxes are already created and centered for you to align!
 - **Ordering**: Order from left (Most Significant Digit) to right (Least Significant Digit).
 - **Negative Sign Detection**: Enable `DetectNegativeSign` to recognize minus signs (`-`) for reverse flow meters.
-- **Model Selection**: Select `dig-class11_1701_s2.tflite` or `dig-class100_0168_s2_q.tflite`.
+- **Model Selection**: Automatically pre-selected by Step 2 (`dig-class11_*` for LCD or `dig-class100_*` for mechanical drums).
 - **Canvas Alignment Tools**: Use **Align Top/Bottom/Left/Right**, **Distribute Evenly**, and **Select All** to standardize digit heights and spacing.
 
 ---
 
-### Step 6: Analog Region of Interest (ROIs)
-- Draw circular/square bounding boxes centered on rotating analog needle dials (`analog1`, `analog2`, `analog3`, ...).
+### Step 7: Analog Region of Interest (ROIs)
+- Bounding boxes centered on rotating analog needle dials (`analog1`, `analog2`, `analog3`, ...). Pre-created if an analog preset was selected!
 - **Ordering**: Order dials from largest unit ($0.1$) to smallest unit ($0.0001$).
-- **Model Selection**: Select `ana-cont_1209_s2.tflite`.
+- **Model Selection**: Automatically pre-selected by Step 2 (`ana-cont_*`).
 
 ---
 
-### Step 7: Meters Definition & Consistency Rules
-- Define virtual meters combining the ROIs using bracket template syntax:
+### Step 8: Meters Definition & Consistency Rules
+- Virtual meters combining the ROIs using bracket template syntax (pre-configured from preset):
   ```ini
   [Meter.main]
   Value = {digit1}{digit2}{digit3}{digit4}{digit5}.{analog1}{analog2}{analog3}{analog4}
@@ -111,13 +127,13 @@ The **Setup Wizard** (accessible via the **Setup** tab at `/setup`) is an intera
 
 ---
 
-### Step 8: Services & Integrations
+### Step 9: Services & Integrations
 - **Poller**: Enable automated background cron schedule capture (e.g., `*/15 * * * * *` for every 15 seconds, or `0 */5 * * * *` for every 5 minutes).
 - **MQTT**: Configure broker host, port, topic prefix (`watermeter`), and Home Assistant Auto-Discovery.
 
 ---
 
-### Step 9: Final Review, Save & Live Deploy
+### Step 10: Final Review, Save & Live Deploy
 - Review generated `config.ini` in the embedded editor.
 - Click **Check Syntax** to validate INI integrity.
 - Click **Save Config** to persist `config.ini` and write reference images to disk.
