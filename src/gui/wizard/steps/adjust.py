@@ -1,6 +1,5 @@
 import asyncio
 import logging
-import os
 from collections.abc import Callable
 
 from nicegui import ui
@@ -145,20 +144,6 @@ class AdjustStep(BaseStep):
                 pass
 
         self._debounce_task = asyncio.create_task(debounced_update())
-
-    def _get_base_aligned_image(self, image: str) -> str:
-        ref_images = [
-            r
-            for r in getattr(self, "ref_images", [])
-            if getattr(r, "file_name", "") and os.path.exists(r.file_name)
-        ]
-        proc = ImageProcessor().set_image_from_base64_str(image)
-        if len(ref_images) == 3:
-            try:
-                proc.align_image(ref_images)
-            except Exception as e:
-                logger.debug(f"Alignment skipped in base image helper: {e}")
-        return proc.get_image_as_base64_str()
 
     async def _async_update_preview_canvas(self) -> None:
         if not self.org_image:
@@ -474,20 +459,7 @@ class AdjustStep(BaseStep):
         if not image:
             return ""
 
-        ref_images = [
-            r
-            for r in getattr(self, "ref_images", [])
-            if getattr(r, "file_name", "") and os.path.exists(r.file_name)
-        ]
         proc = ImageProcessor().set_image_from_base64_str(image)
-
-        if len(ref_images) == 3:
-            try:
-                proc.align_image(ref_images)
-            except Exception as e:
-                logger.debug(
-                    f"Reference alignment skipped during adjustment preview: {e}"
-                )
 
         try:
             if getattr(self, "rotate_enabled", None) and self.rotate_enabled.value:
