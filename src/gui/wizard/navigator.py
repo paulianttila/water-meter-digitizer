@@ -27,8 +27,8 @@ if TYPE_CHECKING:
 
 logger = logging.getLogger(__name__)
 
-NAME_DOWNLOAD_IMAGE = "Download image"
 NAME_METER_TYPE = "Meter type"
+NAME_DOWNLOAD_IMAGE = "Download image"
 NAME_INITIAL_ROTATE = "Initial rotate"
 NAME_DRAW_REFS = "Draw reference points"
 NAME_ADJUST = "Adjust image"
@@ -39,8 +39,8 @@ NAME_SERVICES = "Services & Integrations"
 NAME_FINAL = "Final"
 
 steps_order = [
-    NAME_DOWNLOAD_IMAGE,
     NAME_METER_TYPE,
+    NAME_DOWNLOAD_IMAGE,
     NAME_INITIAL_ROTATE,
     NAME_DRAW_REFS,
     NAME_ADJUST,
@@ -57,7 +57,7 @@ class WizardNavigator:
 
     def __init__(self, callbacks: Callbacks) -> None:
         self.callbacks = callbacks
-        self.previous_step: str = NAME_DOWNLOAD_IMAGE
+        self.previous_step: str = NAME_METER_TYPE
         self.refs_enabled_in_image: bool = False
         self.digital_rois_enabled_in_image: bool = False
         self.analog_rois_enabled_in_image: bool = False

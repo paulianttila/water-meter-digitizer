@@ -23,6 +23,7 @@ def test_init_gui():
 def test_frontend_show_callback():
     app = FastAPI()
     callbacks = MagicMock()
+    callbacks.is_config_missing.return_value = False
     captured_show = None
 
     def capture_decorator(*args, **kwargs):
@@ -102,6 +103,60 @@ def test_frontend_show_callback():
             # Calling again does not re-mount / re-execute show (keep-alive)
             asyncio.run(on_tab_change(tab_id))
             mock_page.return_value.show.assert_called_once()
+
+
+def test_frontend_show_callback_missing_config():
+    app = FastAPI()
+    callbacks = MagicMock()
+    callbacks.is_config_missing.return_value = True
+    captured_show = None
+
+    def capture_decorator(*args, **kwargs):
+        def wrapper(func):
+            nonlocal captured_show
+            captured_show = func
+            return func
+
+        return wrapper
+
+    with (
+        patch("gui.frontend.MeterPage") as MockMeterPage,
+        patch("gui.frontend.ServicesPage"),
+        patch("gui.frontend.SetupPage"),
+        patch("gui.frontend.ConfigPage"),
+        patch("gui.frontend.PreviousValuesPage"),
+        patch("gui.frontend.ApiConsolePage"),
+        patch("gui.frontend.HelpPage"),
+        patch("gui.frontend.AboutPage"),
+        patch("gui.frontend.ui") as mock_ui,
+        patch("gui.dialogs.show_config_onboarding_dialog") as mock_dialog,
+    ):
+        mock_ui.page.side_effect = capture_decorator
+        MockMeterPage.return_value.show = AsyncMock()
+
+        mock_ui.element.return_value.__enter__ = MagicMock()
+        mock_ui.element.return_value.__exit__ = MagicMock()
+        mock_ui.row.return_value.__enter__ = MagicMock()
+        mock_ui.row.return_value.__exit__ = MagicMock()
+        mock_ui.column.return_value.__enter__ = MagicMock()
+        mock_ui.column.return_value.__exit__ = MagicMock()
+        mock_ui.splitter.return_value.__enter__ = MagicMock()
+        mock_ui.splitter.return_value.__exit__ = MagicMock()
+        mock_ui.tab_panels.return_value.__enter__ = MagicMock()
+        mock_ui.tab_panels.return_value.__exit__ = MagicMock()
+        mock_ui.tab_panel.return_value.__enter__ = MagicMock()
+        mock_ui.tab_panel.return_value.__exit__ = MagicMock()
+        mock_tabs = mock_ui.tabs.return_value
+        mock_tabs.props.return_value = mock_tabs
+        mock_tabs.classes.return_value = mock_tabs
+        mock_tabs.__enter__.return_value = mock_tabs
+        mock_tabs.__exit__ = MagicMock()
+
+        frontend.init(app, callbacks)
+        assert captured_show is not None
+        asyncio.run(captured_show())
+
+        mock_dialog.assert_called_once()
 
 
 def test_build_head_html_includes_static_assets():

@@ -147,7 +147,10 @@ def get_section_icon(name: str) -> str:
 class ConfigPage(BasePage):
     def __init__(self, callbacks: Callbacks) -> None:
         super().__init__(callbacks)
-        self.txt = self.callbacks.load_config_file()
+        raw_txt = self.callbacks.load_config_file()
+        if not raw_txt and self.callbacks.is_config_missing():
+            raw_txt = self.callbacks.get_config().save_to_string()
+        self.txt = raw_txt
         self.new_config_saved = False
         self.view_mode = "editor"  # "editor" or "inspector"
 
@@ -725,7 +728,7 @@ class ConfigPage(BasePage):
             ):
                 editor = (
                     ui.textarea(
-                        value=self.callbacks.load_config_file(),
+                        value=self.txt,
                         on_change=check_buttons,
                     )
                     .classes("w-full h-full config-editor-field font-mono text-sm")
@@ -771,8 +774,8 @@ class ConfigPage(BasePage):
                     ui.label(f"Runtime Version #{version_num}").classes(
                         "text-slate-400 font-mono text-[11px]"
                     )
-                    ui.label("/config/config.ini").classes(
-                        "font-mono text-cyan-400/80 text-[11px]"
-                    )
+                    ui.label(
+                        self.callbacks.get_target_config_file() or "/config/config.ini"
+                    ).classes("font-mono text-cyan-400/80 text-[11px]")
 
             check_buttons()

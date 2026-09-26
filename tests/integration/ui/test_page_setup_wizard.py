@@ -15,14 +15,12 @@ def test_full_10_step_wizard_traversal(page: Page, live_server_url: str):
     continue_btn = page.get_by_role("button", name="Continue")
     back_btn = page.get_by_role("button", name="Back", exact=True)
 
-    # Step 1: Download image
-    expect(page.get_by_text("Step 1 of 10: Download image")).to_be_visible(
-        timeout=10000
-    )
+    # Step 1: Meter type
+    expect(page.get_by_text("Step 1 of 10: Meter type")).to_be_visible(timeout=10000)
     continue_btn.click()
 
-    # Step 2: Meter type
-    expect(page.get_by_text("Step 2 of 10: Meter type")).to_be_visible(timeout=5000)
+    # Step 2: Download image
+    expect(page.get_by_text("Step 2 of 10: Download image")).to_be_visible(timeout=5000)
     continue_btn.click()
 
     # Step 3: Initial rotate
@@ -81,9 +79,7 @@ def test_setup_wizard_reset_dialog(page: Page, live_server_url: str):
     """Verify reset confirmation dialog."""
     page.goto(f"{live_server_url}/gui", wait_until="domcontentloaded")
     page.get_by_role("tab", name="Setup").click()
-    expect(page.get_by_text("Step 1 of 10: Download image")).to_be_visible(
-        timeout=10000
-    )
+    expect(page.get_by_text("Step 1 of 10: Meter type")).to_be_visible(timeout=10000)
 
     reset_btn = page.get_by_role("button", name="Reset to File")
     expect(reset_btn).to_be_visible(timeout=10000)
@@ -101,20 +97,19 @@ def test_setup_wizard_restore_backup_dialog(page: Page, live_server_url: str):
     """Verify restore from backup modal dialog."""
     page.goto(f"{live_server_url}/gui", wait_until="domcontentloaded")
     page.get_by_role("tab", name="Setup").click()
-    expect(page.get_by_text("Step 1 of 10: Download image")).to_be_visible(
-        timeout=10000
-    )
+    expect(page.get_by_text("Step 1 of 10: Meter type")).to_be_visible(timeout=10000)
 
     restore_btn = page.get_by_role("button", name="Restore Backup")
     expect(restore_btn).to_be_visible(timeout=10000)
     restore_btn.click()
 
     expect(page.get_by_text("Restore Wizard from Backup")).to_be_visible(timeout=5000)
-    close_btn = page.get_by_role("button", name="Close dialog")
+    close_btn = page.locator('button[aria-label="Close dialog"]')
     if close_btn.is_visible():
         close_btn.click()
     else:
         page.keyboard.press("Escape")
+    page.wait_for_timeout(300)
     expect(page.get_by_text("Restore Wizard from Backup")).not_to_be_visible(
         timeout=5000
     )
@@ -127,16 +122,14 @@ def test_setup_wizard_adjust_step_side_by_side_preview(
     """Test Step 4 Adjust image dual-card side-by-side comparison mode toggle."""
     page.goto(f"{live_server_url}/gui", wait_until="domcontentloaded")
     page.get_by_role("tab", name="Setup").click()
-    expect(page.get_by_text("Step 1 of 10: Download image")).to_be_visible(
-        timeout=10000
-    )
+    expect(page.get_by_text("Step 1 of 10: Meter type")).to_be_visible(timeout=10000)
 
     continue_btn = page.get_by_role("button", name="Continue")
     expect(continue_btn).to_be_visible(timeout=10000)
 
     # Advance Step 1 -> 2 -> 3 -> 4 -> 5
-    continue_btn.click()  # -> Step 2: Meter type
-    expect(page.get_by_text("Step 2 of 10: Meter type")).to_be_visible(timeout=5000)
+    continue_btn.click()  # -> Step 2: Download image
+    expect(page.get_by_text("Step 2 of 10: Download image")).to_be_visible(timeout=5000)
     continue_btn.click()  # -> Step 3: Initial rotate
     expect(page.get_by_text("Step 3 of 10: Initial rotate")).to_be_visible(timeout=5000)
     continue_btn.click()  # -> Step 4: Draw reference points
@@ -164,13 +157,11 @@ def test_setup_wizard_start_clean_dialog(page: Page, live_server_url: str):
     """Verify start clean configuration dialog and action."""
     page.goto(f"{live_server_url}/gui", wait_until="domcontentloaded")
     page.get_by_role("tab", name="Setup").click()
-    expect(page.get_by_text("Step 1 of 10: Download image")).to_be_visible(
-        timeout=10000
-    )
+    expect(page.get_by_text("Step 1 of 10: Meter type")).to_be_visible(timeout=10000)
 
     clean_btn = page.get_by_role("button", name="Start Clean")
     expect(clean_btn).to_be_visible(timeout=10000)
-    clean_btn.click(force=True)
+    clean_btn.click()
 
     expect(page.get_by_text("Start Clean Configuration?")).to_be_visible(timeout=5000)
     expect(page.get_by_text("Create safety backup before clearing")).to_be_visible()
@@ -190,16 +181,14 @@ def test_setup_wizard_tall_step_scrollability(page: Page, live_server_url: str):
     page.set_viewport_size({"width": 1024, "height": 600})
     page.goto(f"{live_server_url}/gui", wait_until="domcontentloaded")
     page.get_by_role("tab", name="Setup").click()
-    expect(page.get_by_text("Step 1 of 10: Download image")).to_be_visible(
-        timeout=10000
-    )
+    expect(page.get_by_text("Step 1 of 10: Meter type")).to_be_visible(timeout=10000)
 
     continue_btn = page.get_by_role("button", name="Continue")
     back_btn = page.get_by_role("button", name="Back", exact=True)
 
     # Advance to Step 5 (Adjust image) which has many sub-cards and exceeds 600px height
     continue_btn.click()
-    expect(page.get_by_text("Step 2 of 10: Meter type")).to_be_visible(timeout=5000)
+    expect(page.get_by_text("Step 2 of 10: Download image")).to_be_visible(timeout=5000)
     continue_btn.click()
     expect(page.get_by_text("Step 3 of 10: Initial rotate")).to_be_visible(timeout=5000)
     continue_btn.click()
@@ -255,15 +244,13 @@ def test_setup_wizard_roi_shift_move(page: Page, live_server_url: str):
     """
     page.goto(f"{live_server_url}/gui", wait_until="domcontentloaded")
     page.get_by_role("tab", name="Setup").click()
-    expect(page.get_by_text("Step 1 of 10: Download image")).to_be_visible(
-        timeout=10000
-    )
+    expect(page.get_by_text("Step 1 of 10: Meter type")).to_be_visible(timeout=10000)
 
     continue_btn = page.get_by_role("button", name="Continue")
 
     # Advance to Step 4: Draw reference points
-    continue_btn.click()  # -> Step 2: Meter type
-    expect(page.get_by_text("Step 2 of 10: Meter type")).to_be_visible(timeout=5000)
+    continue_btn.click()  # -> Step 2: Download image
+    expect(page.get_by_text("Step 2 of 10: Download image")).to_be_visible(timeout=5000)
     continue_btn.click()  # -> Step 3: Initial rotate
     expect(page.get_by_text("Step 3 of 10: Initial rotate")).to_be_visible(timeout=5000)
     continue_btn.click()  # -> Step 4: Draw reference points
@@ -329,9 +316,7 @@ def test_setup_wizard_shift_move_cursor_and_hud_indicator(
     """Verify that holding Shift activates move cursor and displays the MOVE MODE HUD badge."""
     page.goto(f"{live_server_url}/gui", wait_until="domcontentloaded")
     page.get_by_role("tab", name="Setup").click()
-    expect(page.get_by_text("Step 1 of 10: Download image")).to_be_visible(
-        timeout=10000
-    )
+    expect(page.get_by_text("Step 1 of 10: Meter type")).to_be_visible(timeout=10000)
 
     # Initial state: shift-move-active class absent, indicator hidden
     indicator = page.locator("#roi-move-indicator")
@@ -373,14 +358,12 @@ def test_setup_wizard_canvas_shortcuts_bar(page: Page, live_server_url: str):
     """Verify that the quick canvas shortcuts bar displays in drawing steps and reacts to Shift."""
     page.goto(f"{live_server_url}/gui", wait_until="domcontentloaded")
     page.get_by_role("tab", name="Setup").click()
-    expect(page.get_by_text("Step 1 of 10: Download image")).to_be_visible(
-        timeout=10000
-    )
+    expect(page.get_by_text("Step 1 of 10: Meter type")).to_be_visible(timeout=10000)
 
     continue_btn = page.get_by_role("button", name="Continue")
-    # Step 1 -> Step 2 (Meter type)
+    # Step 1 -> Step 2 (Download image)
     continue_btn.click()
-    expect(page.get_by_text("Step 2 of 10: Meter type")).to_be_visible(timeout=5000)
+    expect(page.get_by_text("Step 2 of 10: Download image")).to_be_visible(timeout=5000)
 
     # Step 2 -> Step 3 (Initial rotate)
     continue_btn.click()
@@ -416,3 +399,61 @@ def test_setup_wizard_canvas_shortcuts_bar(page: Page, live_server_url: str):
     page.keyboard.up("Shift")
     page.wait_for_timeout(200)
     expect(active_tag).not_to_be_visible()
+
+
+@pytest.mark.ui
+def test_setup_wizard_axioma_preset_selection(page: Page, live_server_url: str):
+    page.goto(f"{live_server_url}/gui", wait_until="domcontentloaded")
+    page.get_by_role("tab", name="Setup").click()
+    expect(page.get_by_text("Step 1 of 10: Meter type")).to_be_visible(timeout=10000)
+
+    # Click Meter Model dropdown
+    template_select = page.get_by_label("Meter Model / Brand Preset")
+    expect(template_select).to_be_visible()
+    template_select.click()
+    page.wait_for_timeout(300)
+    page.get_by_text("Axioma Qalcosonic W1").click()
+    page.wait_for_timeout(500)
+
+    # If confirm dialog appears on preset selection, confirm it
+    apply_btn = page.locator("div.q-dialog button:has-text('Apply Preset')").first
+    if apply_btn.is_visible():
+        apply_btn.click()
+        page.wait_for_timeout(500)
+
+    continue_btn = page.get_by_role("button", name="Continue")
+
+    # Click through remaining steps 1 to 9
+    for _ in range(1, 10):
+        confirm_btn = page.locator("div.q-dialog button:has-text('Confirm')").first
+        if confirm_btn.is_visible():
+            confirm_btn.click()
+            page.wait_for_timeout(300)
+        apply_btn = page.locator("div.q-dialog button:has-text('Apply Preset')").first
+        if apply_btn.is_visible():
+            apply_btn.click()
+            page.wait_for_timeout(300)
+        if continue_btn.is_visible():
+            continue_btn.click()
+            page.wait_for_timeout(400)
+
+    # On Step 10: Final
+    expect(page.get_by_text("Step 10 of 10: Final")).to_be_visible(timeout=5000)
+    editor = page.locator("textarea")
+    expect(editor).to_be_visible()
+    val = editor.input_value()
+
+    # Parse INI lines to verify [Digits] and [Analog]
+    import configparser
+
+    ini_parser = configparser.ConfigParser()
+    ini_parser.read_string(val)
+
+    assert ini_parser.getboolean("Digits", "Enabled") is True
+    assert ini_parser.getboolean("Analog", "Enabled") is False
+    digit_names = [n.strip() for n in ini_parser.get("Digits", "Names").split(",")]
+    assert "digit1" in digit_names
+    assert "digit5" in digit_names
+    assert "decimal1" in digit_names
+    assert "flow1" in digit_names
+    assert "flow_dec1" in digit_names

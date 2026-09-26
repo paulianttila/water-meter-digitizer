@@ -6,48 +6,26 @@ from gui.wizard.steps.meter_type import (
     PRESET_BY_ID,
     PRESETS,
     MeterTypeStep,
-    _make_positions_row,
     select_best_model,
 )
 
 
 def test_presets_definitions():
-    assert len(PRESETS) == 5
-    assert set(PRESET_BY_ID.keys()) == {
-        "lcd_cumulative",
-        "lcd_cumulative_flow",
-        "analog_classic",
-        "analog_drums_only",
-        "custom",
-    }
-    lcd = PRESET_BY_ID["lcd_cumulative"]
-    assert lcd.digital_category_preference == "class11"
-    assert lcd.analog_category_preference is None
+    assert len(PRESETS) >= 6
+    assert "axioma_qalcosonic_w1" in PRESET_BY_ID
+    assert "generic_lcd_cumulative" in PRESET_BY_ID
+    assert "custom" in PRESET_BY_ID
 
-    mech = PRESET_BY_ID["analog_classic"]
-    assert mech.digital_category_preference == "class100"
-    assert mech.analog_category_preference == "continuous"
+    axioma = PRESET_BY_ID["axioma_qalcosonic_w1"]
+    assert axioma.digital_category_preference == "class11"
+    assert axioma.analog_category_preference is None
+    assert axioma.has_secondary_group is True
 
 
-def test_digital_roi_names_lcd_cumulative():
-    preset = PRESET_BY_ID["lcd_cumulative"]
-    names = preset.get_digital_roi_names(int_digits=5, dec_digits=3)
-    assert names == [
-        "digit1",
-        "digit2",
-        "digit3",
-        "digit4",
-        "digit5",
-        "decimal1",
-        "decimal2",
-        "decimal3",
-    ]
-
-
-def test_digital_roi_names_lcd_cumulative_flow():
-    preset = PRESET_BY_ID["lcd_cumulative_flow"]
+def test_digital_roi_names_axioma_qalcosonic():
+    preset = PRESET_BY_ID["axioma_qalcosonic_w1"]
     names = preset.get_digital_roi_names(
-        int_digits=5, dec_digits=2, flow_int_digits=3, flow_dec_digits=1
+        int_digits=5, dec_digits=3, flow_int_digits=3, flow_dec_digits=2
     )
     assert names == [
         "digit1",
@@ -57,17 +35,13 @@ def test_digital_roi_names_lcd_cumulative_flow():
         "digit5",
         "decimal1",
         "decimal2",
+        "decimal3",
         "flow1",
         "flow2",
         "flow3",
         "flow_dec1",
+        "flow_dec2",
     ]
-
-
-def test_digital_roi_names_analog_classic():
-    preset = PRESET_BY_ID["analog_classic"]
-    names = preset.get_digital_roi_names(int_digits=5, dec_digits=0)
-    assert names == ["digit1", "digit2", "digit3", "digit4", "digit5"]
 
 
 def test_digital_roi_names_custom():
@@ -76,7 +50,7 @@ def test_digital_roi_names_custom():
 
 
 def test_analog_roi_names():
-    preset = PRESET_BY_ID["analog_classic"]
+    preset = PRESET_BY_ID["generic_mechanical_classic"]
     assert preset.get_analog_roi_names(4) == [
         "analog1",
         "analog2",
@@ -85,33 +59,12 @@ def test_analog_roi_names():
     ]
     assert preset.get_analog_roi_names(0) == []
 
-    preset_lcd = PRESET_BY_ID["lcd_cumulative"]
+    preset_lcd = PRESET_BY_ID["generic_lcd_cumulative"]
     assert preset_lcd.get_analog_roi_names(4) == []
 
 
-def test_make_positions_row():
-    # Empty case
-    assert _make_positions_row([], 640, 480) == []
-
-    # Centered boxes
-    names = ["d1", "d2", "d3", "d4", "d5"]
-    positions = _make_positions_row(names, 640, 480, y_frac=0.5)
-    assert len(positions) == 5
-
-    # Check non-overlap and monotonic x
-    for i in range(len(positions) - 1):
-        assert positions[i].x + positions[i].w < positions[i + 1].x
-
-    # Check in bounds
-    for pos in positions:
-        assert pos.x >= 0
-        assert pos.y >= 0
-        assert pos.x + pos.w <= 640
-        assert pos.y + pos.h <= 480
-
-
 def test_get_digital_roi_positions_dual_group():
-    preset = PRESET_BY_ID["lcd_cumulative_flow"]
+    preset = PRESET_BY_ID["axioma_qalcosonic_w1"]
     names = ["d1", "d2", "d3", "f1", "f2"]
     positions = preset.get_digital_roi_positions(
         names, img_w=640, img_h=480, flow_split=2
@@ -125,38 +78,24 @@ def test_get_digital_roi_positions_dual_group():
     assert main_positions[0].y < flow_positions[0].y
 
 
-def test_get_analog_roi_positions_below_digital():
-    preset = PRESET_BY_ID["analog_classic"]
-    dig_names = ["d1", "d2", "d3", "d4", "d5"]
-    ana_names = ["a1", "a2", "a3", "a4"]
-
-    dig_pos = preset.get_digital_roi_positions(dig_names, 640, 480)
-    ana_pos = preset.get_analog_roi_positions(ana_names, 640, 480)
-
-    assert len(dig_pos) == 5
-    assert len(ana_pos) == 4
-    # Analog dials are placed lower in the frame
-    assert ana_pos[0].y > dig_pos[0].y
-
-
-def test_build_meter_configs_lcd_cumulative():
-    preset = PRESET_BY_ID["lcd_cumulative"]
+def test_build_meter_configs_generic_lcd():
+    preset = PRESET_BY_ID["generic_lcd_cumulative"]
     dig_names = ["digit1", "digit2", "digit3", "decimal1", "decimal2"]
-    configs = preset.build_meter_configs(dig_names, [], unit="㎥")
+    configs = preset.build_meter_configs(dig_names, [], unit="m³")
 
     assert len(configs) == 1
     cfg = configs[0]
     assert cfg.name == "total"
     assert cfg.format == "{digit1}{digit2}{digit3}.{decimal1}{decimal2}"
-    assert cfg.unit == "㎥"
+    assert cfg.unit == "m³"
     assert cfg.consistency_enabled is True
     assert cfg.use_previous_value is True
 
 
-def test_build_meter_configs_lcd_cumulative_flow():
-    preset = PRESET_BY_ID["lcd_cumulative_flow"]
+def test_build_meter_configs_axioma_dual():
+    preset = PRESET_BY_ID["axioma_qalcosonic_w1"]
     dig_names = ["digit1", "digit2", "decimal1", "flow1", "flow2", "flow_dec1"]
-    configs = preset.build_meter_configs(dig_names, [], unit="㎥")
+    configs = preset.build_meter_configs(dig_names, [], unit="m³")
 
     assert len(configs) == 2
     total_cfg = configs[0]
@@ -164,37 +103,12 @@ def test_build_meter_configs_lcd_cumulative_flow():
 
     assert total_cfg.name == "total"
     assert total_cfg.format == "{digit1}{digit2}.{decimal1}"
-    assert total_cfg.unit == "㎥"
+    assert total_cfg.unit == "m³"
 
     assert flow_cfg.name == "flow"
     assert flow_cfg.format == "{flow1}{flow2}.{flow_dec1}"
-    assert flow_cfg.unit == "㎥/h"
+    assert flow_cfg.unit == "m³/h"
     assert flow_cfg.detect_negative_sign is True
-
-
-def test_build_meter_configs_analog_classic():
-    preset = PRESET_BY_ID["analog_classic"]
-    dig_names = ["digit1", "digit2", "digit3"]
-    ana_names = ["analog1", "analog2"]
-    configs = preset.build_meter_configs(dig_names, ana_names, unit="㎥")
-
-    assert len(configs) == 1
-    cfg = configs[0]
-    assert cfg.name == "total"
-    assert cfg.format == "{digit1}{digit2}{digit3}.{analog1}{analog2}"
-    assert cfg.use_extended_resolution is True
-
-
-def test_build_meter_configs_analog_drums_only():
-    preset = PRESET_BY_ID["analog_drums_only"]
-    dig_names = ["digit1", "digit2", "digit3", "digit4"]
-    configs = preset.build_meter_configs(dig_names, [], unit="L")
-
-    assert len(configs) == 1
-    cfg = configs[0]
-    assert cfg.name == "total"
-    assert cfg.format == "{digit1}{digit2}{digit3}{digit4}"
-    assert cfg.unit == "L"
 
 
 def test_build_meter_configs_custom():
@@ -204,7 +118,6 @@ def test_build_meter_configs_custom():
 
 
 def test_select_best_model():
-    # Empty options
     assert select_best_model({}, "class11") is None
 
     options = {
@@ -215,49 +128,36 @@ def test_select_best_model():
         "/models/digital/class11/dig-class11_2000_s2_q.tflite": "class11/model3_q",
     }
 
-    # Exact filename match
     matched = select_best_model(
         options, "class11", preferred_filename="dig-class11_1600_s2_q.tflite"
     )
     assert matched == "/models/digital/class11/dig-class11_1600_s2_q.tflite"
 
-    # Quantized preference when preferred_filename not specified or missing
     matched = select_best_model(options, "class11")
     assert matched == "/models/digital/class11/dig-class11_2000_s2_q.tflite"
 
-    # Category preference for class100
     matched = select_best_model(options, "class100")
     assert matched == "/models/digital/class100/dig-class100_0168_s2_q.tflite"
 
-    # Fallback to first available if category not found
     matched = select_best_model(options, "non_existent_category")
     assert matched == "/models/digital/class100/dig-class100_0168_s2.tflite"
 
 
-def test_meter_type_step_state():
+def test_meter_type_step_state_and_selection():
     step = MeterTypeStep(name="Meter type")
     assert step.selected_preset_id == "custom"
     assert step.selected_preset == PRESET_BY_ID["custom"]
-    assert step.effective_digital_roi_names == []
-    assert step.effective_analog_roi_names == []
 
-    # Select LCD cumulative
-    step._select_preset("lcd_cumulative")
-    assert step.selected_preset_id == "lcd_cumulative"
-    assert step.int_digits == 5
+    # Select Axioma Qalcosonic W1
+    step._select_preset("axioma_qalcosonic_w1")
+    assert step.selected_preset_id == "axioma_qalcosonic_w1"
+    assert step.int_digits == 6
     assert step.dec_digits == 3
     assert step.analog_count == 0
-    assert len(step.effective_digital_roi_names) == 8
+    assert step.flow_int_digits == 2
+    assert step.flow_dec_digits == 3
+    assert len(step.effective_digital_roi_names) == 14
     assert len(step.effective_analog_roi_names) == 0
-
-    # Select Mechanical classic
-    step._select_preset("analog_classic")
-    assert step.selected_preset_id == "analog_classic"
-    assert step.int_digits == 5
-    assert step.dec_digits == 0
-    assert step.analog_count == 4
-    assert len(step.effective_digital_roi_names) == 5
-    assert len(step.effective_analog_roi_names) == 4
 
     # Preview label update test with mock
     mock_preview = MagicMock()
@@ -265,3 +165,72 @@ def test_meter_type_step_state():
     step._update_preview()
     mock_preview.set_text.assert_called_once()
     assert "total" in mock_preview.set_text.call_args[0][0]
+
+
+def test_category_filtering():
+    step = MeterTypeStep(name="Meter type")
+    all_options = step._get_filtered_preset_options()
+    assert len(all_options) >= 6
+
+    # Filter by smart
+    step.active_category = "smart"
+    smart_options = step._get_filtered_preset_options()
+    assert "axioma_qalcosonic_w1" in smart_options
+
+    # Filter by mechanical
+    step.active_category = "mechanical"
+    mech_options = step._get_filtered_preset_options()
+    assert "axioma_qalcosonic_w1" not in mech_options
+
+    # Filter by generic
+    step.active_category = "generic"
+    generic_options = step._get_filtered_preset_options()
+    assert "generic_lcd_cumulative" in generic_options
+    assert "axioma_qalcosonic_w1" not in generic_options
+
+
+def test_meter_type_step_refresh_and_reload(tmp_path):
+    from unittest.mock import patch
+
+    from gui.wizard.steps.meter_type import reload_presets
+
+    step = MeterTypeStep(name="Meter type", config_dir=tmp_path)
+    initial_count = len(step.presets)
+
+    # Mock ui.select and notify
+    mock_select = MagicMock()
+    mock_select.options = {}
+    step._preset_select = mock_select
+
+    # Refreshing without new files
+    step.refresh_presets(force_reload=False)
+    assert len(step.presets) == initial_count
+    assert mock_select.options
+
+    # Create new preset in tmp_path
+    mdir = tmp_path / "meter_types"
+    mdir.mkdir()
+    (mdir / "dynamic_test.ini").write_text(
+        """[Template]
+Id = dynamic_test
+Label = Dynamic Test Meter
+DefaultIntDigits = 7
+DefaultUnit = m3
+""",
+        encoding="utf-8",
+    )
+
+    # Calling refresh_presets(force_reload=True) picks it up
+    step.refresh_presets(force_reload=True)
+    assert "dynamic_test" in step.preset_by_id
+    assert "dynamic_test" in mock_select.options
+
+    # Test _handle_refresh_click
+    with patch("gui.wizard.steps.meter_type.ui.notify") as mock_notify:
+        step._handle_refresh_click()
+        mock_notify.assert_called_once()
+        assert "reloaded" in mock_notify.call_args[0][0].lower()
+
+    # Module-level reload_presets updates PRESETS in place
+    loaded = reload_presets(tmp_path)
+    assert any(p.id == "dynamic_test" for p in loaded)

@@ -116,3 +116,40 @@ def test_load_file_from_url_mock_camera():
         data = load_file_from_url("mock://meter", timeout=5)
         assert data == b"mock_frame_data"
         mock_render.assert_called_once_with("mock://meter")
+
+
+def test_load_file_from_url_model_scheme_mock_camera():
+    with patch(
+        "api.routes_mock_camera.render_mock_camera_from_url",
+        return_value=b"mock_frame_from_model_uri",
+    ) as mock_render:
+        data = load_file_from_url("model://mock_camera", timeout=5)
+        assert data == b"mock_frame_from_model_uri"
+        mock_render.assert_called_once_with("mock://mock_camera")
+
+
+def test_load_file_from_url_model_scheme_axioma():
+    data = load_file_from_url("model://axioma_qalcosonic_w1", timeout=5)
+    assert len(data) > 10000
+
+
+def test_load_file_from_url_template_scheme_generic():
+    data = load_file_from_url("template://generic_mechanical_classic", timeout=5)
+    assert len(data) > 10000
+
+
+def test_load_file_from_url_model_scheme_not_found():
+    with pytest.raises(DownloadFailure) as exc_info:
+        load_file_from_url("model://non_existent_meter_preset_xyz", timeout=5)
+    assert "not found" in str(exc_info.value).lower()
+
+
+def test_load_file_from_url_model_scheme_with_allowed_directories():
+    # Even when allowed_directories contains only unrelated paths like ['/config', '/data'],
+    # bundled template images in config/meter_types are safely resolved.
+    data = load_file_from_url(
+        "model://axioma_qalcosonic_w1",
+        timeout=5,
+        allowed_directories=["/config", "/data"],
+    )
+    assert len(data) > 10000

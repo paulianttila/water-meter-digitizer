@@ -2,8 +2,8 @@
 
 Complete the setup wizard sequentially from Step 1 to Step 10:
 
-- **Step 1: Download Image** — Enter camera snapshot URL (`http://`, `https://`, or `file://`), timeout, and minimum byte size. Test network reachability live.
-- **Step 2: Meter Type** — Select a hardware preset (LCD Cumulative, LCD Flow, Mechanical 5+4, Mechanical Drums, or Custom) to auto-generate centered ROIs, meter configurations, and optimal CNN models.
+- **Step 1: Meter Type** — Select a hardware model or archetype (Axioma, Kamstrup, Diehl, Honeywell V200, Itron, or generic presets configured in `config/meter_types/`) to auto-generate centered ROIs, virtual meter configurations, and optimal CNN models.
+- **Step 2: Download Image** — Enter camera snapshot URL (`http://`, `https://`, `file://`, or bundled template image `model://...`), timeout, and minimum byte size. Test network reachability live.
 - **Step 3: Initial Rotate** — Rotate coarse 90° increments (0°, 90°, 180°, 270°) so meter numbers and circular dials are oriented naturally upright.
 - **Step 4: Reference Markers** — Mark exactly 3 high-contrast visual anchors (screws, dial center pins, logo corners) forming a wide triangle for affine alignment.
 - **Step 5: Image Adjustments** — Fine-tune rotation angle (e.g. 0.5°), test affine alignment, and configure contrast, sharpness, and AutoContrast preprocessing.

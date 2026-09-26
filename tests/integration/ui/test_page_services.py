@@ -8,7 +8,9 @@ from playwright.sync_api import Page, expect
 def test_services_page_telemetry_and_actions(page: Page, live_server_url: str):
     """Verify system diagnostics, leak monitor, and service cards."""
     page.goto(f"{live_server_url}/gui", wait_until="domcontentloaded")
-    page.get_by_role("tab", name="Services").click()
+    tab = page.get_by_role("tab", name="Services")
+    expect(tab).to_be_visible(timeout=10000)
+    tab.click()
 
     # 1. Assert headers and subcards
     expect(page.get_by_text("Services & System Diagnostics")).to_be_visible(

@@ -82,7 +82,7 @@ Settings for capturing or loading the source image.
 
 | Parameter | Type | Default | Description |
 | :--- | :--- | :--- | :--- |
-| `URL` | string | `file://${ConfigDir}/original.jpg` | Source image URL (e.g. `http://...`, `https://...`, or `file://...`). |
+| `URL` | string | `file://${ConfigDir}/original.jpg` | Source image URL (e.g. `http://...`, `https://...`, `file://...`, or `model://<id>` / `template://<id>` for bundled meter template images). |
 | `Timeout` | integer | `10` | Network request timeout in seconds when retrieving image frames. |
 | `MinSize` | integer | `20000` | Minimum image file size in bytes to discard corrupt or partial frames. |
 

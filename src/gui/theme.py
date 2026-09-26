@@ -61,9 +61,19 @@ STAT_VALUE_LARGE = "font-['Outfit'] text-3xl font-extrabold tracking-tight"
 CLICKABLE_CARD = (
     "cursor-pointer hover:border-cyan-500/50 hover:bg-slate-800/90 transition-all"
 )
-CARD_SELECTABLE = "p-4 rounded-xl border-2 transition-all cursor-pointer flex flex-col justify-between"
-CARD_SELECTABLE_ACTIVE = f"{CARD_SELECTABLE} border-indigo-500 bg-indigo-950/40 shadow-lg shadow-indigo-950/50"
-CARD_SELECTABLE_INACTIVE = f"{CARD_SELECTABLE} border-white/10 bg-slate-900/60 hover:border-white/20 hover:bg-slate-800/60"
+CARD_SELECTABLE = (
+    "p-4 rounded-xl border-2 transition-all duration-150 cursor-pointer select-none "
+    "active:scale-[0.99] flex flex-col justify-between"
+)
+CARD_SELECTABLE_ACTIVE_MODIFIERS = "border-indigo-500 bg-indigo-950/70 ring-2 ring-indigo-500/50 shadow-lg shadow-indigo-950/50"
+CARD_SELECTABLE_INACTIVE_MODIFIERS = (
+    "border-slate-700/80 bg-slate-800/40 hover:border-indigo-400/60 "
+    "hover:bg-slate-800/80 hover:shadow-md"
+)
+CARD_SELECTABLE_ACTIVE = f"{CARD_SELECTABLE} {CARD_SELECTABLE_ACTIVE_MODIFIERS}"
+CARD_SELECTABLE_INACTIVE = f"{CARD_SELECTABLE} {CARD_SELECTABLE_INACTIVE_MODIFIERS}"
+CARD_SELECTABLE_BASE = CARD_SELECTABLE_INACTIVE
+CARD_SELECTABLE_SELECTED = CARD_SELECTABLE_ACTIVE
 
 # --- Status & Classification Badges ---
 BADGE_SUCCESS = (

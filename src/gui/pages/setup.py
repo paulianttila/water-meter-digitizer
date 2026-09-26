@@ -7,6 +7,7 @@ from nicegui import events, ui
 
 import utils.image as ImageUtils
 from callbacks import Callbacks
+from config.meter_presets import MeterTypePreset
 from configuration import Config
 from gui.components import open_config_history_dialog, open_confirm_dialog
 from gui.pages.base import BasePage
@@ -260,9 +261,16 @@ class SetupPage(BasePage):
                         self.main_image_header.set_visibility(False)
 
         _preset_pending: bool = False
+        _applied_preset_id: str | None = None
+        _applied_preset_dims: tuple[int, int] | None = None
+        _confirm_dialog_open: bool = False
 
-        def _apply_meter_type_preset() -> None:
-            preset = self.meter_type_step.selected_preset
+        def _apply_meter_type_preset(
+            force: bool = False, preset: MeterTypePreset | None = None
+        ) -> None:
+            nonlocal _applied_preset_id, _applied_preset_dims, _confirm_dialog_open
+            if preset is None:
+                preset = self.meter_type_step.selected_preset
             if preset is None or preset.id == "custom":
                 return
 
@@ -283,26 +291,90 @@ class SetupPage(BasePage):
                     pass
 
             has_existing = bool(
-                self.draw_digital_rois_step.rois or self.draw_analog_rois_step.rois
+                self.draw_refs_step.rois
+                or self.draw_digital_rois_step.rois
+                or self.draw_analog_rois_step.rois
             )
+            is_rescale = force or (_applied_preset_id == preset.id)
 
             def do_apply() -> None:
+                nonlocal _applied_preset_id, _applied_preset_dims
+                # 1. Alignment Reference Markers
+                ref_pos = preset.get_reference_positions(img_w, img_h)
+                if ref_pos:
+                    self.draw_refs_step.load_rois(ref_pos)
+
+                # 2. Initial Coarse Rotation
+                if preset.alignment.rotate_angle is not None and hasattr(
+                    self.initial_rotate_step, "angle"
+                ):
+                    self.initial_rotate_step.angle = float(
+                        preset.alignment.rotate_angle
+                    )
+                    if (
+                        hasattr(self.initial_rotate_step, "angle_label")
+                        and self.initial_rotate_step.angle_label is not None
+                    ):
+                        self.initial_rotate_step.angle_label.set_text(
+                            f"Rotate: {int(self.initial_rotate_step.angle)}°"
+                        )
+
+                # 3. Digital and Analog Readout ROIs
                 flow_split = 0
                 if preset.has_secondary_group:
                     flow_split = len([n for n in digital_names if n.startswith("flow")])
                 dig_pos = preset.get_digital_roi_positions(
                     digital_names, img_w, img_h, flow_split
                 )
-                if dig_pos:
-                    self.draw_digital_rois_step.load_rois(dig_pos)
+                self.draw_digital_rois_step.load_rois(dig_pos or [])
                 ana_pos = preset.get_analog_roi_positions(analog_names, img_w, img_h)
-                if ana_pos:
-                    self.draw_analog_rois_step.load_rois(ana_pos)
+                self.draw_analog_rois_step.load_rois(ana_pos or [])
+
+                if (
+                    hasattr(self.draw_digital_rois_step, "detect_negative_sign")
+                    and self.draw_digital_rois_step.detect_negative_sign is not None
+                ):
+                    self.draw_digital_rois_step.detect_negative_sign.value = any(
+                        m.detect_negative_sign for m in preset.meters
+                    )
+
+                # 4. Virtual Meter Configurations
                 configs = preset.build_meter_configs(digital_names, analog_names, unit)
                 if configs:
                     self.meters_step.load_from_config(configs)
 
-                # Auto-select CNN models based on preset recommendation
+                # 5. Image Adjustments
+                if preset.image_adjustments.enabled:
+                    if (
+                        hasattr(self.adjust_step, "contrast")
+                        and self.adjust_step.contrast is not None
+                    ):
+                        self.adjust_step.contrast.value = (
+                            preset.image_adjustments.contrast
+                        )
+                    if (
+                        hasattr(self.adjust_step, "gamma")
+                        and self.adjust_step.gamma is not None
+                    ):
+                        self.adjust_step.gamma.value = preset.image_adjustments.gamma
+                    if (
+                        hasattr(self.adjust_step, "sharpness")
+                        and self.adjust_step.sharpness is not None
+                    ):
+                        self.adjust_step.sharpness.value = (
+                            preset.image_adjustments.sharpness
+                        )
+
+                # 6. Leak Monitor Sensitivity
+                if (
+                    hasattr(self.services_step, "leak_min_flow")
+                    and self.services_step.leak_min_flow is not None
+                ):
+                    self.services_step.leak_min_flow.value = (
+                        preset.leak_detection.recommended_min_flow_threshold
+                    )
+
+                # 7. Auto-select CNN models based on preset recommendation
                 if (
                     preset.digital_category_preference
                     and hasattr(self.draw_digital_rois_step, "cnn_file")
@@ -345,14 +417,66 @@ class SetupPage(BasePage):
                             preset.analog_cnn_type
                         )
 
+                # 8. Auto-select template model image if available
+                if (
+                    preset.has_image
+                    and hasattr(self, "download_image_step")
+                    and self.download_image_step is not None
+                    and hasattr(self.download_image_step, "url")
+                    and self.download_image_step.url is not None
+                ):
+                    model_uri = preset.model_uri
+                    if (
+                        hasattr(self.download_image_step.url, "options")
+                        and isinstance(self.download_image_step.url.options, dict)
+                        and model_uri not in self.download_image_step.url.options
+                    ):
+                        self.download_image_step.url.options[model_uri] = (
+                            f"{model_uri} ({preset.label})"
+                        )
+                    self.download_image_step.url.value = model_uri
+
+                _applied_preset_id = preset.id
+                _applied_preset_dims = (img_w, img_h)
+
+                parts = []
+                if ref_pos:
+                    parts.append(f"{len(ref_pos)} refs")
+                if dig_pos:
+                    parts.append(f"{len(dig_pos)} digital")
+                if ana_pos:
+                    parts.append(f"{len(ana_pos)} analog")
+                details = f": {', '.join(parts)}" if parts else ""
                 ui.notify(
-                    f"Preset '{preset.label}' applied: {len(dig_pos)} digital, "
-                    f"{len(ana_pos)} analog ROIs, CNN models configured.",
+                    f"Preset '{preset.label}' applied{details}, CNN models configured.",
                     type="positive",
                     timeout=4000,
                 )
 
-            if has_existing:
+            def on_cancel() -> None:
+                if (
+                    _applied_preset_id
+                    and _applied_preset_id in self.meter_type_step.preset_by_id
+                ):
+                    self.meter_type_step._select_preset(_applied_preset_id)
+                else:
+                    self.meter_type_step._select_preset("custom")
+
+            if has_existing and not is_rescale:
+                if _confirm_dialog_open:
+                    return
+                _confirm_dialog_open = True
+
+                def _wrapped_confirm() -> None:
+                    nonlocal _confirm_dialog_open
+                    _confirm_dialog_open = False
+                    do_apply()
+
+                def _wrapped_cancel() -> None:
+                    nonlocal _confirm_dialog_open
+                    _confirm_dialog_open = False
+                    on_cancel()
+
                 open_confirm_dialog(
                     title="Apply Meter Type Preset?",
                     subtitle="This will replace existing ROI and model configurations",
@@ -364,7 +488,8 @@ class SetupPage(BasePage):
                     confirm_icon="auto_fix_high",
                     color_scheme="indigo",
                     icon="auto_fix_high",
-                    on_confirm=lambda *_: do_apply(),
+                    on_confirm=lambda *_: _wrapped_confirm(),
+                    on_cancel=lambda *_: _wrapped_cancel(),
                 )
             else:
                 do_apply()
@@ -372,18 +497,36 @@ class SetupPage(BasePage):
         def handle_stepper_change(step: str) -> None:
             nonlocal _preset_pending
             prev_step = self.navigator.previous_step
-            # Mark pending when leaving Meter Type step going forward with a non-custom preset
+            # Apply preset immediately when leaving Meter Type step going forward with a non-custom preset
             if (
                 prev_step == NAME_METER_TYPE
                 and WizardNavigator.is_step_forward(step, NAME_METER_TYPE)
                 and self.meter_type_step.selected_preset_id != "custom"
             ):
                 _preset_pending = True
-
-            # Apply preset when arriving at Draw Digital ROIs
-            if step == NAME_DRAW_DIGITAL_ROIS and _preset_pending:
-                _preset_pending = False
                 _apply_meter_type_preset()
+
+            # If moving forward from Download Image and new image has different dimensions, re-scale ROIs
+            if (
+                prev_step == NAME_DOWNLOAD_IMAGE
+                and WizardNavigator.is_step_forward(step, NAME_DOWNLOAD_IMAGE)
+                and _preset_pending
+            ):
+                _preset_pending = False
+                if self.image:
+                    try:
+                        w, h = ImageUtils.image_size(
+                            ImageUtils.convert_base64_str_to_image(self.image)
+                        )
+                        if _applied_preset_dims and (w, h) != _applied_preset_dims:
+                            _apply_meter_type_preset(force=True)
+                    except Exception:
+                        pass
+
+            # Fallback: if user jumps past Download Image to any step while _preset_pending
+            if _preset_pending and step not in (NAME_METER_TYPE, NAME_DOWNLOAD_IMAGE):
+                _preset_pending = False
+                _apply_meter_type_preset(force=True)
 
             self.navigator.handle_stepper_change(
                 step=step,
@@ -518,7 +661,7 @@ class SetupPage(BasePage):
                 self.digital_rois_enabled_in_image = False
                 self.analog_rois_enabled_in_image = False
 
-                self.previous_step = NAME_DOWNLOAD_IMAGE
+                self.previous_step = NAME_METER_TYPE
                 self.interactive_image.content = ""
                 show_offline_placeholder(
                     message="Ready for New Setup",
@@ -532,8 +675,8 @@ class SetupPage(BasePage):
                     self.comparison_container.set_visibility(False)
 
                 if hasattr(self, "stepper") and self.stepper is not None:
-                    self.stepper.value = NAME_DOWNLOAD_IMAGE
-                    update_wizard_nav(NAME_DOWNLOAD_IMAGE)
+                    self.stepper.value = NAME_METER_TYPE
+                    update_wizard_nav(NAME_METER_TYPE)
 
                 nonlocal _preset_pending
                 _preset_pending = False
@@ -586,9 +729,10 @@ class SetupPage(BasePage):
                 self.meters_step.load_from_config(fresh_config.meter_configs)
                 self.services_step.load_from_config(fresh_config)
 
-                self.previous_step = NAME_DOWNLOAD_IMAGE
+                self.previous_step = NAME_METER_TYPE
                 if hasattr(self, "stepper") and self.stepper is not None:
-                    self.stepper.value = NAME_DOWNLOAD_IMAGE
+                    self.stepper.value = NAME_METER_TYPE
+                    update_wizard_nav(NAME_METER_TYPE)
 
                 nonlocal _preset_pending
                 _preset_pending = False
@@ -695,16 +839,28 @@ class SetupPage(BasePage):
                     "border border-indigo-500/30 px-3 py-1 rounded-full shadow-inner"
                 )
 
+        config_dir = "config"
+        try:
+            cfg = self.callbacks.get_config()
+            if cfg and getattr(cfg, "config_dir", None):
+                config_dir = cfg.config_dir
+        except Exception:
+            pass
+
         self.download_image_step = DownloadImageStep(
             name=NAME_DOWNLOAD_IMAGE,
             set_image_callback=set_image,
             on_error_callback=on_download_error,
             spinner=self.spinner,
+            config_dir=config_dir,
         )
+
         self.meter_type_step = MeterTypeStep(
             name=NAME_METER_TYPE,
             set_image_callback=set_image,
             spinner=self.spinner,
+            config_dir=config_dir,
+            on_preset_selected=lambda p: _apply_meter_type_preset(preset=p),
         )
         self.initial_rotate_step = InitialRotateStep(
             name=NAME_INITIAL_ROTATE,
@@ -904,8 +1060,8 @@ class SetupPage(BasePage):
                     ) as stepper,
                 ):
                     self.stepper = stepper
-                    await self.download_image_step.show(stepper, first_step=True)
-                    await self.meter_type_step.show(stepper)
+                    await self.meter_type_step.show(stepper, first_step=True)
+                    await self.download_image_step.show(stepper)
                     await self.initial_rotate_step.show(stepper)
                     await self.draw_refs_step.show(stepper)
                     await self.adjust_step.show(stepper)

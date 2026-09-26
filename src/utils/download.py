@@ -90,12 +90,80 @@ def load_file_from_url(
         logger.debug(f"File downloaded in {time.time() - startTime:.3f} sec")
 
 
+def _resolve_template_image_bytes(
+    url: str,
+    allowed_directories: list[str] | tuple[str, ...] | None = None,
+) -> bytes:
+    """Resolves model://<id> or template://<id> to image bytes."""
+    from pathlib import Path
+
+    from config.meter_presets import get_preset_by_id
+
+    target = url.split("://", 1)[1].strip()
+    target_clean = target.split(".")[0]
+
+    # Special handling for mock_camera simulator
+    if "mock_camera" in target.lower():
+        from api.routes_mock_camera import render_mock_camera_from_url
+
+        return render_mock_camera_from_url(f"mock://{target}")
+
+    # Build safe template search directories
+    repo_root = Path(__file__).resolve().parents[2]
+    template_allowed_dirs: list[str] = (
+        list(allowed_directories) if allowed_directories else []
+    )
+    template_allowed_dirs.extend(
+        [
+            str(Path("config") / "meter_types"),
+            str(repo_root / "config" / "meter_types"),
+            str(Path("config")),
+            str(repo_root / "config"),
+        ]
+    )
+
+    preset = get_preset_by_id(target_clean)
+    if preset:
+        if preset.template_file_path:
+            template_allowed_dirs.append(str(preset.template_file_path.parent))
+        img_path = preset.get_image_path()
+        if img_path and img_path.is_file():
+            if not is_safe_path(str(img_path), template_allowed_dirs):
+                raise DownloadFailure(
+                    f"Access to template image '{img_path}' is denied. "
+                    "Path is outside configured asset directories."
+                )
+            return img_path.read_bytes()
+
+    candidate_dirs = [
+        Path("config") / "meter_types",
+        repo_root / "config" / "meter_types",
+        Path("config") / "local",
+    ]
+    for cdir in candidate_dirs:
+        if cdir.is_dir():
+            for ext in (".png", ".jpg", ".jpeg"):
+                cand = cdir / f"{target_clean}{ext}"
+                if cand.is_file():
+                    if not is_safe_path(str(cand), template_allowed_dirs):
+                        raise DownloadFailure(
+                            f"Access to template image '{cand}' is denied."
+                        )
+                    return cand.read_bytes()
+
+    raise DownloadFailure(f"Template image not found for '{url}'.")
+
+
 def _read_file_from_url(
     url: str,
     timeout: int | float,
     allowed_directories: list[str] | tuple[str, ...] | None = None,
 ) -> bytes:
-    if url.startswith("file://"):
+    if url.startswith(("model://", "template://")):
+        return _resolve_template_image_bytes(
+            url, allowed_directories=allowed_directories
+        )
+    elif url.startswith("file://"):
         file_path = extract_file_path_from_uri(url)
         if allowed_directories and not is_safe_path(file_path, allowed_directories):
             raise DownloadFailure(

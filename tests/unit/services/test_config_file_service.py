@@ -17,6 +17,17 @@ def test_config_file_service_load(tmp_path):
     assert "LogLevel = INFO" in service.load()
 
 
+def test_config_file_service_load_nonexistent(tmp_path):
+    non_existent = tmp_path / "missing.ini"
+    service = ConfigFileService(str(non_existent))
+    assert service.load() == ""
+
+
+def test_config_file_service_load_empty_path():
+    service = ConfigFileService("")
+    assert service.load() == ""
+
+
 def test_config_file_service_callable_config_file(tmp_path):
     cfg_file = tmp_path / "config.ini"
     cfg_file.write_text("[DEFAULT]\nLogLevel = DEBUG\n", encoding="utf-8")

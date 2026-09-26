@@ -80,7 +80,12 @@ def test_wizard_navigation_flow():
     page.final_step = MagicMock()
 
     # Define update helper inside test mirroring implementation
-    from gui.wizard.navigator import NAME_DOWNLOAD_IMAGE, NAME_FINAL, steps_order
+    from gui.wizard.navigator import (
+        NAME_DOWNLOAD_IMAGE,
+        NAME_FINAL,
+        NAME_METER_TYPE,
+        steps_order,
+    )
 
     def update_wizard_nav(current_step: str) -> None:
         idx = steps_order.index(current_step) if current_step in steps_order else 0
@@ -92,10 +97,16 @@ def test_wizard_navigation_flow():
         else:
             page.wizard_next_btn.text = "Continue"
 
-    # Step 1: Download Image
-    update_wizard_nav(NAME_DOWNLOAD_IMAGE)
+    # Step 1: Meter Type
+    update_wizard_nav(NAME_METER_TYPE)
     page.wizard_prev_btn.set_visibility.assert_called_with(False)
     assert "Step 1 of 10" in page.wizard_step_badge.text
+    assert page.wizard_next_btn.text == "Continue"
+
+    # Step 2: Download Image
+    update_wizard_nav(NAME_DOWNLOAD_IMAGE)
+    page.wizard_prev_btn.set_visibility.assert_called_with(True)
+    assert "Step 2 of 10" in page.wizard_step_badge.text
     assert page.wizard_next_btn.text == "Continue"
 
     # Step 6: Draw Digital ROIs
@@ -313,3 +324,279 @@ def test_show_rois_does_not_call_set_image():
 
     set_svg.assert_called_once_with("<rect />")
     set_img.assert_not_called()
+
+
+def test_meter_type_preset_applies_reference_points_on_advance():
+    from config.meter_presets import load_meter_presets
+    from gui.wizard.steps.draw_refs import DrawRefsStep
+
+    presets = load_meter_presets()
+    axioma = next((p for p in presets if p.id == "axioma_qalcosonic_w1"), None)
+    assert axioma is not None
+
+    draw_refs = MagicMock(spec=DrawRefsStep)
+    draw_refs.rois = []
+
+    # Get reference positions defined by Axioma preset
+    ref_pos = axioma.get_reference_positions(640, 480)
+    assert len(ref_pos) == 3
+    assert [r.name for r in ref_pos] == ["Ref0", "Ref1", "Ref2"]
+    assert ref_pos[0].x == 269
+    assert ref_pos[0].y == 49
+
+
+def test_meter_type_preset_axioma_enables_digits_and_clears_analog():
+    from config.meter_presets import load_meter_presets
+    from gui.wizard.config_manager import WizardConfigManager
+    from gui.wizard.steps.draw_rois_base import Roi
+
+    presets = load_meter_presets()
+    axioma = next((p for p in presets if p.id == "axioma_qalcosonic_w1"), None)
+    assert axioma is not None
+
+    digital_names = axioma.get_digital_roi_names(
+        int_digits=axioma.default_int_digits,
+        dec_digits=axioma.default_dec_digits,
+        flow_int_digits=axioma.default_flow_int_digits,
+        flow_dec_digits=axioma.default_flow_dec_digits,
+    )
+    assert len(digital_names) == 14
+    assert "digit1" in digital_names
+    assert "digit5" in digital_names
+    assert "digit6" in digital_names
+    assert "decimal1" in digital_names
+    assert "flow1" in digital_names
+    assert "flow_dec3" in digital_names
+
+    analog_names = axioma.get_analog_roi_names(analog_count=axioma.default_analog_count)
+    assert analog_names == []
+
+    dig_pos = axioma.get_digital_roi_positions(digital_names, 640, 480, flow_split=5)
+    assert len(dig_pos) == 14
+
+    # Mock wizard steps for gather_config
+    callbacks = MagicMock()
+    config_manager = WizardConfigManager(callbacks)
+
+    download_step = MagicMock()
+    download_step.url.value = "http://test-cam/snap.jpg"
+    download_step.timeout.value = 30
+    download_step.minsize.value = 10000
+
+    initial_rotate_step = MagicMock()
+    initial_rotate_step.angle = 0.0
+
+    draw_refs_step = MagicMock()
+    draw_refs_step.rois = []
+
+    adjust_step = MagicMock()
+    adjust_step.crop_enabled.value = False
+    adjust_step.crop_x.value = 0
+    adjust_step.crop_y.value = 0
+    adjust_step.crop_w.value = 0
+    adjust_step.crop_h.value = 0
+    adjust_step.resize_enabled.value = False
+    adjust_step.resize_w.value = 0
+    adjust_step.resize_h.value = 0
+    adjust_step.adjust_enabled.value = False
+    adjust_step.grayscale_enabled.value = False
+    adjust_step.auto_sharpen_cut_images.value = False
+    adjust_step.autocontrast_enabled.value = False
+    adjust_step.autocontrast_cut_images_enabled.value = False
+    adjust_step.glare_enabled.value = False
+    adjust_step.glare_mode.value = "clahe"
+    adjust_step.glare_inpaint_threshold.value = 230
+    adjust_step.glare_inpaint_radius.value = 3
+    adjust_step.glare_clahe_clip_limit.value = 2.0
+    adjust_step.glare_clahe_grid_size.value = 8
+    adjust_step.glare_apply_to_cut_images.value = False
+    adjust_step.rotate_angle.value = 0.0
+
+    draw_digital_rois_step = MagicMock()
+    draw_digital_rois_step.digital_models_dir = "/config/neuralnets/digital"
+    draw_digital_rois_step.cnn_file.value = (
+        "/config/neuralnets/digital/class11/dig-class11_1600_s2_q.tflite"
+    )
+    draw_digital_rois_step.cnn_type.value = "auto"
+    draw_digital_rois_step.detect_negative_sign.value = any(
+        m.detect_negative_sign for m in axioma.meters
+    )
+    draw_digital_rois_step.rois = [
+        Roi(name=p.name, x=p.x, y=p.y, w=p.w, h=p.h, enabled=True) for p in dig_pos
+    ]
+
+    draw_analog_rois_step = MagicMock()
+    draw_analog_rois_step.analog_models_dir = "/config/neuralnets/analog"
+    draw_analog_rois_step.cnn_file.value = ""
+    draw_analog_rois_step.cnn_type.value = "auto"
+    draw_analog_rois_step.rois = []
+
+    meters_step = MagicMock()
+    meters_step.meter_params = []
+
+    services_step = MagicMock()
+    services_step.mqtt_enabled.value = False
+    services_step.ha_enabled.value = False
+    services_step.poller_enabled.value = False
+    services_step.influx_enabled.value = False
+    services_step.leak_enabled.value = False
+
+    gathered = config_manager.gather_config(
+        download_image_step=download_step,
+        initial_rotate_step=initial_rotate_step,
+        draw_refs_step=draw_refs_step,
+        adjust_step=adjust_step,
+        draw_digital_rois_step=draw_digital_rois_step,
+        draw_analog_rois_step=draw_analog_rois_step,
+        meters_step=meters_step,
+        services_step=services_step,
+    )
+
+    assert gathered.digital_readout.enabled is True
+    assert gathered.digital_readout.detect_negative_sign is True
+    assert len(gathered.digital_readout.cut_images) == 14
+    assert gathered.analog_readout.enabled is False
+    assert len(gathered.analog_readout.cut_images) == 0
+
+
+def test_meter_type_step_invokes_on_preset_selected_callback():
+    from gui.wizard.steps.meter_type import MeterTypeStep
+
+    cb = MagicMock()
+    step = MeterTypeStep("Meter type", on_preset_selected=cb)
+
+    axioma_preset = step.preset_by_id.get("axioma_qalcosonic_w1")
+    assert axioma_preset is not None
+
+    step._select_preset("axioma_qalcosonic_w1")
+    cb.assert_called_with(axioma_preset)
+
+
+def test_download_step_url_dropdown_options():
+    from gui.wizard.steps.download import DownloadImageStep
+
+    step = DownloadImageStep("Download", set_image_callback=MagicMock())
+    options = step._get_url_options()
+    assert "model://axioma_qalcosonic_w1" in options
+    assert options["model://axioma_qalcosonic_w1"].startswith(
+        "model://axioma_qalcosonic_w1 ("
+    )
+    assert "model://mock_camera" in options
+    assert "model://generic_mechanical_classic" in options
+    assert "file://${ConfigDir}/original.jpg" in options
+
+
+def test_meter_type_preset_mock_camera_enables_digits_and_analogs():
+    from config.meter_presets import load_meter_presets
+    from gui.pages.setup import WizardConfigManager
+    from gui.wizard.steps.draw_rois_base import Roi
+
+    presets = {p.id: p for p in load_meter_presets()}
+    assert "mock_camera" in presets
+    mock_cam = presets["mock_camera"]
+
+    dig_names = mock_cam.get_digital_roi_names(
+        int_digits=mock_cam.default_int_digits, dec_digits=mock_cam.default_dec_digits
+    )
+    ana_names = mock_cam.get_analog_roi_names(
+        analog_count=mock_cam.default_analog_count
+    )
+
+    dig_pos = mock_cam.get_digital_roi_positions(dig_names, 640, 480)
+    ana_pos = mock_cam.get_analog_roi_positions(ana_names, 640, 480)
+
+    assert len(dig_pos) == 5
+    assert len(ana_pos) == 4
+    assert (
+        dig_pos[0].x == 202
+        and dig_pos[0].y == 150
+        and dig_pos[0].w == 39
+        and dig_pos[0].h == 66
+    )
+    assert (
+        ana_pos[0].x == 392
+        and ana_pos[0].y == 262
+        and ana_pos[0].w == 76
+        and ana_pos[0].h == 76
+    )
+
+    callbacks = MagicMock()
+    config_manager = WizardConfigManager(callbacks)
+
+    download_step = MagicMock()
+    download_step.url.value = "http://localhost:3000/api/mock_camera"
+    download_step.timeout.value = 30
+    download_step.minsize.value = 10000
+
+    initial_rotate_step = MagicMock(angle=0.0)
+    draw_refs_step = MagicMock(rois=[])
+
+    adjust_step = MagicMock()
+    adjust_step.crop_enabled.value = False
+    adjust_step.crop_x.value = 0
+    adjust_step.crop_y.value = 0
+    adjust_step.crop_w.value = 0
+    adjust_step.crop_h.value = 0
+    adjust_step.resize_enabled.value = False
+    adjust_step.resize_w.value = 0
+    adjust_step.resize_h.value = 0
+    adjust_step.adjust_enabled.value = False
+    adjust_step.grayscale_enabled.value = False
+    adjust_step.auto_sharpen_cut_images.value = False
+    adjust_step.autocontrast_enabled.value = False
+    adjust_step.autocontrast_cut_images_enabled.value = False
+    adjust_step.glare_enabled.value = False
+    adjust_step.glare_mode.value = "clahe"
+    adjust_step.glare_inpaint_threshold.value = 230
+    adjust_step.glare_inpaint_radius.value = 3
+    adjust_step.glare_clahe_clip_limit.value = 2.0
+    adjust_step.glare_clahe_grid_size.value = 8
+    adjust_step.glare_apply_to_cut_images.value = False
+    adjust_step.rotate_angle.value = 0.0
+
+    draw_digital_rois_step = MagicMock()
+    draw_digital_rois_step.digital_models_dir = "/config/neuralnets/digital"
+    draw_digital_rois_step.cnn_file.value = (
+        "/config/neuralnets/digital/class11/dig-class11_1600_s2.tflite"
+    )
+    draw_digital_rois_step.cnn_type.value = "auto"
+    draw_digital_rois_step.detect_negative_sign.value = False
+    draw_digital_rois_step.rois = [
+        Roi(name=p.name, x=p.x, y=p.y, w=p.w, h=p.h, enabled=True) for p in dig_pos
+    ]
+
+    draw_analog_rois_step = MagicMock()
+    draw_analog_rois_step.analog_models_dir = "/config/neuralnets/analog"
+    draw_analog_rois_step.cnn_file.value = (
+        "/config/neuralnets/analog/continuous/ana-cont_1901_s0.tflite"
+    )
+    draw_analog_rois_step.cnn_type.value = "auto"
+    draw_analog_rois_step.rois = [
+        Roi(name=p.name, x=p.x, y=p.y, w=p.w, h=p.h, enabled=True) for p in ana_pos
+    ]
+
+    meters_step = MagicMock()
+    meters_step.meter_params = []
+
+    services_step = MagicMock()
+    services_step.mqtt_enabled.value = False
+    services_step.ha_enabled.value = False
+    services_step.poller_enabled.value = False
+    services_step.influx_enabled.value = False
+    services_step.leak_enabled.value = False
+
+    gathered = config_manager.gather_config(
+        download_image_step=download_step,
+        initial_rotate_step=initial_rotate_step,
+        draw_refs_step=draw_refs_step,
+        adjust_step=adjust_step,
+        draw_digital_rois_step=draw_digital_rois_step,
+        draw_analog_rois_step=draw_analog_rois_step,
+        meters_step=meters_step,
+        services_step=services_step,
+    )
+
+    assert gathered.digital_readout.enabled is True
+    assert len(gathered.digital_readout.cut_images) == 5
+    assert gathered.analog_readout.enabled is True
+    assert len(gathered.analog_readout.cut_images) == 4

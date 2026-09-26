@@ -338,6 +338,16 @@ def init(fastapi_app: FastAPI, callbacks: Callbacks) -> None:
 
                 tabs.on_value_change(on_tab_change)
 
+                if _callbacks.is_config_missing():
+                    from gui.dialogs import show_config_onboarding_dialog
+
+                    show_config_onboarding_dialog(
+                        _callbacks,
+                        tabs=tabs,
+                        setup_tab=setup,
+                        load_tab_fn=load_tab,
+                    )
+
     # Nothing special is stored in the cookie, so it's fine to use random secret
     secret = "".join(
         random.choices(string.ascii_uppercase + string.digits, k=20)  # nosec

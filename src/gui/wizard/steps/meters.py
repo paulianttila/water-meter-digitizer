@@ -32,7 +32,7 @@ class MeterParams:
     min_rate_value: float = 0.0
     stale_threshold_hours: float = 0.0
     prevalue_from_file_max_age: int = 0
-    unit: str = "㎥"
+    unit: str = "m³"
     value: str = ""
 
 
@@ -443,7 +443,7 @@ class Meter:
                         "Open dialog to arrange the ordered sequence of digits, analogs, and decimal points"
                     )
 
-                ui.input("Unit", value="㎥").props("dense outlined").bind_value(
+                ui.input("Unit", value="m³").props("dense outlined").bind_value(
                     self.meter, "unit"
                 ).classes("w-full").tooltip(
                     "Engineering unit of measurement (e.g. m³, L, kWh)"

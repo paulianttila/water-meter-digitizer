@@ -52,6 +52,7 @@ def open_confirm_dialog(
     checkbox_label: str | None = None,
     checkbox_default: bool = True,
     on_confirm: Callable[..., Any] | None = None,
+    on_cancel: Callable[..., Any] | None = None,
     max_width: str = "max-w-md",
 ) -> ui.dialog:
     """Standardized confirmation dialog with optional checkbox and theme styling."""
@@ -83,6 +84,13 @@ def open_confirm_dialog(
                 value=checkbox_default,
             ).classes("text-xs text-slate-300")
 
+        async def _handle_cancel():
+            dialog.close()
+            if on_cancel is not None:
+                res = on_cancel()
+                if inspect.isawaitable(res):
+                    await res
+
         async def _handle_confirm():
             dialog.close()
             if on_confirm is not None:
@@ -96,9 +104,9 @@ def open_confirm_dialog(
                     await res
 
         with ui.row().classes("w-full justify-end items-center gap-2 mt-2"):
-            ui.button(cancel_label, on_click=dialog.close).props("flat dense").classes(
-                "text-slate-300 px-3"
-            )
+            ui.button(cancel_label, on_click=_handle_cancel).props(
+                "flat dense"
+            ).classes("text-slate-300 px-3")
 
             ui.button(
                 confirm_label,

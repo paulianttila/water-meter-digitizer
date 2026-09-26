@@ -54,6 +54,34 @@ class ServiceAccessor:
     def get_config_version(self) -> int:
         return getattr(self._app.state, "config_version", 1)
 
+    def is_config_missing(self) -> bool:
+        return bool(getattr(self._app.state, "config_missing", False))
+
+    def get_target_config_file(self) -> str:
+        return str(getattr(self._app.state, "target_config_file", ""))
+
+    def copy_default_config(self) -> bool:
+        from config.seed import copy_default_config
+
+        target = self.get_target_config_file()
+        if not target:
+            return False
+        success = copy_default_config(target)
+        if success:
+            self._app.state.config_missing = False
+        return success
+
+    def init_profile_for_wizard(self) -> bool:
+        from config.seed import init_profile_for_wizard
+
+        target = self.get_target_config_file()
+        if not target:
+            return False
+        success = init_profile_for_wizard(target)
+        if success:
+            self._app.state.config_missing = False
+        return success
+
     def get_storage(self) -> StorageBackend | None:
         return getattr(self._app.state, "storage", None)
 

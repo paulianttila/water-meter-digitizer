@@ -23,7 +23,7 @@ from api.routes_meter import router as meter_router
 from api.routes_mock_camera import router as mock_camera_router
 from api.routes_services import router as services_router
 from api.routes_system import router as system_router
-from configuration import Config, ensure_config_initialized
+from configuration import Config
 from context import AppContext
 from services.config_file_service import ConfigFileService
 from services.leak.tracker import ZeroFlowTracker
@@ -36,15 +36,17 @@ from utils.image_service import get_cached_image_base64
 from version import __version__ as VERSION
 
 config_file = os.environ.get("CONFIG_FILE", "/config/config.ini")
-ensure_config_initialized(config_file)
-
-if not os.path.exists(config_file) and os.path.exists("config/config.ini"):
+if (
+    not os.path.exists(config_file)
+    and "CONFIG_FILE" not in os.environ
+    and os.path.exists("config/config.ini")
+):
     config_file = "config/config.ini"
 
 config = Config()
 if os.path.exists(config_file):
     try:
-        config.load_from_file(ini_file=config_file)
+        config.load_from_file(ini_file=config_file, auto_seed=False)
     except Exception as e:
         logging.getLogger(__name__).warning(
             f"Failed to load config from {config_file}: {e}"
@@ -167,7 +169,7 @@ OPENAPI_TAGS = [
 def create_app(custom_config_file: str | None = None) -> FastAPI:
     """Application factory creating a configured FastAPI app instance."""
     cfg_path = custom_config_file or config_file
-    ensure_config_initialized(cfg_path)
+    config_missing = not os.path.exists(cfg_path)
 
     app_instance = FastAPI(
         title="Water Meter Digitizer API",
@@ -192,10 +194,19 @@ def create_app(custom_config_file: str | None = None) -> FastAPI:
     )
     set_app_ref(app_instance)
 
-    app_config = (
-        Config().load_from_file(ini_file=cfg_path) if custom_config_file else config
-    )
+    if custom_config_file:
+        if config_missing:
+            app_config = Config()
+        else:
+            try:
+                app_config = Config().load_from_file(ini_file=cfg_path, auto_seed=False)
+            except Exception:
+                app_config = Config()
+    else:
+        app_config = config
 
+    app_instance.state.config_missing = config_missing
+    app_instance.state.target_config_file = cfg_path
     app_instance.state.version = VERSION
     app_instance.state.config_file = cfg_path
     app_instance.state.config = app_config
@@ -308,12 +319,32 @@ def init_config(target_app: FastAPI | None = None) -> None:
         clear_interpreter_pools()
         global config
         old_config = getattr(app_inst.state, "config", None)
-        target_cfg_file = (
-            config_file
-            if target_app is None
-            else getattr(app_inst.state, "config_file", config_file)
-        )
-        new_config = Config().load_from_file(ini_file=target_cfg_file)
+        if target_app is not None:
+            target_cfg_file = (
+                getattr(target_app.state, "target_config_file", None)
+                or getattr(target_app.state, "config_file", None)
+                or config_file
+            )
+        else:
+            target_cfg_file = config_file
+        if not os.path.exists(target_cfg_file):
+            logger.warning(
+                f"Configuration file '{target_cfg_file}' not found. Server running in Onboarding Mode. "
+                "Open http://localhost:3000 to initialize."
+            )
+            app_inst.state.config_missing = True
+            app_inst.state.target_config_file = target_cfg_file
+            new_config = Config()
+            config = new_config
+            app_inst.state.config = new_config
+            app_inst.state.config_file = target_cfg_file
+            app_inst.state.storage = get_storage_backend(config)
+            stop_services(target_app=app_inst)
+            _sync_app_context(app_inst)
+            return
+
+        app_inst.state.config_missing = False
+        new_config = Config().load_from_file(ini_file=target_cfg_file, auto_seed=False)
         config = new_config
         app_inst.state.config = new_config
         app_inst.state.config_file = target_cfg_file
@@ -350,6 +381,9 @@ if __name__ == "__main__":
 
     args = parser.parse_args()
     config_file = args.config_file
+    app.state.config_file = config_file
+    app.state.target_config_file = config_file
+    app.state.config_missing = not os.path.exists(config_file)
     init_config()
     init_gui(app)
 

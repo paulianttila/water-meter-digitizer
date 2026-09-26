@@ -17,11 +17,14 @@ from gui.wizard.navigator import (
 
 
 def test_wizard_navigator_is_step_forward():
-    assert WizardNavigator.is_step_forward(NAME_METER_TYPE, NAME_DOWNLOAD_IMAGE) is True
+    assert WizardNavigator.is_step_forward(NAME_DOWNLOAD_IMAGE, NAME_METER_TYPE) is True
     assert (
-        WizardNavigator.is_step_forward(NAME_DOWNLOAD_IMAGE, NAME_METER_TYPE) is False
+        WizardNavigator.is_step_forward(NAME_METER_TYPE, NAME_DOWNLOAD_IMAGE) is False
     )
-    assert WizardNavigator.is_step_forward(NAME_INITIAL_ROTATE, NAME_METER_TYPE) is True
+    assert (
+        WizardNavigator.is_step_forward(NAME_INITIAL_ROTATE, NAME_DOWNLOAD_IMAGE)
+        is True
+    )
     assert WizardNavigator.is_step_forward(NAME_FINAL, NAME_SERVICES) is True
     assert WizardNavigator.is_step_forward("unknown", NAME_SERVICES) is False
 
@@ -89,14 +92,14 @@ def test_wizard_navigator_update_wizard_nav():
     next_btn = MagicMock()
 
     # Step 1
-    WizardNavigator.update_wizard_nav(NAME_DOWNLOAD_IMAGE, prev_btn, badge, next_btn)
+    WizardNavigator.update_wizard_nav(NAME_METER_TYPE, prev_btn, badge, next_btn)
     prev_btn.set_visibility.assert_called_with(False)
     assert "Step 1 of 10" in badge.text
     next_btn.set_visibility.assert_called_with(True)
     assert next_btn.text == "Continue"
 
     # Step 2
-    WizardNavigator.update_wizard_nav(NAME_METER_TYPE, prev_btn, badge, next_btn)
+    WizardNavigator.update_wizard_nav(NAME_DOWNLOAD_IMAGE, prev_btn, badge, next_btn)
     prev_btn.set_visibility.assert_called_with(True)
     assert "Step 2 of 10" in badge.text
 

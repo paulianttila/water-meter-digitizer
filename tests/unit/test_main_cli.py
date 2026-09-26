@@ -166,3 +166,28 @@ def test_main_create_app(tmp_path):
     assert app_instance.state.image_cache is not None
     assert app_instance.state.storage is not None
     assert app_instance.state.context is not None
+
+
+def test_main_onboarding_mode_missing_config(tmp_path):
+    missing_cfg = tmp_path / "nonexistent" / "config.ini"
+
+    # create_app should soft-boot in onboarding mode without crashing
+    app_instance = main.create_app(str(missing_cfg))
+    assert app_instance.state.config_missing is True
+    assert app_instance.state.target_config_file == str(missing_cfg)
+
+    # init_config should keep onboarding mode and not raise
+    with patch("main.stop_services") as mock_stop:
+        main.init_config(target_app=app_instance)
+        assert app_instance.state.config_missing is True
+        mock_stop.assert_called_once()
+
+    # Now create config.ini
+    missing_cfg.parent.mkdir(parents=True)
+    missing_cfg.write_text("[DEFAULT]\nLogLevel = INFO\n")
+
+    # init_config should recover and clear config_missing
+    with patch("main.start_services") as mock_start:
+        main.init_config(target_app=app_instance)
+        assert app_instance.state.config_missing is False
+        mock_start.assert_called_once()

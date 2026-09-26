@@ -122,6 +122,21 @@ def test_page_config_init_and_show():
         asyncio.run(page.show())
 
 
+def test_page_config_init_missing_config():
+    callbacks = MagicMock()
+    callbacks.load_config_file.return_value = ""
+    callbacks.is_config_missing.return_value = True
+    mock_config = MagicMock()
+    mock_config.save_to_string.return_value = "[TakeImage]\nUrl = \n"
+    callbacks.get_config.return_value = mock_config
+
+    page = ConfigPage(callbacks)
+    assert page.txt == "[TakeImage]\nUrl = \n"
+    callbacks.load_config_file.assert_called_once()
+    callbacks.is_config_missing.assert_called_once()
+    mock_config.save_to_string.assert_called_once()
+
+
 def test_page_config_editor_actions():
     callbacks = MagicMock()
     callbacks.load_config_file.return_value = "[TakeImage]\nUrl = http://mock/capture\n"

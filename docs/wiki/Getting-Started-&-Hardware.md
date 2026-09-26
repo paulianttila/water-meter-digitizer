@@ -135,7 +135,7 @@ Direct flash or LED reflections on curved meter glass can obscure rolling number
 1. **Oblique / Ring Diffuse Lighting**: Position illumination LEDs at 45° oblique angles or use a diffuser ring rather than a single centered flashlight.
 2. **Polarizing Filters**: Apply linear polarizing film over the camera lens and LED source oriented at 90° cross-polarization to cancel direct specular reflection.
 3. **Software Glare Suppression**:
-   - In Step 4 of the Setup Wizard, enable **AutoContrast**, **Sharpness**, or **CLAHE**.
+   - In Step 5 of the Setup Wizard, enable **AutoContrast**, **Sharpness**, or **CLAHE**.
    - In `config.ini`, set `GlareSuppression = True`, `GlareMode = clahe`, `GlareInpaintThreshold = 230`.
 
 ---

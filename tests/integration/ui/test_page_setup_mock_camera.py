@@ -12,11 +12,16 @@ def test_setup_wizard_step_inspection_with_mock_camera(
     page.goto(f"{live_server_url}/gui", wait_until="domcontentloaded")
     page.get_by_role("tab", name="Setup").click()
 
-    expect(page.get_by_text("Step 1 of 10: Download image")).to_be_visible(
-        timeout=10000
-    )
+    expect(page.get_by_text("Step 1 of 10: Meter type")).to_be_visible(timeout=10000)
 
-    # In Step 1: Set URL to mock camera and click download
+    continue_btn = page.get_by_role("button", name="Continue")
+    expect(continue_btn).to_be_visible(timeout=5000)
+    continue_btn.click()
+
+    # Step 2: Download image
+    expect(page.get_by_text("Step 2 of 10: Download image")).to_be_visible(timeout=5000)
+
+    # In Step 2: Set URL to mock camera and click download
     url_input = page.get_by_label("URL")
     expect(url_input).to_be_visible(timeout=5000)
     url_input.fill(f"{live_server_url}/api/mock_camera?value=00789.1234")
@@ -26,12 +31,6 @@ def test_setup_wizard_step_inspection_with_mock_camera(
         download_btn.first.click()
     page.wait_for_timeout(600)
 
-    continue_btn = page.get_by_role("button", name="Continue")
-    expect(continue_btn).to_be_visible(timeout=5000)
-    continue_btn.click()
-
-    # Step 2: Meter type
-    expect(page.get_by_text("Step 2 of 10: Meter type")).to_be_visible(timeout=5000)
     continue_btn.click()
 
     # Step 3: Initial rotate

@@ -1,6 +1,7 @@
 import asyncio
 import contextlib
 from collections.abc import Callable
+from pathlib import Path
 
 from nicegui import ui
 
@@ -10,7 +11,7 @@ from processor.image import ImageProcessor
 from .base import BaseStep
 
 HELP_TEXT = (
-    "- **Camera URL**: Enter snapshot endpoint (e.g. `http://...` or `file://...`).\n"
+    "- **Camera URL**: Select a template model image (`model://...`) or enter a camera snapshot URL (`http://...`, `file://...`).\n"
     "- **Timeout**: Set network request timeout in seconds (1-60s).\n"
     "- **Download**: Click the download button to fetch a frame."
 )
@@ -23,9 +24,13 @@ class DownloadImageStep(BaseStep):
         set_image_callback: Callable[[str], None],
         on_error_callback: Callable[[str], None] | None = None,
         spinner=None,
+        config_dir: str | Path | None = None,
     ) -> None:
-        self.url: ui.input
+        self.url: ui.select
         self.timeout: ui.number
+        self.minsize: ui.number
+        self._initial_url: str = ""
+        self.config_dir = config_dir
         self.on_error_callback = on_error_callback
         super().__init__(
             name,
@@ -33,8 +38,63 @@ class DownloadImageStep(BaseStep):
             spinner=spinner,
         )
 
-    def load_from_config(self, image_source: ImageSource) -> None:
+    def _get_url_options(
+        self, current_url: str = "", force_reload: bool = False
+    ) -> dict[str, str]:
+        from config.meter_presets import get_available_template_images
+
+        options: dict[str, str] = {}
+        if current_url:
+            options[current_url] = current_url
+
+        # Available template model pictures
+        for uri, label in get_available_template_images(
+            config_dir=self.config_dir, force_reload=force_reload
+        ):
+            options[uri] = label
+
+        # Fallback built-in options
+        mock_uri = "model://mock_camera"
+        if mock_uri not in options:
+            options[mock_uri] = f"{mock_uri} (Mock Camera: Aqua-Digitizer AQ-20)"
+
+        demo_url = "file://${ConfigDir}/original.jpg"
+        if demo_url not in options:
+            options[demo_url] = f"{demo_url} (Local Demo Image)"
+
+        mock_cam_url = "http://localhost:3000/api/mock_camera"
+        if mock_cam_url not in options:
+            options[mock_cam_url] = f"{mock_cam_url} (Mock Camera API)"
+
+        return options
+
+    def refresh_options(self, force_reload: bool = True) -> dict[str, str]:
+        """Refreshes available template image options from disk and updates dropdown."""
+        cur = (
+            self.url.value
+            if hasattr(self, "url") and self.url is not None
+            else getattr(self, "_initial_url", "")
+        )
+        options = self._get_url_options(current_url=cur, force_reload=force_reload)
         if hasattr(self, "url") and self.url is not None:
+            self.url.options = options
+            self.url.update()
+        return options
+
+    def _handle_refresh_click(self) -> None:
+        self.refresh_options(force_reload=True)
+        ui.notify("Template images reloaded from disk", type="positive")
+
+    def load_from_config(self, image_source: ImageSource) -> None:
+        self._initial_url = image_source.url
+        if hasattr(self, "url") and self.url is not None:
+            if (
+                hasattr(self.url, "options")
+                and isinstance(self.url.options, dict)
+                and image_source.url
+                and image_source.url not in self.url.options
+            ):
+                self.url.options[image_source.url] = image_source.url
             self.url.value = image_source.url
         if hasattr(self, "timeout") and self.timeout is not None:
             self.timeout.value = image_source.timeout
@@ -68,12 +128,26 @@ class DownloadImageStep(BaseStep):
         with ui.step(self.name):
             self.add_help(HELP_TEXT)
             with ui.row().classes("w-full items-center gap-2"):
+                init_val = getattr(self, "_initial_url", "")
+                options = self._get_url_options(init_val)
                 self.url = (
-                    ui.input(label="URL", placeholder="URL")
-                    .props("dense outlined")
+                    ui.select(
+                        options=options,
+                        value=init_val or next(iter(options.keys()), ""),
+                        label="URL",
+                        with_input=True,
+                    )
+                    .props(
+                        "dense outlined use-input fill-input new-value-mode=add-unique"
+                    )
                     .classes("flex-grow")
-                    .tooltip("Camera snapshot URL (e.g. http://... or file://...)")
+                    .tooltip(
+                        "Camera snapshot URL or template model image (e.g. model://... or http://...)"
+                    )
                 )
+                ui.button(icon="refresh", on_click=self._handle_refresh_click).props(
+                    "dense flat"
+                ).tooltip("Reload template images from disk")
                 ui.button(icon="download", on_click=self.download).props(
                     "dense"
                 ).bind_enabled_from(self.url, "value").tooltip(

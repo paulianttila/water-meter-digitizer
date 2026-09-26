@@ -1,29 +1,53 @@
 """Meter Type Selection Step for Setup Wizard.
 
-Allows selecting preset meter archetypes (LCD cumulative, LCD flow,
-mechanical drums+dials, drums only, or custom). Auto-generates placeholder
-ROIs, meter configurations, and recommends optimal CNN models.
+Allows selecting preset meter archetypes and specific hardware models (Axioma,
+Kamstrup, Diehl, Honeywell, Itron, B Meters, etc.) via a searchable dropdown
+or category filters. Auto-generates placeholder ROIs, meter configurations,
+and recommends optimal CNN models.
 """
 
+from __future__ import annotations
+
 from collections.abc import Callable
-from dataclasses import dataclass
 from pathlib import Path
 
 from nicegui import ui
 
-from data_classes import ImagePosition, MeterConfig
+from config.meter_presets import (
+    DEFAULT_BUILTIN_PRESETS,
+    MeterTypePreset,
+    load_meter_presets,
+    reload_meter_presets,
+    sort_meter_presets,
+)
 from gui import theme
 from gui.wizard.steps.base import BaseStep
 
 HELP_TEXT = (
-    "- **Quick-Start Presets**: Choose a preset matching your meter hardware to "
-    "automatically generate placeholder ROI boxes, virtual meter definitions, "
+    "- **Quick-Start Presets**: Search and choose a preset matching your meter hardware "
+    "to automatically generate placeholder ROI boxes, virtual meter definitions, "
     "and optimal CNN models.\n"
+    "- **European & Generic Models**: Includes Axioma Qalcosonic, Kamstrup flowIQ, "
+    "Diehl Hydrus/Altair, Honeywell V200, Itron Aquadis+, and standard generic archetypes.\n"
     "- **Customizable Counts**: Adjust the number of integer digits, decimal digits, "
     "or analog dials before proceeding.\n"
-    "- **Fine-Tuning**: Pre-created ROI boxes will be placed on your image for easy "
-    "repositioning and alignment in subsequent steps."
+    "- **Configuration Driven**: Add your own meter models anytime by dropping an "
+    "INI file into `config/meter_types/`."
 )
+
+PRESETS: list[MeterTypePreset] = load_meter_presets()
+PRESET_BY_ID: dict[str, MeterTypePreset] = {p.id: p for p in PRESETS}
+
+
+def reload_presets(config_dir: str | Path | None = None) -> list[MeterTypePreset]:
+    """Reloads presets from disk and updates module-level PRESETS and PRESET_BY_ID."""
+    global PRESETS, PRESET_BY_ID
+    loaded = reload_meter_presets(config_dir=config_dir)
+    PRESETS.clear()
+    PRESETS.extend(loaded)
+    PRESET_BY_ID.clear()
+    PRESET_BY_ID.update({p.id: p for p in PRESETS})
+    return list(PRESETS)
 
 
 def select_best_model(
@@ -70,275 +94,6 @@ def select_best_model(
     return keys[0]
 
 
-def _make_positions_row(
-    names: list[str],
-    img_w: int,
-    img_h: int,
-    y_frac: float = 0.5,
-    box_w_hint: int = 60,
-    box_h_hint: int = 80,
-) -> list[ImagePosition]:
-    """Arranges a list of ROI names in a centered horizontal row."""
-    n = len(names)
-    if n == 0:
-        return []
-
-    gap = 6
-    available_w = max(50, img_w - 40)
-    box_w = max(24, min(box_w_hint, (available_w // n) - gap))
-    box_h = max(30, min(box_h_hint, img_h // 4))
-    total_w = n * box_w + (n - 1) * gap
-    x0 = max(0, (img_w - total_w) // 2)
-    y = max(0, int(img_h * y_frac) - (box_h // 2))
-
-    return [
-        ImagePosition(name=nm, x=x0 + i * (box_w + gap), y=y, w=box_w, h=box_h)
-        for i, nm in enumerate(names)
-    ]
-
-
-@dataclass
-class MeterTypePreset:
-    id: str
-    label: str
-    description: str
-    icon: str
-    default_int_digits: int = 5
-    default_dec_digits: int = 0
-    default_analog_count: int = 0
-    default_unit: str = "㎥"
-    has_secondary_group: bool = False
-    default_flow_int_digits: int = 3
-    default_flow_dec_digits: int = 2
-    digital_category_preference: str = "class100"
-    digital_preferred_filename: str | None = None
-    digital_cnn_type: str = "auto"
-    analog_category_preference: str | None = None
-    analog_preferred_filename: str | None = None
-    analog_cnn_type: str = "auto"
-    recommendation_reason: str = ""
-
-    def get_digital_roi_names(
-        self,
-        int_digits: int,
-        dec_digits: int,
-        flow_int_digits: int = 0,
-        flow_dec_digits: int = 0,
-    ) -> list[str]:
-        if self.id == "custom":
-            return []
-        names = [f"digit{i + 1}" for i in range(int_digits)]
-        if dec_digits > 0:
-            names.extend([f"decimal{i + 1}" for i in range(dec_digits)])
-        if self.has_secondary_group:
-            names.extend([f"flow{i + 1}" for i in range(flow_int_digits)])
-            if flow_dec_digits > 0:
-                names.extend([f"flow_dec{i + 1}" for i in range(flow_dec_digits)])
-        return names
-
-    def get_analog_roi_names(self, analog_count: int) -> list[str]:
-        if (
-            self.id == "custom"
-            or self.analog_category_preference is None
-            or analog_count <= 0
-        ):
-            return []
-        return [f"analog{i + 1}" for i in range(analog_count)]
-
-    def get_digital_roi_positions(
-        self,
-        names: list[str],
-        img_w: int = 640,
-        img_h: int = 480,
-        flow_split: int = 0,
-    ) -> list[ImagePosition]:
-        if not names:
-            return []
-        if self.has_secondary_group and flow_split > 0 and flow_split < len(names):
-            main_names = names[:-flow_split]
-            flow_names = names[-flow_split:]
-            return _make_positions_row(
-                main_names, img_w, img_h, y_frac=0.35
-            ) + _make_positions_row(flow_names, img_w, img_h, y_frac=0.65)
-        return _make_positions_row(names, img_w, img_h, y_frac=0.45)
-
-    def get_analog_roi_positions(
-        self, names: list[str], img_w: int = 640, img_h: int = 480
-    ) -> list[ImagePosition]:
-        if not names:
-            return []
-        return _make_positions_row(
-            names, img_w, img_h, y_frac=0.70, box_w_hint=70, box_h_hint=70
-        )
-
-    def build_meter_configs(
-        self,
-        digital_names: list[str],
-        analog_names: list[str],
-        unit: str = "㎥",
-    ) -> list[MeterConfig]:
-        if self.id == "custom":
-            return []
-
-        if self.id == "lcd_cumulative":
-            int_names = [n for n in digital_names if not n.startswith("decimal")]
-            dec_names = [n for n in digital_names if n.startswith("decimal")]
-            fmt = "".join(f"{{{n}}}" for n in int_names)
-            if dec_names:
-                fmt += "." + "".join(f"{{{n}}}" for n in dec_names)
-            return [
-                MeterConfig(
-                    name="total",
-                    format=fmt,
-                    unit=unit,
-                    consistency_enabled=True,
-                    use_previous_value=True,
-                    max_rate_value=0.2,
-                )
-            ]
-
-        if self.id == "lcd_cumulative_flow":
-            main_names = [n for n in digital_names if not n.startswith("flow")]
-            main_int = [n for n in main_names if not n.startswith("decimal")]
-            main_dec = [n for n in main_names if n.startswith("decimal")]
-            fmt_main = "".join(f"{{{n}}}" for n in main_int)
-            if main_dec:
-                fmt_main += "." + "".join(f"{{{n}}}" for n in main_dec)
-
-            flow_names = [n for n in digital_names if n.startswith("flow")]
-            flow_int = [n for n in flow_names if not n.startswith("flow_dec")]
-            flow_dec = [n for n in flow_names if n.startswith("flow_dec")]
-            fmt_flow = "".join(f"{{{n}}}" for n in flow_int)
-            if flow_dec:
-                fmt_flow += "." + "".join(f"{{{n}}}" for n in flow_dec)
-
-            return [
-                MeterConfig(
-                    name="total",
-                    format=fmt_main,
-                    unit=unit,
-                    consistency_enabled=True,
-                    use_previous_value=True,
-                    max_rate_value=0.2,
-                ),
-                MeterConfig(
-                    name="flow",
-                    format=fmt_flow,
-                    unit=f"{unit}/h" if unit else "㎥/h",
-                    consistency_enabled=False,
-                    use_previous_value=False,
-                    detect_negative_sign=True,
-                ),
-            ]
-
-        if self.id == "analog_classic":
-            fmt = "".join(f"{{{n}}}" for n in digital_names)
-            if analog_names:
-                fmt += "." + "".join(f"{{{n}}}" for n in analog_names)
-            return [
-                MeterConfig(
-                    name="total",
-                    format=fmt,
-                    unit=unit,
-                    use_extended_resolution=bool(analog_names),
-                    consistency_enabled=True,
-                    use_previous_value=True,
-                    max_rate_value=0.2,
-                )
-            ]
-
-        if self.id == "analog_drums_only":
-            fmt = "".join(f"{{{n}}}" for n in digital_names)
-            return [
-                MeterConfig(
-                    name="total",
-                    format=fmt,
-                    unit=unit,
-                    consistency_enabled=True,
-                    use_previous_value=True,
-                    max_rate_value=0.2,
-                )
-            ]
-
-        return []
-
-
-PRESETS: list[MeterTypePreset] = [
-    MeterTypePreset(
-        id="lcd_cumulative",
-        label="LCD - Cumulative",
-        description="Digital 7-segment LCD showing single cumulative total reading.",
-        icon="pin",
-        default_int_digits=5,
-        default_dec_digits=3,
-        default_analog_count=0,
-        default_unit="㎥",
-        digital_category_preference="class11",
-        digital_preferred_filename="dig-class11_1600_s2_q.tflite",
-        digital_cnn_type="auto",
-        recommendation_reason="class11 discrete models are optimized for 7-segment LCD digits (0-9).",
-    ),
-    MeterTypePreset(
-        id="lcd_cumulative_flow",
-        label="LCD - Total + Flow",
-        description="Digital LCD showing cumulative total and instantaneous flow rate.",
-        icon="speed",
-        default_int_digits=5,
-        default_dec_digits=3,
-        default_analog_count=0,
-        has_secondary_group=True,
-        default_flow_int_digits=3,
-        default_flow_dec_digits=2,
-        default_unit="㎥",
-        digital_category_preference="class11",
-        digital_preferred_filename="dig-class11_1600_s2_q.tflite",
-        digital_cnn_type="auto",
-        recommendation_reason="class11 discrete models with negative sign detection for reverse flow.",
-    ),
-    MeterTypePreset(
-        id="analog_classic",
-        label="Mechanical - 5+4",
-        description="5 rolling odometer drums with 4 rotating needle dials for decimals.",
-        icon="tune",
-        default_int_digits=5,
-        default_dec_digits=0,
-        default_analog_count=4,
-        default_unit="㎥",
-        digital_category_preference="class100",
-        digital_preferred_filename="dig-class100_0168_s2_q.tflite",
-        digital_cnn_type="auto",
-        analog_category_preference="continuous",
-        analog_preferred_filename="ana-cont_1209_s2.tflite",
-        analog_cnn_type="auto",
-        recommendation_reason="class100 reads continuously rolling counter drums; continuous pointer network reads needle dials.",
-    ),
-    MeterTypePreset(
-        id="analog_drums_only",
-        label="Mechanical - Drums",
-        description="Mechanical meter with roller drums only (no analog dials).",
-        icon="counter_5",
-        default_int_digits=5,
-        default_dec_digits=0,
-        default_analog_count=0,
-        default_unit="㎥",
-        digital_category_preference="class100",
-        digital_preferred_filename="dig-class100_0168_s2_q.tflite",
-        digital_cnn_type="auto",
-        recommendation_reason="class100 accurately classifies intermediate states of rolling counter drums.",
-    ),
-    MeterTypePreset(
-        id="custom",
-        label="Custom (Manual)",
-        description="Blank canvas for completely custom ROI placement and manual configuration.",
-        icon="edit_note",
-        default_unit="㎥",
-        recommendation_reason="Leaves current CNN model selections and ROIs untouched for manual setup.",
-    ),
-]
-
-PRESET_BY_ID: dict[str, MeterTypePreset] = {p.id: p for p in PRESETS}
-
-
 class MeterTypeStep(BaseStep):
     """Wizard step 2: Guided Meter Type selection with preset configuration."""
 
@@ -347,23 +102,38 @@ class MeterTypeStep(BaseStep):
         name: str,
         set_image_callback: Callable[[str], None] | None = None,
         spinner=None,
+        config_dir: str | Path | None = None,
+        on_preset_selected: Callable[[MeterTypePreset], None] | None = None,
     ) -> None:
         super().__init__(name, set_image_callback=set_image_callback, spinner=spinner)
+        self.config_dir = config_dir
+        self.on_preset_selected = on_preset_selected
         self.selected_preset_id: str = "custom"
+        self.active_category: str = "all"
+
         self.int_digits: int = 5
         self.dec_digits: int = 3
         self.analog_count: int = 0
-        self.unit: str = "㎥"
+        self.unit: str = "m³"
         self.flow_int_digits: int = 3
         self.flow_dec_digits: int = 2
+        self._suppress_control_change: bool = False
 
-        # UI Element References
-        self._card_elements: dict[str, ui.card] = {}
+        # UI References
+        self._category_toggle: ui.toggle | None = None
+        self._preset_select: ui.select | None = None
+        self._model_info_card: ui.card | None = None
+        self._model_title: ui.label | None = None
+        self._model_badge: ui.badge | None = None
+        self._model_desc: ui.label | None = None
+        self._model_icon: ui.icon | None = None
+
         self._controls_container: ui.column | None = None
         self._dec_row: ui.row | None = None
         self._analog_row: ui.row | None = None
         self._flow_container: ui.column | None = None
         self._preview_label: ui.label | None = None
+
         self._cnn_rec_card: ui.card | None = None
         self._cnn_dig_label: ui.label | None = None
         self._cnn_ana_label: ui.label | None = None
@@ -377,9 +147,43 @@ class MeterTypeStep(BaseStep):
         self._flow_int_input: ui.number | None = None
         self._flow_dec_input: ui.number | None = None
 
+        self.presets: list[MeterTypePreset] = []
+        self.preset_by_id: dict[str, MeterTypePreset] = {}
+        self.refresh_presets(force_reload=False)
+
     @property
     def selected_preset(self) -> MeterTypePreset | None:
-        return PRESET_BY_ID.get(self.selected_preset_id)
+        return self.preset_by_id.get(self.selected_preset_id)
+
+    def refresh_presets(self, force_reload: bool = False) -> list[MeterTypePreset]:
+        """Reloads presets from disk and updates UI dropdown options if rendered."""
+        loaded = load_meter_presets(self.config_dir, force_reload=force_reload)
+        if not loaded:
+            loaded = list(DEFAULT_BUILTIN_PRESETS)
+        default_presets = load_meter_presets(force_reload=force_reload)
+        existing_ids = {p.id for p in loaded}
+        for dp in default_presets:
+            if dp.id not in existing_ids:
+                loaded.append(dp)
+        self.presets = sort_meter_presets(loaded)
+        self.preset_by_id = {p.id: p for p in self.presets}
+
+        if force_reload:
+            reload_presets(self.config_dir)
+
+        preset_sel = getattr(self, "_preset_select", None)
+        if preset_sel is not None:
+            options = self._get_filtered_preset_options()
+            preset_sel.options = options
+            if self.selected_preset_id not in self.preset_by_id and options:
+                self._select_preset(next(iter(options)))
+            else:
+                preset_sel.update()
+        return self.presets
+
+    def _handle_refresh_click(self) -> None:
+        self.refresh_presets(force_reload=True)
+        ui.notify("Meter templates reloaded from disk", type="positive")
 
     @property
     def effective_digital_roi_names(self) -> list[str]:
@@ -400,9 +204,18 @@ class MeterTypeStep(BaseStep):
             return []
         return preset.get_analog_roi_names(analog_count=self.analog_count)
 
+    def _get_filtered_preset_options(self) -> dict[str, str]:
+        """Returns mapping of preset_id -> display label filtered by active category."""
+        result: dict[str, str] = {}
+        for p in self.presets:
+            if self.active_category != "all" and p.category != self.active_category:
+                continue
+            result[p.id] = p.label
+        return result
+
     def _select_preset(self, preset_id: str) -> None:
         self.selected_preset_id = preset_id
-        preset = PRESET_BY_ID.get(preset_id)
+        preset = self.preset_by_id.get(preset_id)
         if preset and preset.id != "custom":
             self.int_digits = preset.default_int_digits
             self.dec_digits = preset.default_dec_digits
@@ -411,22 +224,45 @@ class MeterTypeStep(BaseStep):
             self.flow_int_digits = preset.default_flow_int_digits
             self.flow_dec_digits = preset.default_flow_dec_digits
 
-            if self._int_input:
-                self._int_input.value = self.int_digits
-            if self._dec_input:
-                self._dec_input.value = self.dec_digits
-            if self._analog_input:
-                self._analog_input.value = self.analog_count
-            if self._unit_input:
-                self._unit_input.value = self.unit
-            if self._flow_int_input:
-                self._flow_int_input.value = self.flow_int_digits
-            if self._flow_dec_input:
-                self._flow_dec_input.value = self.flow_dec_digits
+            self._suppress_control_change = True
+            try:
+                if self._int_input:
+                    self._int_input.value = self.int_digits
+                if self._dec_input:
+                    self._dec_input.value = self.dec_digits
+                if self._analog_input:
+                    self._analog_input.value = self.analog_count
+                if self._unit_input:
+                    self._unit_input.value = self.unit
+                if self._flow_int_input:
+                    self._flow_int_input.value = self.flow_int_digits
+                if self._flow_dec_input:
+                    self._flow_dec_input.value = self.flow_dec_digits
+            finally:
+                self._suppress_control_change = False
+
+        if self._preset_select and self._preset_select.value != preset_id:
+            self._preset_select.value = preset_id
 
         self._update_ui_state()
+        if self.on_preset_selected and preset and preset.id != "custom":
+            self.on_preset_selected(preset)
+
+    def _on_category_changed(self, category: str) -> None:
+        self.active_category = category
+        if self._preset_select:
+            options = self._get_filtered_preset_options()
+            self._preset_select.options = options
+            # If current selection is not in filtered options, select first available
+            if self.selected_preset_id not in options and options:
+                first_key = next(iter(options))
+                self._select_preset(first_key)
+            else:
+                self._preset_select.update()
 
     def _on_control_change(self) -> None:
+        if getattr(self, "_suppress_control_change", False):
+            return
         if self._int_input and self._int_input.value is not None:
             self.int_digits = int(self._int_input.value)
         if self._dec_input and self._dec_input.value is not None:
@@ -441,34 +277,47 @@ class MeterTypeStep(BaseStep):
             self.flow_dec_digits = int(self._flow_dec_input.value)
 
         self._update_preview()
+        if (
+            self.on_preset_selected
+            and self.selected_preset
+            and self.selected_preset.id != "custom"
+        ):
+            self.on_preset_selected(self.selected_preset)
 
     def _update_ui_state(self) -> None:
-        # Update card active/inactive styles
-        for pid, card in self._card_elements.items():
-            if pid == self.selected_preset_id:
-                card.classes(replace=theme.CARD_SELECTABLE_ACTIVE)
-            else:
-                card.classes(replace=theme.CARD_SELECTABLE_INACTIVE)
-
         preset = self.selected_preset
         is_custom = preset is None or preset.id == "custom"
 
-        # Show/hide configuration container
+        # Update Inspector Card
+        if preset:
+            if self._model_title:
+                self._model_title.set_text(preset.label)
+            if self._model_desc:
+                self._model_desc.set_text(preset.description)
+            if self._model_icon:
+                self._model_icon.name = preset.icon
+            if self._model_badge:
+                tech_text = preset.meter_technology.replace("_", " ").title()
+                self._model_badge.set_text(tech_text)
+
+        # Show/hide customization controls
         if self._controls_container:
             self._controls_container.set_visibility(not is_custom)
 
-        # Show/hide sub-sections
+        # Dynamic sub-section visibility based on preset capabilities
         if preset and not is_custom:
             if self._dec_row:
-                self._dec_row.set_visibility(
-                    preset.id in ("lcd_cumulative", "lcd_cumulative_flow")
+                has_dec = (
+                    preset.cnn.analog_category is None
+                    and preset.id != "generic_mechanical_drums"
                 )
+                self._dec_row.set_visibility(has_dec)
             if self._analog_row:
-                self._analog_row.set_visibility(preset.id == "analog_classic")
+                self._analog_row.set_visibility(preset.cnn.analog_category is not None)
             if self._flow_container:
                 self._flow_container.set_visibility(preset.has_secondary_group)
 
-        # Update CNN recommendation panel
+        # Update CNN recommendations
         if self._cnn_rec_card:
             self._cnn_rec_card.set_visibility(not is_custom)
         if preset and not is_custom:
@@ -517,37 +366,71 @@ class MeterTypeStep(BaseStep):
             # Header row
             with ui.row().classes("w-full items-center gap-2 mb-2"):
                 ui.icon("speed", size="sm").classes("text-indigo-400")
-                ui.label("Select Your Meter Type").classes(theme.HEADING_SECTION)
+                ui.label("Select Your Meter Type & Hardware Model").classes(
+                    theme.HEADING_SECTION
+                )
 
-            # Presets Grid
-            with ui.grid(columns=3).classes(
-                "w-full gap-3 mb-4 grid-cols-1 sm:grid-cols-2 md:grid-cols-3"
-            ):
-                for p in PRESETS:
-                    init_cls = (
-                        theme.CARD_SELECTABLE_ACTIVE
-                        if p.id == self.selected_preset_id
-                        else theme.CARD_SELECTABLE_INACTIVE
+            # Category Filter Chips
+            category_options = {
+                "all": "All Models",
+                "smart": "Smart",
+                "mechanical": "Mechanical",
+                "generic": "Generic & Custom",
+            }
+            with ui.row().classes("w-full items-center gap-2 mb-2 flex-wrap"):
+                ui.label("Filter:").classes(theme.TEXT_MONO_MUTED)
+                self._category_toggle = (
+                    ui.toggle(
+                        category_options,
+                        value=self.active_category,
+                        on_change=lambda e: self._on_category_changed(e.value),
                     )
-                    card = ui.card().classes(init_cls)
-                    self._card_elements[p.id] = card
+                    .props("dense no-caps toggle-color=indigo-600")
+                    .classes("text-xs")
+                )
 
-                    with card:
-                        card.on("click", lambda _, pid=p.id: self._select_preset(pid))
-                        with ui.row().classes("w-full items-center justify-between"):
-                            ui.icon(p.icon, size="md").classes("text-indigo-400")
-                            if p.id == "custom":
-                                ui.badge("Blank", color="slate").classes("text-[10px]")
-                            else:
-                                ui.badge("Preset", color="indigo").classes(
-                                    "text-[10px]"
-                                )
-                        ui.label(p.label).classes(
-                            "font-semibold text-sm text-gray-100 mt-2"
+            # Searchable Dropdown Selection
+            with (
+                ui.card().classes(f"{theme.CARD_DEFAULT} mb-3"),
+                ui.row().classes("w-full items-center gap-3"),
+            ):
+                ui.icon("search", size="sm").classes("text-cyan-400")
+                self._preset_select = (
+                    ui.select(
+                        options=self._get_filtered_preset_options(),
+                        value=self.selected_preset_id,
+                        label="Meter Model / Brand Preset",
+                        with_input=True,
+                        on_change=lambda e: self._select_preset(e.value),
+                    )
+                    .props("outlined dense options-dense")
+                    .classes("w-full flex-grow text-sm")
+                )
+                ui.button(
+                    icon="refresh",
+                    on_click=self._handle_refresh_click,
+                ).props(
+                    "flat dense round color=grey-4"
+                ).tooltip("Reload meter templates from disk")
+
+            # Selected Model Overview Inspector Card
+            self._model_info_card = ui.card().classes(f"{theme.CARD_DEFAULT} mb-3")
+            with self._model_info_card:
+                with ui.row().classes("w-full items-center justify-between"):
+                    with ui.row().classes("items-center gap-2"):
+                        self._model_icon = ui.icon("water_drop", size="md").classes(
+                            "text-indigo-400"
                         )
-                        ui.label(p.description).classes(
-                            "text-xs text-gray-400 leading-relaxed mt-1"
+                        self._model_title = ui.label("").classes(
+                            "font-bold text-base text-gray-100"
                         )
+                    self._model_badge = ui.badge("Preset", color="indigo").classes(
+                        "text-xs px-2.5 py-0.5"
+                    )
+
+                self._model_desc = ui.label("").classes(
+                    "text-xs text-gray-300 leading-relaxed mt-1"
+                )
 
             # Customizable Controls Container
             self._controls_container = ui.column().classes("w-full gap-3 mb-3")
@@ -687,5 +570,20 @@ class MeterTypeStep(BaseStep):
                     "text-emerald-300 whitespace-pre border border-white/5"
                 )
 
-            self._update_ui_state()
+            # Initialize initial preset state (preserves 'custom' default unless selected)
+            self._select_preset(self.selected_preset_id)
+
             super().add_navigator(stepper, first_step, last_step)
+
+
+__all__ = [
+    "DEFAULT_BUILTIN_PRESETS",
+    "HELP_TEXT",
+    "PRESETS",
+    "PRESET_BY_ID",
+    "MeterTypePreset",
+    "MeterTypeStep",
+    "load_meter_presets",
+    "reload_presets",
+    "select_best_model",
+]

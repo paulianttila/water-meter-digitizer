@@ -9,10 +9,10 @@ The **Setup Wizard** (accessible via the **Setup** tab at `/setup`) is an intera
 ## 🧭 10-Step Calibration Flow Overview
 
 ```
-[Step 1: Download Image]
+[Step 1: Meter Type (Presets & CNN)]
        │
        ▼
-[Step 2: Meter Type (Presets & CNN)]
+[Step 2: Download Image]
        │
        ▼
 [Step 3: Initial Rotate]
@@ -43,23 +43,22 @@ The **Setup Wizard** (accessible via the **Setup** tab at `/setup`) is an intera
 
 ## 📋 Step-by-Step Instructions
 
-### Step 1: Download Image
-- **Camera URL**: Enter your snapshot URL (e.g. `http://192.168.1.50/capture` or `file:///data/meter.jpg`).
-- **Network Timeout & Safety**: Configure HTTP timeout (1–60s) and minimum byte threshold to prevent partial frame writes.
-- **Action**: Click **Download** to capture and store the reference image.
+### Step 1: Meter Type Selection & Guided Presets
+- **Searchable Dropdown & Category Filters**: Search through predefined meter models or filter by category (*Smart*, *Mechanical*, *Generic Archetypes*, or *Custom*):
+  - **Axioma Qalcosonic W1**: European smart ultrasonic meter with cumulative total and instant flow registers. Pre-selects `class11` with negative flow detection.
+  - **Generic Archetypes**: LCD Cumulative, LCD Total + Flow, Mechanical 5+4, Drums Only, and Custom (Manual blank canvas).
+- **Adjustable Counts**: Fine-tune the number of integer digits, decimal digits, analog dials, or engineering units (`m³`, `L`, `gal`, `kWh`).
+- **Neural Network Recommendations**: View recommended neural network models and architectures matched to your physical hardware.
+- **Live Preview**: Inspect generated virtual meter format strings before continuing.
+- **Adding & Contributing Meter Models**: You can introduce new meter models without touching code by adding a single INI file into `config/meter_types/` (see `config/meter_types/README.md` and `_template.ini`). Each file defines `[Template]` metadata, default counts, declarative format templates (`"{digits}.{decimals}"` or `"{digits}.{analogs}"`), CNN model preferences, and standard configuration sections that automatically inherit default parameters. Because each model is in its own file, community PRs never conflict with one another!
+- **Preset Hot-Reloading**: Clicking the reload button (or reloading the page) instantly discovers newly added or edited `.ini` preset files and faceplate images from `config/meter_types/` without restarting the application.
 
 ---
 
-### Step 2: Meter Type Selection & Guided Presets
-- **Quick-Start Presets**: Choose a hardware preset matching your meter to automatically generate centered placeholder ROI boxes, virtual meter definitions, and optimal CNN models:
-  - **LCD – Cumulative**: Discrete 7-segment digital display. Pre-selects `class11` neural network.
-  - **LCD – Total + Flow**: Dual-reading LCD meter with cumulative total and instantaneous flow rate. Pre-selects `class11` and negative sign detection.
-  - **Mechanical – 5+4**: 5 rolling odometer drums with 4 rotating analog needle dials. Pre-selects `class100` rolling drum CNN and `continuous` needle dial pointer CNN.
-  - **Mechanical – Drums**: Roller counter drums only. Pre-selects `class100` rolling drum CNN.
-  - **Custom (Manual)**: Start from a blank slate with full manual configuration.
-- **Adjustable Counts**: Fine-tune the number of integer digits, decimal digits, analog dials, or engineering units (`㎥`, `L`, `gal`, `kWh`).
-- **Neural Network Recommendations**: View recommended neural network models and architectures matched to your physical hardware.
-- **Live Preview**: Inspect generated virtual meter format strings before continuing.
+### Step 2: Download Image
+- **Camera URL**: Enter your snapshot URL (e.g. `http://192.168.1.50/capture`, `file:///data/meter.jpg`, or select a bundled template model image like `model://axioma_qalcosonic_w1` or `model://mock_camera` from the dropdown). If an image exists for the selected preset, it is pre-populated automatically. You can also use the reload button next to the URL input to refresh available template images on demand.
+- **Network Timeout & Safety**: Configure HTTP timeout (1–60s) and minimum byte threshold to prevent partial frame writes.
+- **Action**: Click **Download** to capture and store the reference image.
 
 ---
 
@@ -95,10 +94,10 @@ The **Setup Wizard** (accessible via the **Setup** tab at `/setup`) is an intera
 ---
 
 ### Step 6: Digital Region of Interest (ROIs)
-- Bounding boxes over mechanical odometer digits or digital LCD segments (`digit1`, `digit2`, `digit3`, ...). If a preset was selected in Step 2, placeholder boxes are already created and centered for you to align!
+- Bounding boxes over mechanical odometer digits or digital LCD segments (`digit1`, `digit2`, `digit3`, ...). If a preset was selected in Step 1, placeholder boxes are already created and centered for you to align!
 - **Ordering**: Order from left (Most Significant Digit) to right (Least Significant Digit).
 - **Negative Sign Detection**: Enable `DetectNegativeSign` to recognize minus signs (`-`) for reverse flow meters.
-- **Model Selection**: Automatically pre-selected by Step 2 (`dig-class11_*` for LCD or `dig-class100_*` for mechanical drums).
+- **Model Selection**: Automatically pre-selected by Step 1 (`dig-class11_*` for LCD or `dig-class100_*` for mechanical drums).
 - **Canvas Alignment Tools**: Use **Align Top/Bottom/Left/Right**, **Distribute Evenly**, and **Select All** to standardize digit heights and spacing.
 
 ---
@@ -106,7 +105,7 @@ The **Setup Wizard** (accessible via the **Setup** tab at `/setup`) is an intera
 ### Step 7: Analog Region of Interest (ROIs)
 - Bounding boxes centered on rotating analog needle dials (`analog1`, `analog2`, `analog3`, ...). Pre-created if an analog preset was selected!
 - **Ordering**: Order dials from largest unit ($0.1$) to smallest unit ($0.0001$).
-- **Model Selection**: Automatically pre-selected by Step 2 (`ana-cont_*`).
+- **Model Selection**: Automatically pre-selected by Step 1 (`ana-cont_*`).
 
 ---
 

@@ -36,8 +36,18 @@ class ConfigFileService:
 
     def load(self) -> str:
         """Read configuration file contents within the config lock."""
-        with self._lock, open(self.config_file, encoding="utf-8") as f:
-            return f.read()
+        with self._lock:
+            cfg_file = self.config_file
+            if not cfg_file or not os.path.exists(cfg_file):
+                return ""
+            try:
+                with open(cfg_file, encoding="utf-8") as f:
+                    return f.read()
+            except Exception as e:
+                logger.warning(
+                    "Could not read configuration file '%s': %s", cfg_file, e
+                )
+                return ""
 
     def save(self, data: str) -> None:
         """Validate syntax, create backup, and atomically persist configuration to disk."""

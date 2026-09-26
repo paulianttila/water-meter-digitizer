@@ -3,6 +3,7 @@ import os
 import platform
 import sys
 import time
+from pathlib import Path
 from typing import Any
 
 import requests
@@ -219,6 +220,14 @@ def get_allowed_asset_directories(config: Any = None) -> list[str]:
             allowed.append(config.config_dir)
         if getattr(config, "data_dir", None):
             allowed.append(config.data_dir)
+
+    config_file_env = os.environ.get("CONFIG_FILE")
+    if config_file_env:
+        with contextlib.suppress(Exception):
+            allowed.append(str(Path(config_file_env).resolve().parent))
+
+    repo_root = Path(__file__).resolve().parents[2]
+    allowed.append(str(repo_root / "config"))
     allowed.append(os.getcwd())
     return allowed
 

@@ -55,6 +55,10 @@ class CallbacksImpl(Callbacks):
         get_previous_values_fn: Callable[[], dict[str, dict[str, str]]] | None = None,
         set_previous_value_fn: Callable[[str, str], dict[str, Any]] | None = None,
         get_config_version_fn: Callable[[], int] | None = None,
+        is_config_missing_fn: Callable[[], bool] | None = None,
+        get_target_config_file_fn: Callable[[], str] | None = None,
+        copy_default_config_fn: Callable[[], bool] | None = None,
+        init_profile_for_wizard_fn: Callable[[], bool] | None = None,
         frame_service: FrameService | None = None,
     ) -> None:
         self._get_meter_data = get_meter_data_fn
@@ -64,6 +68,10 @@ class CallbacksImpl(Callbacks):
         self._save_config_file = save_config_file_fn
         self._use_config = use_config_fn
         self._get_config_version = get_config_version_fn
+        self._is_config_missing = is_config_missing_fn
+        self._get_target_config_file = get_target_config_file_fn
+        self._copy_default_config = copy_default_config_fn
+        self._init_profile_for_wizard = init_profile_for_wizard_fn
         self._get_storage = get_storage_fn
         self._list_backups = list_backups_fn
         self._restore_backup = restore_backup_fn
@@ -117,8 +125,32 @@ class CallbacksImpl(Callbacks):
             get_previous_values_fn=accessor.get_previous_values,
             set_previous_value_fn=accessor.set_previous_value,
             get_config_version_fn=accessor.get_config_version,
+            is_config_missing_fn=accessor.is_config_missing,
+            get_target_config_file_fn=accessor.get_target_config_file,
+            copy_default_config_fn=accessor.copy_default_config,
+            init_profile_for_wizard_fn=accessor.init_profile_for_wizard,
             frame_service=frame_service or FrameService(storage=accessor.get_storage),
         )
+
+    def is_config_missing(self) -> bool:
+        if self._is_config_missing is not None:
+            return self._is_config_missing()
+        return False
+
+    def get_target_config_file(self) -> str:
+        if self._get_target_config_file is not None:
+            return self._get_target_config_file()
+        return ""
+
+    def copy_default_config(self) -> bool:
+        if self._copy_default_config is not None:
+            return self._copy_default_config()
+        return False
+
+    def init_profile_for_wizard(self) -> bool:
+        if self._init_profile_for_wizard is not None:
+            return self._init_profile_for_wizard()
+        return False
 
     def get_meter_data(
         self,

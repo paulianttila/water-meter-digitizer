@@ -101,3 +101,36 @@ def test_download_image_step_show_renders_controls():
         assert step.url is not None
         assert step.timeout is not None
         assert step.minsize is not None
+
+
+def test_download_image_step_refresh_options(tmp_path):
+    step = DownloadImageStep(
+        name="Download",
+        set_image_callback=MagicMock(),
+        config_dir=tmp_path,
+    )
+    mock_url = MagicMock()
+    mock_url.value = "model://existing"
+    mock_url.options = {}
+    step.url = mock_url
+
+    # Create meter preset and image in tmp_path
+    mdir = tmp_path / "meter_types"
+    mdir.mkdir()
+    (mdir / "custom_face.ini").write_text(
+        """[Template]
+Id = custom_face
+Label = Custom Faceplate Meter
+""",
+        encoding="utf-8",
+    )
+    (mdir / "custom_face.png").write_bytes(b"dummy")
+
+    options = step.refresh_options(force_reload=True)
+    assert "model://custom_face" in options
+    assert mock_url.options == options
+
+    with patch("gui.wizard.steps.download.ui.notify") as mock_notify:
+        step._handle_refresh_click()
+        mock_notify.assert_called_once()
+        assert "reloaded" in mock_notify.call_args[0][0].lower()

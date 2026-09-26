@@ -49,6 +49,22 @@ class Callbacks(Protocol):
         """Get active configuration version counter (increments on reload)."""
         ...
 
+    def is_config_missing(self) -> bool:
+        """Check if target configuration file is missing and needs initialization."""
+        ...
+
+    def get_target_config_file(self) -> str:
+        """Get the configured or target config.ini file path."""
+        ...
+
+    def copy_default_config(self) -> bool:
+        """Copy default demo configuration into target profile directory."""
+        ...
+
+    def init_profile_for_wizard(self) -> bool:
+        """Initialize target directory with baseline config for the Setup Wizard."""
+        ...
+
     def get_storage(self) -> StorageBackend | None:
         """Get history storage backend"""
         ...
