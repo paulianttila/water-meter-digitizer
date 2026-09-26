@@ -71,40 +71,41 @@ def test_step_download_show():
 
 
 def test_step_final_actions():
-    mock_callbacks = MagicMock(spec=Callbacks)
-    set_img = MagicMock()
-    save_refs = MagicMock()
+    with patch("gui.wizard.steps.final.ui.notify"):
+        mock_callbacks = MagicMock(spec=Callbacks)
+        set_img = MagicMock()
+        save_refs = MagicMock()
 
-    step = FinalStep(
-        name="Final",
-        callbacks=mock_callbacks,
-        set_image_callback=set_img,
-        save_refs_func=save_refs,
-    )
-    step.editor = MagicMock(value="[DEFAULT]\nLogLevel=DEBUG\n")
+        step = FinalStep(
+            name="Final",
+            callbacks=mock_callbacks,
+            set_image_callback=set_img,
+            save_refs_func=save_refs,
+        )
+        step.editor = MagicMock(value="[DEFAULT]\nLogLevel=DEBUG\n")
 
-    # set_config
-    cfg = Config()
-    step.set_config(cfg)
-    assert step.txt == step.editor.value
+        # set_config
+        cfg = Config()
+        step.set_config(cfg)
+        assert step.txt == step.editor.value
 
-    # syntax check success
-    assert step._syntax_check() is True
+        # syntax check success
+        assert step._syntax_check() is True
 
-    # save config
-    step._save_config()
-    assert step.new_config_saved is True
-    save_refs.assert_called_once()
-    mock_callbacks.save_config_file.assert_called_once()
+        # save config
+        step._save_config()
+        assert step.new_config_saved is True
+        save_refs.assert_called_once()
+        mock_callbacks.save_config_file.assert_called_once()
 
-    # use config
-    step._use_config()
-    assert step.new_config_saved is False
-    mock_callbacks.use_config.assert_called_once()
+        # use config
+        step._use_config()
+        assert step.new_config_saved is False
+        mock_callbacks.use_config.assert_called_once()
 
-    # syntax error
-    step.editor.value = "invalid ini [[["
-    assert step._syntax_check() is False
+        # syntax error
+        step.editor.value = "invalid ini [[["
+        assert step._syntax_check() is False
 
 
 def test_step_final_show_and_json_preview():

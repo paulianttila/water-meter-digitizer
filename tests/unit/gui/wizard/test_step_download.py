@@ -134,3 +134,48 @@ Label = Custom Faceplate Meter
         step._handle_refresh_click()
         mock_notify.assert_called_once()
         assert "reloaded" in mock_notify.call_args[0][0].lower()
+
+
+def test_download_image_step_custom_url_not_reverted_to_model():
+    """Verify that changing a model:// URL to an http:// URL downloads the custom URL
+
+    and does not revert back to the model URL.
+    """
+    step = DownloadImageStep(
+        name="Download",
+        set_image_callback=MagicMock(),
+    )
+    mock_url = MagicMock()
+    mock_url.value = "model://axioma_qalcosonic_w1"
+    mock_url.options = {
+        "model://axioma_qalcosonic_w1": "Axioma Qalcosonic W1",
+        "model://mock_camera": "Mock Camera",
+    }
+    step.url = mock_url
+    step.timeout = MagicMock(value=10)
+
+    # User edits URL to custom camera URL
+    step.url.value = "http://192.168.40.20/image/jpeg.cgi"
+
+    with patch("gui.wizard.steps.download.ImageProcessor") as mock_ip_cls:
+        mock_ip = MagicMock()
+        mock_ip.download_image.return_value = mock_ip
+        mock_ip.get_image_as_base64_str.return_value = "base64_custom_camera_image"
+        mock_ip_cls.return_value = mock_ip
+
+        result = asyncio.run(step.download())
+        assert result is True
+        # Verify the custom camera URL was downloaded, NOT the model:// URL
+        mock_ip.download_image.assert_called_once_with(
+            "http://192.168.40.20/image/jpeg.cgi", 10
+        )
+        assert step.url.value == "http://192.168.40.20/image/jpeg.cgi"
+
+
+def test_download_image_step_set_url_value():
+    step = DownloadImageStep(name="Download", set_image_callback=MagicMock())
+    step.url = MagicMock()
+    step.url.value = ""
+
+    step._set_url_value("model://axioma_qalcosonic_w1")
+    assert step.url.value == "model://axioma_qalcosonic_w1"

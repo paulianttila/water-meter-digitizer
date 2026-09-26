@@ -26,10 +26,11 @@ class DownloadImageStep(BaseStep):
         spinner=None,
         config_dir: str | Path | None = None,
     ) -> None:
-        self.url: ui.select
+        self.url: ui.input
         self.timeout: ui.number
         self.minsize: ui.number
         self._initial_url: str = ""
+        self._url_menu: ui.menu | None = None
         self.config_dir = config_dir
         self.on_error_callback = on_error_callback
         super().__init__(
@@ -77,9 +78,26 @@ class DownloadImageStep(BaseStep):
         )
         options = self._get_url_options(current_url=cur, force_reload=force_reload)
         if hasattr(self, "url") and self.url is not None:
-            self.url.options = options
-            self.url.update()
+            self.url.options = options  # type: ignore[attr-defined]
+            self._render_url_menu_items()
+            if hasattr(self.url, "update"):
+                self.url.update()
         return options
+
+    def _render_url_menu_items(self) -> None:
+        """Populates the template picker dropdown menu attached to the URL input."""
+        if not hasattr(self, "_url_menu") or self._url_menu is None:
+            return
+        with contextlib.suppress(Exception):
+            self._url_menu.clear()
+            with self._url_menu:
+                opts = getattr(self.url, "options", {}) or {}
+                for uri, label in opts.items():
+                    ui.menu_item(label, on_click=lambda u=uri: self._set_url_value(u))
+
+    def _set_url_value(self, uri: str) -> None:
+        if hasattr(self, "url") and self.url is not None:
+            self.url.value = uri
 
     def _handle_refresh_click(self) -> None:
         self.refresh_options(force_reload=True)
@@ -95,6 +113,7 @@ class DownloadImageStep(BaseStep):
                 and image_source.url not in self.url.options
             ):
                 self.url.options[image_source.url] = image_source.url
+                self._render_url_menu_items()
             self.url.value = image_source.url
         if hasattr(self, "timeout") and self.timeout is not None:
             self.timeout.value = image_source.timeout
@@ -131,20 +150,30 @@ class DownloadImageStep(BaseStep):
                 init_val = getattr(self, "_initial_url", "")
                 options = self._get_url_options(init_val)
                 self.url = (
-                    ui.select(
-                        options=options,
-                        value=init_val or next(iter(options.keys()), ""),
+                    ui.input(
                         label="URL",
-                        with_input=True,
+                        value=init_val or next(iter(options.keys()), ""),
+                        placeholder="http://... or model://...",
                     )
-                    .props(
-                        "dense outlined use-input fill-input new-value-mode=add-unique"
-                    )
+                    .props("dense outlined clearable")
                     .classes("flex-grow")
                     .tooltip(
-                        "Camera snapshot URL or template model image (e.g. model://... or http://...)"
+                        "Camera snapshot URL (http://...) or template model image (model://...)"
                     )
                 )
+                self.url.options = options  # type: ignore[attr-defined]
+                self.url.on("keydown.enter", self.download)
+
+                with (
+                    self.url.add_slot("append"),
+                    ui.button(icon="arrow_drop_down")
+                    .props("flat dense round")
+                    .tooltip("Choose template image or sample URL"),
+                ):
+                    self._url_menu = ui.menu().props("auto-close")
+                    self._url_menu.on("before-show", self._render_url_menu_items)
+                    self._render_url_menu_items()
+
                 ui.button(icon="refresh", on_click=self._handle_refresh_click).props(
                     "dense flat"
                 ).tooltip("Reload template images from disk")
