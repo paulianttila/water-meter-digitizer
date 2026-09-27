@@ -457,3 +457,92 @@ def test_setup_wizard_axioma_preset_selection(page: Page, live_server_url: str):
     assert "decimal1" in digit_names
     assert "flow1" in digit_names
     assert "flow_dec1" in digit_names
+
+
+@pytest.mark.ui
+def test_setup_wizard_align_to_model_dialog(page: Page, live_server_url: str):
+    """Verify Align to Model Template dialog opens from Step 2 and applies calculated ROIs."""
+    page.goto(f"{live_server_url}/gui", wait_until="domcontentloaded")
+    page.get_by_role("tab", name="Setup").click()
+    expect(page.get_by_text("Step 1 of 10: Meter type")).to_be_visible(timeout=10000)
+
+    # Select a model preset in Step 1
+    template_select = page.get_by_label("Meter Model / Brand Preset")
+    expect(template_select).to_be_visible()
+    template_select.click()
+    page.wait_for_timeout(300)
+    page.get_by_text("Axioma Qalcosonic W1").click()
+    page.wait_for_timeout(500)
+
+    apply_btn = page.locator("div.q-dialog button:has-text('Apply Preset')").first
+    if apply_btn.is_visible():
+        apply_btn.click()
+        page.wait_for_timeout(500)
+
+    continue_btn = page.get_by_role("button", name="Continue")
+    continue_btn.click()
+    page.wait_for_timeout(400)
+
+    # Step 2: Download image
+    expect(page.get_by_text("Step 2 of 10: Download image")).to_be_visible(timeout=5000)
+
+    # Advance to Step 3: Initial rotate
+    continue_btn.click()
+    page.wait_for_timeout(400)
+    expect(page.get_by_text("Step 3 of 10: Initial rotate")).to_be_visible(timeout=5000)
+
+    # Check for Align to Model Template button
+    align_btn = page.get_by_role("button", name="Align to Model Template")
+    expect(align_btn).to_be_visible()
+
+    # Open dialog
+    align_btn.click()
+    page.wait_for_timeout(500)
+
+    # Dialog header
+    expect(page.get_by_text("Align Camera Photo to Model:")).to_be_visible(timeout=5000)
+
+    # Sliders and controls are present
+    expect(page.get_by_text("Zoom / Scale")).to_be_visible()
+    expect(page.get_by_text("Pan Position (X / Y)")).to_be_visible()
+    expect(page.get_by_text("Fine Rotation")).to_be_visible()
+
+    # Floating Canvas Mini Toolbar HUD is visible
+    zoom_in_btn = page.locator("button:has(.q-icon:has-text('add'))").first
+    zoom_out_btn = page.locator("button:has(.q-icon:has-text('remove'))").first
+    expect(zoom_in_btn).to_be_visible()
+    expect(zoom_out_btn).to_be_visible()
+    zoom_in_btn.click()
+    page.wait_for_timeout(200)
+
+    # Keyboard navigation: press '+' to zoom in, and 'ArrowRight' to pan
+    page.keyboard.press("+")
+    page.wait_for_timeout(100)
+    page.keyboard.press("ArrowRight")
+    page.wait_for_timeout(100)
+
+    # Quick preset chips in sidebar
+    plus_10_btn = page.locator("button:has-text('+10%')").first
+    expect(plus_10_btn).to_be_visible()
+    plus_10_btn.click()
+    page.wait_for_timeout(200)
+
+    # ROI Overlays controls and chips are present
+    expect(page.get_by_text("ROI Overlays")).to_be_visible()
+    digit1_btn = page.locator("button:has-text('digit1')").first
+    expect(digit1_btn).to_be_visible()
+    # Click to toggle digit1 visibility
+    digit1_btn.click()
+    page.wait_for_timeout(300)
+    # Click again to restore
+    digit1_btn.click()
+    page.wait_for_timeout(300)
+
+    # Click Apply Alignment & Calculate ROIs
+    apply_btn = page.get_by_role("button", name="Apply Alignment & Calculate ROIs")
+    expect(apply_btn).to_be_visible()
+    apply_btn.click()
+    page.wait_for_timeout(500)
+
+    # Dialog closes and positive notification appears
+    expect(page.get_by_text("Aligned to ")).to_be_visible(timeout=5000)

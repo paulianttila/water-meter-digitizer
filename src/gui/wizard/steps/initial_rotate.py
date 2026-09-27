@@ -29,6 +29,8 @@ class InitialRotateStep(BaseStep):
         self.angle: float = 0.0
         self.org_image: str = ""
         self.angle_label: ui.label
+        self.on_align_to_model: Callable[[], None] | None = None
+        self.align_to_model_btn: ui.button | None = None
 
     def load_from_config(self, alignment: Alignment) -> None:
         self.angle = int(alignment.rotate_angle)
@@ -115,4 +117,31 @@ class InitialRotateStep(BaseStep):
                     "Restore original image"
                 )
 
+            with (
+                ui.row().classes(
+                    "w-full items-center justify-between mt-2 pt-2 border-t border-white/10 flex-wrap gap-2"
+                ),
+                ui.row().classes("items-center gap-2"),
+            ):
+                self.align_to_model_btn = (
+                    ui.button(
+                        "Align to Model Template",
+                        icon="filter_center_focus",
+                        on_click=self._handle_align_to_model_click,
+                    )
+                    .props("unelevated dense")
+                    .classes(
+                        "bg-gradient-to-r from-indigo-600 to-cyan-600 "
+                        "hover:from-indigo-500 hover:to-cyan-500 text-white font-semibold px-3 py-1 shadow-sm text-xs"
+                    )
+                    .bind_enabled_from(self, "image", lambda img: bool(img))
+                    .tooltip(
+                        "Pan and scale your rotated camera photo under the selected meter model wireframe to auto-calculate all ROIs"
+                    )
+                )
+
             super().add_navigator(stepper, first_step, last_step)
+
+    def _handle_align_to_model_click(self) -> None:
+        if self.on_align_to_model:
+            self.on_align_to_model()

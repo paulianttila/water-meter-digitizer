@@ -63,7 +63,9 @@ The **Setup Wizard** (accessible via the **Setup** tab at `/setup`) is an intera
 ---
 
 ### Step 3: Initial Rotate
-- Rotate the image in 90° increments or use the fine-tuning angle slider until all meter numbers and dials are horizontally and vertically upright.
+- Rotate the image in 90° increments (`-90°`, `180°`, `+90°`) or reset rotation until all meter numbers and dials are horizontally and vertically upright.
+- **✨ Align to Model Template**: If you selected a meter model preset in Step 1, click **Align to Model Template** to open the interactive alignment dialog on your upright photo. Pan (via mouse drag, arrow keys, or buttons) and scale (mouse wheel zoom to cursor, HUD buttons, or sliders) your camera picture directly underneath fixed template ROIs (alignment reference markers, digital digits, and analog dials). When you click **Apply Alignment & Calculate ROIs**, the wizard automatically projects and configures all reference markers, digital/analog ROIs, and fine rotation for your specific camera frame!
+
 
 ---
 

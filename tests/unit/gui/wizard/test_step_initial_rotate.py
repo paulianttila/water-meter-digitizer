@@ -66,3 +66,14 @@ def test_initial_rotate_show():
         stepper = MagicMock()
         asyncio.run(step.show(stepper))
         assert step.angle_label is not None
+        assert step.align_to_model_btn is not None
+
+
+def test_initial_rotate_step_align_to_model_callback():
+    """Verify _handle_align_to_model_click triggers on_align_to_model callback."""
+    step = InitialRotateStep(name="Rotate", set_image_callback=MagicMock())
+    mock_cb = MagicMock()
+    step.on_align_to_model = mock_cb
+
+    step._handle_align_to_model_click()
+    mock_cb.assert_called_once()

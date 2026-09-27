@@ -2,6 +2,7 @@ import base64
 import logging
 import time
 from hashlib import sha256
+from typing import Any
 
 from nicegui import events, ui
 
@@ -10,6 +11,7 @@ from callbacks import Callbacks
 from config.meter_presets import MeterTypePreset
 from configuration import Config
 from gui.components import open_config_history_dialog, open_confirm_dialog
+from gui.dialogs import open_model_alignment_dialog
 from gui.pages.base import BasePage
 from gui.wizard.config_manager import WizardConfigManager, resolve_model_path
 from gui.wizard.navigator import (
@@ -899,6 +901,47 @@ class SetupPage(BasePage):
             analog_models_dir=self.callbacks.get_config().analog_models_dir,
             spinner=self.spinner,
         )
+
+        def open_model_alignment() -> None:
+            preset = self.meter_type_step.selected_preset
+            if not preset or preset.id == "custom":
+                ui.notify(
+                    "Please select a meter model preset in Step 1 before aligning.",
+                    type="warning",
+                )
+                return
+            img_b64 = (
+                self.initial_rotate_step.image
+                or self.download_image_step.get_image()
+                or self.image
+            )
+            if not img_b64:
+                ui.notify("Please download a camera image first.", type="warning")
+                return
+
+            def on_alignment_applied(results: dict[str, Any]) -> None:
+                if results.get("references"):
+                    self.draw_refs_step.load_rois(results["references"])
+                if results.get("digital"):
+                    self.draw_digital_rois_step.load_rois(results["digital"])
+                if results.get("analog"):
+                    self.draw_analog_rois_step.load_rois(results["analog"])
+                angle = float(results.get("rotation", 0.0))
+                if angle != 0.0 and hasattr(self.initial_rotate_step, "_rotate"):
+                    total_angle = (self.initial_rotate_step.angle + angle) % 360
+                    self.initial_rotate_step._rotate(total_angle)
+                update_svg()
+
+            open_model_alignment_dialog(
+                camera_image_b64=img_b64,
+                preset=preset,
+                digital_names=self.meter_type_step.effective_digital_roi_names,
+                analog_names=self.meter_type_step.effective_analog_roi_names,
+                on_applied=on_alignment_applied,
+            )
+
+        self.initial_rotate_step.on_align_to_model = open_model_alignment
+
         self.meters_step = MeterStep(
             name=NAME_METERS,
             set_image_callback=set_image,
