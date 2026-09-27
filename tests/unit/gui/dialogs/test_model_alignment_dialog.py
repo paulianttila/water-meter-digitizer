@@ -377,3 +377,105 @@ def test_open_model_alignment_dialog_wheel_zoom_and_keyboard_nudge():
         # Closed dialog ignores keys
         mock_dialog.value = False
         key_handler(ke_plus)
+
+
+def test_open_model_alignment_dialog_number_inputs():
+    """Verify ui.number inputs are created for scale, pan X/Y, angle, and opacity, and handle input."""
+    b64_img = _create_test_image_b64(640, 480)
+    preset = MeterTypePreset(
+        id="test_meter",
+        label="Test Meter",
+        description="Test Meter description",
+        reference_resolution={"width": 640, "height": 480},
+    )
+
+    with patch("gui.dialogs.model_alignment_dialog.ui") as mock_ui:
+        mock_dialog = MagicMock()
+        mock_dialog.__enter__.return_value = mock_dialog
+        mock_ui.dialog.return_value = mock_dialog
+
+        mock_card = MagicMock()
+        mock_card.__enter__.return_value = mock_card
+        mock_ui.card.return_value = mock_card
+
+        mock_row = MagicMock()
+        mock_row.__enter__.return_value = mock_row
+        mock_ui.row.return_value = mock_row
+
+        mock_col = MagicMock()
+        mock_col.__enter__.return_value = mock_col
+        mock_ui.column.return_value = mock_col
+
+        mock_viewport = MagicMock()
+        mock_ui.interactive_image.return_value = mock_viewport
+
+        mock_slider = MagicMock()
+        mock_slider.props.return_value = mock_slider
+        mock_slider.classes.return_value = mock_slider
+        mock_ui.slider.return_value = mock_slider
+
+        mock_btn = MagicMock()
+        mock_btn.props.return_value = mock_btn
+        mock_btn.classes.return_value = mock_btn
+        mock_btn.tooltip.return_value = mock_btn
+        mock_ui.button.return_value = mock_btn
+
+        number_inputs: list[dict[str, Any]] = []
+
+        def fake_number(*args, **kwargs):
+            m = MagicMock()
+            m.props.return_value = m
+            m.classes.return_value = m
+            m.tooltip.return_value = m
+            number_inputs.append({"args": args, "kwargs": kwargs, "mock": m})
+            return m
+
+        mock_ui.number.side_effect = fake_number
+
+        open_model_alignment_dialog(
+            camera_image_b64=b64_img,
+            preset=preset,
+        )
+
+        # Verify 5 ui.number inputs: scale, pan_x, pan_y, angle, opacity
+        assert len(number_inputs) == 5
+
+        # 1. Scale input
+        scale_input = number_inputs[0]
+        assert scale_input["kwargs"].get("step") == 0.01
+        on_scale_change = scale_input["kwargs"].get("on_change")
+        assert on_scale_change is not None
+        ev = MagicMock(value=1.20)
+        on_scale_change(ev)
+
+        # 2. Pan X input
+        pan_x_input = number_inputs[1]
+        assert pan_x_input["kwargs"].get("step") == 1
+        on_pan_x_change = pan_x_input["kwargs"].get("on_change")
+        assert on_pan_x_change is not None
+        ev = MagicMock(value=35.0)
+        on_pan_x_change(ev)
+
+        # 3. Pan Y input
+        pan_y_input = number_inputs[2]
+        assert pan_y_input["kwargs"].get("step") == 1
+        on_pan_y_change = pan_y_input["kwargs"].get("on_change")
+        assert on_pan_y_change is not None
+        ev = MagicMock(value=-20.0)
+        on_pan_y_change(ev)
+
+        # 4. Angle input
+        angle_input = number_inputs[3]
+        assert angle_input["kwargs"].get("step") == 0.1
+        on_angle_change = angle_input["kwargs"].get("on_change")
+        assert on_angle_change is not None
+        ev = MagicMock(value=3.2)
+        on_angle_change(ev)
+
+        # 5. Opacity input
+        opacity_input = number_inputs[4]
+        assert opacity_input["kwargs"].get("step") == 5
+        on_opacity_change = opacity_input["kwargs"].get("on_change")
+        assert on_opacity_change is not None
+        ev = MagicMock(value=60)
+        on_opacity_change(ev)

@@ -214,13 +214,21 @@ def open_model_alignment_dialog(
 
         # Pre-declare UI control handles for centralized synchronization
         scale_slider: ui.slider | None = None
+        scale_number: ui.number | None = None
         pan_x_slider: ui.slider | None = None
+        pan_x_number: ui.number | None = None
         pan_y_slider: ui.slider | None = None
+        pan_y_number: ui.number | None = None
         angle_slider: ui.slider | None = None
+        angle_number: ui.number | None = None
+        opacity_slider: ui.slider | None = None
+        opacity_number: ui.number | None = None
         scale_label: ui.label | None = None
         angle_label: ui.label | None = None
+        opacity_label: ui.label | None = None
         hud_scale_label: ui.label | None = None
         hud_angle_label: ui.label | None = None
+        _updating_controls = False
 
         def update_canvas_view() -> None:
             svg_data = build_svg_content()
@@ -228,22 +236,43 @@ def open_model_alignment_dialog(
             viewport_image.set_source(f"data:image/svg+xml;base64,{b64_svg}")
 
         def sync_controls() -> None:
-            if scale_slider is not None:
-                scale_slider.value = state["scale"]
-            if pan_x_slider is not None:
-                pan_x_slider.value = state["pan_x"]
-            if pan_y_slider is not None:
-                pan_y_slider.value = state["pan_y"]
-            if angle_slider is not None:
-                angle_slider.value = state["angle"]
-            if scale_label is not None:
-                scale_label.text = f"{int(state['scale'] * 100)}%"
-            if angle_label is not None:
-                angle_label.text = f"{state['angle']:.1f}°"
-            if hud_scale_label is not None:
-                hud_scale_label.text = f"{int(state['scale'] * 100)}%"
-            if hud_angle_label is not None:
-                hud_angle_label.text = f"{state['angle']:.1f}°"
+            nonlocal _updating_controls
+            if _updating_controls:
+                return
+            _updating_controls = True
+            try:
+                if scale_slider is not None:
+                    scale_slider.value = state["scale"]
+                if scale_number is not None:
+                    scale_number.value = round(state["scale"], 2)
+                if pan_x_slider is not None:
+                    pan_x_slider.value = state["pan_x"]
+                if pan_x_number is not None:
+                    pan_x_number.value = round(state["pan_x"], 1)
+                if pan_y_slider is not None:
+                    pan_y_slider.value = state["pan_y"]
+                if pan_y_number is not None:
+                    pan_y_number.value = round(state["pan_y"], 1)
+                if angle_slider is not None:
+                    angle_slider.value = state["angle"]
+                if angle_number is not None:
+                    angle_number.value = round(state["angle"], 1)
+                if opacity_slider is not None:
+                    opacity_slider.value = state["opacity"]
+                if opacity_number is not None:
+                    opacity_number.value = int(state["opacity"] * 100)
+                if scale_label is not None:
+                    scale_label.text = f"{int(state['scale'] * 100)}%"
+                if angle_label is not None:
+                    angle_label.text = f"{state['angle']:.1f}°"
+                if opacity_label is not None:
+                    opacity_label.text = f"{int(state['opacity'] * 100)}%"
+                if hud_scale_label is not None:
+                    hud_scale_label.text = f"{int(state['scale'] * 100)}%"
+                if hud_angle_label is not None:
+                    hud_angle_label.text = f"{state['angle']:.1f}°"
+            finally:
+                _updating_controls = False
             update_canvas_view()
 
         def apply_zoom(
@@ -472,13 +501,39 @@ def open_model_alignment_dialog(
                 with ui.card().classes(
                     "w-full p-2.5 bg-slate-900/80 border border-white/10 rounded-xl gap-1.5"
                 ):
+
+                    def on_scale_number_change(e: Any) -> None:
+                        if _updating_controls:
+                            return
+                        if e.value is not None:
+                            try:
+                                val = float(e.value)
+                                if abs(val - state["scale"]) > 0.005:
+                                    apply_zoom(val)
+                            except (ValueError, TypeError):
+                                pass
+
                     with ui.row().classes("w-full justify-between items-center"):
                         ui.label("Zoom / Scale").classes(
                             "font-bold text-slate-200 text-xs"
                         )
-                        scale_label = ui.label(f"{int(state['scale'] * 100)}%").classes(
-                            "font-mono text-cyan-400 font-bold"
-                        )
+                        with ui.row().classes("items-center gap-1.5"):
+                            scale_label = ui.label(
+                                f"{int(state['scale'] * 100)}%"
+                            ).classes("font-mono text-cyan-400 font-bold text-xs")
+                            scale_number = (
+                                ui.number(
+                                    value=round(state["scale"], 2),
+                                    min=0.15,
+                                    max=2.50,
+                                    step=0.01,
+                                    format="%.2f",
+                                    on_change=on_scale_number_change,
+                                )
+                                .props("dense outlined")
+                                .classes("w-20 text-xs font-mono")
+                                .tooltip("Exact scale multiplier (e.g. 1.00 = 100%)")
+                            )
 
                     with ui.row().classes("w-full justify-between gap-1 mt-0.5"):
                         ui.button(
@@ -507,7 +562,9 @@ def open_model_alignment_dialog(
                             "text-slate-300 bg-slate-800/80 hover:bg-slate-700/80 px-1.5 py-0.5 rounded text-[10px]"
                         )
 
-                    def on_scale_change(e: Any) -> None:
+                    def on_scale_slider_change(e: Any) -> None:
+                        if _updating_controls:
+                            return
                         val = float(e.value or 1.0)
                         apply_zoom(val)
 
@@ -517,7 +574,7 @@ def open_model_alignment_dialog(
                             max=2.50,
                             step=0.01,
                             value=state["scale"],
-                            on_change=on_scale_change,
+                            on_change=on_scale_slider_change,
                         )
                         .props("dense")
                         .classes("w-full")
@@ -561,53 +618,131 @@ def open_model_alignment_dialog(
                                 "Pan Right (+5px)"
                             )
 
-                    def on_pan_x_change(e: Any) -> None:
+                    def on_pan_x_slider_change(e: Any) -> None:
+                        if _updating_controls:
+                            return
                         state["pan_x"] = float(e.value or 0.0)
-                        update_canvas_view()
+                        sync_controls()
 
-                    def on_pan_y_change(e: Any) -> None:
+                    def on_pan_x_number_change(e: Any) -> None:
+                        if _updating_controls:
+                            return
+                        if e.value is not None:
+                            try:
+                                state["pan_x"] = float(e.value)
+                                sync_controls()
+                            except (ValueError, TypeError):
+                                pass
+
+                    def on_pan_y_slider_change(e: Any) -> None:
+                        if _updating_controls:
+                            return
                         state["pan_y"] = float(e.value or 0.0)
-                        update_canvas_view()
+                        sync_controls()
+
+                    def on_pan_y_number_change(e: Any) -> None:
+                        if _updating_controls:
+                            return
+                        if e.value is not None:
+                            try:
+                                state["pan_y"] = float(e.value)
+                                sync_controls()
+                            except (ValueError, TypeError):
+                                pass
 
                     with ui.row().classes("w-full items-center justify-between gap-2"):
-                        ui.label("X:").classes("font-mono text-slate-400 w-4")
+                        ui.label("X:").classes("font-mono text-slate-400 text-xs w-4")
                         pan_x_slider = (
                             ui.slider(
                                 min=-canvas_w,
                                 max=canvas_w,
                                 step=1,
                                 value=state["pan_x"],
-                                on_change=on_pan_x_change,
+                                on_change=on_pan_x_slider_change,
                             )
                             .props("dense")
                             .classes("flex-1")
                         )
+                        pan_x_number = (
+                            ui.number(
+                                value=round(state["pan_x"], 1),
+                                min=-canvas_w,
+                                max=canvas_w,
+                                step=1,
+                                format="%.0f",
+                                on_change=on_pan_x_number_change,
+                            )
+                            .props("dense outlined")
+                            .classes("w-20 text-xs font-mono")
+                            .tooltip("Exact X pan offset in pixels")
+                        )
 
                     with ui.row().classes("w-full items-center justify-between gap-2"):
-                        ui.label("Y:").classes("font-mono text-slate-400 w-4")
+                        ui.label("Y:").classes("font-mono text-slate-400 text-xs w-4")
                         pan_y_slider = (
                             ui.slider(
                                 min=-canvas_h,
                                 max=canvas_h,
                                 step=1,
                                 value=state["pan_y"],
-                                on_change=on_pan_y_change,
+                                on_change=on_pan_y_slider_change,
                             )
                             .props("dense")
                             .classes("flex-1")
+                        )
+                        pan_y_number = (
+                            ui.number(
+                                value=round(state["pan_y"], 1),
+                                min=-canvas_h,
+                                max=canvas_h,
+                                step=1,
+                                format="%.0f",
+                                on_change=on_pan_y_number_change,
+                            )
+                            .props("dense outlined")
+                            .classes("w-20 text-xs font-mono")
+                            .tooltip("Exact Y pan offset in pixels")
                         )
 
                 # Rotation & Opacity Card
                 with ui.card().classes(
                     "w-full p-2.5 bg-slate-900/80 border border-white/10 rounded-xl gap-1.5"
                 ):
+
+                    def on_angle_number_change(e: Any) -> None:
+                        if _updating_controls:
+                            return
+                        if e.value is not None:
+                            try:
+                                val = float(e.value)
+                                state["angle"] = max(-15.0, min(15.0, round(val, 1)))
+                                sync_controls()
+                            except (ValueError, TypeError):
+                                pass
+
                     with ui.row().classes("w-full justify-between items-center"):
                         ui.label("Fine Rotation").classes(
                             "font-bold text-slate-200 text-xs"
                         )
-                        angle_label = ui.label(f"{state['angle']:.1f}°").classes(
-                            "font-mono text-amber-400 font-bold"
-                        )
+                        with ui.row().classes("items-center gap-1.5"):
+                            angle_label = ui.label(f"{state['angle']:.1f}°").classes(
+                                "font-mono text-amber-400 font-bold text-xs"
+                            )
+                            angle_number = (
+                                ui.number(
+                                    value=round(state["angle"], 1),
+                                    min=-15.0,
+                                    max=15.0,
+                                    step=0.1,
+                                    format="%.1f",
+                                    on_change=on_angle_number_change,
+                                )
+                                .props("dense outlined")
+                                .classes("w-20 text-xs font-mono")
+                                .tooltip(
+                                    "Exact rotation angle in degrees (-15° to +15°)"
+                                )
+                            )
 
                     with ui.row().classes("w-full justify-between gap-1 mt-0.5"):
                         ui.button("-2°", on_click=lambda: adjust_angle(-2.0)).props(
@@ -636,7 +771,9 @@ def open_model_alignment_dialog(
                             "text-slate-300 bg-slate-800/80 hover:bg-slate-700/80 px-1.5 py-0.5 rounded text-[10px]"
                         )
 
-                    def on_angle_change(e: Any) -> None:
+                    def on_angle_slider_change(e: Any) -> None:
+                        if _updating_controls:
+                            return
                         val = float(e.value or 0.0)
                         adjust_angle(val - state["angle"])
 
@@ -646,11 +783,22 @@ def open_model_alignment_dialog(
                             max=15.0,
                             step=0.5,
                             value=state["angle"],
-                            on_change=on_angle_change,
+                            on_change=on_angle_slider_change,
                         )
                         .props("dense color=amber")
                         .classes("w-full")
                     )
+
+                    def on_opacity_number_change(e: Any) -> None:
+                        if _updating_controls:
+                            return
+                        if e.value is not None:
+                            try:
+                                val = float(e.value) / 100.0
+                                state["opacity"] = max(0.20, min(1.00, round(val, 2)))
+                                sync_controls()
+                            except (ValueError, TypeError):
+                                pass
 
                     with ui.row().classes(
                         "w-full justify-between items-center mt-1 pt-1 border-t border-white/5"
@@ -658,23 +806,42 @@ def open_model_alignment_dialog(
                         ui.label("Wireframe Opacity").classes(
                             "text-slate-300 text-[11px]"
                         )
-                        opacity_label = ui.label(
-                            f"{int(state['opacity'] * 100)}%"
-                        ).classes("font-mono text-slate-400 text-[11px]")
+                        with ui.row().classes("items-center gap-1.5"):
+                            opacity_label = ui.label(
+                                f"{int(state['opacity'] * 100)}%"
+                            ).classes("font-mono text-slate-400 text-[11px]")
+                            opacity_number = (
+                                ui.number(
+                                    value=int(state["opacity"] * 100),
+                                    min=20,
+                                    max=100,
+                                    step=5,
+                                    format="%d",
+                                    on_change=on_opacity_number_change,
+                                )
+                                .props("dense outlined")
+                                .classes("w-16 text-xs font-mono")
+                                .tooltip("Wireframe opacity percentage (20% to 100%)")
+                            )
 
-                    def on_opacity_change(e: Any) -> None:
+                    def on_opacity_slider_change(e: Any) -> None:
+                        if _updating_controls:
+                            return
                         val = float(e.value or 0.85)
-                        state["opacity"] = val
-                        opacity_label.text = f"{int(val * 100)}%"
-                        update_canvas_view()
+                        state["opacity"] = max(0.20, min(1.00, round(val, 2)))
+                        sync_controls()
 
-                    ui.slider(
-                        min=0.20,
-                        max=1.00,
-                        step=0.05,
-                        value=state["opacity"],
-                        on_change=on_opacity_change,
-                    ).props("dense color=grey").classes("w-full")
+                    opacity_slider = (
+                        ui.slider(
+                            min=0.20,
+                            max=1.00,
+                            step=0.05,
+                            value=state["opacity"],
+                            on_change=on_opacity_slider_change,
+                        )
+                        .props("dense color=grey")
+                        .classes("w-full")
+                    )
 
                 # ROI Visibility Card
                 if dig_pos or ana_pos or ref_pos:
