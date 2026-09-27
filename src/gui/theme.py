@@ -14,6 +14,30 @@ CARD_EXPANSION = (
     "w-full max-w-full bg-slate-900/60 border border-white/10 rounded-xl "
     "overflow-hidden shadow-sm hover:border-white/20 transition-colors shrink-0 min-w-0"
 )
+CARD_HERO_TOTAL = (
+    "p-4 rounded-2xl border border-cyan-500/40 flex-1 min-w-[220px] backdrop-blur-md "
+    "bg-gradient-to-br from-blue-950/60 via-slate-900/80 to-cyan-950/40 shadow-xl shadow-cyan-500/5"
+)
+CARD_HERO_SUBMETER = (
+    "p-4 rounded-2xl border border-white/10 flex-1 min-w-[220px] backdrop-blur-md "
+    "bg-slate-900/70 shadow-lg"
+)
+CARD_TELEMETRY = (
+    "p-4 rounded-2xl border border-white/10 bg-slate-900/70 shadow-lg min-w-[200px] "
+    "flex-1 backdrop-blur-md"
+)
+CARD_DIGIT_CROP = (
+    "p-2.5 rounded-xl bg-slate-900/90 border border-white/10 "
+    "flex flex-col items-center gap-1 min-w-[80px] shadow-lg"
+)
+PANEL_STAGE_IMAGE = (
+    "w-full rounded-2xl bg-slate-950/80 p-2.5 border border-white/10 "
+    "flex items-center justify-center overflow-hidden shadow-xl"
+)
+BANNER_WARNING = (
+    "w-full p-3.5 rounded-2xl bg-amber-950/50 border border-amber-500/40 "
+    "text-amber-200 text-xs flex items-center justify-between gap-2 mb-3 shadow-lg"
+)
 PANEL_TAB_CONTENT = (
     "w-full h-full p-0 overflow-y-auto overflow-x-hidden min-w-0 max-w-full "
     "flex flex-col flex-nowrap gap-3 pr-1"
@@ -98,6 +122,10 @@ BADGE_PURPLE = (
 )
 BADGE_FILLED = (
     "bg-indigo-950/60 text-indigo-300 border border-indigo-500/30 "
+    "text-xs px-2.5 py-0.5 rounded-full font-medium"
+)
+BADGE_MUTED = (
+    "bg-slate-800/60 text-slate-400 border border-white/10 "
     "text-xs px-2.5 py-0.5 rounded-full font-medium"
 )
 

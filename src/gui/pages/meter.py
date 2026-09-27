@@ -16,6 +16,7 @@ from gui.components import (
     TimeMachineCard,
     async_fetch_and_render,
     card_header,
+    page_header,
 )
 from gui.pages.base import BasePage
 from gui.theme import (
@@ -23,15 +24,22 @@ from gui.theme import (
     BADGE_FILLED,
     BADGE_SUCCESS,
     BADGE_WARNING,
+    BANNER_WARNING,
+    CARD_DIGIT_CROP,
+    CARD_HERO_SUBMETER,
+    CARD_HERO_TOTAL,
+    CARD_TELEMETRY,
     CLICKABLE_CARD,
     DIALOG_CARD,
     DIALOG_FOOTER_ROW,
     DIALOG_HEADER_ROW,
     FONT_MONO_VALUE,
     HEADING_SECTION,
+    PANEL_STAGE_IMAGE,
     ROW_HEADER,
     ROW_ITEMS_CENTER,
     STAT_VALUE_LARGE,
+    copy_to_clipboard,
 )
 
 logger = logging.getLogger(__name__)
@@ -46,12 +54,15 @@ class MeterPage(BasePage):
         self.history_card = HistoryTableCard(self.callbacks)
         self.time_machine_card = TimeMachineCard(self.callbacks)
         self.spinner: ui.spinner | None = None
+        self.refresh_btn: ui.button | None = None
         self.active_image_stage: str = "final"
         self.auto_refresh_seconds: int = 0
         self._auto_timer: ui.timer | None = None
         self.last_fetch_time: datetime | None = None
         self.last_pipeline_ms: float = 0.0
         self._fetch_task: asyncio.Task | None = None
+        self._is_fetching: bool = False
+        self._rendered_tabs: set[str] = set()
 
     def dispose(self) -> None:
         """Dispose page, timers, tasks, and child components."""
@@ -74,19 +85,31 @@ class MeterPage(BasePage):
         freshness_badge: ui.badge | None = None
 
         async def do_fetch() -> None:
-            t0 = time.perf_counter()
-            data = await async_fetch_and_render(
-                fetch_fn=lambda: self.callbacks.get_meter_data(saveimages=True),
-                render_fn=render_meter_data,
-                container=value_container,
-                spinner=self.spinner,
-                error_message="Error occurred",
-                suppress_errors=True,
-            )
-            if data is not None:
-                self.last_fetch_time = datetime.now()
-                self.last_pipeline_ms = (time.perf_counter() - t0) * 1000.0
-            update_freshness_header()
+            if self._is_fetching:
+                return
+            self._is_fetching = True
+            if self.refresh_btn is not None:
+                with contextlib.suppress(Exception):
+                    self.refresh_btn.props("loading")
+            try:
+                t0 = time.perf_counter()
+                data = await async_fetch_and_render(
+                    fetch_fn=lambda: self.callbacks.get_meter_data(saveimages=True),
+                    render_fn=render_meter_data,
+                    container=value_container,
+                    spinner=self.spinner,
+                    error_message="Error occurred",
+                    suppress_errors=True,
+                )
+                if data is not None:
+                    self.last_fetch_time = datetime.now()
+                    self.last_pipeline_ms = (time.perf_counter() - t0) * 1000.0
+                update_freshness_header()
+            finally:
+                self._is_fetching = False
+                if self.refresh_btn is not None:
+                    with contextlib.suppress(Exception):
+                        self.refresh_btn.props(remove="loading")
 
         def update_freshness_header() -> None:
             if freshness_container and freshness_ts_label and freshness_badge:
@@ -182,7 +205,55 @@ class MeterPage(BasePage):
                         ui.label("Neural Confidence:").classes("text-slate-400")
                         ui.label(f"{conf:.1f}%").classes(f"font-bold {conf_color}")
 
+                    # Baseline override control
+                    with (
+                        ui.row().classes(
+                            "w-full items-center justify-between pt-2 border-t border-white/10 gap-2"
+                        ),
+                        ui.row().classes("items-center gap-1.5 flex-1"),
+                    ):
+                        baseline_input = (
+                            ui.input(
+                                placeholder="New baseline",
+                                value=str(value),
+                            )
+                            .props("dense outlined")
+                            .classes("w-28 text-xs font-mono bg-slate-950 rounded-lg")
+                        )
+
+                        def save_baseline_override() -> None:
+                            new_val = (baseline_input.value or "").strip()
+                            if new_val:
+                                try:
+                                    self.callbacks.set_previous_value(name, new_val)
+                                    ui.notify(
+                                        f"Baseline for {name} updated to {new_val}",
+                                        type="positive",
+                                    )
+                                except Exception as err:
+                                    ui.notify(
+                                        f"Failed to update baseline: {err}",
+                                        type="negative",
+                                    )
+
+                        ui.button(
+                            "Set Baseline",
+                            icon="save",
+                            on_click=save_baseline_override,
+                        ).props("flat dense color=cyan size=sm").classes(
+                            "text-xs font-semibold"
+                        ).tooltip(
+                            "Save new baseline override value for this digit"
+                        )
+
                 with ui.row().classes(f"{DIALOG_FOOTER_ROW}"):
+                    ui.button(
+                        "Calibrate in Wizard",
+                        icon="tune",
+                        on_click=lambda: ui.navigate.to("/#setup"),
+                    ).props("flat dense color=cyan text-xs").tooltip(
+                        "Open Setup Wizard to adjust ROI calibration"
+                    )
                     ui.button("Close", on_click=crop_modal.close).props(
                         "unelevated color=primary size=sm"
                     ).classes("rounded-xl px-4")
@@ -207,10 +278,7 @@ class MeterPage(BasePage):
             with value_container:
                 # 0. Optional Recognition Error/Warning Banner
                 if result.error:
-                    with ui.element("div").classes(
-                        "w-full p-3.5 rounded-2xl bg-amber-950/50 border border-amber-500/40 "
-                        "text-amber-200 text-xs flex items-center justify-between gap-2 mb-3 shadow-lg"
-                    ):
+                    with ui.element("div").classes(BANNER_WARNING):
                         with ui.row().classes("items-center gap-2"):
                             ui.icon("warning", color="amber").classes("text-lg")
                             ui.label(f"Recognition Warning: {result.error}").classes(
@@ -224,13 +292,9 @@ class MeterPage(BasePage):
                 with ui.row().classes("w-full gap-4 flex-wrap mb-4"):
                     for meter in result.meters:
                         is_total = meter.name == "total"
-                        bg_grad = (
-                            "bg-gradient-to-br from-blue-950/60 via-slate-900/80 to-cyan-950/40 "
-                            "border-cyan-500/40 shadow-xl shadow-cyan-500/5"
-                            if is_total
-                            else "bg-slate-900/70 border-white/10 shadow-lg"
+                        card_classes = (
+                            CARD_HERO_TOTAL if is_total else CARD_HERO_SUBMETER
                         )
-                        card_classes = f"p-4 rounded-2xl border flex-1 min-w-[220px] backdrop-blur-md {bg_grad}"
                         with ui.element("div").classes(card_classes):
                             with ui.row().classes(f"{ROW_HEADER} mb-1.5"):
                                 with ui.row().classes(ROW_ITEMS_CENTER):
@@ -304,11 +368,8 @@ class MeterPage(BasePage):
                                         )
 
                                 def copy_value(val: str = meter.value) -> None:
-                                    ui.run_javascript(
-                                        f"navigator.clipboard.writeText('{val}')"
-                                    )
-                                    ui.notify(
-                                        f"Copied '{val}' to clipboard", type="info"
+                                    copy_to_clipboard(
+                                        val, f"Copied '{val}' to clipboard"
                                     )
 
                                 ui.button(
@@ -327,6 +388,7 @@ class MeterPage(BasePage):
                                     ui.label(meter.warning)
 
                     # Flow & Leak Telemetry Card
+                    leak_enabled = bool(leak_status.get("enabled", True))
                     is_flowing = bool(leak_status.get("flow_active", False))
                     leak_state = str(leak_status.get("state", "OK"))
                     flow_dur = float(
@@ -334,14 +396,16 @@ class MeterPage(BasePage):
                         or leak_status.get("current_flow_duration_seconds", 0.0)
                         or 0.0
                     )
-                    with ui.element("div").classes(
-                        "p-4 rounded-2xl border border-white/10 bg-slate-900/70 shadow-lg min-w-[200px] flex-1 backdrop-blur-md"
-                    ):
+                    with ui.element("div").classes(CARD_TELEMETRY):
                         with ui.row().classes(f"{ROW_HEADER} mb-1.5"):
                             ui.label("FLOW MONITOR").classes(
                                 "text-xs font-bold text-gray-400 tracking-wider font-mono"
                             )
-                            if leak_state == "LEAK_DETECTED" or "LEAK" in leak_state:
+                            if not leak_enabled:
+                                ui.badge("DISABLED", color="grey").classes(
+                                    "text-[10px] font-bold"
+                                )
+                            elif leak_state == "LEAK_DETECTED" or "LEAK" in leak_state:
                                 ui.badge("LEAK DETECTED", color="negative").classes(
                                     "text-[10px] font-bold"
                                 )
@@ -355,7 +419,15 @@ class MeterPage(BasePage):
                                 )
 
                         with ui.row().classes("items-baseline gap-2"):
-                            if is_flowing:
+                            if not leak_enabled:
+                                with ui.row().classes(ROW_ITEMS_CENTER):
+                                    ui.icon("do_not_disturb_on", color="gray").classes(
+                                        "text-2xl"
+                                    )
+                                    ui.label("Inactive").classes(
+                                        f"{FONT_MONO_VALUE} text-slate-500"
+                                    )
+                            elif is_flowing:
                                 with ui.row().classes(ROW_ITEMS_CENTER):
                                     ui.icon("water_drop", color="blue").classes(
                                         "text-2xl animate-bounce"
@@ -372,8 +444,12 @@ class MeterPage(BasePage):
                                         f"{FONT_MONO_VALUE} text-slate-400"
                                     )
 
-                        if flow_dur > 0:
-                            ui.label(f"Continuous flow: {flow_dur}s").classes(
+                        if not leak_enabled:
+                            ui.label("Leak monitor service disabled").classes(
+                                "text-[11px] text-slate-500 font-mono mt-0.5"
+                            )
+                        elif flow_dur > 0:
+                            ui.label(f"Continuous flow: {flow_dur:.0f}s").classes(
                                 "text-[11px] text-blue-300/80 font-mono mt-0.5"
                             )
 
@@ -571,12 +647,12 @@ class MeterPage(BasePage):
                         ):
                             ui.toggle(
                                 options={
-                                    "final": "Final",
-                                    "roi": "ROIs",
-                                    "cropped": "Cropped",
-                                    "aligned": "Aligned",
-                                    "rotated": "Rotated",
                                     "original": "Original",
+                                    "rotated": "Rotated",
+                                    "aligned": "Aligned",
+                                    "cropped": "Cropped",
+                                    "roi": "ROIs",
+                                    "final": "Final",
                                 },
                                 value=self.active_image_stage,
                                 on_change=on_stage_toggle,
@@ -587,8 +663,7 @@ class MeterPage(BasePage):
                             )
 
                         stage_image_container = ui.element("div").classes(
-                            "w-full rounded-2xl bg-slate-950/80 p-2.5 border border-white/10 "
-                            "flex items-center justify-center overflow-hidden shadow-xl"
+                            PANEL_STAGE_IMAGE
                         )
                         render_stage_image()
 
@@ -624,11 +699,7 @@ class MeterPage(BasePage):
 
                                     with (
                                         ui.element("div")
-                                        .classes(
-                                            f"p-2.5 rounded-xl bg-slate-900/90 border border-white/10 "
-                                            f"flex flex-col items-center gap-1 min-w-[80px] shadow-lg "
-                                            f"{CLICKABLE_CARD}"
-                                        )
+                                        .classes(f"{CARD_DIGIT_CROP} {CLICKABLE_CARD}")
                                         .on(
                                             "click",
                                             lambda _, im=image, val=value, sc=c_score: open_crop_modal(
@@ -696,11 +767,7 @@ class MeterPage(BasePage):
 
                                     with (
                                         ui.element("div")
-                                        .classes(
-                                            "p-2.5 rounded-xl bg-slate-900/90 border border-white/10 "
-                                            "flex flex-col items-center gap-1 min-w-[80px] shadow-lg "
-                                            f"{CLICKABLE_CARD}"
-                                        )
+                                        .classes(f"{CARD_DIGIT_CROP} {CLICKABLE_CARD}")
                                         .on(
                                             "click",
                                             lambda _, im=image, val=value, sc=c_score: open_crop_modal(
@@ -738,12 +805,16 @@ class MeterPage(BasePage):
                                             f"text-[10px] font-mono {c_col}"
                                         )
 
-        # Top Bar
-        with ui.row().classes(f"{ROW_HEADER} gap-4 flex-wrap mb-3"):
-            with ui.row().classes("items-center gap-3"):
-                ui.label("Meter Dashboard").classes("text-h4")
-                self.spinner = ui.spinner("dots", size="md", color="cyan")
-                self.spinner.visible = False
+        # Standard Page Header & Actions
+        with page_header(
+            title="Meter Dashboard",
+            subtitle="Live readouts, multi-stage captures, and telemetry",
+            icon="speed",
+            color="cyan",
+            classes="w-full justify-between items-center mb-2 flex-wrap gap-2",
+        ):
+            self.spinner = ui.spinner("dots", size="md", color="cyan")
+            self.spinner.visible = False
 
             with ui.row().classes(
                 f"{ROW_ITEMS_CENTER} text-xs font-mono"
@@ -777,13 +848,15 @@ class MeterPage(BasePage):
                 def on_manual_refresh() -> None:
                     self._fetch_task = asyncio.create_task(do_fetch())
 
-                ui.button(
-                    "Refresh",
-                    icon="refresh",
-                    on_click=on_manual_refresh,
-                ).props(
-                    "unelevated color=primary size=sm"
-                ).classes("shadow-md shadow-blue-500/20 rounded-xl")
+                self.refresh_btn = (
+                    ui.button(
+                        "Refresh",
+                        icon="refresh",
+                        on_click=on_manual_refresh,
+                    )
+                    .props("unelevated color=primary size=sm")
+                    .classes("shadow-md shadow-blue-500/20 rounded-xl")
+                )
 
                 ui.button(
                     icon="bolt",
@@ -815,13 +888,10 @@ class MeterPage(BasePage):
                 value_container = ui.column().classes("w-full")
             with ui.tab_panel(time_machine).classes("p-0"):
                 tm_container = ui.column().classes("w-full")
-                self.time_machine_card.render(tm_container)
             with ui.tab_panel(consumption).classes("p-0"):
                 stats_container = ui.column().classes("w-full")
-                self.consumption_card.render(stats_container)
             with ui.tab_panel(readings_log).classes("p-0"):
                 history_container = ui.column().classes("w-full")
-                self.history_card.render(history_container)
 
         def on_subtab_change(e: Any) -> None:
             val = getattr(e, "value", e)
@@ -829,19 +899,22 @@ class MeterPage(BasePage):
                 val is consumption
                 or val == "Consumption"
                 or getattr(val, "name", "") == "Consumption"
-            ):
+            ) and "consumption" not in self._rendered_tabs:
+                self._rendered_tabs.add("consumption")
                 self.consumption_card.render(stats_container)
             elif (
                 val is time_machine
                 or val == "Time Machine"
                 or getattr(val, "name", "") == "Time Machine"
-            ):
+            ) and "time_machine" not in self._rendered_tabs:
+                self._rendered_tabs.add("time_machine")
                 self.time_machine_card.render(tm_container)
             elif (
                 val is readings_log
                 or val == "Readings Log"
                 or getattr(val, "name", "") == "Readings Log"
-            ):
+            ) and "history" not in self._rendered_tabs:
+                self._rendered_tabs.add("history")
                 self.history_card.render(history_container)
 
         tabs.on_value_change(on_subtab_change)
