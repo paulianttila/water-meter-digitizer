@@ -81,6 +81,31 @@ def test_page_meter_init():
     assert not page._is_fetching
 
 
+def test_page_meter_dispose():
+    callbacks = MagicMock()
+    page = MeterPage(callbacks)
+    page.consumption_card = MagicMock()
+    page.history_card = MagicMock()
+    page.time_machine_card = MagicMock()
+    page._rendered_tabs = {"consumption", "history"}
+    auto_timer = MagicMock()
+    fetch_task = MagicMock()
+    fetch_task.done.return_value = False
+    page._auto_timer = auto_timer
+    page._fetch_task = fetch_task
+
+    page.dispose()
+
+    page.consumption_card.dispose.assert_called_once()
+    page.history_card.dispose.assert_called_once()
+    page.time_machine_card.dispose.assert_called_once()
+    auto_timer.cancel.assert_called_once()
+    fetch_task.cancel.assert_called_once()
+    assert page._auto_timer is None
+    assert page._fetch_task is None
+    assert len(page._rendered_tabs) == 0
+
+
 def test_page_meter_show_and_fetch_success(mock_meter_result, mock_meter_ui):
     callbacks = MagicMock()
     callbacks.get_meter_data.return_value = mock_meter_result

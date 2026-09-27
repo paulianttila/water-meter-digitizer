@@ -77,6 +77,7 @@ class MeterPage(BasePage):
         self.consumption_card.dispose()
         self.history_card.dispose()
         self.time_machine_card.dispose()
+        self._rendered_tabs.clear()
 
     async def show(self) -> None:
         """Render the Meter Dashboard page."""
