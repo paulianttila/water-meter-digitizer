@@ -97,10 +97,49 @@ The **Setup Wizard** (accessible via the **Setup** tab at `/setup`) is an intera
 
 ### Step 6: Digital Region of Interest (ROIs)
 - Bounding boxes over mechanical odometer digits or digital LCD segments (`digit1`, `digit2`, `digit3`, ...). If a preset was selected in Step 1, placeholder boxes are already created and centered for you to align!
+
+#### 📐 Crucial Sizing Rule: Inner Box Fits the Digit Number (20% Border)
+For digit models like `dig-class11_*`, the neural network recognizes the complete digit only and requires a **background border of 20% of the image size around the digit number itself**.
+
+In the Setup Wizard canvas, each digit ROI displays two nested rectangles:
+- **Outer Thicker Rectangle**: The complete cropped ROI sub-image extracted and passed to the CNN inference engine.
+- **Inner Thinner Rectangle**: Inset by exactly **20% on all four sides** (top, bottom, left, right), leaving 60% of the width and height in the center.
+- **Center Line**: The horizontal line at 50% height for vertical numeral centering.
+
+> [!IMPORTANT]
+> **When drawing or resizing a digit ROI, the inner thinner box size must be adjusted to fit exactly around the digit number in the picture** (when the number is stationary / upright and has not started rotating to the next position). Do not fit the outer box tightly around the number — fitting the inner box around the number automatically provides the mandatory 20% margin on all sides.
+
+<p align="left">
+  <img src="https://raw.githubusercontent.com/paulianttila/water-meter-digitizer/main/docs/images/ROI_drawing.jpg" alt="Digit ROI Inner Box Sizing Guide (20% Border)" width="320">
+</p>
+
+```text
+       ◄── 20% ──►◄──────── 60% ────────►◄── 20% ──►
+     ┌────────────┬──────────────────────┬────────────┐ ▲
+     │            │       Top 20%        │            │ │ 20%
+     ├────────────┼──────────────────────┼────────────┤ ▼
+     │            │┌────────────────────┐│            │ ▲
+     │            ││                    ││            │ │
+     │            ││    Digit Number    ││            │ │
+     │  Left 20%  │├─── ── ── ── ── ── ─┤│  Right 20% │ │ 60% (Inner Box)
+     │            ││  (Fits Inner Box)  ││            │ │
+     │            ││                    ││            │ │
+     │            │└────────────────────┘│            │ ▼
+     ├────────────┼──────────────────────┼────────────┤ ▲
+     │            │      Bottom 20%      │            │ │ 20%
+     └────────────┴──────────────────────┴────────────┘ ▼
+```
+
+
+
+
 - **Ordering**: Order from left (Most Significant Digit) to right (Least Significant Digit).
 - **Negative Sign Detection**: Enable `DetectNegativeSign` to recognize minus signs (`-`) for reverse flow meters.
 - **Model Selection**: Automatically pre-selected by Step 1 (`dig-class11_*` for LCD or `dig-class100_*` for mechanical drums).
 - **Canvas Alignment Tools**: Use **Align Top/Bottom/Left/Right**, **Distribute Evenly**, and **Select All** to standardize digit heights and spacing.
+- **Reference Specification**: ROI drawing adheres to the [AI-on-the-edge-device ROI Configuration Guide](https://jomjol.github.io/AI-on-the-edge-device-docs/ROI-Configuration/).
+
+
 
 ---
 

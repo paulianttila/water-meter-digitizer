@@ -332,3 +332,74 @@ def test_draw_rois_base_build_shortcuts_bar():
     assert bar is not None
     classes = " ".join(bar._classes)
     assert "roi-shortcut-bar" in classes
+
+
+def test_digital_roi_inner_box_twenty_percent_border():
+    """Verify that DrawDigitalRoisStep._draw_roi_func creates an inner box with 20% border on all sides."""
+    step = DrawDigitalRoisStep(
+        name="Digital",
+        name_template="digit",
+        set_image_callback=MagicMock(),
+        set_rois_to_svg_func=MagicMock(),
+        show_temp_draw_in_svg_func=MagicMock(),
+    )
+    x, y, w, h = 100, 200, 50, 100
+    svg = step._draw_roi_func(x, y, w, h, "red", "digit1")
+
+    # Outer rect: x=100, y=200, width=50, height=100
+    assert f'<rect x="{x}" y="{y}" width="{w}" height="{h}"' in svg
+
+    # Inner rect: border is 20% of width (50*0.2 = 10) and 20% of height (100*0.2 = 20)
+    # inner_x = 100 + 10 = 110.0
+    # inner_y = 200 + 20 = 220.0
+    # inner_w = 50 - 20 = 30.0 (leaves 10px on left, 10px on right -> 20% on each side)
+    # inner_h = 100 - 40 = 60.0 (leaves 20px on top, 20px on bottom -> 20% on each side)
+    expected_inner_x = x + w * 0.2  # 110.0
+    expected_inner_y = y + h * 0.2  # 220.0
+    expected_inner_w = w - w * 0.4  # 30.0
+    expected_inner_h = h - h * 0.4  # 60.0
+    assert (
+        f'<rect x="{expected_inner_x}" y="{expected_inner_y}" width="{expected_inner_w}" height="{expected_inner_h}"'
+        in svg
+    )
+
+    # Center horizontal dividing line across the inner box at y + h/2
+    assert (
+        f'<line x1="{expected_inner_x}" y1="{y + h / 2}" x2="{x + w - w * 0.2}" y2="{y + h / 2}"'
+        in svg
+    )
+
+
+def test_digital_roi_sizing_guide_dialog():
+    """Verify that _open_sizing_guide_dialog displays the visual sizing guide image and opens dialog."""
+    from unittest.mock import patch
+
+    step = DrawDigitalRoisStep(
+        name="Digital",
+        name_template="digit",
+        set_image_callback=MagicMock(),
+        set_rois_to_svg_func=MagicMock(),
+        show_temp_draw_in_svg_func=MagicMock(),
+    )
+    with patch("gui.wizard.steps.draw_digital_rois.ui") as mock_ui:
+        mock_dialog = MagicMock()
+        mock_dialog.__enter__.return_value = mock_dialog
+        mock_ui.dialog.return_value = mock_dialog
+
+        mock_card = MagicMock()
+        mock_card.__enter__.return_value = mock_card
+        mock_ui.card.return_value = mock_card
+
+        mock_row = MagicMock()
+        mock_row.__enter__.return_value = mock_row
+        mock_ui.row.return_value = mock_row
+
+        mock_col = MagicMock()
+        mock_col.__enter__.return_value = mock_col
+        mock_ui.column.return_value = mock_col
+
+        step._open_sizing_guide_dialog()
+
+        mock_dialog.open.assert_called_once()
+        # Verify the visual illustration image was loaded
+        mock_ui.image.assert_called_once_with("/static/images/ROI_drawing.jpg")

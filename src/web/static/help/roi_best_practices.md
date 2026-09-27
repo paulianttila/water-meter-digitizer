@@ -8,5 +8,8 @@ Select the optimal model and bounding box geometry for accurate digitization:
 - **`analog`**: CNN interpreter predicting continuous needle angles (0.0–9.9) for circular dials.
 
 #### ROI Geometry Guidelines
-- **Tight Drum Digits**: Keep bounding boxes tight around the numeral window, excluding borders or outer bezels.
+- **Digit Inner Box Rule (20% Border)**: For digit recognition models (`dig-class11`), the **inner thinner rectangle must fit exactly around the digit number** in the picture. The outer rectangle automatically provides the required 20% border on all sides for the CNN model.
 - **Centered Needle Pivots**: Center analog dial ROIs precisely on the needle center pin to preserve circular symmetry.
+- **Upstream Reference**: ROI drawing and neural network alignment follow the [AI-on-the-edge-device ROI Configuration Guide](https://jomjol.github.io/AI-on-the-edge-device-docs/ROI-Configuration/).
+
+

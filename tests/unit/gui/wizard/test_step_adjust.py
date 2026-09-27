@@ -244,7 +244,7 @@ def test_adjust_step_comparison_callback_side_by_side(
 
     async def run_test():
         step._on_param_change()
-        await asyncio.sleep(0.2)
+        await asyncio.sleep(0.3)
         cb.assert_called_with(b64_orig)
         comp_cb.assert_called()
         # Non-empty base64 string

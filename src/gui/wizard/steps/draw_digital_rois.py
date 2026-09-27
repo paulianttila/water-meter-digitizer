@@ -5,14 +5,22 @@ from pathlib import Path
 from nicegui import ui
 
 from configuration import CNNParams
+from gui.theme import (
+    DIALOG_CARD,
+    DIALOG_FOOTER_ROW,
+    DIALOG_HEADER_ROW,
+    HEADING_SECTION,
+    PANEL_INNER,
+)
 from processor.digitizer import DigitizerProcessor
 
 from .base import BaseStep
 from .draw_rois_base import DrawRoisBaseStep
 
 HELP_TEXT = (
-    "- **Digital Digits**: Add bounding boxes tightly around each "
-    "drum or LCD digit (`digit1`, `digit2`, ...).\n"
+    "- **Digit ROI Sizing (Inner Box Rule)**: When drawing or sizing digit boxes, "
+    "the **inner thinner rectangle must fit exactly around the digit number** in the picture. "
+    "The outer box automatically creates the mandatory 20% margin on all four sides for `dig-class11` models.\n"
     "- **Move**: Hold `Shift` and drag to move the selected ROI box without changing its size.\n"
     "- **Alignment**: Drag boxes on canvas, or use toolbar buttons "
     "(Align Left, Top, Center, Resize All).\n"
@@ -269,6 +277,15 @@ class DrawDigitalRoisStep(DrawRoisBaseStep):
                     )
                     self._sync_select_all_checkbox()
                     ui.button(
+                        "Sizing Guide",
+                        icon="straighten",
+                        on_click=self._open_sizing_guide_dialog,
+                    ).props("dense outline").classes(
+                        "border-cyan-500/50 text-cyan-400 hover:bg-cyan-500/10 text-xs px-2 py-1 font-medium"
+                    ).tooltip(
+                        "View digit ROI sizing rule and visual 20% border illustration"
+                    )
+                    ui.button(
                         "Add Digit ROI", icon="add", on_click=self._add_roi
                     ).props("dense unelevated").classes(
                         "bg-indigo-600 hover:bg-indigo-500 text-white text-xs "
@@ -372,3 +389,44 @@ class DrawDigitalRoisStep(DrawRoisBaseStep):
                 self.test_result_container = ui.row().classes("w-full")
 
             super().add_navigator(stepper, first_step, last_step)
+
+    def _open_sizing_guide_dialog(self) -> None:
+        """Open a modal visual dialog displaying digit ROI sizing and the 20% inner box rule."""
+        with (
+            ui.dialog() as dialog,
+            ui.card().classes(f"{DIALOG_CARD} max-w-lg w-[95vw] p-5 shadow-2xl gap-4"),
+        ):
+            with ui.row().classes(DIALOG_HEADER_ROW):
+                with ui.row().classes("items-center gap-2"):
+                    ui.icon("straighten", size="sm").classes("text-cyan-400")
+                    ui.label("Digit ROI Sizing Guide (20% Border)").classes(
+                        HEADING_SECTION
+                    )
+                ui.button(icon="close", on_click=dialog.close).props(
+                    "flat round dense"
+                ).classes("text-slate-400 hover:text-white")
+
+            with ui.column().classes(
+                "w-full items-center justify-center bg-slate-950/70 p-3 rounded-xl border border-white/5"
+            ):
+                ui.image("/static/images/ROI_drawing.jpg").classes(
+                    "max-h-[280px] object-contain rounded-lg shadow-md border border-white/10"
+                )
+
+            with ui.column().classes(
+                f"{PANEL_INNER} w-full text-xs text-slate-300 leading-relaxed"
+            ):
+                ui.markdown(
+                    "**Crucial Rule for Digit ROIs (`dig-class11`)**:\n"
+                    "- The **inner thinner rectangle** must fit **exactly around the digit number** in the picture (as illustrated above).\n"
+                    "- The **outer box** automatically supplies the required **20% margin** on all four sides (top, bottom, left, right) for the neural network model.\n"
+                    "- The horizontal dashed line marks the 50% vertical center of the numeral.\n"
+                    "- **Reference**: Follows [AI-on-the-edge-device ROI Configuration](https://jomjol.github.io/AI-on-the-edge-device-docs/ROI-Configuration/)."
+                )
+
+            with ui.row().classes(DIALOG_FOOTER_ROW):
+
+                ui.button("Got It", on_click=dialog.close).props("unelevated").classes(
+                    "bg-cyan-600 hover:bg-cyan-500 text-white text-xs px-4 py-1.5 font-semibold rounded-lg"
+                )
+        dialog.open()
