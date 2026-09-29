@@ -1,10 +1,15 @@
+import html
 from collections.abc import Callable
+from typing import TYPE_CHECKING
 
 from nicegui import ui
 
 from data_classes import RefImage
 
-from .draw_rois_base import DrawRoisBaseStep
+from .draw_rois_base import DrawRoisBaseStep, Roi
+
+if TYPE_CHECKING:
+    from configuration import Config
 
 HELP_TEXT = (
     "- **Reference Points**: Mark **exactly 3 distinct visual landmarks** "
@@ -26,6 +31,8 @@ class DrawRefsStep(DrawRoisBaseStep):
         set_rois_to_svg_func: Callable[[str], None],
         show_temp_draw_in_svg_func: Callable[[str], None],
         spinner=None,
+        zoom_callback: Callable[..., None] | None = None,
+        get_zoom_text: Callable[[], str] | None = None,
     ) -> None:
         super().__init__(
             name,
@@ -35,6 +42,8 @@ class DrawRefsStep(DrawRoisBaseStep):
             set_rois_to_svg_func=set_rois_to_svg_func,
             show_temp_draw_in_svg_func=show_temp_draw_in_svg_func,
             spinner=spinner,
+            zoom_callback=zoom_callback,
+            get_zoom_text=get_zoom_text,
         )
         self.warning_container: ui.row | None = None
 
@@ -82,6 +91,38 @@ class DrawRefsStep(DrawRoisBaseStep):
     def load_from_config(self, ref_images: list[RefImage]) -> None:
         self.load_rois(ref_images)
 
+    def validate(self) -> tuple[bool, str]:
+        """Validate reference points for affine alignment."""
+        count = len(self.rois)
+        if 0 < count < 3:
+            return (
+                False,
+                f"Affine alignment requires exactly 3 reference points, but only {count} defined. "
+                "Configure 3 points or remove all to skip alignment.",
+            )
+        if count > 3:
+            return (
+                False,
+                f"Affine alignment requires exactly 3 reference points, but {count} are defined. "
+                "Please remove extra reference points.",
+            )
+        return True, ""
+
+    def populate_config(self, config: "Config") -> None:
+        """Populate alignment reference images in Config."""
+        config_dir = "${ConfigDir}"
+        for roi in self.rois:
+            config.alignment.ref_images.append(
+                RefImage(
+                    name=roi.name,
+                    x=roi.x,
+                    y=roi.y,
+                    w=roi.w,
+                    h=roi.h,
+                    file_name=f"{config_dir}/ref_{roi.name}_x{roi.x}_y{roi.y}.jpg",
+                )
+            )
+
     def draw_roi_func(
         self,
         x: int,
@@ -93,8 +134,9 @@ class DrawRefsStep(DrawRoisBaseStep):
     ) -> str:
         style = f"stroke-width:3;stroke:{color};fill-opacity:0;stroke-opacity:0.9"
         style2 = f"font-size:10;fill:{color};font-weight:bold;"
+        escaped_text = html.escape(str(text))
         return (
-            f'<text x="{x}" y="{y-7}" text-anchor="left" style="{style2}">{text}</text>'
+            f'<text x="{x}" y="{y-7}" text-anchor="left" style="{style2}">{escaped_text}</text>'
             f'<rect x="{x}" y="{y}" width="{w}" height="{h}" style="{style}" />'
         )
 
@@ -102,6 +144,12 @@ class DrawRefsStep(DrawRoisBaseStep):
         for roi in self.rois:
             roi.enabled = False
         super()._add_roi()
+
+    def duplicate_roi(self, target_roi: Roi | None = None) -> Roi | None:
+        if len(self.rois) >= 3:
+            ui.notify("Maximum 3 reference markers allowed", type="warning")
+            return None
+        return super().duplicate_roi(target_roi)
 
     async def show(self, stepper, first_step=False, last_step=False) -> None:
         with ui.step(self.name):
@@ -132,7 +180,7 @@ class DrawRefsStep(DrawRoisBaseStep):
                         "Add Reference Point",
                         icon="add_circle_outline",
                         on_click=self._add_roi,
-                    ).props("color=primary dense").classes(
+                    ).props("color=primary dense aria-label=Add data-testid=add-ref-point").classes(
                         "px-3 py-1 text-xs font-semibold bg-gradient-to-r "
                         "from-blue-600 to-cyan-600 text-white rounded-lg shadow-sm"
                     ).tooltip(

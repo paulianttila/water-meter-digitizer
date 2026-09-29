@@ -1,8 +1,12 @@
 from collections.abc import Callable
+from typing import TYPE_CHECKING
 
 from nicegui import ui
 
 from configuration import ImageSource
+
+if TYPE_CHECKING:
+    from configuration import Config
 
 
 class BaseStep:
@@ -67,4 +71,21 @@ class BaseStep:
 
     def add_navigator(self, stepper, first_step=False, last_step=False) -> None:
         """Navigation is handled globally by the persistent wizard footer."""
+        pass
+
+    def validate(self) -> tuple[bool, str]:
+        """Validate step prerequisites before advancing.
+
+        Returns:
+            tuple[bool, str]: (is_valid, error_message).
+        """
+        return True, ""
+
+    def populate_config(self, config: "Config") -> None:
+        """Populate relevant section(s) in Config from this step's state.
+
+        Subclasses that contribute configuration data MUST override this method.
+        The base implementation is a no-op; WizardConfigManager.gather_config()
+        will silently skip any step that does not override it.
+        """
         pass

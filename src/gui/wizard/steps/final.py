@@ -50,6 +50,7 @@ class FinalStep(BaseStep):
         self.new_config_saved = False
         self.txt = ""
         self.status_banner = ValidationBanner()
+        self.deployment_card: ui.card | None = None
 
     def update_status_banner(self) -> None:
         self.status_banner.update(self.new_config_saved)
@@ -58,12 +59,16 @@ class FinalStep(BaseStep):
         if self.new_config_saved and value != self.txt:
             self.new_config_saved = False
             self.update_status_banner()
+            if hasattr(self, "deployment_card") and self.deployment_card is not None:
+                self.deployment_card.set_visibility(False)
 
     def set_config(self, config: Config) -> None:
         self.editor.value = config.save_to_string()
         self.txt = self.editor.value
         self.new_config_saved = False
         self.update_status_banner()
+        if hasattr(self, "deployment_card") and self.deployment_card is not None:
+            self.deployment_card.set_visibility(False)
 
     def _prompt_hot_reload(self) -> None:
         try:
@@ -112,8 +117,33 @@ class FinalStep(BaseStep):
         self.new_config_saved = False
         self.update_status_banner()
         ui.notify("Config taken in use", type="positive")
-        self.update_status_banner()
-        ui.notify("Config taken in use", type="positive")
+
+    def deploy_configuration(self) -> bool:
+        """Validate syntax, save reference images, write config.ini, and hot-reload services."""
+        if not self._syntax_check():
+            return False
+        try:
+            # Note: save_refs_func() is called first and is not rolled back if a
+            # subsequent step (save_config_file / use_config) raises. Ref images
+            # may be written while config.ini is not updated — acceptable because
+            # ref images are idempotent and will be overwritten on the next deploy.
+            self.save_refs_func()
+            self.callbacks.save_config_file(self.editor.value)
+            self.callbacks.use_config()
+            self.new_config_saved = True
+            self.txt = self.editor.value
+            self.update_status_banner()
+            if hasattr(self, "deployment_card") and self.deployment_card is not None:
+                self.deployment_card.set_visibility(True)
+            ui.notify(
+                "Configuration deployed and services hot-reloaded successfully!",
+                type="positive",
+            )
+            return True
+        except Exception as e:
+            logger.error(f"Deployment failed: {e}")
+            ui.notify(f"Deployment failed: {e}", type="negative")
+            return False
 
     def _syntax_check(self) -> bool:
         try:
@@ -215,6 +245,51 @@ class FinalStep(BaseStep):
                             "Apply configuration immediately to live system runtime"
                         )
                     )
+
+                    self.button_deploy = (
+                        ui.button(
+                            "Validate & Deploy",
+                            icon="rocket_launch",
+                            on_click=self.deploy_configuration,
+                        )
+                        .props("unelevated dense")
+                        .classes(
+                            "bg-gradient-to-r from-emerald-600 via-teal-600 to-cyan-600 "
+                            "hover:from-emerald-500 hover:via-teal-500 hover:to-cyan-500 text-white "
+                            "px-4 font-bold shadow-lg shadow-teal-950/40"
+                        )
+                        .tooltip(
+                            "Run syntax check, save config & markers, and hot-reload services in one click"
+                        )
+                    )
+
+            with (
+                ui.card()
+                .classes(
+                    "w-full bg-emerald-950/50 border border-emerald-500/40 rounded-xl "
+                    "p-3 my-1.5 flex flex-row items-center justify-between gap-3 shadow-md"
+                )
+                .props('id="deployment-success-card"') as self.deployment_card,
+            ):
+                with ui.row().classes("items-center gap-2.5"):
+                    ui.icon("check_circle", size="sm").classes(
+                        "text-emerald-400 shrink-0"
+                    )
+                    with ui.column().classes("gap-0"):
+                        ui.label("Configuration Active & Deployed").classes(
+                            "text-sm font-bold text-emerald-200 leading-tight"
+                        )
+                        ui.label(
+                            "Background reader and services are now running with this configuration."
+                        ).classes("text-xs text-emerald-400/80")
+                ui.button(
+                    "View Live Meter Dashboard",
+                    icon="speed",
+                    on_click=lambda: ui.navigate.to("/#meter"),
+                ).props("unelevated dense").classes(
+                    "bg-emerald-600 hover:bg-emerald-500 text-white px-3 py-1 font-semibold text-xs shadow-md shrink-0"
+                )
+            self.deployment_card.set_visibility(False)
 
             with ui.card().classes(
                 "w-full bg-slate-900/90 border border-white/10 rounded-xl "

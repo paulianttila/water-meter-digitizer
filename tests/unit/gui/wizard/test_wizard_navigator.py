@@ -191,3 +191,128 @@ def test_wizard_navigator_handle_stepper_change():
     assert navigator.analog_rois_enabled_in_image is False
     refs_step._show_rois.assert_called_once()
     assert navigator.previous_step == NAME_DRAW_REFS
+
+
+def test_wizard_navigator_validate_transition():
+    callbacks = MagicMock()
+    navigator = WizardNavigator(callbacks)
+
+    # 1. Backwards transition always allowed
+    can_move, msg = navigator.validate_transition(
+        current_step=NAME_DRAW_REFS,
+        target_step=NAME_DOWNLOAD_IMAGE,
+        step_getter=lambda name: None,
+    )
+    assert can_move is True
+    assert msg == ""
+
+    # 2. Blocked if current step validate() fails
+    bad_step = MagicMock()
+    bad_step.validate.return_value = (False, "Please configure items")
+    can_move, msg = navigator.validate_transition(
+        current_step=NAME_METER_TYPE,
+        target_step=NAME_DOWNLOAD_IMAGE,
+        step_getter=lambda name: bad_step,
+    )
+    assert can_move is False
+    assert msg == "Please configure items"
+
+    # 3. Blocked if target step is after Download image and download step has no image
+    good_step = MagicMock()
+    good_step.validate.return_value = (True, "")
+    dl_step = MagicMock()
+    dl_step.get_image.return_value = ""
+
+    def getter(name: str):
+        if name == NAME_INITIAL_ROTATE:
+            return good_step
+        if name == NAME_DOWNLOAD_IMAGE:
+            return dl_step
+        return None
+
+    can_move, msg = navigator.validate_transition(
+        current_step=NAME_INITIAL_ROTATE,
+        target_step=NAME_DRAW_REFS,
+        step_getter=getter,
+    )
+    assert can_move is False
+    assert "Please download an image" in msg
+
+    # 4. Success when current step valid and download has image
+    dl_step.get_image.return_value = "base64data"
+    can_move, msg = navigator.validate_transition(
+        current_step=NAME_INITIAL_ROTATE,
+        target_step=NAME_DRAW_REFS,
+        step_getter=getter,
+    )
+    assert can_move is True
+    assert msg == ""
+
+
+def test_step_validation_methods():
+    from gui.wizard.steps.base import BaseStep
+    from gui.wizard.steps.download import DownloadImageStep
+    from gui.wizard.steps.draw_refs import DrawRefsStep
+    from gui.wizard.steps.draw_rois_base import DrawRoisBaseStep, Roi
+    from gui.wizard.steps.meters import Meter, MeterStep
+
+    # BaseStep returns (True, "")
+    base = BaseStep("base")
+    assert base.validate() == (True, "")
+
+    # DownloadImageStep requires image
+    dl = DownloadImageStep("dl", set_image_callback=MagicMock())
+    assert dl.validate()[0] is False
+    dl.image = "sample_base64"
+    assert dl.validate() == (True, "")
+
+    # DrawRefsStep requires 0 or 3 points
+    refs = DrawRefsStep(
+        "refs",
+        "ref",
+        set_image_callback=MagicMock(),
+        set_rois_to_svg_func=MagicMock(),
+        show_temp_draw_in_svg_func=MagicMock(),
+    )
+    assert refs.validate() == (True, "")  # 0 points is valid (alignment skipped)
+    refs.rois = [Roi(name="ref1", w=10, h=10)]
+    assert refs.validate()[0] is False  # 1 point invalid
+    refs.rois = [
+        Roi(name="ref1", w=10, h=10),
+        Roi(name="ref2", w=10, h=10),
+        Roi(name="ref3", w=10, h=10),
+    ]
+    assert refs.validate() == (True, "")  # 3 points valid
+    refs.rois.append(Roi(name="ref4", w=10, h=10))
+    assert refs.validate()[0] is False  # 4 points invalid
+
+    # DrawRoisBaseStep checks positive dimensions
+    rois_step = DrawRoisBaseStep(
+        "rois",
+        "roi",
+        set_image_callback=MagicMock(),
+        draw_roi_func=MagicMock(return_value=""),
+        set_rois_to_svg_func=MagicMock(),
+        show_temp_draw_in_svg_func=MagicMock(),
+    )
+    rois_step.rois = [Roi(name="r1", w=0, h=10)]
+    assert rois_step.validate()[0] is False
+    rois_step.rois = [Roi(name="r1", w=10, h=10)]
+    assert rois_step.validate() == (True, "")
+
+    # MeterStep requires at least 1 meter, valid names, and sequences
+    m_step = MeterStep(
+        "meters",
+        set_image_callback=MagicMock(),
+        get_digit_names_func=MagicMock(return_value=["digit1"]),
+    )
+    assert m_step.validate()[0] is False  # no meters
+
+    m = Meter(["digit1"], "total")
+    m.meter.name = "total"
+    m.digits.value = []
+    m_step.meters = [m]
+    assert m_step.validate()[0] is False  # no sequence
+
+    m.digits.value = ["digit1"]
+    assert m_step.validate() == (True, "")  # valid!

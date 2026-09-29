@@ -1,14 +1,20 @@
+import html
 import time
 from collections.abc import Callable
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from nicegui import ui
 
 from configuration import CNNParams
+from data_classes import ImagePosition
 from processor.digitizer import DigitizerProcessor
 
 from .base import BaseStep
 from .draw_rois_base import DrawRoisBaseStep
+
+if TYPE_CHECKING:
+    from configuration import Config
 
 HELP_TEXT = (
     "- **Analog Dials**: Add bounding boxes tightly around each "
@@ -32,6 +38,8 @@ class DrawAnalogRoisStep(DrawRoisBaseStep):
         show_temp_draw_in_svg_func: Callable[[str], None],
         analog_models_dir: str = "",
         spinner=None,
+        zoom_callback: Callable[..., None] | None = None,
+        get_zoom_text: Callable[[], str] | None = None,
     ) -> None:
         super().__init__(
             name,
@@ -41,6 +49,8 @@ class DrawAnalogRoisStep(DrawRoisBaseStep):
             set_rois_to_svg_func=set_rois_to_svg_func,
             show_temp_draw_in_svg_func=show_temp_draw_in_svg_func,
             spinner=spinner,
+            zoom_callback=zoom_callback,
+            get_zoom_text=get_zoom_text,
         )
         self.analog_models_dir = analog_models_dir
         self.cnn_file: ui.select | None = None
@@ -90,8 +100,9 @@ class DrawAnalogRoisStep(DrawRoisBaseStep):
         style = f"stroke-width:3;stroke:{color};fill-opacity:0;stroke-opacity:0.9"
         style2 = f"stroke-width:1;stroke:{color};fill-opacity:0;stroke-opacity:0.9"
         style3 = f"font-size:10;fill:{color};font-weight:bold;"
+        escaped_text = html.escape(str(text))
         return (
-            f'<text x="{x}" y="{y-7}" text-anchor="left" style="{style3}">{text}</text>'
+            f'<text x="{x}" y="{y-7}" text-anchor="left" style="{style3}">{escaped_text}</text>'
             f'<rect x="{x}" y="{y}" width="{w}" height="{h}" style="{style}" />'
             f'<rect x="{x}" y="{y}" width="{w}" height="{h}" rx="{w/2}" ry="{h/2}" '
             f'style="{style2}" />'
@@ -265,6 +276,15 @@ class DrawAnalogRoisStep(DrawRoisBaseStep):
                     ).tooltip(
                         "Add new analog dial bounding box"
                     )
+                    ui.button(
+                        "Duplicate",
+                        icon="content_copy",
+                        on_click=lambda: self.duplicate_roi(),
+                    ).props("dense outline").classes(
+                        "border-emerald-500/50 text-emerald-400 hover:bg-emerald-500/10 text-xs px-2 py-1 font-medium"
+                    ).tooltip(
+                        "Duplicate selected ROI to the right (Ctrl+D)"
+                    )
 
             # ROI List Container
             self.container = ui.column().classes(
@@ -350,3 +370,34 @@ class DrawAnalogRoisStep(DrawRoisBaseStep):
                 self.test_result_container = ui.row().classes("w-full")
 
             super().add_navigator(stepper, first_step, last_step)
+
+    def populate_config(self, config: "Config") -> None:
+        """Populate analog readout section in Config."""
+        from gui.wizard.config_manager import resolve_model_path
+
+        analog_model_file = resolve_model_path(
+            self.cnn_file,
+            self.analog_models_dir,
+            "${AnalogModelsDir}",
+        )
+        analog_cut_images = [
+            ImagePosition(
+                name=roi.name,
+                x=roi.x,
+                y=roi.y,
+                w=roi.w,
+                h=roi.h,
+            )
+            for roi in self.rois
+        ]
+        analog_model_val = (
+            str(self.cnn_type.value or "auto")
+            if hasattr(self, "cnn_type") and self.cnn_type is not None
+            else "auto"
+        )
+        config.analog_readout = CNNParams(
+            enabled=len(analog_cut_images) > 0,
+            model=analog_model_val,
+            model_file=analog_model_file,
+            cut_images=analog_cut_images,
+        )

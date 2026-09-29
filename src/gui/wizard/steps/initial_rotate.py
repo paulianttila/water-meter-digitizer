@@ -1,4 +1,5 @@
 from collections.abc import Callable
+from typing import TYPE_CHECKING
 
 from nicegui import ui
 
@@ -6,6 +7,9 @@ from configuration import Alignment
 from processor.image import ImageProcessor
 
 from .base import BaseStep
+
+if TYPE_CHECKING:
+    from configuration import Config
 
 HELP_TEXT = (
     "- **Coarse Rotation**: Rotate image in 90° steps (`-90°`, `180°`, `+90°`) "
@@ -145,3 +149,7 @@ class InitialRotateStep(BaseStep):
     def _handle_align_to_model_click(self) -> None:
         if self.on_align_to_model:
             self.on_align_to_model()
+
+    def populate_config(self, config: "Config") -> None:
+        """Populate alignment rotate_angle in Config."""
+        config.alignment.rotate_angle = float(getattr(self, "angle", 0.0) or 0.0)

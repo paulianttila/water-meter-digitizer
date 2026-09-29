@@ -786,3 +786,97 @@ class AdjustStep(BaseStep):
                 )
 
             super().add_navigator(stepper, first_step, last_step)
+
+    def populate_config(self, config: Config) -> None:
+        """Populate crop, resize, image processing, and post rotation in Config."""
+        config.crop.enabled = bool(getattr(self.crop_enabled, "value", False))
+        config.crop.x = int(getattr(self.crop_x, "value", 0) or 0)
+        config.crop.y = int(getattr(self.crop_y, "value", 0) or 0)
+        config.crop.w = int(getattr(self.crop_w, "value", 0) or 0)
+        config.crop.h = int(getattr(self.crop_h, "value", 0) or 0)
+
+        config.resize.enabled = bool(getattr(self.resize_enabled, "value", False))
+        config.resize.w = int(getattr(self.resize_w, "value", 0) or 0)
+        config.resize.h = int(getattr(self.resize_h, "value", 0) or 0)
+
+        config.image_processing.enabled = bool(
+            getattr(self.adjust_enabled, "value", False)
+        )
+        config.image_processing.gamma = float(
+            getattr(self.adjust_gamma, "value", 1.0) or 1.0
+        )
+        config.image_processing.contrast = float(
+            getattr(self.adjust_contrast, "value", 1.0) or 1.0
+        )
+        config.image_processing.brightness = float(
+            getattr(self.adjust_brightness, "value", 1.0) or 1.0
+        )
+        config.image_processing.sharpness = float(
+            getattr(self.adjust_sharpness, "value", 1.0) or 1.0
+        )
+        config.image_processing.color = float(
+            getattr(self.adjust_color, "value", 1.0) or 1.0
+        )
+        config.image_processing.grayscale = bool(
+            getattr(self.grayscale_enabled, "value", False)
+        )
+        config.image_processing.sharpness_mode = str(
+            getattr(self.sharpness_mode, "value", "standard") or "standard"
+        )
+        config.image_processing.unsharp_radius = float(
+            getattr(self.unsharp_radius, "value", 1.0) or 1.0
+        )
+        config.image_processing.unsharp_amount = float(
+            getattr(self.unsharp_amount, "value", 1.5) or 1.5
+        )
+        config.image_processing.unsharp_threshold = int(
+            getattr(self.unsharp_threshold, "value", 3) or 3
+        )
+        config.image_processing.auto_sharpen_cut_images = bool(
+            getattr(self.auto_sharpen_cut_images, "value", False)
+        )
+        config.image_processing.autocontrast.enabled = bool(
+            getattr(self.autocontrast_enabled, "value", False)
+        )
+        config.image_processing.autocontrast.cutoff_low = float(
+            getattr(self.autocontrast_cutoff_low, "value", 2.0) or 2.0
+        )
+        config.image_processing.autocontrast.cutoff_high = float(
+            getattr(self.autocontrast_cutoff_high, "value", 45.0) or 45.0
+        )
+        config.image_processing.autocontrast_cut_images.enabled = bool(
+            getattr(self.autocontrast_cut_images_enabled, "value", False)
+        )
+        config.image_processing.autocontrast_cut_images.cutoff_low = float(
+            getattr(self.autocontrast_cut_images_cutoff_low, "value", 2.0) or 2.0
+        )
+        config.image_processing.autocontrast_cut_images.cutoff_high = float(
+            getattr(self.autocontrast_cut_images_cutoff_high, "value", 45.0) or 45.0
+        )
+
+        # Glare suppression
+        config.image_processing.glare_suppression.enabled = bool(
+            getattr(self.glare_enabled, "value", False)
+        )
+        config.image_processing.glare_suppression.mode = str(
+            getattr(self.glare_mode, "value", "clahe") or "clahe"
+        )
+        config.image_processing.glare_suppression.inpaint_threshold = int(
+            getattr(self.glare_inpaint_threshold, "value", 230) or 230
+        )
+        config.image_processing.glare_suppression.inpaint_radius = int(
+            getattr(self.glare_inpaint_radius, "value", 3) or 3
+        )
+        config.image_processing.glare_suppression.clahe_clip_limit = float(
+            getattr(self.glare_clahe_clip_limit, "value", 2.0) or 2.0
+        )
+        config.image_processing.glare_suppression.clahe_grid_size = int(
+            getattr(self.glare_clahe_grid_size, "value", 8) or 8
+        )
+        config.image_processing.glare_suppression.apply_to_cut_images = bool(
+            getattr(self.glare_apply_to_cut_images, "value", False)
+        )
+
+        config.alignment.post_rotate_angle = float(
+            getattr(self.rotate_angle, "value", 0.0) or 0.0
+        )

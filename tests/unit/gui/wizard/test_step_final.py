@@ -126,3 +126,50 @@ def test_final_step_prompt_hot_reload():
 
         step._prompt_hot_reload()
         assert dialog_inst.open.called
+
+
+def test_final_step_deploy_configuration():
+    callbacks = MagicMock()
+    save_refs_func = MagicMock()
+    step = FinalStep(
+        name="Final",
+        callbacks=callbacks,
+        set_image_callback=MagicMock(),
+        save_refs_func=save_refs_func,
+    )
+    mock_card = MagicMock()
+    step.deployment_card = mock_card
+
+    # Successful deploy
+    config = Config()
+    step.editor = MagicMock(value=config.save_to_string())
+    with patch("gui.wizard.steps.final.ui.notify") as mock_notify:
+        res = step.deploy_configuration()
+        assert res is True
+        assert save_refs_func.called
+        callbacks.save_config_file.assert_called_once_with(step.editor.value)
+        callbacks.use_config.assert_called_once()
+        assert step.new_config_saved is True
+        mock_card.set_visibility.assert_called_with(True)
+        assert any(
+            "deployed and services hot-reloaded" in str(c)
+            for c in mock_notify.call_args_list
+        )
+
+    # Failed deploy on invalid syntax
+    step.editor = MagicMock(value="invalid syntax [[]=")
+    callbacks.reset_mock()
+    save_refs_func.reset_mock()
+    with patch("gui.wizard.steps.final.ui.notify"):
+        res = step.deploy_configuration()
+        assert res is False
+        assert not save_refs_func.called
+        assert not callbacks.save_config_file.called
+
+    # Failed deploy on callback exception
+    step.editor = MagicMock(value=config.save_to_string())
+    callbacks.use_config.side_effect = RuntimeError("Failed to restart")
+    with patch("gui.wizard.steps.final.ui.notify") as mock_notify:
+        res = step.deploy_configuration()
+        assert res is False
+        assert any("Deployment failed" in str(c) for c in mock_notify.call_args_list)

@@ -2,6 +2,7 @@ import asyncio
 import contextlib
 from collections.abc import Callable
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from nicegui import ui
 
@@ -9,6 +10,9 @@ from configuration import ImageSource
 from processor.image import ImageProcessor
 
 from .base import BaseStep
+
+if TYPE_CHECKING:
+    from configuration import Config
 
 HELP_TEXT = (
     "- **Camera URL**: Select a template model image (`model://...`) or enter a camera snapshot URL (`http://...`, `file://...`).\n"
@@ -196,3 +200,17 @@ class DownloadImageStep(BaseStep):
                 )
 
             super().add_navigator(stepper, first_step, last_step)
+
+    def validate(self) -> tuple[bool, str]:
+        """Validate that an image has been downloaded before advancing."""
+        if not self.image:
+            return False, "Please download an image from your camera before proceeding"
+        return True, ""
+
+    def populate_config(self, config: "Config") -> None:
+        """Populate image source section in Config."""
+        config.image_source.url = getattr(self.url, "value", "")
+        config.image_source.timeout = int(getattr(self.timeout, "value", None) or 30)
+        config.image_source.min_size = int(
+            getattr(self.minsize, "value", None) or 10000
+        )

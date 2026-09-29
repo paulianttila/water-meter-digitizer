@@ -200,3 +200,38 @@ def test_wizard_config_manager_helpers():
     ana_step = MagicMock(rois=[Roi(name="a1", x=0, y=0, w=10, h=10, enabled=True)])
     names = WizardConfigManager.get_digit_names(dig_step, ana_step)
     assert names == ["d1", "a1"]
+
+
+def test_wizard_config_manager_polymorphic_populate_config():
+    from typing import Any
+
+    from gui.wizard.steps.base import BaseStep
+
+    callbacks = MagicMock()
+    callbacks.get_config.return_value = Config()
+    manager = WizardConfigManager(callbacks=callbacks)
+
+    class DummyStep(BaseStep):
+        def __init__(self, name: str, key: str, val: Any):
+            super().__init__(name)
+            self.key = key
+            self.val = val
+
+        def populate_config(self, config: Config) -> None:
+            setattr(config.image_source, self.key, self.val)
+
+    step1 = DummyStep("dl", "url", "http://poly-cam/test.jpg")
+    step2 = DummyStep("rotate", "timeout", 45)
+
+    cfg = manager.gather_config(
+        download_image_step=step1,  # type: ignore
+        initial_rotate_step=step2,  # type: ignore
+        draw_refs_step=MagicMock(rois=[]),
+        adjust_step=MagicMock(),
+        draw_digital_rois_step=MagicMock(rois=[]),
+        draw_analog_rois_step=MagicMock(rois=[]),
+        meters_step=MagicMock(meter_params=[]),
+        services_step=MagicMock(),
+    )
+    assert cfg.image_source.url == "http://poly-cam/test.jpg"
+    assert cfg.image_source.timeout == 45

@@ -1,10 +1,16 @@
+import html
 import time
 from collections.abc import Callable
 from pathlib import Path
+from typing import TYPE_CHECKING
 
 from nicegui import ui
 
 from configuration import CNNParams
+from data_classes import ImagePosition
+
+if TYPE_CHECKING:
+    from configuration import Config
 from gui.theme import (
     DIALOG_CARD,
     DIALOG_FOOTER_ROW,
@@ -40,6 +46,8 @@ class DrawDigitalRoisStep(DrawRoisBaseStep):
         show_temp_draw_in_svg_func: Callable[[str], None],
         digital_models_dir: str = "",
         spinner=None,
+        zoom_callback: Callable[..., None] | None = None,
+        get_zoom_text: Callable[[], str] | None = None,
     ) -> None:
         super().__init__(
             name,
@@ -49,6 +57,8 @@ class DrawDigitalRoisStep(DrawRoisBaseStep):
             set_rois_to_svg_func=set_rois_to_svg_func,
             show_temp_draw_in_svg_func=show_temp_draw_in_svg_func,
             spinner=spinner,
+            zoom_callback=zoom_callback,
+            get_zoom_text=get_zoom_text,
         )
         self.digital_models_dir = digital_models_dir
         self.cnn_file: ui.select | None = None
@@ -104,8 +114,9 @@ class DrawDigitalRoisStep(DrawRoisBaseStep):
         style = f"stroke-width:3;stroke:{color};fill-opacity:0;stroke-opacity:0.9"
         style2 = f"stroke-width:1;stroke:{color};fill-opacity:0;stroke-opacity:0.9"
         style3 = f"font-size:10;fill:{color};font-weight:bold;"
+        escaped_text = html.escape(str(text))
         return (
-            f'<text x="{x}" y="{y-7}" text-anchor="left" style="{style3}">{text}</text>'
+            f'<text x="{x}" y="{y-7}" text-anchor="left" style="{style3}">{escaped_text}</text>'
             f'<rect x="{x}" y="{y}" width="{w}" height="{h}" style="{style}" />'
             f'<rect x="{x+w*0.2}" y="{y+h*0.2}" width="{w-w*0.4}" height="{h-h*0.4}" '
             f'style="{style2}" />'
@@ -293,6 +304,15 @@ class DrawDigitalRoisStep(DrawRoisBaseStep):
                     ).tooltip(
                         "Add new digital digit bounding box"
                     )
+                    ui.button(
+                        "Duplicate",
+                        icon="content_copy",
+                        on_click=lambda: self.duplicate_roi(),
+                    ).props("dense outline").classes(
+                        "border-emerald-500/50 text-emerald-400 hover:bg-emerald-500/10 text-xs px-2 py-1 font-medium"
+                    ).tooltip(
+                        "Duplicate selected ROI to the right (Ctrl+D)"
+                    )
 
             # ROI List Container
             self.container = ui.column().classes(
@@ -430,3 +450,41 @@ class DrawDigitalRoisStep(DrawRoisBaseStep):
                     "bg-cyan-600 hover:bg-cyan-500 text-white text-xs px-4 py-1.5 font-semibold rounded-lg"
                 )
         dialog.open()
+
+    def populate_config(self, config: "Config") -> None:
+        """Populate digital readout section in Config."""
+        from gui.wizard.config_manager import resolve_model_path
+
+        digital_model_file = resolve_model_path(
+            self.cnn_file,
+            self.digital_models_dir,
+            "${DigitalModelsDir}",
+        )
+        digital_cut_images = [
+            ImagePosition(
+                name=roi.name,
+                x=roi.x,
+                y=roi.y,
+                w=roi.w,
+                h=roi.h,
+            )
+            for roi in self.rois
+        ]
+        digital_model_val = (
+            str(self.cnn_type.value or "auto")
+            if hasattr(self, "cnn_type") and self.cnn_type is not None
+            else "auto"
+        )
+        detect_neg = (
+            bool(self.detect_negative_sign.value)
+            if hasattr(self, "detect_negative_sign")
+            and self.detect_negative_sign is not None
+            else False
+        )
+        config.digital_readout = CNNParams(
+            enabled=len(digital_cut_images) > 0,
+            model=digital_model_val,
+            model_file=digital_model_file,
+            detect_negative_sign=detect_neg,
+            cut_images=digital_cut_images,
+        )

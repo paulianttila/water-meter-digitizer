@@ -71,6 +71,44 @@ class WizardNavigator:
             return False
         return steps_order.index(new_step) > steps_order.index(previous_step)
 
+    def validate_transition(
+        self,
+        current_step: str,
+        target_step: str,
+        step_getter: Callable[[str], Any],
+    ) -> tuple[bool, str]:
+        """Validate whether the wizard can transition from current_step forward to target_step.
+
+        Returns:
+            (is_valid, error_message).
+        """
+        if not self.is_step_forward(target_step, current_step):
+            return True, ""
+
+        curr_step_obj = step_getter(current_step)
+        if curr_step_obj is not None and hasattr(curr_step_obj, "validate"):
+            is_valid, msg = curr_step_obj.validate()
+            if not is_valid:
+                return False, msg
+
+        target_idx = steps_order.index(target_step) if target_step in steps_order else 0
+        dl_idx = steps_order.index(NAME_DOWNLOAD_IMAGE)
+        if target_idx > dl_idx:
+            dl_obj = step_getter(NAME_DOWNLOAD_IMAGE)
+            if dl_obj is not None:
+                img = (
+                    dl_obj.get_image()
+                    if hasattr(dl_obj, "get_image")
+                    else getattr(dl_obj, "image", "")
+                )
+                if not img:
+                    return (
+                        False,
+                        "Please download an image from your camera before proceeding",
+                    )
+
+        return True, ""
+
     @staticmethod
     def get_source_image_for_step(
         step_name: str,

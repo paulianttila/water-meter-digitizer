@@ -1,6 +1,6 @@
 """Unit tests for ROI placement and bounding box drawing steps in Setup Wizard."""
 
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 from data_classes import ImagePosition, RefImage
 from gui.wizard.steps.draw_analog_rois import DrawAnalogRoisStep
@@ -328,10 +328,13 @@ def test_draw_rois_base_build_shortcuts_bar():
         set_rois_to_svg_func=MagicMock(),
         show_temp_draw_in_svg_func=MagicMock(),
     )
-    bar = step.build_shortcuts_bar()
-    assert bar is not None
-    classes = " ".join(bar._classes)
-    assert "roi-shortcut-bar" in classes
+    with patch("gui.wizard.steps.draw_rois_base.ui") as mock_ui:
+        mock_bar = MagicMock()
+        mock_bar._classes = ["roi-shortcut-bar"]
+        mock_ui.row.return_value.classes.return_value.__enter__.return_value = mock_bar
+        bar = step.build_shortcuts_bar()
+        assert bar is not None
+        assert "roi-shortcut-bar" in bar._classes
 
 
 def test_digital_roi_inner_box_twenty_percent_border():
@@ -403,3 +406,132 @@ def test_digital_roi_sizing_guide_dialog():
         mock_dialog.open.assert_called_once()
         # Verify the visual illustration image was loaded
         mock_ui.image.assert_called_once_with("/static/images/ROI_drawing.jpg")
+
+
+def test_draw_rois_keyboard_nudging_and_resizing():
+    from gui.wizard.steps.draw_digital_rois import DrawDigitalRoisStep
+
+    step = DrawDigitalRoisStep(
+        name="Digital",
+        name_template="digit",
+        set_image_callback=MagicMock(),
+        set_rois_to_svg_func=MagicMock(),
+        show_temp_draw_in_svg_func=MagicMock(),
+    )
+    with patch("gui.wizard.steps.draw_rois_base.ui"):
+        step.load_rois([ImagePosition(name="digit1", x=100, y=100, w=50, h=80)])
+        assert len(step.rois) == 1
+        roi = step.rois[0]
+
+        # Arrow keys nudging (1px default)
+        assert step.handle_keyboard_event("ArrowUp", shift=False) is True
+        assert roi.y == 99
+
+        assert step.handle_keyboard_event("ArrowDown", shift=False) is True
+        assert roi.y == 100
+
+        assert step.handle_keyboard_event("ArrowLeft", shift=False) is True
+        assert roi.x == 99
+
+        assert step.handle_keyboard_event("ArrowRight", shift=False) is True
+        assert roi.x == 100
+
+        # Arrow keys with Shift (10px step)
+        assert step.handle_keyboard_event("ArrowUp", shift=True) is True
+        assert roi.y == 90
+
+        assert step.handle_keyboard_event("ArrowLeft", shift=True) is True
+        assert roi.x == 90
+
+        assert step.handle_keyboard_event("ArrowDown", shift=True) is True
+        assert roi.y == 100
+
+        assert step.handle_keyboard_event("ArrowRight", shift=True) is True
+        assert roi.x == 100
+
+        # Resize + and -
+        assert step.handle_keyboard_event("+", shift=False) is True
+        assert roi.w == 51 and roi.h == 81
+
+        assert step.handle_keyboard_event("-", shift=False) is True
+        assert roi.w == 50 and roi.h == 80
+
+        assert step.handle_keyboard_event("=", shift=True) is True
+        assert roi.w == 60 and roi.h == 90
+
+        assert step.handle_keyboard_event("_", shift=True) is True
+        assert roi.w == 50 and roi.h == 80
+
+        # Unknown key returns False
+        assert step.handle_keyboard_event("Escape") is False
+
+        # No enabled ROIs returns False
+        roi.enabled = False
+        assert step.handle_keyboard_event("ArrowUp") is False
+
+
+def test_draw_rois_keyboard_delete_and_duplicate():
+    from gui.wizard.steps.draw_digital_rois import DrawDigitalRoisStep
+
+    step = DrawDigitalRoisStep(
+        name="Digital",
+        name_template="digit",
+        set_image_callback=MagicMock(),
+        set_rois_to_svg_func=MagicMock(),
+        show_temp_draw_in_svg_func=MagicMock(),
+    )
+    with patch("gui.wizard.steps.draw_rois_base.ui"):
+        step.load_rois([ImagePosition(name="digit1", x=100, y=100, w=50, h=80)])
+
+        # Duplicate via Ctrl+D
+        res = step.handle_keyboard_event("d", ctrl=True)
+        assert res is True
+        assert len(step.rois) == 2
+        dup = step.rois[1]
+        assert dup.name == "digit2"
+        assert dup.x == 100 + 50 + 2
+        assert dup.y == 100
+        assert dup.w == 50
+        assert dup.h == 80
+        assert dup.enabled is True
+
+        # Delete via Delete key
+        assert step.handle_keyboard_event("Delete") is True
+        assert len(step.rois) == 1
+        assert step.rois[0].name == "digit1"
+
+
+def test_draw_rois_base_zoom_controls():
+    """Verify zoom buttons invoke zoom_callback with expected delta/zoom/fit."""
+    mock_zoom_cb = MagicMock()
+    mock_get_text = MagicMock(return_value="150%")
+    step = DrawRoisBaseStep(
+        name="Test",
+        name_template="roi_",
+        set_image_callback=MagicMock(),
+        draw_roi_func=MagicMock(return_value="<svg></svg>"),
+        set_rois_to_svg_func=MagicMock(),
+        show_temp_draw_in_svg_func=MagicMock(),
+        zoom_callback=mock_zoom_cb,
+        get_zoom_text=mock_get_text,
+    )
+    # Test _zoom_in
+    step._zoom_in()
+    mock_zoom_cb.assert_called_with(delta=0.25)
+
+    # Test _zoom_out
+    step._zoom_out()
+    mock_zoom_cb.assert_called_with(delta=-0.25)
+
+    # Test _zoom_1_1
+    step._zoom_1_1()
+    mock_zoom_cb.assert_called_with(zoom=1.0)
+
+    # Test _zoom_fit
+    step._zoom_fit()
+    mock_zoom_cb.assert_called_with(fit=True)
+
+    # Test update_zoom_display
+    step.step_zoom_label = MagicMock()
+    step.update_zoom_display("200%")
+    assert step.step_zoom_label.text == "200%"

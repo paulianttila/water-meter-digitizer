@@ -435,7 +435,7 @@ def open_model_alignment_dialog(
                     ui.button(
                         icon="remove",
                         on_click=lambda: apply_zoom(state["scale"] - 0.01),
-                    ).props("flat round dense").classes(
+                    ).props("flat round dense data-testid=dialog-zoom-out").classes(
                         "text-slate-300 hover:text-white w-6 h-6 text-xs"
                     ).tooltip(
                         "Zoom Out (-1%)"
@@ -450,7 +450,7 @@ def open_model_alignment_dialog(
 
                     ui.button(
                         icon="add", on_click=lambda: apply_zoom(state["scale"] + 0.01)
-                    ).props("flat round dense").classes(
+                    ).props("flat round dense data-testid=dialog-zoom-in").classes(
                         "text-slate-300 hover:text-white w-6 h-6 text-xs"
                     ).tooltip(
                         "Zoom In (+1%)"

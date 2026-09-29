@@ -748,3 +748,7 @@ class ServicesStep(BaseStep):
                         )
 
             super().add_navigator(stepper, first_step, last_step)
+
+    def populate_config(self, config: Config) -> None:
+        """Populate services (MQTT, Poller, Influx, Leak, etc.) in Config."""
+        self.apply_to_config(config)

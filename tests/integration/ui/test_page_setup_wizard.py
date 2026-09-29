@@ -508,8 +508,8 @@ def test_setup_wizard_align_to_model_dialog(page: Page, live_server_url: str):
     expect(page.get_by_text("Fine Rotation")).to_be_visible()
 
     # Floating Canvas Mini Toolbar HUD is visible
-    zoom_in_btn = page.locator("button:has(.q-icon:has-text('add'))").first
-    zoom_out_btn = page.locator("button:has(.q-icon:has-text('remove'))").first
+    zoom_in_btn = page.get_by_test_id("dialog-zoom-in")
+    zoom_out_btn = page.get_by_test_id("dialog-zoom-out")
     expect(zoom_in_btn).to_be_visible()
     expect(zoom_out_btn).to_be_visible()
     zoom_in_btn.click()

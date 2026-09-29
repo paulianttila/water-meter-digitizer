@@ -1,12 +1,16 @@
 import re
 from collections.abc import Callable
 from dataclasses import dataclass
+from typing import TYPE_CHECKING
 
 from nicegui import events, ui
 
 from data_classes import MeterConfig
 
 from .base import BaseStep
+
+if TYPE_CHECKING:
+    from configuration import Config
 
 HELP_TEXT = (
     "- **Meter & Digits**: Name your meter and choose digital/analog digits "
@@ -642,3 +646,43 @@ class MeterStep(BaseStep):
             self.values_container = ui.column().classes("w-full gap-2")
 
             super().add_navigator(stepper, first_step, last_step)
+
+    def validate(self) -> tuple[bool, str]:
+        """Validate configured meters before advancing."""
+        if not self.meters:
+            return False, "At least one meter configuration is required"
+        for idx, m in enumerate(self.meters):
+            name = (
+                m.meter.name.strip()
+                if hasattr(m, "meter") and hasattr(m.meter, "name") and m.meter.name
+                else ""
+            )
+            if not name:
+                return False, f"Meter #{idx + 1} must have a name"
+            if not (hasattr(m, "digits") and m.digits.value):
+                return (
+                    False,
+                    f"Meter '{name}' must have at least one digit or dial configured in its sequence",
+                )
+        return True, ""
+
+    def populate_config(self, config: "Config") -> None:
+        """Populate meter_configs list in Config."""
+        meters = [
+            MeterConfig(
+                name=meter.name,
+                format=meter.value,
+                consistency_enabled=meter.consistency_enabled,
+                allow_negative_rates=meter.allow_negative_rates,
+                max_rate_value=meter.max_rate_value,
+                min_rate_value=getattr(meter, "min_rate_value", 0.0),
+                stale_threshold_hours=getattr(meter, "stale_threshold_hours", 0.0),
+                use_previous_value=meter.use_previous_value,
+                pre_value_from_file_max_age=meter.prevalue_from_file_max_age,
+                use_extended_resolution=meter.use_extended_resolution,
+                unit=meter.unit,
+                detect_negative_sign=meter.detect_negative_sign,
+            )
+            for meter in self.meter_params
+        ]
+        config.meter_configs = meters

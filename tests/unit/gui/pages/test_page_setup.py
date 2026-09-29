@@ -5,6 +5,7 @@ from unittest.mock import AsyncMock, MagicMock, patch
 
 from configuration import Config
 from gui.pages.setup import SetupPage
+from gui.wizard.navigator import NAME_ADJUST, NAME_DRAW_REFS
 
 
 def test_setup_page_init():
@@ -600,3 +601,97 @@ def test_meter_type_preset_mock_camera_enables_digits_and_analogs():
     assert len(gathered.digital_readout.cut_images) == 5
     assert gathered.analog_readout.enabled is True
     assert len(gathered.analog_readout.cut_images) == 4
+
+
+def test_setup_page_is_dirty_state():
+    callbacks = MagicMock()
+    config = Config()
+    callbacks.get_config.return_value = config
+    callbacks.load_config_file.return_value = config.save_to_string()
+
+    page = SetupPage(callbacks=callbacks)
+    assert page.is_dirty is False
+    page.is_dirty = True
+    assert page.is_dirty is True
+
+
+def test_setup_page_apply_canvas_zoom_and_sync():
+    callbacks = MagicMock()
+    config = Config()
+    callbacks.get_config.return_value = config
+    callbacks.load_config_file.return_value = config.save_to_string()
+
+    page = SetupPage(callbacks=callbacks)
+    page.interactive_image = MagicMock()
+    page.zoom_label = MagicMock()
+
+    mock_refs_step = MagicMock()
+    mock_digital_step = MagicMock()
+    mock_analog_step = MagicMock()
+    page.draw_refs_step = mock_refs_step
+    page.draw_digital_rois_step = mock_digital_step
+    page.draw_analog_rois_step = mock_analog_step
+
+    # Zoom in by delta +0.25
+    page.apply_canvas_zoom(delta=0.25)
+    assert page.canvas_zoom == 1.25
+    assert page.canvas_is_fit is False
+    assert page.zoom_label.text == "125%"
+    mock_refs_step.update_zoom_display.assert_called_with("125%")
+    mock_digital_step.update_zoom_display.assert_called_with("125%")
+    mock_analog_step.update_zoom_display.assert_called_with("125%")
+
+    # Fit screen
+    page.apply_canvas_zoom(fit=True)
+    assert page.canvas_is_fit is True
+    assert page.canvas_zoom == 1.0
+    assert page.zoom_label.text == "Fit"
+    mock_refs_step.update_zoom_display.assert_called_with("Fit")
+    mock_digital_step.update_zoom_display.assert_called_with("Fit")
+    mock_analog_step.update_zoom_display.assert_called_with("Fit")
+
+    # Zoom out by delta -0.25
+    page.apply_canvas_zoom(delta=-0.25)
+    assert page.canvas_zoom == 0.75
+    assert page.zoom_label.text == "75%"
+
+
+def test_setup_page_main_image_header_visibility_harmonization():
+    """Verify main_image_header remains visible across steps with appropriate labels and tags."""
+    callbacks = MagicMock()
+    config = Config()
+    callbacks.get_config.return_value = config
+    callbacks.load_config_file.return_value = config.save_to_string()
+
+    page = SetupPage(callbacks=callbacks)
+    page.comparison_container = MagicMock()
+    page.comparison_image = MagicMock()
+    page.main_image_header = MagicMock()
+    page.main_image_label = MagicMock()
+    page.main_image_tag = MagicMock()
+    page.stepper = MagicMock()
+
+    # 1. Adjust step with side-by-side comparison image
+    page.stepper.value = NAME_ADJUST
+    page.set_comparison_image("dummy_base64_data")
+    page.comparison_container.set_visibility.assert_called_with(True)
+    page.main_image_header.set_visibility.assert_called_with(True)
+    assert page.main_image_label.text == "Original Image"
+    assert page.main_image_tag.text == "ORIGINAL"
+    page.main_image_tag.set_visibility.assert_called_with(True)
+
+    # 2. Adjust step with single preview (no comparison image)
+    page.set_comparison_image("")
+    page.comparison_container.set_visibility.assert_called_with(False)
+    page.main_image_header.set_visibility.assert_called_with(True)
+    assert page.main_image_label.text == "Adjusted Image Preview"
+    assert page.main_image_tag.text == "ADJUSTED"
+    page.main_image_tag.set_visibility.assert_called_with(True)
+
+    # 3. Other step (e.g. Draw Refs) without comparison image
+    page.stepper.value = NAME_DRAW_REFS
+    page.set_comparison_image("")
+    page.comparison_container.set_visibility.assert_called_with(False)
+    page.main_image_header.set_visibility.assert_called_with(True)
+    assert page.main_image_label.text == "Original Image"
+    page.main_image_tag.set_visibility.assert_called_with(False)

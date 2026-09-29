@@ -46,6 +46,7 @@ TOOLBAR_ROW = (
     "w-full items-center justify-between gap-3 mb-3 p-3 rounded-xl "
     "bg-slate-900/60 border border-white/10"
 )
+TOOLBAR_ZOOM_CONTAINER = "relative items-center gap-0.5 bg-slate-800/80 px-1 py-0.5 rounded-lg border border-white/10 shrink-0 z-10"
 
 # --- Typography ---
 HEADING_SECTION = "font-['Outfit'] font-bold text-base text-gray-100"
@@ -54,6 +55,7 @@ HEADING_SUBSECTION = (
 )
 TEXT_MONO_MUTED = "text-[11px] font-mono text-gray-400"
 TEXT_MONO_SMALL = "text-[10px] font-mono text-gray-400"
+TEXT_ZOOM_LABEL = "text-[11px] font-mono text-cyan-400 font-bold px-1 min-w-[36px] text-center cursor-default"
 FONT_MONO_VALUE = "font-['Outfit'] text-2xl font-bold"
 
 # --- Layout Rows & Flexbox ---

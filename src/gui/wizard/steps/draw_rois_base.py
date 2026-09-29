@@ -3,6 +3,7 @@ import time
 from collections.abc import Callable
 from dataclasses import dataclass
 from pathlib import Path
+from typing import Any
 
 from nicegui import events, ui
 
@@ -36,6 +37,8 @@ class DrawRoisBaseStep(BaseStep):
         set_rois_to_svg_func: Callable[[str], None],
         show_temp_draw_in_svg_func: Callable[[str], None],
         spinner=None,
+        zoom_callback: Callable[..., None] | None = None,
+        get_zoom_text: Callable[[], str] | None = None,
     ) -> None:
         super().__init__(
             name,
@@ -46,6 +49,9 @@ class DrawRoisBaseStep(BaseStep):
         self.draw_roi_func = draw_roi_func
         self.set_rois_to_svg_func = set_rois_to_svg_func
         self.show_temp_draw_in_svg_func = show_temp_draw_in_svg_func
+        self.zoom_callback = zoom_callback
+        self.get_zoom_text = get_zoom_text
+        self.step_zoom_label: ui.label | None = None
         self.container: ui.column | None = None
         self.test_result_container: ui.element | None = None
         self.rois: list[Roi] = []
@@ -75,6 +81,7 @@ class DrawRoisBaseStep(BaseStep):
         )
         self.is_moving: bool = False
         self._move_start_positions: list[tuple[Roi, int, int]] = []
+        self._roi_ui_elements: dict[int, Any] = {}
 
     def _sync_select_all_checkbox(self) -> None:
         if hasattr(self, "select_all") and self.select_all is not None:
@@ -109,6 +116,26 @@ class DrawRoisBaseStep(BaseStep):
             if roi.x <= x <= roi.x + roi.w and roi.y <= y <= roi.y + roi.h:
                 return roi
         return None
+
+    def _zoom_in(self) -> None:
+        if self.zoom_callback:
+            self.zoom_callback(delta=0.25)
+
+    def _zoom_out(self) -> None:
+        if self.zoom_callback:
+            self.zoom_callback(delta=-0.25)
+
+    def _zoom_1_1(self) -> None:
+        if self.zoom_callback:
+            self.zoom_callback(zoom=1.0)
+
+    def _zoom_fit(self) -> None:
+        if self.zoom_callback:
+            self.zoom_callback(fit=True)
+
+    def update_zoom_display(self, text: str) -> None:
+        if hasattr(self, "step_zoom_label") and self.step_zoom_label is not None:
+            self.step_zoom_label.text = text
 
     def build_shortcuts_bar(self) -> ui.row:
         """Build a compact, discoverable quick-shortcuts bar for canvas interactions."""
@@ -176,10 +203,56 @@ class DrawRoisBaseStep(BaseStep):
                     "shortcut-move-active-tag text-[9px] font-mono font-bold text-amber-300 "
                     "bg-amber-500/20 px-1 py-0.2 rounded border border-amber-400/40 animate-pulse ml-0.5"
                 )
+
+            # Nudge chip
+            with (
+                ui.row()
+                .classes(
+                    "shortcut-chip-nudge items-center gap-1.5 px-2 py-0.5 rounded-md "
+                    "bg-slate-800/80 border border-white/10 text-slate-200 text-xs transition-colors shrink-0 cursor-default"
+                )
+                .tooltip(
+                    "Use Arrow keys (↑, ↓, ←, →) to nudge selected ROIs by 1px (or 10px with Shift). "
+                    "+/- to expand/shrink dimensions, Del to delete."
+                )
+            ):
+                ui.icon("keyboard", size="14px").classes("text-indigo-400")
+                ui.label("Arrows").classes(
+                    "font-mono font-bold text-indigo-300 text-[11px] bg-indigo-950/60 px-1 py-0.2 rounded border border-indigo-500/30"
+                )
+                ui.label("Nudge").classes("text-slate-300 text-[11px]")
+
+            # Duplicate chip
+            with (
+                ui.row()
+                .classes(
+                    "shortcut-chip-dup items-center gap-1.5 px-2 py-0.5 rounded-md "
+                    "bg-slate-800/80 border border-white/10 text-slate-200 text-xs transition-colors shrink-0 cursor-pointer "
+                    "hover:bg-slate-700/80"
+                )
+                .tooltip(
+                    "Duplicate the selected ROI or last ROI offset to the right (Ctrl+D)"
+                )
+                .on("click", lambda: self.duplicate_roi())
+            ):
+                ui.icon("content_copy", size="14px").classes("text-emerald-400")
+                with ui.row().classes(
+                    "items-center gap-0.5 font-mono font-bold text-[11px]"
+                ):
+                    ui.label("Ctrl").classes(
+                        "text-emerald-300 bg-emerald-950/60 px-1 py-0.2 rounded border border-emerald-500/30"
+                    )
+                    ui.label("+").classes("text-slate-400")
+                    ui.label("D").classes(
+                        "text-emerald-300 bg-emerald-950/60 px-1 py-0.2 rounded border border-emerald-500/30"
+                    )
+                ui.label("Duplicate").classes("text-slate-300 text-[11px]")
+
         return bar
 
     def load_rois(self, items: list[ImagePosition | RefImage]) -> None:
         self.rois.clear()
+        self._roi_ui_elements.clear()
         if hasattr(self, "container") and self.container is not None:
             self.container.clear()
         for item in items:
@@ -276,27 +349,38 @@ class DrawRoisBaseStep(BaseStep):
 
     def _remove_roi(self) -> None:
         if self.rois:
-            self.rois.pop()
+            last = self.rois.pop()
+            elem = self._roi_ui_elements.pop(id(last), None)
             if (
+                hasattr(self, "container")
+                and self.container is not None
+                and elem is not None
+                and elem in self.container
+            ):
+                self.container.remove(elem)
+            elif (
                 hasattr(self, "container")
                 and self.container is not None
                 and len(list(self.container)) > 0
             ):
-                last = len(list(self.container)) - 1
-                self.container.remove(last)
+                last_idx = len(list(self.container)) - 1
+                self.container.remove(last_idx)
             self._show_rois()
             self._sync_select_all_checkbox()
             self._on_rois_changed()
 
-    def _delete_roi(self, roi: Roi, row_elem) -> None:
+    def _delete_roi(self, roi: Roi, row_elem=None) -> None:
         if roi in self.rois:
             self.rois.remove(roi)
+        elem = row_elem if row_elem is not None else self._roi_ui_elements.get(id(roi))
         if (
             hasattr(self, "container")
             and self.container is not None
-            and row_elem in self.container
+            and elem is not None
+            and elem in self.container
         ):
-            self.container.remove(row_elem)
+            self.container.remove(elem)
+        self._roi_ui_elements.pop(id(roi), None)
         self._show_rois()
         self._sync_select_all_checkbox()
         self._on_rois_changed()
@@ -566,6 +650,7 @@ class DrawRoisBaseStep(BaseStep):
                 "hover:border-slate-700/80 transition-colors"
             ) as row_elem,
         ):
+            self._roi_ui_elements[id(roi)] = row_elem
             with ui.row().classes(
                 "items-center gap-2 flex-grow min-w-0 flex-wrap sm:flex-nowrap"
             ):
@@ -608,3 +693,85 @@ class DrawRoisBaseStep(BaseStep):
             ).tooltip(
                 "Delete this region"
             )
+
+    def duplicate_roi(self, target_roi: Roi | None = None) -> Roi | None:
+        """Duplicate the target or selected ROI offset to the right."""
+        if target_roi is None:
+            enabled = [r for r in self.rois if r.enabled]
+            target_roi = (
+                enabled[-1] if enabled else (self.rois[-1] if self.rois else None)
+            )
+        if target_roi is None:
+            return None
+
+        self._unselect_all_rois()
+        i = len(self.rois)
+        new_roi = Roi(
+            color=self.colors[i % len(self.colors)],
+            name=f"{self.name_template}{i + 1}",
+            enabled=True,
+            x=target_roi.x + target_roi.w + 2,
+            y=target_roi.y,
+            w=target_roi.w,
+            h=target_roi.h,
+        )
+        self.rois.append(new_roi)
+        self._add_roi_ui(new_roi)
+        self._show_rois()
+        self._sync_select_all_checkbox()
+        self._on_rois_changed()
+        return new_roi
+
+    def handle_keyboard_event(
+        self, key: str, shift: bool = False, ctrl: bool = False
+    ) -> bool:
+        """Handle keyboard nudging, resizing, deletion, and duplication of ROIs."""
+        if ctrl and key.lower() == "d":
+            return self.duplicate_roi() is not None
+
+        enabled_rois = [roi for roi in self.rois if roi.enabled]
+        if not enabled_rois:
+            return False
+
+        step = 10 if shift else 1
+
+        if key == "ArrowUp":
+            for roi in enabled_rois:
+                roi.y = max(0, roi.y - step)
+        elif key == "ArrowDown":
+            for roi in enabled_rois:
+                roi.y += step
+        elif key == "ArrowLeft":
+            for roi in enabled_rois:
+                roi.x = max(0, roi.x - step)
+        elif key == "ArrowRight":
+            for roi in enabled_rois:
+                roi.x += step
+        elif key in ("+", "="):
+            for roi in enabled_rois:
+                roi.w += step
+                roi.h += step
+        elif key in ("-", "_"):
+            for roi in enabled_rois:
+                roi.w = max(1, roi.w - step)
+                roi.h = max(1, roi.h - step)
+        elif key in ("Delete", "Backspace"):
+            for roi in list(enabled_rois):
+                self._delete_roi(roi)
+        else:
+            return False
+
+        self._show_rois()
+        self._on_rois_changed()
+        return True
+
+    def validate(self) -> tuple[bool, str]:
+        """Validate that all defined ROIs have positive dimensions."""
+        for roi in self.rois:
+            if roi.w <= 0 or roi.h <= 0:
+                return (
+                    False,
+                    f"ROI '{roi.name}' has invalid dimensions ({roi.w}x{roi.h}). "
+                    "Width and height must be greater than zero.",
+                )
+        return True, ""
