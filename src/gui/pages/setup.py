@@ -1125,7 +1125,9 @@ class SetupPage(BasePage):
                             ui.button(
                                 icon="remove",
                                 on_click=lambda: self.apply_canvas_zoom(delta=-0.25),
-                            ).props("flat dense round size=xs aria-label='Zoom Out' data-testid='zoom-out'").classes(
+                            ).props(
+                                "flat dense round size=xs aria-label='Zoom Out' data-testid='zoom-out'"
+                            ).classes(
                                 "text-slate-300 hover:text-white"
                             ).tooltip(
                                 "Zoom Out Canvas (-)"
@@ -1134,7 +1136,9 @@ class SetupPage(BasePage):
                             ui.button(
                                 icon="add",
                                 on_click=lambda: self.apply_canvas_zoom(delta=0.25),
-                            ).props("flat dense round size=xs aria-label='Zoom In' data-testid='zoom-in'").classes(
+                            ).props(
+                                "flat dense round size=xs aria-label='Zoom In' data-testid='zoom-in'"
+                            ).classes(
                                 "text-slate-300 hover:text-white"
                             ).tooltip(
                                 "Zoom In Canvas (+)"

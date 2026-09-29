@@ -180,7 +180,9 @@ class DrawRefsStep(DrawRoisBaseStep):
                         "Add Reference Point",
                         icon="add_circle_outline",
                         on_click=self._add_roi,
-                    ).props("color=primary dense aria-label=Add data-testid=add-ref-point").classes(
+                    ).props(
+                        "color=primary dense aria-label=Add data-testid=add-ref-point"
+                    ).classes(
                         "px-3 py-1 text-xs font-semibold bg-gradient-to-r "
                         "from-blue-600 to-cyan-600 text-white rounded-lg shadow-sm"
                     ).tooltip(
