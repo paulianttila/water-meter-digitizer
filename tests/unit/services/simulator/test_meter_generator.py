@@ -423,3 +423,83 @@ def test_cli_synthetic_template_with_reference_crops(tmp_path, monkeypatch):
     assert ref0.exists() and ref0.stat().st_size > 0
     assert ref1.exists() and ref1.stat().st_size > 0
     assert ref2.exists() and ref2.stat().st_size > 0
+
+
+def test_generator_lcd_fonts_registry_and_rendering():
+    from services.simulator.rendering import LCD_FONTS
+    from services.simulator.rendering.digits import draw_7segment_font_digit
+
+    assert "builtin" in LCD_FONTS
+    assert "dseg7_classic" in LCD_FONTS
+    assert "dseg7_classic_bold" in LCD_FONTS
+    assert "dseg7_classic_italic" in LCD_FONTS
+    assert "dseg7_modern" in LCD_FONTS
+    assert "dseg7_modern_bold" in LCD_FONTS
+    assert "dseg7_modern_italic" in LCD_FONTS
+    assert "dseg14_classic" in LCD_FONTS
+    assert "dseg14_classic_bold" in LCD_FONTS
+    assert "dseg14_classic_italic" in LCD_FONTS
+    assert "dseg14_modern" in LCD_FONTS
+    assert "dseg14_modern_bold" in LCD_FONTS
+    assert "dseg14_modern_italic" in LCD_FONTS
+
+    generator = MeterImageGenerator()
+    # Test rendering every single font style
+    for font_key in LCD_FONTS:
+        img = generator.generate(value="01234.5678", lcd_font=font_key)
+        assert isinstance(img, Image.Image)
+        assert img.size == (640, 480)
+
+    # Test unknown font fallback to builtin without crashing
+    img_fallback = generator.generate(value="01234.5678", lcd_font="unknown_font_style")
+    assert isinstance(img_fallback, Image.Image)
+
+    # Verify font rendering produces different pixels than builtin vector rendering
+    img_builtin = generator.generate(value="88888.0000", lcd_font="builtin")
+    img_dseg7 = generator.generate(value="88888.0000", lcd_font="dseg7_classic_bold")
+    assert img_builtin.tobytes() != img_dseg7.tobytes()
+
+    # Direct test of draw_7segment_font_digit
+    from PIL import ImageDraw
+
+    canvas = Image.new("RGB", (100, 100), (255, 255, 255))
+    draw = ImageDraw.Draw(canvas)
+    draw_7segment_font_digit(
+        draw,
+        x=10,
+        y=10,
+        w=39,
+        h=66,
+        char_str="7",
+        font_cfg=LCD_FONTS["dseg7_classic"],
+        active_color=(0, 0, 0),
+        ghost_color=(200, 200, 200),
+    )
+    draw_7segment_font_digit(
+        draw,
+        x=50,
+        y=10,
+        w=39,
+        h=66,
+        char_str="8",
+        font_cfg=LCD_FONTS["dseg14_modern_bold"],
+        active_color=(0, 0, 0),
+        ghost_color=(200, 200, 200),
+    )
+
+
+def test_api_mock_camera_with_lcd_fonts():
+    client = TestClient(app)
+    # Test with DSEG7 font
+    resp1 = client.get("/api/mock_camera?lcd_font=dseg7_classic_bold&value=12345.6789")
+    assert resp1.status_code == 200
+    assert resp1.headers["content-type"] == "image/jpeg"
+    assert len(resp1.content) > 1000
+
+    # Test with DSEG14 font
+    resp2 = client.get(
+        "/api/mock_camera?lcd_font=dseg14_modern_italic&value=98765.4321"
+    )
+    assert resp2.status_code == 200
+    assert resp2.headers["content-type"] == "image/jpeg"
+    assert len(resp2.content) > 1000

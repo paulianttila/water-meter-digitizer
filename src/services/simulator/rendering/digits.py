@@ -2,10 +2,175 @@
 
 from __future__ import annotations
 
+import functools
+import os
 from typing import Any
 
 import PIL.ImageDraw
+import PIL.ImageFont
 from PIL.Image import Image
+
+LCD_FONTS: dict[str, dict[str, str]] = {
+    "builtin": {
+        "label": "Builtin Procedural (Vector)",
+        "family": "vector",
+        "category": "vector",
+    },
+    # 7-Segment (DSEG7)
+    "dseg7_classic": {
+        "label": "DSEG7 Classic Regular (7-Seg)",
+        "family": "dseg7",
+        "category": "7seg",
+        "file": "DSEG7Classic-Regular.ttf",
+        "ghost_char": "8",
+    },
+    "dseg7_classic_bold": {
+        "label": "DSEG7 Classic Bold (7-Seg)",
+        "family": "dseg7",
+        "category": "7seg",
+        "file": "DSEG7Classic-Bold.ttf",
+        "ghost_char": "8",
+    },
+    "dseg7_classic_italic": {
+        "label": "DSEG7 Classic Italic (7-Seg)",
+        "family": "dseg7",
+        "category": "7seg",
+        "file": "DSEG7Classic-Italic.ttf",
+        "ghost_char": "8",
+    },
+    "dseg7_modern": {
+        "label": "DSEG7 Modern Regular (7-Seg)",
+        "family": "dseg7",
+        "category": "7seg",
+        "file": "DSEG7Modern-Regular.ttf",
+        "ghost_char": "8",
+    },
+    "dseg7_modern_bold": {
+        "label": "DSEG7 Modern Bold (7-Seg)",
+        "family": "dseg7",
+        "category": "7seg",
+        "file": "DSEG7Modern-Bold.ttf",
+        "ghost_char": "8",
+    },
+    "dseg7_modern_italic": {
+        "label": "DSEG7 Modern Italic (7-Seg)",
+        "family": "dseg7",
+        "category": "7seg",
+        "file": "DSEG7Modern-Italic.ttf",
+        "ghost_char": "8",
+    },
+    # 14-Segment (DSEG14)
+    "dseg14_classic": {
+        "label": "DSEG14 Classic Regular (14-Seg)",
+        "family": "dseg14",
+        "category": "14seg",
+        "file": "DSEG14Classic-Regular.ttf",
+        "ghost_char": "~",
+    },
+    "dseg14_classic_bold": {
+        "label": "DSEG14 Classic Bold (14-Seg)",
+        "family": "dseg14",
+        "category": "14seg",
+        "file": "DSEG14Classic-Bold.ttf",
+        "ghost_char": "~",
+    },
+    "dseg14_classic_italic": {
+        "label": "DSEG14 Classic Italic (14-Seg)",
+        "family": "dseg14",
+        "category": "14seg",
+        "file": "DSEG14Classic-Italic.ttf",
+        "ghost_char": "~",
+    },
+    "dseg14_modern": {
+        "label": "DSEG14 Modern Regular (14-Seg)",
+        "family": "dseg14",
+        "category": "14seg",
+        "file": "DSEG14Modern-Regular.ttf",
+        "ghost_char": "~",
+    },
+    "dseg14_modern_bold": {
+        "label": "DSEG14 Modern Bold (14-Seg)",
+        "family": "dseg14",
+        "category": "14seg",
+        "file": "DSEG14Modern-Bold.ttf",
+        "ghost_char": "~",
+    },
+    "dseg14_modern_italic": {
+        "label": "DSEG14 Modern Italic (14-Seg)",
+        "family": "dseg14",
+        "category": "14seg",
+        "file": "DSEG14Modern-Italic.ttf",
+        "ghost_char": "~",
+    },
+}
+
+LCD_FONT_OPTIONS: dict[str, str] = {k: v["label"] for k, v in LCD_FONTS.items()}
+
+
+def resolve_font_path(font_file: str) -> str:
+    """Resolve font file path from configuration or package directories."""
+    candidates = [
+        os.path.join("config", "fonts", "dseg", font_file),
+        os.path.join(
+            os.path.dirname(os.path.abspath(__file__)),
+            "..",
+            "..",
+            "..",
+            "..",
+            "config",
+            "fonts",
+            "dseg",
+            font_file,
+        ),
+        os.path.join("/config", "fonts", "dseg", font_file),
+    ]
+    for c in candidates:
+        if os.path.isfile(c):
+            return os.path.abspath(c)
+    raise FileNotFoundError(
+        f"Font file '{font_file}' not found in candidate paths: {candidates}"
+    )
+
+
+@functools.lru_cache(maxsize=32)
+def get_lcd_font(font_file: str, size: int) -> PIL.ImageFont.FreeTypeFont:
+    """Load and cache FreeType TTF font for simulated LCD rendering."""
+    full_path = resolve_font_path(font_file)
+    return PIL.ImageFont.truetype(full_path, size=size)
+
+
+def draw_7segment_font_digit(
+    draw: PIL.ImageDraw.ImageDraw,
+    x: int,
+    y: int,
+    w: int,
+    h: int,
+    char_str: str,
+    font_cfg: dict[str, str],
+    active_color: tuple[int, int, int],
+    ghost_color: tuple[int, int, int],
+) -> None:
+    """Render authentic dual-layer ghost and active LCD segments with optical slot centering."""
+    font_file = font_cfg["file"]
+    # Size 44 provides optimal ~36x44 aspect fit within the 39x66 slot
+    font = get_lcd_font(font_file, size=44)
+    ghost_char = font_cfg.get("ghost_char", "8")
+
+    bbox = font.getbbox(ghost_char)
+    gw = bbox[2] - bbox[0]
+    gh = bbox[3] - bbox[1]
+
+    # Exactly center the character bounding box inside slot (x, y, w, h)
+    ox = x + (w - gw) // 2 - bbox[0]
+    oy = y + (h - gh) // 2 - bbox[1]
+
+    # Layer 1: Ghost unlit segments
+    draw.text((ox, oy), ghost_char, fill=ghost_color, font=font)
+
+    # Layer 2: Active lit glyph (if not blank)
+    if char_str and char_str != " ":
+        draw.text((ox, oy), char_str, fill=active_color, font=font)
+
 
 # Segment mapping for 0-9 in standard 7-segment display (a, b, c, d, e, f, g)
 SEGMENTS_7 = {
@@ -169,8 +334,9 @@ def overlay_lcd_digits(
     digit_states: dict[str, float],
     lcd_color: str = "black",
     lcd_bg: str = "grey",
+    lcd_font: str = "builtin",
 ) -> None:
-    """Render 5 authentic 7-segment LCD digits inside the LCD counter window."""
+    """Render 5 authentic 7-segment or 14-segment LCD digits inside the LCD counter window."""
     center_x = canvas.width // 2
     center_y = canvas.height // 2
     win_w = 264
@@ -192,21 +358,42 @@ def overlay_lcd_digits(
     inner_h = dh - pad_y * 2
 
     draw = PIL.ImageDraw.Draw(canvas)
+    font_key = (lcd_font or "builtin").lower().strip()
+    font_cfg = LCD_FONTS.get(font_key)
+    use_font = font_cfg is not None and font_cfg.get("category") in (
+        "7seg",
+        "14seg",
+    )
 
     for i in range(5):
         digit_name = f"digit{i+1}"
         raw_val = int(digit_states.get(digit_name, 0.0))
         val = raw_val if raw_val in (-1, -2) else raw_val % 10
-        x = start_dx + i * (dw + gap) + pad_x
-        y = dy + pad_y
-        draw_7segment_digit(
-            draw,
-            x=x,
-            y=y,
-            w=inner_w,
-            h=inner_h,
-            digit=val,
-            active_color=active_col,
-            ghost_color=ghost_col,
-            slant=0,
-        )
+        x = start_dx + i * (dw + gap)
+        y = dy
+
+        if use_font and font_cfg is not None:
+            char_str = "-" if val == -1 else (" " if val == -2 else str(val))
+            draw_7segment_font_digit(
+                draw=draw,
+                x=x,
+                y=y,
+                w=dw,
+                h=dh,
+                char_str=char_str,
+                font_cfg=font_cfg,
+                active_color=active_col,
+                ghost_color=ghost_col,
+            )
+        else:
+            draw_7segment_digit(
+                draw,
+                x=x + pad_x,
+                y=y + pad_y,
+                w=inner_w,
+                h=inner_h,
+                digit=val,
+                active_color=active_col,
+                ghost_color=ghost_col,
+                slant=0,
+            )

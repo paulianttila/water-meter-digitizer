@@ -7,6 +7,7 @@ from typing import TYPE_CHECKING, Any
 from nicegui import ui
 
 from gui.api_console.registry import STANDARD_RESOLUTIONS
+from services.simulator.rendering import LCD_FONT_OPTIONS
 
 if TYPE_CHECKING:
     from gui.api_console.mock_studio_panel import MockStudioPanel
@@ -315,6 +316,21 @@ def render_mock_studio_controls(panel: MockStudioPanel) -> None:
                     .props("outlined dense options-dense")
                     .classes("text-xs")
                 )
+
+            async def _on_lcd_font_change(e: Any) -> None:
+                panel.mock_lcd_font = e.value
+                await panel._on_mock_param_change()
+
+            panel.mock_lcd_font_select = (
+                ui.select(
+                    options=LCD_FONT_OPTIONS,
+                    value=panel.mock_lcd_font,
+                    label="LCD Font Style",
+                    on_change=_on_lcd_font_change,
+                )
+                .props("outlined dense options-dense")
+                .classes("w-full text-xs")
+            )
 
             # Resolution preset + custom
             with ui.row().classes("w-full items-center gap-2"):

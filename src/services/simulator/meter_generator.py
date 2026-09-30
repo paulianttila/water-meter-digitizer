@@ -155,6 +155,7 @@ class MeterImageGenerator:
         lcd_bg: str = "grey",
         meter_bg: str = "white",
         needle_color: str = "red",
+        lcd_font: str = "builtin",
         width: int = 640,
         height: int = 480,
         custom_digital_values: dict[str, float] | None = None,
@@ -185,7 +186,11 @@ class MeterImageGenerator:
 
         # 3. Draw 5 LCD Digital Counter Drums
         self._overlay_lcd_digits(
-            canvas, digit_states, lcd_color=lcd_color, lcd_bg=lcd_bg
+            canvas,
+            digit_states,
+            lcd_color=lcd_color,
+            lcd_bg=lcd_bg,
+            lcd_font=lcd_font,
         )
 
         # 4. Draw 4 Analog Dial Needles
@@ -479,9 +484,12 @@ class MeterImageGenerator:
         digit_states: dict[str, float],
         lcd_color: str = "black",
         lcd_bg: str = "grey",
+        lcd_font: str = "builtin",
     ) -> None:
-        """Render 5 authentic 7-segment LCD digits inside the LCD counter window."""
-        _overlay_lcd_digits_fn(canvas, digit_states, lcd_color, lcd_bg)
+        """Render 5 authentic 7-segment or 14-segment LCD digits inside the LCD counter window."""
+        _overlay_lcd_digits_fn(
+            canvas, digit_states, lcd_color, lcd_bg, lcd_font=lcd_font
+        )
 
     def _draw_7segment_digit(
         self,

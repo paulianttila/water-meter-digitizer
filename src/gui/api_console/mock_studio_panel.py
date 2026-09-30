@@ -62,6 +62,7 @@ class MockStudioPanel(BaseComponent):
         self.mock_lcd_bg = "grey"
         self.mock_meter_bg = "white"
         self.mock_needle_color = "red"
+        self.mock_lcd_font = "builtin"
         self.mock_width = 640
         self.mock_height = 480
         self.mock_res_preset = "640x480"
@@ -95,6 +96,7 @@ class MockStudioPanel(BaseComponent):
         self.mock_lcd_bg_select: ui.select | None = None
         self.mock_meter_bg_select: ui.select | None = None
         self.mock_needle_color_select: ui.select | None = None
+        self.mock_lcd_font_select: ui.select | None = None
         self.mock_test_config_select: ui.select | None = None
         self.mock_custom_config: Config | None = None
         self.mock_custom_config_active: bool = False
@@ -117,6 +119,7 @@ class MockStudioPanel(BaseComponent):
             jpeg_bytes, _ = render_mock_camera_frame(
                 value=self.mock_value,
                 mode=self.mock_mode,
+                lcd_font=self.mock_lcd_font,
                 width=self.mock_width,
                 height=self.mock_height,
             )
@@ -196,6 +199,8 @@ class MockStudioPanel(BaseComponent):
             params["meter_bg"] = self.mock_meter_bg
         if self.mock_needle_color != "red":
             params["needle_color"] = self.mock_needle_color
+        if self.mock_lcd_font != "builtin":
+            params["lcd_font"] = self.mock_lcd_font
         if self.mock_width != 640:
             params["width"] = self.mock_width
         if self.mock_height != 480:
@@ -269,6 +274,7 @@ class MockStudioPanel(BaseComponent):
                     lcd_bg=self.mock_lcd_bg,
                     meter_bg=self.mock_meter_bg,
                     needle_color=self.mock_needle_color,
+                    lcd_font=self.mock_lcd_font,
                     width=self.mock_width,
                     height=self.mock_height,
                     digit1=d_vals[0] if len(d_vals) > 0 else None,

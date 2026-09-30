@@ -369,6 +369,14 @@ class ApiConsolePage(BasePage):
         self.mock_panel.mock_needle_color = value
 
     @property
+    def mock_lcd_font(self) -> str:
+        return self.mock_panel.mock_lcd_font
+
+    @mock_lcd_font.setter
+    def mock_lcd_font(self, value: str) -> None:
+        self.mock_panel.mock_lcd_font = value
+
+    @property
     def mock_width(self) -> int:
         return self.mock_panel.mock_width
 

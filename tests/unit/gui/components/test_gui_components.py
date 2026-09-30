@@ -521,6 +521,18 @@ def test_api_console_toggle_overlay_rois(mock_callbacks):
     assert "data:image/jpeg;base64," in page.mock_img_src
 
 
+def test_api_console_mock_lcd_font(mock_callbacks):
+    page = ApiConsolePage(callbacks=mock_callbacks)
+    assert page.mock_lcd_font == "builtin"
+    qs_default = page.build_mock_query_string()
+    assert "lcd_font" not in qs_default
+
+    page.mock_lcd_font = "dseg7_modern_bold"
+    qs_font = page.build_mock_query_string()
+    assert "lcd_font=dseg7_modern_bold" in qs_font
+    assert page.get_mock_url().endswith("lcd_font=dseg7_modern_bold")
+
+
 def test_consumption_card(mock_callbacks):
     from datetime import datetime
 
