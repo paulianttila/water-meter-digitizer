@@ -721,19 +721,17 @@ class ConfigPage(BasePage):
             with (
                 ui.element("div")
                 .classes(
-                    "w-full flex-1 min-h-[300px] rounded-xl bg-slate-950 p-3 "
-                    "border border-white/10 flex flex-col overflow-hidden"
+                    "w-full flex-1 min-h-[300px] rounded-xl border border-white/10 flex flex-col overflow-hidden"
                 )
                 .props('id="editor-container"') as editor_container
             ):
-                editor = (
-                    ui.textarea(
-                        value=self.txt,
-                        on_change=check_buttons,
-                    )
-                    .classes("w-full h-full config-editor-field font-mono text-sm")
-                    .props("borderless")
-                )
+                editor = ui.codemirror(
+                    value=self.txt,
+                    on_change=lambda _: check_buttons(),
+                    language="Properties files",  # closest to INI in CodeMirror's language list
+                    theme="basicDark",
+                    line_wrapping=True,
+                ).classes("w-full h-full config-editor-field")
 
             # 2. Visual Section Editor Container
             with (

@@ -46,7 +46,7 @@ class FinalStep(BaseStep):
         )
         self.save_refs_func = save_refs_func
         self.callbacks = callbacks
-        self.editor: ui.textarea
+        self.editor: ui.codemirror
         self.new_config_saved = False
         self.txt = ""
         self.status_banner = ValidationBanner()
@@ -296,9 +296,14 @@ class FinalStep(BaseStep):
                 "p-2 my-1.5 shadow-inner"
             ):
                 self.editor = (
-                    ui.textarea(on_change=lambda e: self._on_editor_changed(e.value))
-                    .classes("w-full font-mono text-xs text-slate-200")
-                    .props("autoResize rows=22 spellcheck=false")
+                    ui.codemirror(
+                        on_change=lambda e: self._on_editor_changed(e.value),
+                        language="Properties files",  # closest to INI in CodeMirror's language list
+                        theme="basicDark",
+                        line_wrapping=True,
+                    )
+                    .classes("w-full")
+                    .style("min-height: 400px")
                 )
 
             self.update_status_banner()

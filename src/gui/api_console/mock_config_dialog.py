@@ -78,7 +78,7 @@ class MockConfigDialog:
         self.is_custom = is_custom
 
         self.dialog: ui.dialog | None = None
-        self.raw_ini_editor: ui.textarea | None = None
+        self.raw_ini_editor: ui.codemirror | None = None
         self.validation_banner: ui.element | None = None
         self.validation_label: ui.label | None = None
         self.status_badge: ui.badge | None = None
@@ -393,11 +393,14 @@ class MockConfigDialog:
                         self.validation_label = ui.label("").classes("font-mono")
 
                     self.raw_ini_editor = (
-                        ui.textarea(value=self.config.to_ini_string())
-                        .props("outlined autogrow rows=14")
-                        .classes(
-                            "w-full font-mono text-xs bg-slate-950/80 text-emerald-300 rounded-xl border border-white/5"
+                        ui.codemirror(
+                            value=self.config.to_ini_string(),
+                            language="Properties files",  # closest to INI in CodeMirror's language list
+                            theme="basicDark",
+                            line_wrapping=True,
                         )
+                        .classes("w-full rounded-xl border border-white/5")
+                        .style("min-height: 320px")
                     )
 
                 # -------------------------------------------------------------
