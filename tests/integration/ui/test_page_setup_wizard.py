@@ -439,11 +439,21 @@ def test_setup_wizard_axioma_preset_selection(page: Page, live_server_url: str):
 
     # On Step 10: Final
     expect(page.get_by_text("Step 10 of 10: Final")).to_be_visible(timeout=5000)
-    editor = page.locator("textarea")
+    editor = page.locator(".cm-content, textarea").first
     expect(editor).to_be_visible()
-    val = editor.input_value()
-
-    # Parse INI lines to verify [Digits] and [Analog]
+    val = editor.evaluate(
+        "el => {"
+        "  if (el.cmView && el.cmView.view && el.cmView.view.state && el.cmView.view.state.doc) {"
+        "    return el.cmView.view.state.doc.toString();"
+        "  }"
+        "  const cm = el.closest('.cm-editor');"
+        "  if (cm && cm.cmView && cm.cmView.view && cm.cmView.view.state && cm.cmView.view.state.doc) {"
+        "    return cm.cmView.view.state.doc.toString();"
+        "  }"
+        "  if (el.tagName === 'TEXTAREA') return el.value;"
+        "  return el.innerText;"
+        "}"
+    )
     import configparser
 
     ini_parser = configparser.ConfigParser()

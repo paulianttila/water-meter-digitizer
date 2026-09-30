@@ -15,6 +15,7 @@ from nicegui import ui
 from api.routes_mock_camera import render_mock_camera_frame
 from configuration import Config
 from data_classes import MeterConfig
+from gui.pages.config_field_registry import build_line_tooltips
 from gui.theme import (
     DIALOG_CARD,
     DIALOG_HEADER_ROW,
@@ -392,9 +393,11 @@ class MockConfigDialog:
                     with self.validation_banner:
                         self.validation_label = ui.label("").classes("font-mono")
 
+                    ini_val = self.config.to_ini_string()
                     self.raw_ini_editor = (
                         ui.codemirror(
-                            value=self.config.to_ini_string(),
+                            value=ini_val,
+                            on_change=lambda e: self._on_ini_editor_changed(e.value),
                             language="Properties files",  # closest to INI in CodeMirror's language list
                             theme="basicDark",
                             line_wrapping=True,
@@ -402,6 +405,7 @@ class MockConfigDialog:
                         .classes("w-full rounded-xl border border-white/5")
                         .style("min-height: 320px")
                     )
+                    self.raw_ini_editor.line_tooltips = build_line_tooltips(ini_val)
 
                 # -------------------------------------------------------------
                 # Panel 3: ROI Layout Table & Visual Overlay Preview
@@ -605,6 +609,13 @@ class MockConfigDialog:
         # Update raw INI editor text if initialized
         if self.raw_ini_editor:
             self.raw_ini_editor.value = self.config.to_ini_string()
+            self.raw_ini_editor.line_tooltips = build_line_tooltips(
+                self.raw_ini_editor.value
+            )
+
+    def _on_ini_editor_changed(self, value: str) -> None:
+        if self.raw_ini_editor:
+            self.raw_ini_editor.line_tooltips = build_line_tooltips(value)
 
     def _on_structured_change(self) -> None:
         self.is_custom = True
@@ -661,6 +672,9 @@ class MockConfigDialog:
 
         if self.raw_ini_editor:
             self.raw_ini_editor.value = self.config.to_ini_string()
+            self.raw_ini_editor.line_tooltips = build_line_tooltips(
+                self.raw_ini_editor.value
+            )
 
         # Update structured form fields
         cur_dig = self._find_model_key(

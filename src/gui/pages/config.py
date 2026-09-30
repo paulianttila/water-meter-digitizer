@@ -19,6 +19,7 @@ from gui.pages.config_field_registry import (
     FIELD_OVERRIDES,
     FIELD_SCHEMAS,
     build_field_registry,
+    build_line_tooltips,
     get_field_schema,
 )
 from gui.theme import (
@@ -37,6 +38,7 @@ __all__ = [
     "FIELD_SCHEMAS",
     "ConfigPage",
     "build_field_registry",
+    "build_line_tooltips",
     "get_field_schema",
     "update_ini_value",
 ]
@@ -184,6 +186,8 @@ class ConfigPage(BasePage):
             except Exception:
                 logger.debug("Could not list config backups", exc_info=True)
                 button_undo.enabled = False
+
+            editor.line_tooltips = build_line_tooltips(editor.value)
 
         def save_config() -> None:
             if syntax_check() is True:
@@ -480,7 +484,7 @@ class ConfigPage(BasePage):
                                                 (
                                                     o
                                                     for o in opts
-                                                    if o.lower() == cur_val.lower()
+                                                    if str(o).lower() == cur_val.lower()
                                                 ),
                                                 None,
                                             )
@@ -732,6 +736,7 @@ class ConfigPage(BasePage):
                     theme="basicDark",
                     line_wrapping=True,
                 ).classes("w-full h-full config-editor-field")
+                editor.line_tooltips = build_line_tooltips(self.txt)
 
             # 2. Visual Section Editor Container
             with (

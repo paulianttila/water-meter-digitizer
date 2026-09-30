@@ -161,10 +161,11 @@ def test_page_config_editor_actions():
         mock_ui.dialog.return_value.__exit__ = MagicMock()
         mock_ui.card.return_value.__enter__ = MagicMock()
         mock_ui.card.return_value.__exit__ = MagicMock()
-        mock_textarea = MagicMock()
-        mock_textarea.value = page.txt
+        mock_editor = MagicMock()
+        mock_editor.value = page.txt
+        mock_ui.codemirror.return_value.classes.return_value = mock_editor
         mock_ui.textarea.return_value.classes.return_value.props.return_value = (
-            mock_textarea
+            mock_editor
         )
 
         # Capture button click handlers

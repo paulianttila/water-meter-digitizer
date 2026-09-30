@@ -175,5 +175,5 @@ def test_config_visual_editor_mode_and_edit(page: Page, live_server_url: str):
     expect(raw_btn).to_be_visible()
     raw_btn.click()
 
-    # Verify textarea is visible
-    expect(page.locator("textarea")).to_be_visible()
+    # Verify editor is visible
+    expect(page.locator(".cm-editor, textarea")).to_be_visible()
