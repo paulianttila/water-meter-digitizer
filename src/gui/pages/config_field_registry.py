@@ -2,10 +2,12 @@
 
 from __future__ import annotations
 
+import configparser
+import contextlib
 import enum
 import re
 import types
-from typing import Any, Literal, get_args, get_origin
+from typing import Any, Literal, NamedTuple, get_args, get_origin
 
 from pydantic.fields import FieldInfo
 
@@ -1026,3 +1028,309 @@ def build_line_tooltips(text: str) -> dict[int, str]:
                 tooltips[i] = "  |  ".join(parts)
 
     return tooltips
+
+
+def find_ini_line(
+    text: str, section: str | None = None, key: str | None = None
+) -> int | None:
+    """Find the 1-indexed line number of a section and/or key in INI text.
+
+    If key is specified and found inside the section, returns the line of the key.
+    If key is not found (or not specified) but section is found, returns the section header line.
+    If section is not found but key is specified, returns the line of the key anywhere in text.
+    """
+    if not text:
+        return None
+
+    lines = text.splitlines()
+    sec_clean = section.strip("[]'\"").lower() if section else None
+    key_clean = key.strip("'\"").lower() if key else None
+
+    def norm_sec(s: str) -> str:
+        return s.replace("_", "").replace("-", "").lower()
+
+    cur_sec: str | None = None
+    target_sec_line: int | None = None
+
+    for idx, line in enumerate(lines, start=1):
+        line_s = line.strip()
+        if not line_s or line_s.startswith(("#", ";")):
+            continue
+
+        # Check section header
+        if line_s.startswith("[") and "]" in line_s:
+            cur_sec = line_s[1 : line_s.index("]")].strip()
+            is_match = False
+            if sec_clean:
+                cur_lower = cur_sec.lower()
+                is_match = (
+                    cur_lower == sec_clean
+                    or norm_sec(cur_sec) == norm_sec(sec_clean)
+                    or cur_lower.endswith("." + sec_clean)
+                    or sec_clean.endswith("." + cur_lower)
+                    or cur_lower.startswith(sec_clean + ".")
+                    or sec_clean.startswith(cur_lower + ".")
+                )
+
+            if is_match:
+                target_sec_line = idx
+                if not key_clean:
+                    return idx
+            continue
+
+        # If inside matching section, look for key
+        if target_sec_line is not None and cur_sec:
+            cur_lower = cur_sec.lower()
+            is_in_target = (
+                cur_lower == sec_clean
+                or norm_sec(cur_sec) == norm_sec(sec_clean or "")
+                or (sec_clean and cur_lower.endswith("." + sec_clean))
+                or (sec_clean and cur_lower.startswith(sec_clean + "."))
+            )
+            if is_in_target and key_clean and ("=" in line or ":" in line):
+                delim = "=" if "=" in line else ":"
+                k = line.split(delim, 1)[0].strip().lower()
+                if (
+                    k == key_clean
+                    or k.replace("_", "") == key_clean.replace("_", "")
+                    or k.replace("-", "") == key_clean.replace("-", "")
+                ):
+                    return idx
+
+    # If section was found but key wasn't, return section header line
+    if target_sec_line is not None:
+        return target_sec_line
+
+    # If key was specified and section wasn't found, look for key anywhere in text
+    if key_clean:
+        for idx, line in enumerate(lines, start=1):
+            line_s = line.strip()
+            if not line_s or line_s.startswith(("#", ";")):
+                continue
+            if "=" in line or ":" in line:
+                delim = "=" if "=" in line else ":"
+                k = line.split(delim, 1)[0].strip().lower()
+                if (
+                    k == key_clean
+                    or k.replace("_", "") == key_clean.replace("_", "")
+                    or k.replace("-", "") == key_clean.replace("-", "")
+                ):
+                    return idx
+
+    # If only section was specified
+    if sec_clean:
+        for idx, line in enumerate(lines, start=1):
+            line_s = line.strip()
+            if line_s.startswith("[") and "]" in line_s:
+                s = line_s[1 : line_s.index("]")].strip().lower()
+                if (
+                    s == sec_clean
+                    or norm_sec(s) == norm_sec(sec_clean)
+                    or s.endswith("." + sec_clean)
+                    or s.startswith(sec_clean + ".")
+                ):
+                    return idx
+
+    return None
+
+
+class SyntaxErrorInfo(NamedTuple):
+    """Structured information about a configuration syntax error."""
+
+    lineno: int | None
+    position: int | None  # 0-indexed character offset into document string
+    message: str
+
+
+def extract_syntax_error_info(text: str, error: Exception) -> SyntaxErrorInfo:
+    """Extract 1-indexed line number, document position, and clean description from a config error."""
+    lineno: int | None = None
+    msg: str = str(error)
+    sec_candidate: str | None = None
+    key_candidate: str | None = None
+
+    if isinstance(error, configparser.MissingSectionHeaderError):
+        lineno = error.lineno
+        raw = error.args[2].strip() if len(error.args) > 2 else "no section"
+        msg = f"Missing section header: {raw}"
+    elif isinstance(error, configparser.ParsingError) and getattr(
+        error, "errors", None
+    ):
+        lineno, raw_line = error.errors[0]
+        msg = f"Parsing error on line {lineno}: {raw_line.strip()}"
+    elif isinstance(
+        error,
+        (
+            configparser.DuplicateSectionError,
+            configparser.DuplicateOptionError,
+        ),
+    ):
+        lineno = getattr(error, "lineno", None)
+        sec_candidate = getattr(error, "section", None)
+        key_candidate = getattr(error, "option", None)
+        raw_msg = getattr(error, "message", None) or str(error)
+        msg = f"{error.__class__.__name__}: {raw_msg}"
+    else:
+        # Check standard configparser section / option attributes
+        sec_candidate = getattr(error, "section", None)
+        key_candidate = getattr(error, "option", None)
+
+        # Check Pydantic validation error details if available
+        if hasattr(error, "errors") and callable(error.errors):
+            with contextlib.suppress(Exception):
+                err_list = error.errors()
+                if err_list:
+                    loc = err_list[0].get("loc", ())
+                    if len(loc) >= 2:
+                        sec_candidate = sec_candidate or str(loc[0])
+                        key_candidate = key_candidate or str(loc[-1])
+                    elif len(loc) == 1:
+                        key_candidate = key_candidate or str(loc[0])
+
+        # Regex check for explicit line numbers in error message
+        m = re.search(r"(?:\[line\s*(\d+)\]|line\s+(\d+))", str(error), re.IGNORECASE)
+        if m:
+            candidate = int(m.group(1) or m.group(2))
+            lines_count = len(text.splitlines()) if text else 1
+            if 1 <= candidate <= max(lines_count, 1):
+                lineno = candidate
+
+        # Extract section and key from error message text if not already known
+        err_str = str(error)
+
+        # Pattern: for [section] -> option
+        if not sec_candidate or not key_candidate:
+            m_sec_opt = re.search(
+                r"for\s+\[([^\]]+)\]\s*->\s*([a-zA-Z0-9_\-\.]+)",
+                err_str,
+                re.IGNORECASE,
+            )
+            if m_sec_opt:
+                sec_candidate = sec_candidate or m_sec_opt.group(1)
+                key_candidate = key_candidate or m_sec_opt.group(2)
+
+        # Pattern: in section '...' or section '...'
+        if not sec_candidate:
+            m_sec = re.search(
+                r"(?:in\s+section|section)\s+['\"\[]?([a-zA-Z0-9_\-\.]+)['\"\]]?",
+                err_str,
+                re.IGNORECASE,
+            )
+            if m_sec:
+                sec_candidate = m_sec.group(1)
+
+        # Pattern: [section] anywhere in error
+        if not sec_candidate:
+            m_bracket = re.search(r"\[([a-zA-Z0-9_\-\.]+)\]", err_str)
+            if m_bracket:
+                sec_candidate = m_bracket.group(1)
+
+        # Pattern: meter '...'
+        if not sec_candidate:
+            m_meter = re.search(
+                r"meter\s+['\"]([a-zA-Z0-9_\-\.]+)['\"]", err_str, re.IGNORECASE
+            )
+            if m_meter:
+                sec_candidate = f"Meter.{m_meter.group(1)}"
+
+        # Pattern: option '...' or key '...' or parameter '...' or field '...'
+        if not key_candidate:
+            m_key = re.search(
+                r"(?:option|key|parameter|field)\s+['\"]([a-zA-Z0-9_\-\.]+)['\"]",
+                err_str,
+                re.IGNORECASE,
+            )
+            if m_key:
+                key_candidate = m_key.group(1)
+
+        # Pattern: '...' is missing
+        if not key_candidate:
+            m_missing = re.search(
+                r"['\"]([a-zA-Z0-9_\-\.]+)['\"]\s+is\s+missing",
+                err_str,
+                re.IGNORECASE,
+            )
+            if m_missing:
+                key_candidate = m_missing.group(1)
+
+        # Special keywords
+        if not key_candidate and "cron" in err_str.lower():
+            key_candidate = "Cron"
+            sec_candidate = sec_candidate or "Poller"
+        if not key_candidate and "names" in err_str.lower():
+            key_candidate = "names"
+
+    # Map Pydantic model names to INI sections if applicable
+    section_map = {
+        "mqtt": "MQTT",
+        "image_processing": "ImageProcessing",
+        "digital_readout": "Digits",
+        "analog_readout": "Analog",
+        "poller": "Poller",
+        "web": "Web",
+        "debug": "Debug",
+        "post_processing": "PostProcessing",
+        "default": "DEFAULT",
+        "alignment": "Alignment",
+    }
+    if sec_candidate and sec_candidate.lower() in section_map:
+        sec_candidate = section_map[sec_candidate.lower()]
+
+    # If no line number was detected directly, resolve line via section and/or key
+    if lineno is None and (sec_candidate or key_candidate):
+        lineno = find_ini_line(text, section=sec_candidate, key=key_candidate)
+
+    if lineno is None:
+        lineno = 1
+
+    # Calculate character offset in document for widget placement
+    pos: int = 0
+    if lineno and lineno >= 1:
+        lines = text.splitlines(keepends=True)
+        if lines and lineno <= len(lines):
+            pos = sum(len(line) for line in lines[: lineno - 1]) + len(
+                lines[lineno - 1].rstrip("\r\n")
+            )
+        elif lines:
+            pos = len(text)
+        else:
+            pos = 0
+
+    return SyntaxErrorInfo(lineno=lineno, position=pos, message=msg)
+
+
+def build_syntax_error_decorations(
+    text: str, error: Exception
+) -> tuple[list[dict[str, Any]], dict[int, str]]:
+    """Build CodeMirror decorations and line tooltips for a syntax error.
+
+    Returns:
+        (decorations, line_tooltips)
+    """
+    err = extract_syntax_error_info(text, error)
+    decorations: list[dict[str, Any]] = []
+    tooltips = build_line_tooltips(text)
+
+    if err.lineno is not None and err.lineno >= 1:
+        decorations.append(
+            {
+                "kind": "line",
+                "line": err.lineno,
+                "class": "cm-error-line",
+            }
+        )
+        if err.position is not None:
+            short_msg = err.message
+            if len(short_msg) > 60:
+                short_msg = short_msg[:57] + "..."
+            decorations.append(
+                {
+                    "kind": "widget",
+                    "position": err.position,
+                    "text": f" ❌ {short_msg}",
+                    "class": "cm-error-widget",
+                }
+            )
+        tooltips[err.lineno] = f"❌ Syntax Error: {err.message}"
+
+    return decorations, tooltips

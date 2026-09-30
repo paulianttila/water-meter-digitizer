@@ -15,7 +15,10 @@ from nicegui import ui
 from api.routes_mock_camera import render_mock_camera_frame
 from configuration import Config
 from data_classes import MeterConfig
-from gui.pages.config_field_registry import build_line_tooltips
+from gui.pages.config_field_registry import (
+    build_line_tooltips,
+    build_syntax_error_decorations,
+)
 from gui.theme import (
     DIALOG_CARD,
     DIALOG_HEADER_ROW,
@@ -608,6 +611,7 @@ class MockConfigDialog:
 
         # Update raw INI editor text if initialized
         if self.raw_ini_editor:
+            self.raw_ini_editor.decorations = []
             self.raw_ini_editor.value = self.config.to_ini_string()
             self.raw_ini_editor.line_tooltips = build_line_tooltips(
                 self.raw_ini_editor.value
@@ -615,6 +619,8 @@ class MockConfigDialog:
 
     def _on_ini_editor_changed(self, value: str) -> None:
         if self.raw_ini_editor:
+            if self.raw_ini_editor.decorations:
+                self.raw_ini_editor.decorations = []
             self.raw_ini_editor.line_tooltips = build_line_tooltips(value)
 
     def _on_structured_change(self) -> None:
@@ -635,6 +641,10 @@ class MockConfigDialog:
             parsed_cfg = Config().load_config(parser)
             self.config = parsed_cfg
             self.is_custom = True
+            self.raw_ini_editor.decorations = []
+            self.raw_ini_editor.line_tooltips = build_line_tooltips(
+                self.raw_ini_editor.value
+            )
 
             if self.validation_banner and self.validation_label:
                 self.validation_banner.classes(
@@ -647,6 +657,13 @@ class MockConfigDialog:
                 self.status_badge.props("color=amber")
             return True
         except Exception as ex:
+            if self.raw_ini_editor:
+                decorations, tooltips = build_syntax_error_decorations(
+                    self.raw_ini_editor.value, ex
+                )
+                self.raw_ini_editor.decorations = decorations
+                self.raw_ini_editor.line_tooltips = tooltips
+
             if self.validation_banner and self.validation_label:
                 self.validation_banner.classes(
                     remove="hidden bg-emerald-950/80 border-emerald-500/40 text-emerald-300",
@@ -671,6 +688,7 @@ class MockConfigDialog:
             self.status_badge.props("color=emerald")
 
         if self.raw_ini_editor:
+            self.raw_ini_editor.decorations = []
             self.raw_ini_editor.value = self.config.to_ini_string()
             self.raw_ini_editor.line_tooltips = build_line_tooltips(
                 self.raw_ini_editor.value

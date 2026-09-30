@@ -182,4 +182,23 @@ body, body.body--dark {
     border-bottom-color: #0f172a !important;
 }
 
+/* CodeMirror Syntax Error Line & Widget Decorations */
+.cm-error-line {
+    background-color: rgba(239, 68, 68, 0.18) !important;
+    border-left: 3px solid #ef4444 !important;
+    padding-left: 4px;
+}
+
+.cm-error-widget {
+    background-color: #450a0a !important;
+    color: #fca5a5 !important;
+    border: 1px solid #ef4444 !important;
+    border-radius: 4px;
+    padding: 1px 6px;
+    margin-left: 8px;
+    font-size: 0.725rem;
+    font-weight: 600;
+}
+
+
 

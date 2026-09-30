@@ -20,6 +20,9 @@ from gui.pages.config_field_registry import (
     FIELD_SCHEMAS,
     build_field_registry,
     build_line_tooltips,
+    build_syntax_error_decorations,
+    extract_syntax_error_info,
+    find_ini_line,
     get_field_schema,
 )
 from gui.theme import (
@@ -39,6 +42,9 @@ __all__ = [
     "ConfigPage",
     "build_field_registry",
     "build_line_tooltips",
+    "build_syntax_error_decorations",
+    "extract_syntax_error_info",
+    "find_ini_line",
     "get_field_schema",
     "update_ini_value",
 ]
@@ -187,6 +193,8 @@ class ConfigPage(BasePage):
                 logger.debug("Could not list config backups", exc_info=True)
                 button_undo.enabled = False
 
+            if editor.decorations:
+                editor.decorations = []
             editor.line_tooltips = build_line_tooltips(editor.value)
 
         def save_config() -> None:
@@ -203,6 +211,7 @@ class ConfigPage(BasePage):
         def load_config() -> None:
             self.txt = self.callbacks.load_config_file()
             editor.value = self.txt
+            editor.decorations = []
             self.new_config_saved = False
             check_buttons()
             refresh_visual_inspector()
@@ -240,6 +249,8 @@ class ConfigPage(BasePage):
                 config = Config()
                 config.load_from_string(editor.value)
                 sections = parse_ini_sections(editor.value)
+                editor.decorations = []
+                editor.line_tooltips = build_line_tooltips(editor.value)
                 diag_banner.visible = True
                 diag_banner.classes(
                     replace="w-full p-2.5 rounded-xl bg-emerald-950/40 border border-emerald-500/30 flex items-center justify-between text-xs text-emerald-300"
@@ -255,6 +266,9 @@ class ConfigPage(BasePage):
                 check_buttons()
                 return True
             except Exception as e:
+                decorations, tooltips = build_syntax_error_decorations(editor.value, e)
+                editor.decorations = decorations
+                editor.line_tooltips = tooltips
                 diag_banner.visible = True
                 diag_banner.classes(
                     replace="w-full p-2.5 rounded-xl bg-rose-950/40 border border-rose-500/30 flex items-center justify-between text-xs text-rose-300"

@@ -158,14 +158,15 @@ def test_config_visual_editor_mode_and_edit(page: Page, live_server_url: str):
     visual_btn.click()
 
     # 2. Verify Visual Editor sections are visible
-    expect(page.get_by_text("[DEFAULT]").first).to_be_visible(timeout=5000)
-    expect(page.get_by_text("LogLevel").first).to_be_visible()
+    inspector = page.locator("#inspector-container")
+    expect(inspector.get_by_text("[DEFAULT]").first).to_be_visible(timeout=5000)
+    expect(inspector.get_by_text("LogLevel").first).to_be_visible()
 
     # 3. Test filter search input
     search_input = page.get_by_placeholder("Filter sections or parameters")
     expect(search_input).to_be_visible()
     search_input.fill("MQTT")
-    expect(page.get_by_text("[MQTT]").first).to_be_visible(timeout=5000)
+    expect(inspector.get_by_text("[MQTT]").first).to_be_visible(timeout=5000)
 
     # Clear filter
     search_input.fill("")
@@ -177,3 +178,47 @@ def test_config_visual_editor_mode_and_edit(page: Page, live_server_url: str):
 
     # Verify editor is visible
     expect(page.locator(".cm-editor, textarea")).to_be_visible()
+
+
+@pytest.mark.ui
+def test_config_syntax_error_decorations(page: Page, live_server_url: str):
+    """Verify syntax error in CodeMirror highlights error line and displays error badge widget."""
+    page.goto(f"{live_server_url}/gui", wait_until="domcontentloaded")
+    page.get_by_role("tab", name="Config").click()
+    expect(page.get_by_text("Configuration Editor")).to_be_visible(timeout=10000)
+
+    # Focus CodeMirror editor and enter invalid INI syntax
+    cm_content = page.locator(".cm-content").first
+    expect(cm_content).to_be_visible(timeout=5000)
+    cm_content.click()
+
+    # Clear and set invalid text
+    page.keyboard.press("ControlOrMeta+a")
+    page.keyboard.press("Backspace")
+    page.keyboard.type("invalid_line_without_section = 123\n[DEFAULT]\n")
+
+    # Click Validate button
+    validate_btn = page.get_by_role("button", name="Validate")
+    expect(validate_btn).to_be_visible()
+    validate_btn.click()
+
+    # Error line and widget should be visible
+    expect(page.locator(".cm-error-line").first).to_be_visible(timeout=5000)
+    expect(page.locator(".cm-error-widget").first).to_be_visible(timeout=5000)
+    expect(page.locator(".cm-error-widget").first).to_contain_text("❌")
+
+    # Fix syntax by entering valid INI
+    cm_content.click()
+    page.keyboard.press("ControlOrMeta+a")
+    page.keyboard.press("Backspace")
+    page.keyboard.type("[DEFAULT]\nloglevel = INFO\n")
+
+    # Typing clears error decorations
+    expect(page.locator(".cm-error-line")).to_have_count(0)
+    expect(page.locator(".cm-error-widget")).to_have_count(0)
+
+    # Click Validate button to confirm valid syntax
+    validate_btn.click()
+    expect(page.locator(".cm-error-line")).to_have_count(0)
+    expect(page.locator(".cm-error-widget")).to_have_count(0)
+    expect(page.get_by_text("Configuration Valid").first).to_be_visible(timeout=5000)

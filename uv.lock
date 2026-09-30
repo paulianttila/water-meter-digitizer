@@ -797,7 +797,7 @@ wheels = [
 
 [[package]]
 name = "nicegui"
-version = "3.16.0"
+version = "3.17.1"
 source = { registry = "https://pypi.org/simple" }
 dependencies = [
     { name = "aiofiles" },
@@ -825,9 +825,9 @@ dependencies = [
     { name = "uvicorn", extra = ["standard"] },
     { name = "watchfiles" },
 ]
-sdist = { url = "https://files.pythonhosted.org/packages/df/09/c610d775f9a28c9d2962f185ff592376bace368b5ef0fe0b91f1205f3a26/nicegui-3.16.0.tar.gz", hash = "sha256:602c9c67b5063d14c47f88fd025b82a4e797e9a9b233113f6bbabbc6cdf196a2", size = 19886000, upload-time = "2026-08-12T15:18:32.543Z" }
+sdist = { url = "https://files.pythonhosted.org/packages/1c/14/3aee941340a39eb427578ce2598e1a744523268c9f58752364ab3eb1ff69/nicegui-3.17.1.tar.gz", hash = "sha256:f3fec57595f46f16f4ba031093d67378aff027859783ab8ad5534aa48256da18", size = 19901354, upload-time = "2026-09-18T16:41:26.409Z" }
 wheels = [
-    { url = "https://files.pythonhosted.org/packages/16/da/2234c7c9c42caac9e20c61704461c4020bd350c618896e148d147f0e15ee/nicegui-3.16.0-py3-none-any.whl", hash = "sha256:5cff8b534e58404b8228d0ef9e41fc610d106bb146844de09abbfc1f24fb5163", size = 8588168, upload-time = "2026-08-12T15:18:28.781Z" },
+    { url = "https://files.pythonhosted.org/packages/1a/ab/686df5242a4d95e230ff8615e1a8b3253e72d4a412337b29d5bb8cd015f9/nicegui-3.17.1-py3-none-any.whl", hash = "sha256:06760e0b36f75c45d43d990b75fe241e9e723623df119b47ee539c339bcc361d", size = 8601386, upload-time = "2026-09-18T16:41:23.658Z" },
 ]
 
 [[package]]
@@ -1779,7 +1779,7 @@ requires-dist = [
     { name = "fastapi", specifier = ">=0.109.2" },
     { name = "jinja2", specifier = ">=3.1.4" },
     { name = "mypy", marker = "extra == 'dev'", specifier = ">=1.14.0" },
-    { name = "nicegui", specifier = ">=3.16.0" },
+    { name = "nicegui", specifier = ">=3.17.0" },
     { name = "numpy", specifier = ">=1.26.4" },
     { name = "opencv-python-headless", specifier = ">=4.9.0.80,<5.0.0" },
     { name = "paho-mqtt", specifier = ">=2.0.0" },
