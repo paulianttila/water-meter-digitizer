@@ -43,19 +43,12 @@ jobs:
         run: ./run_tests.sh -i
 
   web-ui:
-    name: Web UI Tests (Shard ${{ matrix.name }})
+    name: Web UI Tests (Playwright)
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 15
     strategy:
-      fail-fast: false
       matrix:
-        include:
-          - shard: 0
-            name: "1/3"
-          - shard: 1
-            name: "2/3"
-          - shard: 2
-            name: "3/3"
+        python-version: ["3.11"]
 
     steps:
       - name: Checkout
@@ -65,7 +58,7 @@ jobs:
         uses: astral-sh/setup-uv@v10.2.0
         with:
           version: "latest"
-          python-version: "3.11"
+          python-version: ${{ matrix.python-version }}
           enable-cache: true
           cache-dependency-glob: "uv.lock"
 
@@ -87,5 +80,5 @@ jobs:
         if: steps.playwright-cache.outputs.cache-hit == 'true'
         run: uv run playwright install-deps chromium
 
-      - name: Run Web UI test shard
-        run: uv run pytest tests/integration/ui/ --shard-id=${{ matrix.shard }} --num-shards=3 -v
+      - name: Run Web UI tests (Playwright)
+        run: ./run_tests.sh --ui
