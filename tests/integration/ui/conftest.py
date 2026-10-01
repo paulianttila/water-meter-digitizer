@@ -48,6 +48,7 @@ def live_server_url() -> Generator[str, None, None]:
     main.config_file = final_config_path
 
     main.init_config()
+    main.stop_services(main.app)
     main.init_gui(main.app)
 
     port = find_free_port()
@@ -99,4 +100,18 @@ def browser_context_args(browser_context_args):
             "height": 900,
         },
         "ignore_https_errors": True,
+    }
+
+
+@pytest.fixture(scope="session")
+def browser_type_launch_args(browser_type_launch_args):
+    """Pass optimized Chromium launch arguments for faster headless execution."""
+    return {
+        **browser_type_launch_args,
+        "args": [
+            *(browser_type_launch_args.get("args") or []),
+            "--disable-dev-shm-usage",
+            "--disable-gpu",
+            "--no-sandbox",
+        ],
     }
