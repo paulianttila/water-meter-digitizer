@@ -48,7 +48,8 @@ RUN mkdir -p /config /data /app /app/default_config && \
 # Copy stripped virtualenv directly with appuser ownership (avoids duplicate layer)
 COPY --from=builder --chown=appuser:appuser /app/.venv /app/.venv
 
-# Copy default config template and source code with appuser ownership
+# Copy default config template, source code, and pyproject.toml with appuser ownership
+COPY --chown=appuser:appuser pyproject.toml /app/
 COPY --chown=appuser:appuser ./config/ /app/default_config/
 COPY --chown=appuser:appuser ./src/ /app/
 

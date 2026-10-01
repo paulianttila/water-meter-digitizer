@@ -24,3 +24,17 @@ def test_version_fallback_when_file_not_found():
     ):
         v = _get_version()
         assert v == FALLBACK_VERSION
+
+
+def test_version_reads_container_path(tmp_path):
+    """Verify pyproject.toml is resolved when located directly beside version.py (container layout)."""
+    # Create fake /app directory with pyproject.toml and a fake version.py
+    app_dir = tmp_path / "app"
+    app_dir.mkdir()
+    (app_dir / "pyproject.toml").write_bytes(b'[project]\nversion = "2.3.4"\n')
+    fake_version_file = app_dir / "version.py"
+    fake_version_file.write_text("# dummy")
+
+    with patch("version.__file__", str(fake_version_file)):
+        v = _get_version()
+        assert v == "2.3.4"
