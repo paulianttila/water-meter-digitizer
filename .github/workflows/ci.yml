@@ -63,7 +63,7 @@ jobs:
         run: sudo apt-get update -qq && sudo apt-get install -qq --no-install-recommends mosquitto
 
       - name: Cache Playwright browsers
-        uses: actions/cache@v4
+        uses: actions/cache@v6
         id: playwright-cache
         with:
           path: ~/.cache/ms-playwright
