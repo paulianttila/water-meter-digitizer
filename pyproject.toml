@@ -42,6 +42,7 @@ dev = [
     "mypy>=1.14.0",
     "pytest>=8.3.0",
     "pytest-playwright>=0.6.0",
+    "pytest-shard>=0.1.2",
     "ruff>=0.8.0",
     "tavern>=3.0.0",
 ]
