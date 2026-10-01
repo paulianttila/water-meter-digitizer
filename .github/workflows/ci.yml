@@ -43,13 +43,19 @@ jobs:
         run: ./run_tests.sh -i
 
   web-ui:
-    name: Web UI Tests (Shard ${{ matrix.shard + 1 }}/3)
+    name: Web UI Tests (Shard ${{ matrix.name }})
     runs-on: ubuntu-latest
     timeout-minutes: 10
     strategy:
       fail-fast: false
       matrix:
-        shard: [0, 1, 2]
+        include:
+          - shard: 0
+            name: "1/3"
+          - shard: 1
+            name: "2/3"
+          - shard: 2
+            name: "3/3"
 
     steps:
       - name: Checkout
