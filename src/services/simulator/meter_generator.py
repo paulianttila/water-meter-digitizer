@@ -24,6 +24,9 @@ from PIL.Image import Image
 from configuration import Config
 from data_classes import ImagePosition, MeterConfig, RefImage
 from services.simulator.rendering import (
+    DigitalFlowScreenLayout,
+)
+from services.simulator.rendering import (
     apply_perturbations as _apply_perturbations,
 )
 from services.simulator.rendering import (
@@ -51,6 +54,7 @@ from services.simulator.rendering import (
     resolve_lcd_theme as _resolve_lcd_theme_fn,
 )
 from services.simulator.templates import (
+    STANDARD_DIAL_CONFIGS,
     MeterTemplate,
     get_meter_template,
 )
@@ -182,13 +186,16 @@ class MeterImageGenerator:
             if meter_type
             else get_meter_template("mechanical_dials")
         )
+        effective_counter_type = (
+            counter_type if (meter_type is None and counter_type) else tpl.counter_type
+        )
 
         # 1. Parse reading into digital digits and analog dials
         digit_states, dial_states = self._parse_meter_values(
             value,
             custom_digital_values,
             custom_analog_values,
-            counter_type=counter_type,
+            counter_type=effective_counter_type,
             meter_type=tpl.id,
             flow_value=flow_value,
         )
@@ -213,9 +220,6 @@ class MeterImageGenerator:
             canvas = self._base_cache[cache_key].copy()
 
         # 3. Draw Digital Counter (LCD or Mechanical Drum)
-        effective_counter_type = (
-            counter_type if (meter_type is None and counter_type) else tpl.counter_type
-        )
         if effective_counter_type == "drum":
             self._overlay_drum_counter(
                 canvas,
@@ -287,6 +291,8 @@ class MeterImageGenerator:
         frames = []
         curr_val = start_value
         for _ in range(count):
+            # 011.5f provides 5 integer and 5 decimal digits with fixed zero-padding;
+            # _parse_meter_values safely extracts the appropriate subset per template
             val_str = f"{curr_val:011.5f}"
             img = self.generate(value=val_str, **kwargs)
             frames.append(img)
@@ -370,9 +376,7 @@ class MeterImageGenerator:
                     pass
             digit_states["digit5"] = base_dec
 
-        elif (
-            counter_type == "drum" or tpl.counter_type == "drum"
-        ) and counter_type != "lcd":
+        elif counter_type == "drum":
             # 5 integer drums (digit1..5)
             pad_int = integer_part.zfill(5)[-5:]
             for i in range(5):
@@ -607,13 +611,24 @@ class MeterImageGenerator:
                     font=font_small,
                     anchor="mm",
                 )
+            else:
+                # Electronic single-line LCD smart meter (no dials, no rotating wheel)
+                draw.text(
+                    (center_x, 345),
+                    "DIGITAL FLOW SENSOR",
+                    fill=text_sub_col,
+                    font=font_small,
+                    anchor="mm",
+                )
+                draw.text(
+                    (center_x, 365),
+                    "CLASS 2  IP68  SMART",
+                    fill=text_sub_col,
+                    font=font_small,
+                    anchor="mm",
+                )
         else:
-            dial_configs = [
-                (430, 300, "x0.1"),
-                (360, 365, "x0.01"),
-                (280, 365, "x0.001"),
-                (210, 300, "x0.0001"),
-            ]
+            dial_configs = STANDARD_DIAL_CONFIGS
             dial_size = 76
             dial_r = dial_size // 2 - 2
 
@@ -845,30 +860,18 @@ class MeterImageGenerator:
 
         cut_digits: list[ImagePosition] = []
         if tpl.has_flow_display:
-            # 6 large integer volume digits
-            for i in range(6):
-                sx, sy, sw, sh = _scale_pos(190 + i * 28, 156, 24, 44)
-                cut_digits.append(
-                    ImagePosition(name=f"digit{i+1}", x=sx, y=sy, w=sw, h=sh)
-                )
-            # 3 smaller decimal volume digits (baseline-aligned)
-            for i in range(3):
-                sx, sy, sw, sh = _scale_pos(364 + i * 21, 168, 18, 32)
-                cut_digits.append(
-                    ImagePosition(name=f"decimal{i+1}", x=sx, y=sy, w=sw, h=sh)
-                )
-            # 2 flow integer digits
-            for i in range(2):
-                sx, sy, sw, sh = _scale_pos(242 + i * 21, 236, 18, 32)
-                cut_digits.append(
-                    ImagePosition(name=f"flow{i+1}", x=sx, y=sy, w=sw, h=sh)
-                )
-            # 3 flow decimal digits
-            for i in range(3):
-                sx, sy, sw, sh = _scale_pos(290 + i * 21, 236, 18, 32)
-                cut_digits.append(
-                    ImagePosition(name=f"flow_dec{i+1}", x=sx, y=sy, w=sw, h=sh)
-                )
+            for group in (
+                DigitalFlowScreenLayout.VOLUME_INTEGER,
+                DigitalFlowScreenLayout.VOLUME_DECIMAL,
+                DigitalFlowScreenLayout.FLOW_INTEGER,
+                DigitalFlowScreenLayout.FLOW_DECIMAL,
+            ):
+                for i in range(group.count):
+                    gx, gy, gw, gh = group.get_box(i)
+                    sx, sy, sw, sh = _scale_pos(gx, gy, gw, gh)
+                    cut_digits.append(
+                        ImagePosition(name=group.digit_name(i), x=sx, y=sy, w=sw, h=sh)
+                    )
         else:
             base_win_w = 264
             base_win_x = 320 - base_win_w // 2
@@ -889,17 +892,13 @@ class MeterImageGenerator:
         cut_analogs: list[ImagePosition] = []
         if tpl.has_dials:
             base_dial_size = 76
-            dial_centers = [
-                ("analog1", 430, 300),
-                ("analog2", 360, 365),
-                ("analog3", 280, 365),
-                ("analog4", 210, 300),
-            ]
-            for name, cx, cy in dial_centers:
+            for i, (cx, cy, _mult) in enumerate(STANDARD_DIAL_CONFIGS):
                 bx = cx - base_dial_size // 2
                 by = cy - base_dial_size // 2
                 sx, sy, sw, sh = _scale_pos(bx, by, base_dial_size, base_dial_size)
-                cut_analogs.append(ImagePosition(name=name, x=sx, y=sy, w=sw, h=sh))
+                cut_analogs.append(
+                    ImagePosition(name=f"analog{i+1}", x=sx, y=sy, w=sw, h=sh)
+                )
 
         base_refs = [
             ("ref0", 115, 225, 40, 30, "/config/ref0.jpg"),
@@ -1007,9 +1006,6 @@ class MeterImageGenerator:
                 "config/neuralnets/digital/class11/dig-class11_1600_s2.tflite", base
             )
             dig_update["model"] = "auto"
-
-        if tpl.has_flow_display:
-            dig_update["detect_negative_sign"] = True
 
         ana_update: dict[str, Any] = {
             "cut_images": cut_analogs,

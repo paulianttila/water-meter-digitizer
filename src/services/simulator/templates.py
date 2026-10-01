@@ -10,6 +10,13 @@ from __future__ import annotations
 from dataclasses import dataclass, field
 from typing import Literal
 
+STANDARD_DIAL_CONFIGS: list[tuple[int, int, str]] = [
+    (430, 300, "x0.1"),
+    (360, 365, "x0.01"),
+    (280, 365, "x0.001"),
+    (210, 300, "x0.0001"),
+]
+
 
 @dataclass(frozen=True)
 class MeterTemplate:
@@ -22,19 +29,14 @@ class MeterTemplate:
     icon: str = "water_drop"
 
     # Counter wheel / digit configuration
-    digit_count: int = 5
+    digit_count: int = 5  # Total volume digits displayed on the main readout
     drum_decimals: int = 0  # Number of red decimal wheels on drum counters
     has_decimal_dot: bool = False  # Explicit decimal separator dot on digit counter
 
     # Dial configuration
     has_dials: bool = True
     dial_configs: list[tuple[int, int, str]] = field(
-        default_factory=lambda: [
-            (430, 300, "x0.1"),
-            (360, 365, "x0.01"),
-            (280, 365, "x0.001"),
-            (210, 300, "x0.0001"),
-        ]
+        default_factory=lambda: list(STANDARD_DIAL_CONFIGS)
     )
 
     # Secondary flow rate display (e.g. m³/h on ultrasonic smart meters)
@@ -87,7 +89,7 @@ METER_TEMPLATES: dict[str, MeterTemplate] = {
         drum_decimals=0,
         has_decimal_dot=False,
         has_dials=False,
-        has_flow_indicator=True,
+        has_flow_indicator=False,
     ),
     "digital_flow": MeterTemplate(
         id="digital_flow",

@@ -119,6 +119,7 @@ class MockStudioPanel(BaseComponent):
         self.mock_digit_inputs: list[ui.input] = []
         self.mock_analog_inputs: list[ui.input] = []
         self.mock_analog_overrides_col: Any = None
+        self._update_template_visibilities: Any = None
 
         # Streaming Controller
         self.streaming_controller = MockStreamingController(
@@ -575,6 +576,16 @@ class MockStudioPanel(BaseComponent):
             self.mock_meter_bg_select.value = self.mock_meter_bg
         if self.mock_needle_color_select:
             self.mock_needle_color_select.value = self.mock_needle_color
+        if "meter_type" in cfg:
+            self.mock_meter_type = cfg["meter_type"]
+            if self.mock_meter_type_select:
+                self.mock_meter_type_select.value = self.mock_meter_type
+            if callable(getattr(self, "_update_template_visibilities", None)):
+                self._update_template_visibilities(self.mock_meter_type)
+        if "flow_value" in cfg:
+            self.mock_flow_value = str(cfg["flow_value"])
+            if self.mock_flow_value_input:
+                self.mock_flow_value_input.value = self.mock_flow_value
         for i, val in enumerate(self.mock_digit_overrides):
             if i < len(self.mock_digit_inputs) and self.mock_digit_inputs[i]:
                 self.mock_digit_inputs[i].value = val

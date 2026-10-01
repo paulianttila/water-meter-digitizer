@@ -40,6 +40,8 @@ def render_mock_studio_controls(panel: MockStudioPanel) -> None:
         if panel.mock_analog_overrides_col:
             panel.mock_analog_overrides_col.visible = tmpl.has_dials
 
+    panel._update_template_visibilities = _update_template_visibilities
+
     with ui.card().classes(
         "w-full h-full flex flex-col p-4 bg-slate-900 border border-white/10 rounded-2xl gap-3 overflow-y-auto"
     ):
@@ -480,7 +482,7 @@ def render_mock_studio_controls(panel: MockStudioPanel) -> None:
 
                 res_opts = {k: k for k in STANDARD_RESOLUTIONS}
                 res_opts["custom"] = "Custom"
-                panel.mock_res_preset_select = (
+                panel.mock_res_select = (
                     ui.select(
                         options=res_opts,
                         value=panel.mock_res_preset,
@@ -494,8 +496,8 @@ def render_mock_studio_controls(panel: MockStudioPanel) -> None:
                 async def _on_w_change(e: Any) -> None:
                     panel.mock_width = int(e.value)
                     panel.mock_res_preset = "custom"
-                    if panel.mock_res_preset_select:
-                        panel.mock_res_preset_select.value = "custom"
+                    if panel.mock_res_select:
+                        panel.mock_res_select.value = "custom"
                     await panel._on_mock_param_change()
 
                 panel.mock_width_input = (
@@ -514,8 +516,8 @@ def render_mock_studio_controls(panel: MockStudioPanel) -> None:
                 async def _on_h_change(e: Any) -> None:
                     panel.mock_height = int(e.value)
                     panel.mock_res_preset = "custom"
-                    if panel.mock_res_preset_select:
-                        panel.mock_res_preset_select.value = "custom"
+                    if panel.mock_res_select:
+                        panel.mock_res_select.value = "custom"
                     await panel._on_mock_param_change()
 
                 panel.mock_height_input = (
@@ -547,6 +549,7 @@ def render_mock_studio_controls(panel: MockStudioPanel) -> None:
             )
             with ui.grid(columns=5).classes("w-full gap-1.5"):
                 panel.mock_digit_inputs.clear()
+                # TODO: Expose full 9-digit / 14-digit override slots dynamically for dual-line LCD templates
                 for i in range(5):
 
                     def _make_dig_cb(idx: int):

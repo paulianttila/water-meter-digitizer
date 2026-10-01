@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import functools
 import os
+from dataclasses import dataclass
 from typing import Any
 
 import PIL.ImageDraw
@@ -330,6 +331,58 @@ def draw_7segment_digit(
     )
 
 
+@dataclass(frozen=True)
+class BoxDigitLayout:
+    """Specification for a group of regularly spaced digit display boxes."""
+
+    x0: int
+    y0: int
+    w: int
+    h: int
+    step: int
+    count: int
+    prefix: str
+
+    def get_box(self, index: int) -> tuple[int, int, int, int]:
+        """Return (x, y, w, h) for digit box at given 0-based index."""
+        return (self.x0 + index * self.step, self.y0, self.w, self.h)
+
+    def digit_name(self, index: int) -> str:
+        """Return canonical digit slot name (e.g. 'digit1', 'flow_dec2')."""
+        return f"{self.prefix}{index + 1}"
+
+
+class DigitalFlowScreenLayout:
+    """Canonical screen layout coordinates on the 640x480 simulation canvas."""
+
+    DIVIDER_LINE: tuple[tuple[int, int], tuple[int, int]] = ((188, 216), (452, 216))
+    BATTERY_OUTLINE: tuple[int, int, int, int] = (192, 142, 205, 148)
+    BATTERY_TIP: tuple[int, int, int, int] = (205, 144, 207, 146)
+    BATTERY_FILL: tuple[int, int, int, int] = (194, 144, 201, 146)
+    ARROW_POINTS: tuple[tuple[int, int], ...] = ((438, 143), (446, 146), (438, 149))
+
+    # Cumulative volume (m³) line
+    VOLUME_INTEGER = BoxDigitLayout(
+        x0=190, y0=156, w=24, h=44, step=28, count=6, prefix="digit"
+    )
+    VOLUME_DOT: tuple[int, int] = (358, 197)
+    VOLUME_DECIMAL = BoxDigitLayout(
+        x0=364, y0=168, w=18, h=32, step=21, count=3, prefix="decimal"
+    )
+    VOLUME_UNIT_POS: tuple[int, int] = (430, 172)
+
+    # Instantaneous flow rate (m³/h) line
+    FLOW_LABEL_POS: tuple[int, int] = (194, 246)
+    FLOW_INTEGER = BoxDigitLayout(
+        x0=242, y0=236, w=18, h=32, step=21, count=2, prefix="flow"
+    )
+    FLOW_DOT: tuple[int, int] = (284, 265)
+    FLOW_DECIMAL = BoxDigitLayout(
+        x0=290, y0=236, w=18, h=32, step=21, count=3, prefix="flow_dec"
+    )
+    FLOW_UNIT_POS: tuple[int, int] = (356, 244)
+
+
 def overlay_lcd_digits(
     canvas: Image,
     digit_states: dict[str, float],
@@ -340,6 +393,10 @@ def overlay_lcd_digits(
     has_decimal_dot: bool = False,
 ) -> None:
     """Render authentic 7-segment or 14-segment LCD digits inside the LCD counter window(s)."""
+    # Note: Coordinates assume canonical 640x480 simulation canvas; resizing occurs in stage 5
+    if canvas.size != (640, 480):
+        pass
+
     theme = resolve_lcd_theme(lcd_color, lcd_bg)
     active_col = theme["active"]
     ghost_col = theme["ghost"]
@@ -385,13 +442,16 @@ def overlay_lcd_digits(
 
     if has_flow_display:
         # Dual-line ultrasonic smart meter (Axioma W1 style unified screen)
+        # Note: has_decimal_dot is implicit in dual-line LCD layout (VOLUME_DOT & FLOW_DOT)
+        layout = DigitalFlowScreenLayout
+
         # 1. Subtle horizontal divider across the LCD screen
-        draw.line([(188, 216), (452, 216)], fill=ghost_col, width=1)
+        draw.line(layout.DIVIDER_LINE, fill=ghost_col, width=1)
 
         # 2. Battery status icon
-        draw.rectangle([(192, 142), (205, 148)], outline=ghost_col, width=1)
-        draw.rectangle([(205, 144), (207, 146)], fill=ghost_col)
-        draw.rectangle([(194, 144), (201, 146)], fill=ghost_col)
+        draw.rectangle(layout.BATTERY_OUTLINE, outline=ghost_col, width=1)
+        draw.rectangle(layout.BATTERY_TIP, fill=ghost_col)
+        draw.rectangle(layout.BATTERY_FILL, fill=ghost_col)
 
         # 3. Flow direction indicator arrow
         flow_v = 0.0
@@ -402,59 +462,64 @@ def overlay_lcd_digits(
                 + digit_states.get("flow_dec1", 0.0) * 0.1
             )
         arrow_col = active_col if flow_v > 0.001 else ghost_col
-        draw.polygon([(438, 143), (446, 146), (438, 149)], fill=arrow_col)
+        draw.polygon(layout.ARROW_POINTS, fill=arrow_col)
 
-        # 4. Main cumulative volume line
-        # 6 large integer digits (w=24, h=44)
-        int_names = [f"digit{i+1}" for i in range(6)]
-        for i, nm in enumerate(int_names):
-            bx = 190 + i * 28
-            by = 156
-            _render_box_digit(bx, by, 24, 44, digit_states.get(nm, 0.0))
+        # 4. Main cumulative volume line (6 large integer digits)
+        for i in range(layout.VOLUME_INTEGER.count):
+            bx, by, bw, bh = layout.VOLUME_INTEGER.get_box(i)
+            _render_box_digit(
+                bx,
+                by,
+                bw,
+                bh,
+                digit_states.get(layout.VOLUME_INTEGER.digit_name(i), 0.0),
+            )
 
         # Main volume decimal dot
-        dot_x = 358
-        dot_y = 197
+        dot_x, dot_y = layout.VOLUME_DOT
         draw.ellipse((dot_x - 2, dot_y - 2, dot_x + 2, dot_y + 2), fill=active_col)
 
         # 3 smaller decimal digits (w=18, h=32, baseline-aligned at y=168)
-        dec_names = [f"decimal{i+1}" for i in range(3)]
-        for i, nm in enumerate(dec_names):
-            bx = 364 + i * 21
-            by = 168
-            _render_box_digit(bx, by, 18, 32, digit_states.get(nm, 0.0))
+        for i in range(layout.VOLUME_DECIMAL.count):
+            bx, by, bw, bh = layout.VOLUME_DECIMAL.get_box(i)
+            _render_box_digit(
+                bx,
+                by,
+                bw,
+                bh,
+                digit_states.get(layout.VOLUME_DECIMAL.digit_name(i), 0.0),
+            )
 
         # Main volume unit label
         font_unit = PIL.ImageFont.load_default(size=12)
-        draw.text((430, 172), "m3", fill=active_col, font=font_unit)
+        draw.text(layout.VOLUME_UNIT_POS, "m3", fill=active_col, font=font_unit)
 
         # 5. Instantaneous flow rate line
         font_small = PIL.ImageFont.load_default(size=10)
-        draw.text((194, 246), "FLOW", fill=active_col, font=font_small)
+        draw.text(layout.FLOW_LABEL_POS, "FLOW", fill=active_col, font=font_small)
 
-        # 2 flow integer digits (w=18, h=32)
-        flow_int_names = ["flow1", "flow2"]
-        for i, nm in enumerate(flow_int_names):
-            bx = 242 + i * 21
-            by = 236
-            _render_box_digit(bx, by, 18, 32, digit_states.get(nm, 0.0))
+        # 2 flow integer digits
+        for i in range(layout.FLOW_INTEGER.count):
+            bx, by, bw, bh = layout.FLOW_INTEGER.get_box(i)
+            _render_box_digit(
+                bx, by, bw, bh, digit_states.get(layout.FLOW_INTEGER.digit_name(i), 0.0)
+            )
 
         # Flow rate decimal dot
-        f_dot_x = 284
-        f_dot_y = 265
+        f_dot_x, f_dot_y = layout.FLOW_DOT
         draw.ellipse(
             (f_dot_x - 2, f_dot_y - 2, f_dot_x + 2, f_dot_y + 2), fill=active_col
         )
 
-        # 3 flow decimal digits (w=18, h=32)
-        flow_dec_names = ["flow_dec1", "flow_dec2", "flow_dec3"]
-        for i, nm in enumerate(flow_dec_names):
-            bx = 290 + i * 21
-            by = 236
-            _render_box_digit(bx, by, 18, 32, digit_states.get(nm, 0.0))
+        # 3 flow decimal digits
+        for i in range(layout.FLOW_DECIMAL.count):
+            bx, by, bw, bh = layout.FLOW_DECIMAL.get_box(i)
+            _render_box_digit(
+                bx, by, bw, bh, digit_states.get(layout.FLOW_DECIMAL.digit_name(i), 0.0)
+            )
 
         # Flow unit label
-        draw.text((356, 244), "m3/h", fill=active_col, font=font_unit)
+        draw.text(layout.FLOW_UNIT_POS, "m3/h", fill=active_col, font=font_unit)
     else:
         # Standard 5-digit LCD window
         center_x = canvas.width // 2

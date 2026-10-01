@@ -137,7 +137,8 @@ def render_mock_camera_frame(
 
     tpl = get_meter_template(meter_type)
     parts = target_val_str.split(".")
-    int_part = parts[0].zfill(5)[-5:]
+    int_len = 6 if tpl.has_flow_display else 5
+    int_part = parts[0].zfill(int_len)[-int_len:]
     frac_part = (parts[1] + "0000")[:4] if len(parts) > 1 else "0000"
 
     headers = {

@@ -9,7 +9,9 @@ from PIL import Image
 from api.routes_mock_camera import render_mock_camera_frame
 from config.meter_presets import load_meter_presets
 from services.simulator import MeterImageGenerator
+from services.simulator.rendering import DigitalFlowScreenLayout
 from services.simulator.templates import (
+    STANDARD_DIAL_CONFIGS,
     MeterTemplate,
     get_meter_template,
     list_meter_templates,
@@ -52,6 +54,15 @@ class TestMeterTemplates:
             t.has_flow_indicator is False
         )  # Ultrasonic meter has no mechanical wheel/spinner
         assert t.digit_count == 9
+
+    def test_get_template_digital_single(self) -> None:
+        t = get_meter_template("digital_single")
+        assert isinstance(t, MeterTemplate)
+        assert t.id == "digital_single"
+        assert t.counter_type == "lcd"
+        assert t.has_dials is False
+        assert t.has_flow_indicator is False
+        assert t.digit_count == 5
 
 
 class TestMeterGeneratorTemplates:
@@ -105,6 +116,7 @@ class TestMeterGeneratorTemplates:
         )
         assert isinstance(jpeg_bytes, bytes)
         assert headers.get("X-Mock-Flow-Value") == "01.250"
+        assert headers.get("X-Mock-Digital-Value") == "000123"
         assert headers.get("X-Mock-Analog-Value") == ""
 
 
@@ -146,6 +158,60 @@ class TestMockMeterConfigTemplates:
         meter_names = [m.name for m in cfg.meter_configs]
         assert "total" in meter_names
         assert "flow" in meter_names
+
+    def test_standard_rois_match_layout_constants(self) -> None:
+        """Verify standard ROI bounding boxes match DigitalFlowScreenLayout definitions."""
+        cfg = MeterImageGenerator.create_mock_meter_config(meter_type="digital_flow")
+        rois = {p.name: p for p in cfg.digital_readout.cut_images}
+
+        # Check volume integer boxes
+        for i in range(DigitalFlowScreenLayout.VOLUME_INTEGER.count):
+            name = DigitalFlowScreenLayout.VOLUME_INTEGER.digit_name(i)
+            box = DigitalFlowScreenLayout.VOLUME_INTEGER.get_box(i)
+            assert name in rois
+            p = rois[name]
+            assert (p.x, p.y, p.w, p.h) == box
+
+        # Check volume decimal boxes
+        for i in range(DigitalFlowScreenLayout.VOLUME_DECIMAL.count):
+            name = DigitalFlowScreenLayout.VOLUME_DECIMAL.digit_name(i)
+            box = DigitalFlowScreenLayout.VOLUME_DECIMAL.get_box(i)
+            assert name in rois
+            p = rois[name]
+            assert (p.x, p.y, p.w, p.h) == box
+
+        # Check flow integer boxes
+        for i in range(DigitalFlowScreenLayout.FLOW_INTEGER.count):
+            name = DigitalFlowScreenLayout.FLOW_INTEGER.digit_name(i)
+            box = DigitalFlowScreenLayout.FLOW_INTEGER.get_box(i)
+            assert name in rois
+            p = rois[name]
+            assert (p.x, p.y, p.w, p.h) == box
+
+        # Check flow decimal boxes
+        for i in range(DigitalFlowScreenLayout.FLOW_DECIMAL.count):
+            name = DigitalFlowScreenLayout.FLOW_DECIMAL.digit_name(i)
+            box = DigitalFlowScreenLayout.FLOW_DECIMAL.get_box(i)
+            assert name in rois
+            p = rois[name]
+            assert (p.x, p.y, p.w, p.h) == box
+
+        # Check analog dial ROIs against STANDARD_DIAL_CONFIGS
+        mech_cfg = MeterImageGenerator.create_mock_meter_config(
+            meter_type="mechanical_dials"
+        )
+        dial_rois = {p.name: p for p in mech_cfg.analog_readout.cut_images}
+        dial_size = 76
+        for i, (cx, cy, _mult) in enumerate(STANDARD_DIAL_CONFIGS):
+            name = f"analog{i+1}"
+            assert name in dial_rois
+            p = dial_rois[name]
+            assert (p.x, p.y, p.w, p.h) == (
+                cx - dial_size // 2,
+                cy - dial_size // 2,
+                dial_size,
+                dial_size,
+            )
 
 
 class TestWizardPresetFiles:
