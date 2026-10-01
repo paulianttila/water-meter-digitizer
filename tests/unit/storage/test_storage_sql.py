@@ -169,8 +169,7 @@ def test_sqlite_consumption_intervals():
 
 def test_sqlite_concurrent_writes_and_reads():
     storage = SQLAlchemyStorageBackend(db_url="sqlite:///:memory:", max_records=200)
-    local_tz = datetime.now().astimezone().tzinfo
-    base_time = datetime(2026, 9, 1, 0, 0, 0, tzinfo=local_tz)
+    base_time = datetime.now().astimezone() - timedelta(days=2)
 
     def worker(worker_id: int):
         for i in range(20):

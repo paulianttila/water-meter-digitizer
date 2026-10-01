@@ -533,6 +533,21 @@ def test_api_console_mock_lcd_font(mock_callbacks):
     assert page.get_mock_url().endswith("lcd_font=dseg7_modern_bold")
 
 
+def test_api_console_mock_drum_counter(mock_callbacks):
+    page = ApiConsolePage(callbacks=mock_callbacks)
+    assert page.mock_counter_type == "lcd"
+    assert "counter_type" not in page.build_mock_query_string()
+
+    page.mock_counter_type = "drum"
+    page.mock_drum_style = "classic_white"
+    page.mock_drum_carry = "continuous"
+
+    qs = page.build_mock_query_string()
+    assert "counter_type=drum" in qs
+    assert "drum_style=classic_white" in qs
+    assert "drum_carry=continuous" in qs
+
+
 def test_consumption_card(mock_callbacks):
     from datetime import datetime
 

@@ -63,6 +63,9 @@ class MockStudioPanel(BaseComponent):
         self.mock_meter_bg = "white"
         self.mock_needle_color = "red"
         self.mock_lcd_font = "builtin"
+        self.mock_counter_type = "lcd"  # "lcd" or "drum"
+        self.mock_drum_style = "standard"  # "standard", "classic_black", "classic_white", "red_decimals_2", "industrial"
+        self.mock_drum_carry = "geneva"  # "geneva" or "continuous"
         self.mock_width = 640
         self.mock_height = 480
         self.mock_res_preset = "640x480"
@@ -97,6 +100,9 @@ class MockStudioPanel(BaseComponent):
         self.mock_meter_bg_select: ui.select | None = None
         self.mock_needle_color_select: ui.select | None = None
         self.mock_lcd_font_select: ui.select | None = None
+        self.mock_counter_type_select: ui.select | None = None
+        self.mock_drum_style_select: ui.select | None = None
+        self.mock_drum_carry_select: ui.select | None = None
         self.mock_test_config_select: ui.select | None = None
         self.mock_custom_config: Config | None = None
         self.mock_custom_config_active: bool = False
@@ -120,6 +126,9 @@ class MockStudioPanel(BaseComponent):
                 value=self.mock_value,
                 mode=self.mock_mode,
                 lcd_font=self.mock_lcd_font,
+                counter_type=self.mock_counter_type,
+                drum_style=self.mock_drum_style,
+                drum_carry=self.mock_drum_carry,
                 width=self.mock_width,
                 height=self.mock_height,
             )
@@ -201,6 +210,12 @@ class MockStudioPanel(BaseComponent):
             params["needle_color"] = self.mock_needle_color
         if self.mock_lcd_font != "builtin":
             params["lcd_font"] = self.mock_lcd_font
+        if self.mock_counter_type != "lcd":
+            params["counter_type"] = self.mock_counter_type
+        if self.mock_drum_style != "standard":
+            params["drum_style"] = self.mock_drum_style
+        if self.mock_drum_carry != "geneva":
+            params["drum_carry"] = self.mock_drum_carry
         if self.mock_width != 640:
             params["width"] = self.mock_width
         if self.mock_height != 480:
@@ -275,6 +290,9 @@ class MockStudioPanel(BaseComponent):
                     meter_bg=self.mock_meter_bg,
                     needle_color=self.mock_needle_color,
                     lcd_font=self.mock_lcd_font,
+                    counter_type=self.mock_counter_type,
+                    drum_style=self.mock_drum_style,
+                    drum_carry=self.mock_drum_carry,
                     width=self.mock_width,
                     height=self.mock_height,
                     digit1=d_vals[0] if len(d_vals) > 0 else None,

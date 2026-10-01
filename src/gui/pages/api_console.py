@@ -377,6 +377,30 @@ class ApiConsolePage(BasePage):
         self.mock_panel.mock_lcd_font = value
 
     @property
+    def mock_counter_type(self) -> str:
+        return self.mock_panel.mock_counter_type
+
+    @mock_counter_type.setter
+    def mock_counter_type(self, value: str) -> None:
+        self.mock_panel.mock_counter_type = value
+
+    @property
+    def mock_drum_style(self) -> str:
+        return self.mock_panel.mock_drum_style
+
+    @mock_drum_style.setter
+    def mock_drum_style(self, value: str) -> None:
+        self.mock_panel.mock_drum_style = value
+
+    @property
+    def mock_drum_carry(self) -> str:
+        return self.mock_panel.mock_drum_carry
+
+    @mock_drum_carry.setter
+    def mock_drum_carry(self, value: str) -> None:
+        self.mock_panel.mock_drum_carry = value
+
+    @property
     def mock_width(self) -> int:
         return self.mock_panel.mock_width
 

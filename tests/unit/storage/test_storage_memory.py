@@ -73,8 +73,7 @@ def test_memory_storage_record_meter_result():
 def test_memory_storage_limits_and_pruning():
     # Set small record limit = 5
     storage = MemoryStorageBackend(max_memory_mb=1.0, max_records=5)
-    local_tz = datetime.now().astimezone().tzinfo
-    base_time = datetime(2026, 9, 1, 0, 0, 0, tzinfo=local_tz)
+    base_time = datetime.now().astimezone() - timedelta(days=2)
 
     for i in range(10):
         ts = base_time + timedelta(hours=i)

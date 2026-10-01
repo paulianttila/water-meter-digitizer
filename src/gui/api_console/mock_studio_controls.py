@@ -7,7 +7,7 @@ from typing import TYPE_CHECKING, Any
 from nicegui import ui
 
 from gui.api_console.registry import STANDARD_RESOLUTIONS
-from services.simulator.rendering import LCD_FONT_OPTIONS
+from services.simulator.rendering import DRUM_THEME_OPTIONS, LCD_FONT_OPTIONS
 
 if TYPE_CHECKING:
     from gui.api_console.mock_studio_panel import MockStudioPanel
@@ -255,37 +255,38 @@ def render_mock_studio_controls(panel: MockStudioPanel) -> None:
             ),
             ui.column().classes("w-full gap-3 p-1"),
         ):
+            # Counter Type: Electronic LCD vs Mechanical Drum
+            async def _on_counter_type_change(e: Any) -> None:
+                panel.mock_counter_type = e.value
+                is_lcd = e.value == "lcd"
+                is_drum = e.value == "drum"
+                if panel.mock_lcd_color_select:
+                    panel.mock_lcd_color_select.visible = is_lcd
+                if panel.mock_lcd_bg_select:
+                    panel.mock_lcd_bg_select.visible = is_lcd
+                if panel.mock_lcd_font_select:
+                    panel.mock_lcd_font_select.visible = is_lcd
+                if panel.mock_drum_style_select:
+                    panel.mock_drum_style_select.visible = is_drum
+                if panel.mock_drum_carry_select:
+                    panel.mock_drum_carry_select.visible = is_drum
+                await panel._on_mock_param_change()
+
+            panel.mock_counter_type_select = (
+                ui.select(
+                    options={
+                        "lcd": "Electronic LCD (7/14-Seg)",
+                        "drum": "Mechanical Drum (Odometer)",
+                    },
+                    value=panel.mock_counter_type,
+                    label="Counter Type",
+                    on_change=_on_counter_type_change,
+                )
+                .props("outlined dense options-dense")
+                .classes("w-full text-xs")
+            )
+
             with ui.grid(columns=2).classes("w-full gap-2"):
-
-                async def _on_lcd_c_change(e: Any) -> None:
-                    panel.mock_lcd_color = e.value
-                    await panel._on_mock_param_change()
-
-                panel.mock_lcd_color_select = (
-                    ui.select(
-                        options=["black", "grey", "blue", "red"],
-                        value=panel.mock_lcd_color,
-                        label="LCD Digits",
-                        on_change=_on_lcd_c_change,
-                    )
-                    .props("outlined dense options-dense")
-                    .classes("text-xs")
-                )
-
-                async def _on_lcd_bg_change(e: Any) -> None:
-                    panel.mock_lcd_bg = e.value
-                    await panel._on_mock_param_change()
-
-                panel.mock_lcd_bg_select = (
-                    ui.select(
-                        options=["grey", "green", "white", "black"],
-                        value=panel.mock_lcd_bg,
-                        label="LCD BG",
-                        on_change=_on_lcd_bg_change,
-                    )
-                    .props("outlined dense options-dense")
-                    .classes("text-xs")
-                )
 
                 async def _on_mbg_change(e: Any) -> None:
                     panel.mock_meter_bg = e.value
@@ -317,6 +318,75 @@ def render_mock_studio_controls(panel: MockStudioPanel) -> None:
                     .classes("text-xs")
                 )
 
+                # LCD-only color selects
+                async def _on_lcd_c_change(e: Any) -> None:
+                    panel.mock_lcd_color = e.value
+                    await panel._on_mock_param_change()
+
+                panel.mock_lcd_color_select = (
+                    ui.select(
+                        options=["black", "grey", "blue", "red"],
+                        value=panel.mock_lcd_color,
+                        label="LCD Digits",
+                        on_change=_on_lcd_c_change,
+                    )
+                    .props("outlined dense options-dense")
+                    .classes("text-xs")
+                )
+                panel.mock_lcd_color_select.visible = panel.mock_counter_type == "lcd"
+
+                async def _on_lcd_bg_change(e: Any) -> None:
+                    panel.mock_lcd_bg = e.value
+                    await panel._on_mock_param_change()
+
+                panel.mock_lcd_bg_select = (
+                    ui.select(
+                        options=["grey", "green", "white", "black"],
+                        value=panel.mock_lcd_bg,
+                        label="LCD BG",
+                        on_change=_on_lcd_bg_change,
+                    )
+                    .props("outlined dense options-dense")
+                    .classes("text-xs")
+                )
+                panel.mock_lcd_bg_select.visible = panel.mock_counter_type == "lcd"
+
+                # Drum-only style & carry selects
+                async def _on_drum_style_change(e: Any) -> None:
+                    panel.mock_drum_style = e.value
+                    await panel._on_mock_param_change()
+
+                panel.mock_drum_style_select = (
+                    ui.select(
+                        options=DRUM_THEME_OPTIONS,
+                        value=panel.mock_drum_style,
+                        label="Drum Wheels",
+                        on_change=_on_drum_style_change,
+                    )
+                    .props("outlined dense options-dense")
+                    .classes("text-xs")
+                )
+                panel.mock_drum_style_select.visible = panel.mock_counter_type == "drum"
+
+                async def _on_drum_carry_change(e: Any) -> None:
+                    panel.mock_drum_carry = e.value
+                    await panel._on_mock_param_change()
+
+                panel.mock_drum_carry_select = (
+                    ui.select(
+                        options={
+                            "geneva": "Geneva Step",
+                            "continuous": "Continuous",
+                        },
+                        value=panel.mock_drum_carry,
+                        label="Rollover Carry",
+                        on_change=_on_drum_carry_change,
+                    )
+                    .props("outlined dense options-dense")
+                    .classes("text-xs")
+                )
+                panel.mock_drum_carry_select.visible = panel.mock_counter_type == "drum"
+
             async def _on_lcd_font_change(e: Any) -> None:
                 panel.mock_lcd_font = e.value
                 await panel._on_mock_param_change()
@@ -331,6 +401,7 @@ def render_mock_studio_controls(panel: MockStudioPanel) -> None:
                 .props("outlined dense options-dense")
                 .classes("w-full text-xs")
             )
+            panel.mock_lcd_font_select.visible = panel.mock_counter_type == "lcd"
 
             # Resolution preset + custom
             with ui.row().classes("w-full items-center gap-2"):

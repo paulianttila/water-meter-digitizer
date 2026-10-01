@@ -42,8 +42,10 @@ def prune_database(
                     logger.debug(
                         "Failed removing old snapshot file %s: %s", r.frame_path, e
                     )
-        session.execute(delete(ReadingModel).where(ReadingModel.timestamp < cutoff))
-        session.commit()
+        old_ids = [r.id for r in old_rows]
+        if old_ids:
+            session.execute(delete(ReadingModel).where(ReadingModel.id.in_(old_ids)))
+            session.commit()
 
     # 2. Max row count limit (oldest-first FIFO)
     if max_records > 0:

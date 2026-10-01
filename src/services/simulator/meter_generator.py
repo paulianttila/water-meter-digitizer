@@ -37,6 +37,9 @@ from services.simulator.rendering import (
     overlay_analog_needles as _overlay_analog_needles_fn,
 )
 from services.simulator.rendering import (
+    overlay_drum_counter as _overlay_drum_counter_fn,
+)
+from services.simulator.rendering import (
     overlay_lcd_digits as _overlay_lcd_digits_fn,
 )
 from services.simulator.rendering import (
@@ -156,15 +159,21 @@ class MeterImageGenerator:
         meter_bg: str = "white",
         needle_color: str = "red",
         lcd_font: str = "builtin",
+        counter_type: str = "lcd",
+        drum_style: str = "standard",
+        drum_carry: str = "geneva",
         width: int = 640,
         height: int = 480,
         custom_digital_values: dict[str, float] | None = None,
         custom_analog_values: dict[str, float] | None = None,
     ) -> Image:
-        """Generate a complete rounded water meter image with 5 LCD digits, 4 dials, and 3 ref targets."""
+        """Generate a complete rounded water meter image with 5 LCD digits or mechanical drums, 4 dials, and 3 ref targets."""
         # 1. Parse reading into 5 digits and 4 dials
         digit_states, dial_states = self._parse_meter_values(
-            value, custom_digital_values, custom_analog_values
+            value,
+            custom_digital_values,
+            custom_analog_values,
+            counter_type=counter_type,
         )
 
         # 2. Build Base Rounded Water Meter Canvas on Canonical 640x480 Frame (using template cache)
@@ -184,14 +193,22 @@ class MeterImageGenerator:
                 )
             canvas = self._base_cache[cache_key].copy()
 
-        # 3. Draw 5 LCD Digital Counter Drums
-        self._overlay_lcd_digits(
-            canvas,
-            digit_states,
-            lcd_color=lcd_color,
-            lcd_bg=lcd_bg,
-            lcd_font=lcd_font,
-        )
+        # 3. Draw Digital Counter (LCD or Mechanical Drum)
+        if (counter_type or "lcd").lower().strip() == "drum":
+            self._overlay_drum_counter(
+                canvas,
+                digit_states,
+                drum_style=drum_style,
+                drum_carry=drum_carry,
+            )
+        else:
+            self._overlay_lcd_digits(
+                canvas,
+                digit_states,
+                lcd_color=lcd_color,
+                lcd_bg=lcd_bg,
+                lcd_font=lcd_font,
+            )
 
         # 4. Draw 4 Analog Dial Needles
         self._overlay_analog_needles(canvas, dial_states, needle_color=needle_color)
@@ -258,6 +275,7 @@ class MeterImageGenerator:
         value: str | float,
         custom_dig: dict[str, float] | None = None,
         custom_ana: dict[str, float] | None = None,
+        counter_type: str = "lcd",
     ) -> tuple[dict[str, float], dict[str, float]]:
         """Decompose meter reading into 5 digits and 4 dial values."""
         val_str = str(value).strip()
@@ -287,6 +305,15 @@ class MeterImageGenerator:
             pad_int = integer_part.zfill(5)[-5:]
             for i, name in enumerate(dig_names):
                 digit_states[name] = _parse_digit_char(pad_int[i])
+
+        # In drum mode, fractional part continuously rolls the lowest drum wheel (digit5)
+        if (counter_type or "lcd").lower().strip() == "drum" and fractional_part:
+            try:
+                frac_val = float(f"0.{fractional_part}")
+                if digit_states.get("digit5", 0.0) >= 0.0:
+                    digit_states["digit5"] = round(digit_states["digit5"] + frac_val, 4)
+            except ValueError:
+                pass
 
         # 4 analog dials
         ana_names = ["analog1", "analog2", "analog3", "analog4"]
@@ -489,6 +516,21 @@ class MeterImageGenerator:
         """Render 5 authentic 7-segment or 14-segment LCD digits inside the LCD counter window."""
         _overlay_lcd_digits_fn(
             canvas, digit_states, lcd_color, lcd_bg, lcd_font=lcd_font
+        )
+
+    def _overlay_drum_counter(
+        self,
+        canvas: Image,
+        digit_states: dict[str, float],
+        drum_style: str = "standard",
+        drum_carry: str = "geneva",
+    ) -> None:
+        """Render 5 mechanical rolling drums inside the aperture window."""
+        _overlay_drum_counter_fn(
+            canvas,
+            digit_states,
+            drum_style=drum_style,
+            drum_carry=drum_carry,
         )
 
     def _draw_7segment_digit(
