@@ -152,8 +152,9 @@ def draw_7segment_font_digit(
 ) -> None:
     """Render authentic dual-layer ghost and active LCD segments with optical slot centering."""
     font_file = font_cfg["file"]
-    # Size 44 provides optimal ~36x44 aspect fit within the 39x66 slot
-    font = get_lcd_font(font_file, size=44)
+    # Scale font size dynamically based on slot height h
+    font_size = max(14, int(h * 0.68))
+    font = get_lcd_font(font_file, size=font_size)
     ghost_char = font_cfg.get("ghost_char", "8")
 
     bbox = font.getbbox(ghost_char)
@@ -239,7 +240,7 @@ def draw_7segment_digit(
     slant: int = 0,
 ) -> None:
     """Draw an authentic 7-segment LCD digit with tight, polygonal segment geometry."""
-    sw = max(4, int(w * 0.22))  # Segment stroke thickness (~7px on 31px inner width)
+    sw = max(2, int(w * 0.20))  # Adaptive segment stroke thickness
     gap = 1  # Tight 1px separation between segments
     half_h = h // 2
 
@@ -335,27 +336,13 @@ def overlay_lcd_digits(
     lcd_color: str = "black",
     lcd_bg: str = "grey",
     lcd_font: str = "builtin",
+    has_flow_display: bool = False,
+    has_decimal_dot: bool = False,
 ) -> None:
-    """Render 5 authentic 7-segment or 14-segment LCD digits inside the LCD counter window."""
-    center_x = canvas.width // 2
-    center_y = canvas.height // 2
-    win_w = 264
-    win_x = center_x - win_w // 2
-    win_y = center_y - 100
-
-    dw, dh = 39, 66
-    gap = 10
-    start_dx = win_x + 14
-    dy = win_y + 10
-
+    """Render authentic 7-segment or 14-segment LCD digits inside the LCD counter window(s)."""
     theme = resolve_lcd_theme(lcd_color, lcd_bg)
     active_col = theme["active"]
     ghost_col = theme["ghost"]
-
-    pad_x = 4
-    pad_y = 5
-    inner_w = dw - pad_x * 2
-    inner_h = dh - pad_y * 2
 
     draw = PIL.ImageDraw.Draw(canvas)
     font_key = (lcd_font or "builtin").lower().strip()
@@ -365,35 +352,129 @@ def overlay_lcd_digits(
         "14seg",
     )
 
-    for i in range(5):
-        digit_name = f"digit{i+1}"
-        raw_val = int(digit_states.get(digit_name, 0.0))
-        val = raw_val if raw_val in (-1, -2) else raw_val % 10
-        x = start_dx + i * (dw + gap)
-        y = dy
-
+    def _render_box_digit(x: int, y: int, w: int, h: int, raw_val: int | float) -> None:
+        int_val = int(raw_val)
+        val = int_val if int_val in (-1, -2) else int_val % 10
         if use_font and font_cfg is not None:
             char_str = "-" if val == -1 else (" " if val == -2 else str(val))
             draw_7segment_font_digit(
                 draw=draw,
                 x=x,
                 y=y,
-                w=dw,
-                h=dh,
+                w=w,
+                h=h,
                 char_str=char_str,
                 font_cfg=font_cfg,
                 active_color=active_col,
                 ghost_color=ghost_col,
             )
         else:
+            px = max(2, round(w * 0.09))
+            py = max(3, round(h * 0.085))
             draw_7segment_digit(
                 draw,
-                x=x + pad_x,
-                y=y + pad_y,
-                w=inner_w,
-                h=inner_h,
+                x=x + px,
+                y=y + py,
+                w=w - px * 2,
+                h=h - py * 2,
                 digit=val,
                 active_color=active_col,
                 ghost_color=ghost_col,
                 slant=0,
             )
+
+    if has_flow_display:
+        # Dual-line ultrasonic smart meter (Axioma W1 style unified screen)
+        # 1. Subtle horizontal divider across the LCD screen
+        draw.line([(188, 216), (452, 216)], fill=ghost_col, width=1)
+
+        # 2. Battery status icon
+        draw.rectangle([(192, 142), (205, 148)], outline=ghost_col, width=1)
+        draw.rectangle([(205, 144), (207, 146)], fill=ghost_col)
+        draw.rectangle([(194, 144), (201, 146)], fill=ghost_col)
+
+        # 3. Flow direction indicator arrow
+        flow_v = 0.0
+        if "flow1" in digit_states:
+            flow_v = (
+                digit_states.get("flow1", 0.0) * 10.0
+                + digit_states.get("flow2", 0.0)
+                + digit_states.get("flow_dec1", 0.0) * 0.1
+            )
+        arrow_col = active_col if flow_v > 0.001 else ghost_col
+        draw.polygon([(438, 143), (446, 146), (438, 149)], fill=arrow_col)
+
+        # 4. Main cumulative volume line
+        # 6 large integer digits (w=24, h=44)
+        int_names = [f"digit{i+1}" for i in range(6)]
+        for i, nm in enumerate(int_names):
+            bx = 190 + i * 28
+            by = 156
+            _render_box_digit(bx, by, 24, 44, digit_states.get(nm, 0.0))
+
+        # Main volume decimal dot
+        dot_x = 358
+        dot_y = 197
+        draw.ellipse((dot_x - 2, dot_y - 2, dot_x + 2, dot_y + 2), fill=active_col)
+
+        # 3 smaller decimal digits (w=18, h=32, baseline-aligned at y=168)
+        dec_names = [f"decimal{i+1}" for i in range(3)]
+        for i, nm in enumerate(dec_names):
+            bx = 364 + i * 21
+            by = 168
+            _render_box_digit(bx, by, 18, 32, digit_states.get(nm, 0.0))
+
+        # Main volume unit label
+        font_unit = PIL.ImageFont.load_default(size=12)
+        draw.text((430, 172), "m3", fill=active_col, font=font_unit)
+
+        # 5. Instantaneous flow rate line
+        font_small = PIL.ImageFont.load_default(size=10)
+        draw.text((194, 246), "FLOW", fill=active_col, font=font_small)
+
+        # 2 flow integer digits (w=18, h=32)
+        flow_int_names = ["flow1", "flow2"]
+        for i, nm in enumerate(flow_int_names):
+            bx = 242 + i * 21
+            by = 236
+            _render_box_digit(bx, by, 18, 32, digit_states.get(nm, 0.0))
+
+        # Flow rate decimal dot
+        f_dot_x = 284
+        f_dot_y = 265
+        draw.ellipse(
+            (f_dot_x - 2, f_dot_y - 2, f_dot_x + 2, f_dot_y + 2), fill=active_col
+        )
+
+        # 3 flow decimal digits (w=18, h=32)
+        flow_dec_names = ["flow_dec1", "flow_dec2", "flow_dec3"]
+        for i, nm in enumerate(flow_dec_names):
+            bx = 290 + i * 21
+            by = 236
+            _render_box_digit(bx, by, 18, 32, digit_states.get(nm, 0.0))
+
+        # Flow unit label
+        draw.text((356, 244), "m3/h", fill=active_col, font=font_unit)
+    else:
+        # Standard 5-digit LCD window
+        center_x = canvas.width // 2
+        center_y = canvas.height // 2
+        win_w = 264
+        win_x = center_x - win_w // 2
+        win_y = center_y - 100
+
+        dw, dh = 39, 66
+        gap = 10
+        start_dx = win_x + 14
+        dy = win_y + 10
+
+        for i in range(5):
+            digit_name = f"digit{i+1}"
+            x = start_dx + i * (dw + gap)
+            y = dy
+            _render_box_digit(x, y, dw, dh, digit_states.get(digit_name, 0.0))
+
+        if has_decimal_dot:
+            dot_x = start_dx + 4 * (dw + gap) - 5
+            dot_y = dy + dh - 10
+            draw.ellipse((dot_x - 3, dot_y - 3, dot_x + 3, dot_y + 3), fill=active_col)

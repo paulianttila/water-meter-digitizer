@@ -8,6 +8,7 @@ from nicegui import ui
 
 from gui.api_console.registry import STANDARD_RESOLUTIONS
 from services.simulator.rendering import DRUM_THEME_OPTIONS, LCD_FONT_OPTIONS
+from services.simulator.templates import get_meter_template, list_meter_templates
 
 if TYPE_CHECKING:
     from gui.api_console.mock_studio_panel import MockStudioPanel
@@ -15,6 +16,30 @@ if TYPE_CHECKING:
 
 def render_mock_studio_controls(panel: MockStudioPanel) -> None:
     """Render procedural mock camera parameters controls (left column)."""
+
+    def _update_template_visibilities(tmpl_id: str) -> None:
+        tmpl = get_meter_template(tmpl_id)
+        is_lcd = tmpl.counter_type == "lcd"
+        is_drum = tmpl.counter_type == "drum"
+        if panel.mock_lcd_color_select:
+            panel.mock_lcd_color_select.visible = is_lcd
+        if panel.mock_lcd_bg_select:
+            panel.mock_lcd_bg_select.visible = is_lcd
+        if panel.mock_lcd_font_select:
+            panel.mock_lcd_font_select.visible = is_lcd
+        if panel.mock_drum_style_select:
+            panel.mock_drum_style_select.visible = is_drum
+        if panel.mock_drum_carry_select:
+            panel.mock_drum_carry_select.visible = is_drum
+        if panel.mock_counter_type_select:
+            panel.mock_counter_type_select.value = tmpl.counter_type
+        if panel.mock_needle_color_select:
+            panel.mock_needle_color_select.visible = tmpl.has_dials
+        if panel.mock_flow_value_input:
+            panel.mock_flow_value_input.visible = tmpl.has_flow_display
+        if panel.mock_analog_overrides_col:
+            panel.mock_analog_overrides_col.visible = tmpl.has_dials
+
     with ui.card().classes(
         "w-full h-full flex flex-col p-4 bg-slate-900 border border-white/10 rounded-2xl gap-3 overflow-y-auto"
     ):
@@ -30,9 +55,29 @@ def render_mock_studio_controls(panel: MockStudioPanel) -> None:
         with ui.column().classes(
             "w-full gap-2 p-3 bg-slate-950/60 rounded-xl border border-white/5"
         ):
-            ui.label("Feed Mode & Target Reading").classes(
+            ui.label("Meter Type & Target Reading").classes(
                 "text-xs font-semibold text-cyan-400 uppercase tracking-wide"
             )
+
+            async def _on_meter_type_change(e: Any) -> None:
+                panel.mock_meter_type = e.value
+                tmpl = get_meter_template(e.value)
+                panel.mock_counter_type = tmpl.counter_type
+                _update_template_visibilities(e.value)
+                await panel._on_mock_param_change()
+
+            template_options = {t.id: t.label for t in list_meter_templates()}
+            panel.mock_meter_type_select = (
+                ui.select(
+                    options=template_options,
+                    value=panel.mock_meter_type,
+                    on_change=_on_meter_type_change,
+                    label="Meter Type",
+                )
+                .props("outlined dense options-dense")
+                .classes("w-full text-xs")
+            )
+
             with ui.grid(columns=2).classes("w-full gap-2"):
 
                 async def _on_mode_change(e: Any) -> None:
@@ -95,6 +140,20 @@ def render_mock_studio_controls(panel: MockStudioPanel) -> None:
                 panel.mock_rate_input.enabled = panel.mock_mode in (
                     "ticker",
                     "flow",
+                )
+
+                async def _on_flow_val_change(e: Any) -> None:
+                    panel.mock_flow_value = e.value
+                    await panel._on_mock_param_change()
+
+                panel.mock_flow_value_input = (
+                    ui.input(
+                        label="Flow (m³/h)",
+                        value=panel.mock_flow_value,
+                        on_change=_on_flow_val_change,
+                    )
+                    .props("outlined dense debounce=300")
+                    .classes("w-36 font-mono text-xs")
                 )
 
         # --- Section 2: Optical Effects & Distortions ---
@@ -508,27 +567,31 @@ def render_mock_studio_controls(panel: MockStudioPanel) -> None:
                     )
                     panel.mock_digit_inputs.append(d_inp)
 
-            ui.label("Analog Needles (A1-A4, e.g. 0.0-9.9):").classes(
-                "text-xs text-amber-400 font-semibold pt-1"
-            )
-            with ui.grid(columns=4).classes("w-full gap-1.5"):
-                panel.mock_analog_inputs.clear()
-                for i in range(4):
+            panel.mock_analog_overrides_col = ui.column().classes("w-full gap-1 p-0")
+            with panel.mock_analog_overrides_col:
+                ui.label("Analog Needles (A1-A4, e.g. 0.0-9.9):").classes(
+                    "text-xs text-amber-400 font-semibold pt-1"
+                )
+                with ui.grid(columns=4).classes("w-full gap-1.5"):
+                    panel.mock_analog_inputs.clear()
+                    for i in range(4):
 
-                    def _make_ana_cb(idx: int):
-                        async def _cb(e: Any) -> None:
-                            panel.mock_analog_overrides[idx] = e.value
-                            await panel._on_mock_param_change()
+                        def _make_ana_cb(idx: int):
+                            async def _cb(e: Any) -> None:
+                                panel.mock_analog_overrides[idx] = e.value
+                                await panel._on_mock_param_change()
 
-                        return _cb
+                            return _cb
 
-                    a_inp = (
-                        ui.input(
-                            label=f"A{i+1}",
-                            value=panel.mock_analog_overrides[i],
-                            on_change=_make_ana_cb(i),
+                        a_inp = (
+                            ui.input(
+                                label=f"A{i+1}",
+                                value=panel.mock_analog_overrides[i],
+                                on_change=_make_ana_cb(i),
+                            )
+                            .props("outlined dense")
+                            .classes("font-mono text-xs")
                         )
-                        .props("outlined dense")
-                        .classes("font-mono text-xs")
-                    )
-                    panel.mock_analog_inputs.append(a_inp)
+                        panel.mock_analog_inputs.append(a_inp)
+
+    _update_template_visibilities(panel.mock_meter_type)

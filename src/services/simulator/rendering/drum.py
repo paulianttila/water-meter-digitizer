@@ -269,11 +269,16 @@ def overlay_drum_counter(
     digit_states: dict[str, float],
     drum_style: str = "standard",
     drum_carry: str = "geneva",
+    decimal_wheels: int | None = None,
+    has_decimal_dot: bool | None = None,
 ) -> None:
     """Render 5 mechanical rolling drums inside the aperture window matching exact ROI positions."""
     theme_key = (drum_style or "standard").lower().strip()
     theme = DRUM_THEMES.get(theme_key, DRUM_THEMES["standard"])
-    decimal_count = theme.get("decimal_wheels", 1)
+    decimal_count = (
+        decimal_wheels if decimal_wheels is not None else theme.get("decimal_wheels", 0)
+    )
+    show_dot = has_decimal_dot if has_decimal_dot is not None else (decimal_count > 0)
 
     # Fixed slot dimensions matching synthetic template: x = 202 + i*49, y = 150, w = 39, h = 66
     dw, dh = 39, 66
@@ -340,7 +345,7 @@ def overlay_drum_counter(
     )
 
     # Decimal indicator (small red/white comma separator before decimal wheels)
-    if decimal_count > 0:
+    if show_dot and decimal_count > 0:
         dec_slot_idx = 5 - decimal_count
         dot_x = slot_x_start + dec_slot_idx * slot_pitch - 5
         dot_y = slot_y + dh - 10

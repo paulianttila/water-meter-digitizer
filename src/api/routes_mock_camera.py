@@ -11,6 +11,7 @@ from fastapi import APIRouter, Request, Response
 from fastapi.responses import JSONResponse
 
 from services.simulator.meter_generator import MeterImageGenerator
+from services.simulator.templates import get_meter_template
 
 logger = logging.getLogger(__name__)
 
@@ -43,6 +44,8 @@ def render_mock_camera_frame(
     counter_type: str = "lcd",
     drum_style: str = "standard",
     drum_carry: str = "geneva",
+    meter_type: str | None = None,
+    flow_value: str | float | None = None,
     width: int = 640,
     height: int = 480,
     digit1: float | None = None,
@@ -121,6 +124,8 @@ def render_mock_camera_frame(
         counter_type=counter_type,
         drum_style=drum_style,
         drum_carry=drum_carry,
+        meter_type=meter_type,
+        flow_value=flow_value,
         width=width,
         height=height,
         custom_digital_values=custom_dig if custom_dig else None,
@@ -130,6 +135,7 @@ def render_mock_camera_frame(
     buf = io.BytesIO()
     img.save(buf, format="JPEG", quality=92)
 
+    tpl = get_meter_template(meter_type)
     parts = target_val_str.split(".")
     int_part = parts[0].zfill(5)[-5:]
     frac_part = (parts[1] + "0000")[:4] if len(parts) > 1 else "0000"
@@ -137,8 +143,11 @@ def render_mock_camera_frame(
     headers = {
         "X-Mock-Meter-Value": target_val_str,
         "X-Mock-Digital-Value": int_part,
-        "X-Mock-Analog-Value": frac_part,
+        "X-Mock-Analog-Value": frac_part if tpl.has_dials else "",
     }
+    if tpl.has_flow_display:
+        f_val = str(flow_value if flow_value is not None else "00.125").strip()
+        headers["X-Mock-Flow-Value"] = f_val
     return buf.getvalue(), headers
 
 
@@ -193,6 +202,8 @@ def render_mock_camera_from_url(url: str) -> bytes:
         counter_type=_get_str("counter_type", "lcd") or "lcd",
         drum_style=_get_str("drum_style", "standard") or "standard",
         drum_carry=_get_str("drum_carry", "geneva") or "geneva",
+        meter_type=_get_str("meter_type"),
+        flow_value=_get_str("flow_value"),
         width=_get_int("width", 640),
         height=_get_int("height", 480),
         digit1=_get_float("digit1"),
@@ -231,6 +242,8 @@ def get_mock_camera_frame(
     counter_type: str = "lcd",
     drum_style: str = "standard",
     drum_carry: str = "geneva",
+    meter_type: str | None = None,
+    flow_value: str | float | None = None,
     width: int = 640,
     height: int = 480,
     digit1: float | None = None,
@@ -268,6 +281,8 @@ def get_mock_camera_frame(
         counter_type=counter_type,
         drum_style=drum_style,
         drum_carry=drum_carry,
+        meter_type=meter_type,
+        flow_value=flow_value,
         width=width,
         height=height,
         digit1=digit1,

@@ -3,6 +3,7 @@ import logging
 import os
 import time
 from importlib import util
+from pathlib import Path
 
 import numpy as np
 from PIL.Image import Image, Resampling
@@ -56,7 +57,38 @@ class CNNBase:
         self.pool: InterpreterPool | None = None
         self._load_model()
 
+    @staticmethod
+    def _resolve_model_path(path: str) -> str:
+        """Attempt to locate model file across standard config and project directories."""
+        if os.path.isfile(path):
+            return os.path.abspath(path)
+
+        clean = path.strip()
+        sub = clean
+        if sub.startswith("config/"):
+            sub = sub[len("config/") :]
+
+        candidates: list[Path] = []
+        cfg_env = os.environ.get("CONFIG_FILE")
+        if cfg_env:
+            cfg_parent = Path(cfg_env).resolve().parent
+            candidates.append(cfg_parent / clean)
+            candidates.append(cfg_parent / sub)
+
+        repo_root = Path(__file__).resolve().parents[2]
+        candidates.append(repo_root / clean)
+        candidates.append(repo_root / "config" / sub)
+        candidates.append(Path("/config") / clean)
+        candidates.append(Path("/config") / sub)
+
+        for cand in candidates:
+            if cand.is_file():
+                return str(cand.resolve())
+
+        return path
+
     def _load_model(self) -> None:
+        self.modelfile = self._resolve_model_path(self.modelfile)
         _filename, file_extension = os.path.splitext(self.modelfile)
         if file_extension != ".tflite":
             msg = (

@@ -64,6 +64,8 @@ class MockStudioPanel(BaseComponent):
         self.mock_needle_color = "red"
         self.mock_lcd_font = "builtin"
         self.mock_counter_type = "lcd"  # "lcd" or "drum"
+        self.mock_meter_type = "mechanical_dials"
+        self.mock_flow_value = "00.125"
         self.mock_drum_style = "standard"  # "standard", "classic_black", "classic_white", "red_decimals_2", "industrial"
         self.mock_drum_carry = "geneva"  # "geneva" or "continuous"
         self.mock_width = 640
@@ -95,6 +97,8 @@ class MockStudioPanel(BaseComponent):
         self.mock_blur_slider: ui.slider | None = None
         self.mock_bright_slider: ui.slider | None = None
         self.mock_contrast_slider: ui.slider | None = None
+        self.mock_meter_type_select: ui.select | None = None
+        self.mock_flow_value_input: ui.input | None = None
         self.mock_lcd_color_select: ui.select | None = None
         self.mock_lcd_bg_select: ui.select | None = None
         self.mock_meter_bg_select: ui.select | None = None
@@ -114,6 +118,7 @@ class MockStudioPanel(BaseComponent):
         self.mock_height_input: ui.number | None = None
         self.mock_digit_inputs: list[ui.input] = []
         self.mock_analog_inputs: list[ui.input] = []
+        self.mock_analog_overrides_col: Any = None
 
         # Streaming Controller
         self.streaming_controller = MockStreamingController(
@@ -129,6 +134,8 @@ class MockStudioPanel(BaseComponent):
                 counter_type=self.mock_counter_type,
                 drum_style=self.mock_drum_style,
                 drum_carry=self.mock_drum_carry,
+                meter_type=self.mock_meter_type,
+                flow_value=self.mock_flow_value,
                 width=self.mock_width,
                 height=self.mock_height,
             )
@@ -216,6 +223,10 @@ class MockStudioPanel(BaseComponent):
             params["drum_style"] = self.mock_drum_style
         if self.mock_drum_carry != "geneva":
             params["drum_carry"] = self.mock_drum_carry
+        if self.mock_meter_type != "mechanical_dials":
+            params["meter_type"] = self.mock_meter_type
+        if self.mock_flow_value != "00.125":
+            params["flow_value"] = self.mock_flow_value
         if self.mock_width != 640:
             params["width"] = self.mock_width
         if self.mock_height != 480:
@@ -293,6 +304,8 @@ class MockStudioPanel(BaseComponent):
                     counter_type=self.mock_counter_type,
                     drum_style=self.mock_drum_style,
                     drum_carry=self.mock_drum_carry,
+                    meter_type=self.mock_meter_type,
+                    flow_value=self.mock_flow_value,
                     width=self.mock_width,
                     height=self.mock_height,
                     digit1=d_vals[0] if len(d_vals) > 0 else None,
@@ -317,6 +330,7 @@ class MockStudioPanel(BaseComponent):
                             else MeterImageGenerator.create_mock_meter_config(
                                 width=self.mock_width,
                                 height=self.mock_height,
+                                meter_type=self.mock_meter_type,
                                 base_config=(
                                     self.callbacks.get_config()
                                     if self.callbacks
@@ -458,6 +472,26 @@ class MockStudioPanel(BaseComponent):
                 self.mock_needle_color = qs["needle_color"][0]
                 if self.mock_needle_color_select:
                     self.mock_needle_color_select.value = self.mock_needle_color
+            if qs.get("counter_type"):
+                self.mock_counter_type = qs["counter_type"][0]
+                if self.mock_counter_type_select:
+                    self.mock_counter_type_select.value = self.mock_counter_type
+            if qs.get("drum_style"):
+                self.mock_drum_style = qs["drum_style"][0]
+                if self.mock_drum_style_select:
+                    self.mock_drum_style_select.value = self.mock_drum_style
+            if qs.get("drum_carry"):
+                self.mock_drum_carry = qs["drum_carry"][0]
+                if self.mock_drum_carry_select:
+                    self.mock_drum_carry_select.value = self.mock_drum_carry
+            if qs.get("meter_type"):
+                self.mock_meter_type = qs["meter_type"][0]
+                if self.mock_meter_type_select:
+                    self.mock_meter_type_select.value = self.mock_meter_type
+            if qs.get("flow_value"):
+                self.mock_flow_value = qs["flow_value"][0]
+                if self.mock_flow_value_input:
+                    self.mock_flow_value_input.value = self.mock_flow_value
             if qs.get("width"):
                 with contextlib.suppress(ValueError):
                     self.mock_width = int(qs["width"][0])
@@ -567,6 +601,7 @@ class MockStudioPanel(BaseComponent):
                 cfg_to_edit = MeterImageGenerator.create_mock_meter_config(
                     width=self.mock_width,
                     height=self.mock_height,
+                    meter_type=self.mock_meter_type,
                     base_config=base_cfg,
                     url=mock_url,
                 )
@@ -615,6 +650,7 @@ class MockStudioPanel(BaseComponent):
                 test_config = MeterImageGenerator.create_mock_meter_config(
                     width=self.mock_width,
                     height=self.mock_height,
+                    meter_type=self.mock_meter_type,
                     base_config=base_cfg,
                     url=mock_url,
                 )
@@ -678,6 +714,8 @@ class MockStudioPanel(BaseComponent):
         self.mock_lcd_bg = "grey"
         self.mock_meter_bg = "white"
         self.mock_needle_color = "red"
+        self.mock_meter_type = "mechanical_dials"
+        self.mock_flow_value = "00.125"
         self.mock_width = 640
         self.mock_height = 480
         self.mock_res_preset = "640x480"
@@ -687,6 +725,10 @@ class MockStudioPanel(BaseComponent):
 
         if self.mock_mode_select:
             self.mock_mode_select.value = "fixed"
+        if self.mock_meter_type_select:
+            self.mock_meter_type_select.value = "mechanical_dials"
+        if self.mock_flow_value_input:
+            self.mock_flow_value_input.value = "00.125"
         if self.mock_value_input:
             self.mock_value_input.value = "00452.91241"
         if self.mock_rate_input:
