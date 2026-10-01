@@ -395,7 +395,10 @@ def overlay_lcd_digits(
     """Render authentic 7-segment or 14-segment LCD digits inside the LCD counter window(s)."""
     # Note: Coordinates assume canonical 640x480 simulation canvas; resizing occurs in stage 5
     if canvas.size != (640, 480):
-        pass
+        raise ValueError(
+            f"overlay_lcd_digits requires canonical (640, 480) simulation canvas, got {canvas.size}. "
+            "Resolution scaling must occur after digit overlays in the simulator pipeline."
+        )
 
     theme = resolve_lcd_theme(lcd_color, lcd_bg)
     active_col = theme["active"]

@@ -72,6 +72,7 @@ class MockStudioPanel(BaseComponent):
         self.mock_height = 480
         self.mock_res_preset = "640x480"
         self.mock_digit_overrides: list[str] = ["", "", "", "", ""]
+        self.mock_named_digit_overrides: dict[str, str] = {}
         self.mock_analog_overrides: list[str] = ["", "", "", ""]
         self.mock_test_config_mode: str = "dedicated"  # "dedicated" or "active"
         self.mock_auto_refresh = True
@@ -118,6 +119,7 @@ class MockStudioPanel(BaseComponent):
         self.mock_height_input: ui.number | None = None
         self.mock_digit_inputs: list[ui.input] = []
         self.mock_analog_inputs: list[ui.input] = []
+        self.mock_digit_overrides_col: Any = None
         self.mock_analog_overrides_col: Any = None
         self._update_template_visibilities: Any = None
 
@@ -233,8 +235,13 @@ class MockStudioPanel(BaseComponent):
         if self.mock_height != 480:
             params["height"] = self.mock_height
 
-        for idx, val in enumerate(self.mock_digit_overrides, start=1):
+        for name, val in self.mock_named_digit_overrides.items():
             if val.strip():
+                with contextlib.suppress(ValueError):
+                    params[name] = float(val)
+
+        for idx, val in enumerate(self.mock_digit_overrides, start=1):
+            if val.strip() and f"digit{idx}" not in params:
                 with contextlib.suppress(ValueError):
                     params[f"digit{idx}"] = float(val)
 
@@ -261,11 +268,20 @@ class MockStudioPanel(BaseComponent):
         if self.mock_url_display:
             self.mock_url_display.value = self.get_mock_url(relative=True)
 
+        custom_dig: dict[str, float] = {}
+        for name, val in self.mock_named_digit_overrides.items():
+            if val.strip():
+                with contextlib.suppress(ValueError):
+                    custom_dig[name] = float(val)
+
         d_vals: list[float | None] = []
-        for val in self.mock_digit_overrides:
+        for idx, val in enumerate(self.mock_digit_overrides, start=1):
             if val.strip():
                 try:
-                    d_vals.append(float(val))
+                    float_v = float(val)
+                    d_vals.append(float_v)
+                    if f"digit{idx}" not in custom_dig:
+                        custom_dig[f"digit{idx}"] = float_v
                     continue
                 except ValueError:
                     pass
@@ -318,6 +334,7 @@ class MockStudioPanel(BaseComponent):
                     analog2=a_vals[1] if len(a_vals) > 1 else None,
                     analog3=a_vals[2] if len(a_vals) > 2 else None,
                     analog4=a_vals[3] if len(a_vals) > 3 else None,
+                    custom_digital_values=custom_dig if custom_dig else None,
                 )
                 self._raw_mock_bytes = jpeg_bytes
                 if self.mock_show_rois:
@@ -509,12 +526,18 @@ class MockStudioPanel(BaseComponent):
             )
             if self.mock_res_select:
                 self.mock_res_select.value = self.mock_res_preset
-            for i in range(5):
-                key = f"digit{i+1}"
-                if qs.get(key):
-                    self.mock_digit_overrides[i] = qs[key][0]
-                    if i < len(self.mock_digit_inputs) and self.mock_digit_inputs[i]:
-                        self.mock_digit_inputs[i].value = qs[key][0]
+            for key in list(qs.keys()):
+                if (
+                    key.startswith("digit")
+                    or key.startswith("decimal")
+                    or key.startswith("flow")
+                ) and key not in ("flow_value",):
+                    self.mock_named_digit_overrides[key] = qs[key][0]
+                    if key.startswith("digit"):
+                        with contextlib.suppress(ValueError):
+                            idx = int(key.replace("digit", "")) - 1
+                            if 0 <= idx < len(self.mock_digit_overrides):
+                                self.mock_digit_overrides[idx] = qs[key][0]
             for i in range(4):
                 key = f"analog{i+1}"
                 if qs.get(key):
@@ -731,6 +754,7 @@ class MockStudioPanel(BaseComponent):
         self.mock_height = 480
         self.mock_res_preset = "640x480"
         self.mock_digit_overrides = ["", "", "", "", ""]
+        self.mock_named_digit_overrides.clear()
         self.mock_analog_overrides = ["", "", "", ""]
         self.mock_auto_refresh = True
 

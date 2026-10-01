@@ -364,40 +364,44 @@ class MeterImageGenerator:
 
         elif tpl.id == "mechanical_roller":
             # 4 integer black drums (digit1..4) + 1 red decimal drum (digit5)
-            pad_int = integer_part.zfill(5)[-5:]
-            for i in range(4):
+            d_count = tpl.digit_count
+            pad_int = integer_part.zfill(d_count)[-d_count:]
+            for i in range(d_count - 1):
                 digit_states[f"digit{i+1}"] = _parse_digit_char(pad_int[i])
-            base_dec = _parse_digit_char(pad_int[4])
+            base_dec = _parse_digit_char(pad_int[d_count - 1])
             if fractional_part and base_dec >= 0:
                 try:
                     frac_val = float(f"0.{fractional_part}")
                     base_dec = round(base_dec + frac_val, 4)
                 except ValueError:
                     pass
-            digit_states["digit5"] = base_dec
+            digit_states[f"digit{d_count}"] = base_dec
 
         elif counter_type == "drum":
-            # 5 integer drums (digit1..5)
-            pad_int = integer_part.zfill(5)[-5:]
-            for i in range(5):
+            # Integer drums (digit1..N)
+            d_count = tpl.digit_count
+            pad_int = integer_part.zfill(d_count)[-d_count:]
+            for i in range(d_count):
                 digit_states[f"digit{i+1}"] = _parse_digit_char(pad_int[i])
-            if fractional_part and digit_states.get("digit5", 0.0) >= 0:
+            last_key = f"digit{d_count}"
+            if fractional_part and digit_states.get(last_key, 0.0) >= 0:
                 try:
                     frac_val = float(f"0.{fractional_part}")
-                    digit_states["digit5"] = round(digit_states["digit5"] + frac_val, 4)
+                    digit_states[last_key] = round(digit_states[last_key] + frac_val, 4)
                 except ValueError:
                     pass
 
         else:
-            # Standard single-line LCD (digit1..5)
-            dig_names = ["digit1", "digit2", "digit3", "digit4", "digit5"]
+            # Standard single-line LCD (digit1..N)
+            d_count = tpl.digit_count
+            dig_names = [f"digit{i+1}" for i in range(d_count)]
             if is_negative:
-                pad_int = integer_part.zfill(4)[-4:]
+                pad_int = integer_part.zfill(d_count - 1)[-(d_count - 1) :]
                 digit_states["digit1"] = -1.0
                 for i, name in enumerate(dig_names[1:]):
                     digit_states[name] = _parse_digit_char(pad_int[i])
             else:
-                pad_int = integer_part.zfill(5)[-5:]
+                pad_int = integer_part.zfill(d_count)[-d_count:]
                 for i, name in enumerate(dig_names):
                     digit_states[name] = _parse_digit_char(pad_int[i])
 
@@ -881,7 +885,7 @@ class MeterImageGenerator:
             base_start_dx = base_win_x + 14
             base_dy = base_win_y + 10
 
-            for i in range(5):
+            for i in range(tpl.digit_count):
                 bx = base_start_dx + i * (base_dw + base_gap)
                 by = base_dy
                 sx, sy, sw, sh = _scale_pos(bx, by, base_dw, base_dh)

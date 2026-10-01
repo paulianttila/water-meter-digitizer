@@ -17,6 +17,169 @@ if TYPE_CHECKING:
 def render_mock_studio_controls(panel: MockStudioPanel) -> None:
     """Render procedural mock camera parameters controls (left column)."""
 
+    def _rebuild_digit_overrides(tmpl_id: str) -> None:
+        if panel.mock_digit_overrides_col is None:
+            return
+        panel.mock_digit_overrides_col.clear()
+        panel.mock_digit_inputs.clear()
+        tmpl = get_meter_template(tmpl_id)
+
+        with panel.mock_digit_overrides_col:
+            if tmpl.has_flow_display:
+                ui.label("Volume Digits (m³):").classes(
+                    "text-xs text-cyan-400 font-semibold"
+                )
+                with ui.row().classes("w-full items-center gap-1 overflow-x-auto"):
+                    # 6 integer volume digits
+                    for i in range(6):
+                        slot = f"digit{i+1}"
+                        val = panel.mock_named_digit_overrides.get(
+                            slot,
+                            (
+                                panel.mock_digit_overrides[i]
+                                if i < len(panel.mock_digit_overrides)
+                                else ""
+                            ),
+                        )
+
+                        def _make_vol_cb(s: str, idx: int):
+                            async def _cb(e: Any) -> None:
+                                panel.mock_named_digit_overrides[s] = e.value
+                                if idx < len(panel.mock_digit_overrides):
+                                    panel.mock_digit_overrides[idx] = e.value
+                                await panel._on_mock_param_change()
+
+                            return _cb
+
+                        inp = (
+                            ui.input(
+                                label=f"V{i+1}",
+                                value=val,
+                                on_change=_make_vol_cb(slot, i),
+                            )
+                            .props("outlined dense")
+                            .classes("font-mono text-xs w-11")
+                        )
+                        panel.mock_digit_inputs.append(inp)
+
+                    ui.label(".").classes(
+                        "text-base font-bold text-slate-400 self-end mb-1"
+                    )
+
+                    # 3 decimal volume digits
+                    for i in range(3):
+                        slot = f"decimal{i+1}"
+                        val = panel.mock_named_digit_overrides.get(slot, "")
+
+                        def _make_dec_cb(s: str):
+                            async def _cb(e: Any) -> None:
+                                panel.mock_named_digit_overrides[s] = e.value
+                                await panel._on_mock_param_change()
+
+                            return _cb
+
+                        inp = (
+                            ui.input(
+                                label=f"D{i+1}",
+                                value=val,
+                                on_change=_make_dec_cb(slot),
+                            )
+                            .props("outlined dense")
+                            .classes("font-mono text-xs w-11")
+                        )
+                        panel.mock_digit_inputs.append(inp)
+
+                ui.label("Instantaneous Flow Rate (m³/h):").classes(
+                    "text-xs text-emerald-400 font-semibold pt-1"
+                )
+                with ui.row().classes("w-full items-center gap-1 overflow-x-auto"):
+                    # 2 flow integer digits
+                    for i in range(2):
+                        slot = f"flow{i+1}"
+                        val = panel.mock_named_digit_overrides.get(slot, "")
+
+                        def _make_flow_cb(s: str):
+                            async def _cb(e: Any) -> None:
+                                panel.mock_named_digit_overrides[s] = e.value
+                                await panel._on_mock_param_change()
+
+                            return _cb
+
+                        inp = (
+                            ui.input(
+                                label=f"F{i+1}",
+                                value=val,
+                                on_change=_make_flow_cb(slot),
+                            )
+                            .props("outlined dense")
+                            .classes("font-mono text-xs w-11")
+                        )
+                        panel.mock_digit_inputs.append(inp)
+
+                    ui.label(".").classes(
+                        "text-base font-bold text-slate-400 self-end mb-1"
+                    )
+
+                    # 3 flow decimal digits
+                    for i in range(3):
+                        slot = f"flow_dec{i+1}"
+                        val = panel.mock_named_digit_overrides.get(slot, "")
+
+                        def _make_fdec_cb(s: str):
+                            async def _cb(e: Any) -> None:
+                                panel.mock_named_digit_overrides[s] = e.value
+                                await panel._on_mock_param_change()
+
+                            return _cb
+
+                        inp = (
+                            ui.input(
+                                label=f"FD{i+1}",
+                                value=val,
+                                on_change=_make_fdec_cb(slot),
+                            )
+                            .props("outlined dense")
+                            .classes("font-mono text-xs w-11")
+                        )
+                        panel.mock_digit_inputs.append(inp)
+            else:
+                ui.label(
+                    "Digital Drums (D1-D5, e.g. 0-9 or 2.5):"
+                    if tmpl.counter_type == "drum"
+                    else "Digital LCD (D1-D5, e.g. 0-9):"
+                ).classes("text-xs text-cyan-400 font-semibold")
+                with ui.grid(columns=5).classes("w-full gap-1.5"):
+                    for i in range(tmpl.digit_count):
+                        slot = f"digit{i+1}"
+                        val = panel.mock_named_digit_overrides.get(
+                            slot,
+                            (
+                                panel.mock_digit_overrides[i]
+                                if i < len(panel.mock_digit_overrides)
+                                else ""
+                            ),
+                        )
+
+                        def _make_dig_cb(s: str, idx: int):
+                            async def _cb(e: Any) -> None:
+                                panel.mock_named_digit_overrides[s] = e.value
+                                if idx < len(panel.mock_digit_overrides):
+                                    panel.mock_digit_overrides[idx] = e.value
+                                await panel._on_mock_param_change()
+
+                            return _cb
+
+                        d_inp = (
+                            ui.input(
+                                label=f"D{i+1}",
+                                value=val,
+                                on_change=_make_dig_cb(slot, i),
+                            )
+                            .props("outlined dense")
+                            .classes("font-mono text-xs")
+                        )
+                        panel.mock_digit_inputs.append(d_inp)
+
     def _update_template_visibilities(tmpl_id: str) -> None:
         tmpl = get_meter_template(tmpl_id)
         is_lcd = tmpl.counter_type == "lcd"
@@ -39,6 +202,7 @@ def render_mock_studio_controls(panel: MockStudioPanel) -> None:
             panel.mock_flow_value_input.visible = tmpl.has_flow_display
         if panel.mock_analog_overrides_col:
             panel.mock_analog_overrides_col.visible = tmpl.has_dials
+        _rebuild_digit_overrides(tmpl_id)
 
     panel._update_template_visibilities = _update_template_visibilities
 
@@ -544,31 +708,8 @@ def render_mock_studio_controls(panel: MockStudioPanel) -> None:
             ),
             ui.column().classes("w-full gap-2 p-1"),
         ):
-            ui.label("Digital Drums (D1-D5, e.g. 0-9 or 2.5):").classes(
-                "text-xs text-cyan-400 font-semibold"
-            )
-            with ui.grid(columns=5).classes("w-full gap-1.5"):
-                panel.mock_digit_inputs.clear()
-                # TODO: Expose full 9-digit / 14-digit override slots dynamically for dual-line LCD templates
-                for i in range(5):
-
-                    def _make_dig_cb(idx: int):
-                        async def _cb(e: Any) -> None:
-                            panel.mock_digit_overrides[idx] = e.value
-                            await panel._on_mock_param_change()
-
-                        return _cb
-
-                    d_inp = (
-                        ui.input(
-                            label=f"D{i+1}",
-                            value=panel.mock_digit_overrides[i],
-                            on_change=_make_dig_cb(i),
-                        )
-                        .props("outlined dense")
-                        .classes("font-mono text-xs")
-                    )
-                    panel.mock_digit_inputs.append(d_inp)
+            panel.mock_digit_overrides_col = ui.column().classes("w-full gap-2 p-0")
+            _rebuild_digit_overrides(panel.mock_meter_type)
 
             panel.mock_analog_overrides_col = ui.column().classes("w-full gap-1 p-0")
             with panel.mock_analog_overrides_col:

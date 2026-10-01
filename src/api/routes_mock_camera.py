@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import contextlib
 import io
 import logging
 import random
@@ -57,6 +58,7 @@ def render_mock_camera_frame(
     analog2: float | None = None,
     analog3: float | None = None,
     analog4: float | None = None,
+    custom_digital_values: dict[str, float] | None = None,
 ) -> tuple[bytes, dict[str, str]]:
     """Render procedural mock water meter frame and return JPEG bytes with headers."""
     generator = MeterImageGenerator()
@@ -95,6 +97,8 @@ def render_mock_camera_frame(
         custom_dig["digit4"] = digit4
     if digit5 is not None:
         custom_dig["digit5"] = digit5
+    if custom_digital_values:
+        custom_dig.update(custom_digital_values)
 
     custom_ana: dict[str, float] = {}
     if analog1 is not None:
@@ -137,7 +141,11 @@ def render_mock_camera_frame(
 
     tpl = get_meter_template(meter_type)
     parts = target_val_str.split(".")
-    int_len = 6 if tpl.has_flow_display else 5
+    int_len = (
+        (tpl.digit_count - tpl.flow_dec_digits)
+        if tpl.has_flow_display
+        else tpl.digit_count
+    )
     int_part = parts[0].zfill(int_len)[-int_len:]
     frac_part = (parts[1] + "0000")[:4] if len(parts) > 1 else "0000"
 
@@ -183,6 +191,14 @@ def render_mock_camera_from_url(url: str) -> bytes:
             return params[k][0].lower() in ("true", "1", "yes")
         return default
 
+    extra_dig: dict[str, float] = {}
+    for k, v in params.items():
+        if (
+            k.startswith("digit") or k.startswith("decimal") or k.startswith("flow")
+        ) and k not in ("flow_value",):
+            with contextlib.suppress(ValueError):
+                extra_dig[k] = float(v[0])
+
     frame_bytes, _ = render_mock_camera_frame(
         value=_get_str("value"),
         mode=_get_str("mode", "fixed") or "fixed",
@@ -216,6 +232,7 @@ def render_mock_camera_from_url(url: str) -> bytes:
         analog2=_get_float("analog2"),
         analog3=_get_float("analog3"),
         analog4=_get_float("analog4"),
+        custom_digital_values=extra_dig if extra_dig else None,
     )
     return frame_bytes
 
@@ -262,6 +279,14 @@ def get_mock_camera_frame(
     Can be used directly as the `[ImageSource] URL = http://localhost:3000/api/mock_camera?value=00789.1234`
     during automated testing, poller simulation, and CI workflows.
     """
+    extra_dig: dict[str, float] = {}
+    for k, v in request.query_params.items():
+        if (
+            k.startswith("digit") or k.startswith("decimal") or k.startswith("flow")
+        ) and k not in ("flow_value",):
+            with contextlib.suppress(ValueError):
+                extra_dig[k] = float(v)
+
     frame_bytes, headers = render_mock_camera_frame(
         value=value,
         mode=mode,
@@ -295,6 +320,7 @@ def get_mock_camera_frame(
         analog2=analog2,
         analog3=analog3,
         analog4=analog4,
+        custom_digital_values=extra_dig if extra_dig else None,
     )
     return Response(
         content=frame_bytes,

@@ -213,6 +213,30 @@ class TestMockMeterConfigTemplates:
                 dial_size,
             )
 
+    def test_rendered_frame_digits_contain_visible_pixels(self) -> None:
+        """Verify that rendered digits have visible contrast within their respective ROIs."""
+        gen = MeterImageGenerator()
+        img = gen.generate(
+            value="888888.888",
+            meter_type="digital_flow",
+            flow_value="88.888",
+            rotate=0.0,
+            glare=False,
+            noise=0.0,
+            blur=0.0,
+        )
+        cfg = gen.create_mock_meter_config(meter_type="digital_flow")
+
+        for roi in cfg.digital_readout.cut_images:
+            crop = img.crop((roi.x, roi.y, roi.x + roi.w, roi.y + roi.h))
+            extrema = crop.convert("L").getextrema()
+            assert extrema is not None
+            min_val, max_val = extrema
+            contrast = max_val - min_val
+            assert (
+                contrast >= 40
+            ), f"ROI {roi.name} at {(roi.x, roi.y, roi.w, roi.h)} has insufficient pixel contrast: {contrast}"
+
 
 class TestWizardPresetFiles:
     """Tests that wizard preset files for all templates exist and parse cleanly."""
