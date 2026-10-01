@@ -102,18 +102,18 @@ start_test_app() {
   echo -e "${BLUE}Test app PID: ${TEST_APP_PID}${NC}"
 
   echo -e "${BLUE}Waiting for test app to become ready...${NC}"
-  for i in {1..30}; do
+  for i in {1..60}; do
     if ! kill -0 "${TEST_APP_PID}" 2>/dev/null; then
       echo -e "${RED}Error: Test app exited prematurely! Check configuration or port conflicts.${NC}"
       exit 1
     fi
-    if curl -s http://localhost:3000/healthcheck | grep -q "Health - OK"; then
+    if curl -s --max-time 2 http://localhost:3000/healthcheck | grep -q "Health - OK"; then
       echo -e "${GREEN}✓ Test app is ready!${NC}"
       return 0
     fi
     sleep 0.5
   done
-  echo -e "${RED}Error: Test app did not respond to healthcheck within 15s${NC}"
+  echo -e "${RED}Error: Test app did not respond to healthcheck within 30s${NC}"
   exit 1
 }
 
