@@ -1,7 +1,7 @@
 # ==========================================
 # Stage 1: Build & dependency resolution
 # ==========================================
-FROM python:3.11-slim AS builder
+FROM python:3.14-slim AS builder
 
 # Install uv for fast dependency resolution
 COPY --from=ghcr.io/astral-sh/uv:latest /uv /uvx /bin/
@@ -27,7 +27,7 @@ RUN find /app/.venv -name '*.so*' -exec strip --strip-unneeded {} + 2>/dev/null 
 # ==========================================
 # Stage 2: Clean, minimal runtime image
 # ==========================================
-FROM python:3.11-slim AS runtime
+FROM python:3.14-slim AS runtime
 
 # Create non-root user and group
 RUN groupadd -g 1000 appuser && \
