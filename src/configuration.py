@@ -18,6 +18,7 @@ from config.models import (
     ImageSource,
     Poller,
     Resize,
+    Sharpness,
     Snapshots,
     ZeroFlowMonitor,
 )
@@ -52,6 +53,7 @@ __all__ = [
     "Poller",
     "RefImage",
     "Resize",
+    "Sharpness",
     "Snapshots",
     "ZeroFlowMonitor",
     "_find_seed_dir",

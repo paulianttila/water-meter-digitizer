@@ -127,23 +127,21 @@ def test_denoise_config_serialization_under_image_processing():
     save_config_to_io(config, stream)
     ini_str = stream.getvalue()
 
-    # Ensure NO separate [ImageProcessing.Denoise] or [Denoise] section exists
+    # Ensure separate [Denoise] section exists with autonomous parameters
     parser = configparser.ConfigParser()
     parser.read_string(ini_str)
     assert not parser.has_section("ImageProcessing.Denoise")
-    assert not parser.has_section("Denoise")
+    assert parser.has_section("Denoise")
 
-    # Ensure all keys are directly in [ImageProcessing]
-    assert parser.has_section("ImageProcessing")
-    assert parser.getboolean("ImageProcessing", "DenoiseFullImage") is True
-    assert parser.getboolean("ImageProcessing", "DenoiseCutImages") is True
-    assert parser.get("ImageProcessing", "DenoiseMethod") == "nlmeans"
-    assert parser.getint("ImageProcessing", "DenoiseDiameter") == 7
-    assert parser.getfloat("ImageProcessing", "DenoiseSigmaColor") == 65.0
-    assert parser.getfloat("ImageProcessing", "DenoiseSigmaSpace") == 70.0
-    assert parser.getfloat("ImageProcessing", "DenoiseStrength") == 4.5
-    assert parser.getint("ImageProcessing", "DenoiseTemplateWindow") == 5
-    assert parser.getint("ImageProcessing", "DenoiseSearchWindow") == 19
+    # Ensure all keys are directly in [Denoise]
+    assert parser.get("Denoise", "Scope") == "both"
+    assert parser.get("Denoise", "Method") == "nlmeans"
+    assert parser.getint("Denoise", "Diameter") == 7
+    assert parser.getfloat("Denoise", "SigmaColor") == 65.0
+    assert parser.getfloat("Denoise", "SigmaSpace") == 70.0
+    assert parser.getfloat("Denoise", "Strength") == 4.5
+    assert parser.getint("Denoise", "TemplateWindow") == 5
+    assert parser.getint("Denoise", "SearchWindow") == 19
 
     # Deserialize back from INI string
     reloaded_config = Config()

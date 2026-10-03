@@ -188,129 +188,312 @@ def load_config_from_parser(cfg: Config, config: configparser.ConfigParser) -> C
     image_processing_grayscale = _safe_getboolean(
         config, "ImageProcessing", "GrayScale", fallback=False
     )
-    image_processing_autocontrast = _safe_getboolean(
-        config,
-        "ImageProcessing",
-        "AutoContrastFullImage",
-        fallback=_safe_getboolean(
-            config, "ImageProcessing", "AutoContrast", fallback=False
-        ),
+    # --- AutoContrast ---
+    ac_sec = "AutoContrast" if config.has_section("AutoContrast") else "ImageProcessing"
+    ac_scope_val = config.get(ac_sec, "Scope", fallback=None)
+    if ac_scope_val is not None:
+        ac_scope = ac_scope_val.strip().lower()
+    else:
+        full = _safe_getboolean(
+            config,
+            ac_sec,
+            "AutoContrastFullImage",
+            fallback=_safe_getboolean(config, ac_sec, "AutoContrast", fallback=False),
+        )
+        cut = _safe_getboolean(config, ac_sec, "AutoContrastCutImages", fallback=False)
+        if full and cut:
+            ac_scope = "both"
+        elif full:
+            ac_scope = "full"
+        elif cut:
+            ac_scope = "cutouts"
+        else:
+            ac_scope = "none"
+
+    cutoff_str = config.get(ac_sec, "Cutoff", fallback=None)
+    if cutoff_str is not None and "," in cutoff_str:
+        parts = [p.strip() for p in cutoff_str.split(",")]
+        try:
+            image_processing_autocontrast_cutoff_low = float(parts[0])
+            image_processing_autocontrast_cutoff_high = float(parts[1])
+        except (ValueError, IndexError):
+            image_processing_autocontrast_cutoff_low = 2.0
+            image_processing_autocontrast_cutoff_high = 45.0
+    else:
+        image_processing_autocontrast_cutoff_low = _safe_getfloat(
+            config,
+            ac_sec,
+            "CutoffLow",
+            fallback=_safe_getfloat(
+                config, ac_sec, "AutoContrastCutoffLow", fallback=2.0
+            ),
+        )
+        image_processing_autocontrast_cutoff_high = _safe_getfloat(
+            config,
+            ac_sec,
+            "CutoffHigh",
+            fallback=_safe_getfloat(
+                config, ac_sec, "AutoContrastCutoffHigh", fallback=45.0
+            ),
+        )
+
+    val = config.get(
+        ac_sec,
+        "Ignore",
+        fallback=config.get(ac_sec, "AutoContrastIgnore", fallback="None"),
     )
-    image_processing_autocontrast_cutoff_low = _safe_getfloat(
-        config, "ImageProcessing", "AutoContrastCutoffLow", fallback=2
-    )
-    image_processing_autocontrast_cutoff_high = _safe_getfloat(
-        config, "ImageProcessing", "AutoContrastCutoffHigh", fallback=45
-    )
-    val = config.get("ImageProcessing", "AutoContrastIgnore", fallback="None")
     if val == "None":
         image_processing_autocontrast_ignore = None
     else:
         image_processing_autocontrast_ignore = _safe_getint(
-            config, "ImageProcessing", "AutoContrastIgnore", fallback=0
+            config,
+            ac_sec,
+            "Ignore",
+            fallback=_safe_getint(config, ac_sec, "AutoContrastIgnore", fallback=0),
         )
-    image_processing_autocontrast_cut_images = _safe_getboolean(
-        config, "ImageProcessing", "AutoContrastCutImages", fallback=False
+
+    cutoff_cut_str = config.get(
+        ac_sec,
+        "CutoffCutImages",
+        fallback=config.get(ac_sec, "CutImagesCutoff", fallback=None),
     )
-    image_processing_autocontrast_cut_images_cutoff_low = _safe_getfloat(
-        config, "ImageProcessing", "AutoContrastCutImagesCutoffLow", fallback=2
+    if cutoff_cut_str is not None and "," in cutoff_cut_str:
+        parts = [p.strip() for p in cutoff_cut_str.split(",")]
+        try:
+            image_processing_autocontrast_cut_images_cutoff_low = float(parts[0])
+            image_processing_autocontrast_cut_images_cutoff_high = float(parts[1])
+        except (ValueError, IndexError):
+            image_processing_autocontrast_cut_images_cutoff_low = (
+                image_processing_autocontrast_cutoff_low
+            )
+            image_processing_autocontrast_cut_images_cutoff_high = (
+                image_processing_autocontrast_cutoff_high
+            )
+    else:
+        image_processing_autocontrast_cut_images_cutoff_low = _safe_getfloat(
+            config,
+            ac_sec,
+            "CutoffCutImagesLow",
+            fallback=_safe_getfloat(
+                config,
+                ac_sec,
+                "AutoContrastCutImagesCutoffLow",
+                fallback=image_processing_autocontrast_cutoff_low,
+            ),
+        )
+        image_processing_autocontrast_cut_images_cutoff_high = _safe_getfloat(
+            config,
+            ac_sec,
+            "CutoffCutImagesHigh",
+            fallback=_safe_getfloat(
+                config,
+                ac_sec,
+                "AutoContrastCutImagesCutoffHigh",
+                fallback=image_processing_autocontrast_cutoff_high,
+            ),
+        )
+    val_cut = config.get(
+        ac_sec,
+        "IgnoreCutImages",
+        fallback=config.get(
+            ac_sec,
+            "AutoContrastCutImagesIgnore",
+            fallback=val,
+        ),
     )
-    image_processing_autocontrast_cut_images_cutoff_high = _safe_getfloat(
-        config, "ImageProcessing", "AutoContrastCutImagesCutoffHigh", fallback=45
-    )
-    val = config.get("ImageProcessing", "AutoContrastCutImagesIgnore", fallback="None")
-    if val == "None":
+    if val_cut == "None":
         image_processing_autocontrast_cut_images_ignore = None
     else:
         image_processing_autocontrast_cut_images_ignore = _safe_getint(
-            config, "ImageProcessing", "AutoContrastCutImagesIgnore", fallback=0
+            config,
+            ac_sec,
+            "IgnoreCutImages",
+            fallback=_safe_getint(
+                config,
+                ac_sec,
+                "AutoContrastCutImagesIgnore",
+                fallback=image_processing_autocontrast_ignore or 0,
+            ),
         )
 
-    glare_full = _safe_getboolean(
-        config,
-        "ImageProcessing",
-        "GlareSuppressionFullImage",
-        fallback=_safe_getboolean(
-            config, "ImageProcessing", "GlareSuppressionEnabled", fallback=False
-        ),
+    # --- Glare Suppression ---
+    glare_sec = (
+        "GlareSuppression"
+        if config.has_section("GlareSuppression")
+        else "ImageProcessing"
     )
-    glare_mode = config.get("ImageProcessing", "GlareSuppressionMode", fallback="clahe")
+    glare_scope_val = config.get(glare_sec, "Scope", fallback=None)
+    if glare_scope_val is not None:
+        glare_scope = glare_scope_val.strip().lower()
+    else:
+        full = _safe_getboolean(
+            config,
+            glare_sec,
+            "GlareSuppressionFullImage",
+            fallback=_safe_getboolean(
+                config, glare_sec, "GlareSuppressionEnabled", fallback=False
+            ),
+        )
+        cut = _safe_getboolean(
+            config,
+            glare_sec,
+            "GlareSuppressionCutImages",
+            fallback=_safe_getboolean(
+                config, glare_sec, "GlareApplyToCutImages", fallback=False
+            ),
+        )
+        if full and cut:
+            glare_scope = "both"
+        elif full:
+            glare_scope = "full"
+        elif cut:
+            glare_scope = "cutouts"
+        else:
+            glare_scope = "none"
+
+    glare_mode = config.get(
+        glare_sec,
+        "Mode",
+        fallback=config.get(glare_sec, "GlareSuppressionMode", fallback="clahe"),
+    )
     glare_inpaint_threshold = _safe_getint(
-        config, "ImageProcessing", "GlareInpaintThreshold", fallback=230
+        config,
+        glare_sec,
+        "InpaintThreshold",
+        fallback=_safe_getint(config, glare_sec, "GlareInpaintThreshold", fallback=230),
     )
     glare_inpaint_radius = _safe_getint(
-        config, "ImageProcessing", "GlareInpaintRadius", fallback=3
+        config,
+        glare_sec,
+        "InpaintRadius",
+        fallback=_safe_getint(config, glare_sec, "GlareInpaintRadius", fallback=3),
     )
     glare_clahe_clip_limit = _safe_getfloat(
-        config, "ImageProcessing", "GlareClaheClipLimit", fallback=2.0
+        config,
+        glare_sec,
+        "ClaheClipLimit",
+        fallback=_safe_getfloat(config, glare_sec, "GlareClaheClipLimit", fallback=2.0),
     )
     glare_clahe_grid_size = _safe_getint(
-        config, "ImageProcessing", "GlareClaheGridSize", fallback=8
-    )
-    glare_cut = _safe_getboolean(
         config,
-        "ImageProcessing",
-        "GlareSuppressionCutImages",
+        glare_sec,
+        "ClaheGridSize",
+        fallback=_safe_getint(config, glare_sec, "GlareClaheGridSize", fallback=8),
+    )
+
+    # --- Denoise ---
+    denoise_sec = "Denoise" if config.has_section("Denoise") else "ImageProcessing"
+    denoise_scope_val = config.get(denoise_sec, "Scope", fallback=None)
+    if denoise_scope_val is not None:
+        denoise_scope = denoise_scope_val.strip().lower()
+    else:
+        full = _safe_getboolean(
+            config,
+            denoise_sec,
+            "DenoiseFullImage",
+            fallback=_safe_getboolean(
+                config, denoise_sec, "DenoiseEnabled", fallback=False
+            ),
+        )
+        cut = _safe_getboolean(
+            config,
+            denoise_sec,
+            "DenoiseCutImages",
+            fallback=_safe_getboolean(
+                config, denoise_sec, "DenoiseApplyToCutImages", fallback=False
+            ),
+        )
+        if full and cut:
+            denoise_scope = "both"
+        elif full:
+            denoise_scope = "full"
+        elif cut:
+            denoise_scope = "cutouts"
+        else:
+            denoise_scope = "none"
+
+    denoise_method = config.get(
+        denoise_sec,
+        "Method",
+        fallback=config.get(denoise_sec, "DenoiseMethod", fallback="bilateral"),
+    ).lower()
+    denoise_diameter = _safe_getint(
+        config,
+        denoise_sec,
+        "Diameter",
+        fallback=_safe_getint(config, denoise_sec, "DenoiseDiameter", fallback=5),
+    )
+    denoise_sigma_color = _safe_getfloat(
+        config,
+        denoise_sec,
+        "SigmaColor",
+        fallback=_safe_getfloat(
+            config, denoise_sec, "DenoiseSigmaColor", fallback=50.0
+        ),
+    )
+    denoise_sigma_space = _safe_getfloat(
+        config,
+        denoise_sec,
+        "SigmaSpace",
+        fallback=_safe_getfloat(
+            config, denoise_sec, "DenoiseSigmaSpace", fallback=50.0
+        ),
+    )
+    denoise_strength = _safe_getfloat(
+        config,
+        denoise_sec,
+        "Strength",
+        fallback=_safe_getfloat(config, denoise_sec, "DenoiseStrength", fallback=7.0),
+    )
+    denoise_template_window = _safe_getint(
+        config,
+        denoise_sec,
+        "TemplateWindow",
+        fallback=_safe_getint(config, denoise_sec, "DenoiseTemplateWindow", fallback=7),
+    )
+    denoise_search_window = _safe_getint(
+        config,
+        denoise_sec,
+        "SearchWindow",
+        fallback=_safe_getint(config, denoise_sec, "DenoiseSearchWindow", fallback=15),
+    )
+
+    # --- Sharpness ---
+    sharp_sec = "Sharpness" if config.has_section("Sharpness") else "ImageProcessing"
+    image_processing_sharpness_mode = config.get(
+        sharp_sec,
+        "Mode",
+        fallback=config.get(sharp_sec, "SharpnessMode", fallback="standard"),
+    ).lower()
+    image_processing_unsharp_amount = _safe_getfloat(
+        config,
+        sharp_sec,
+        "Amount",
+        fallback=_safe_getfloat(config, sharp_sec, "UnsharpAmount", fallback=1.5),
+    )
+    image_processing_unsharp_radius = _safe_getfloat(
+        config,
+        sharp_sec,
+        "Radius",
+        fallback=_safe_getfloat(config, sharp_sec, "UnsharpRadius", fallback=1.0),
+    )
+    image_processing_unsharp_threshold = _safe_getint(
+        config,
+        sharp_sec,
+        "Threshold",
+        fallback=_safe_getint(config, sharp_sec, "UnsharpThreshold", fallback=3),
+    )
+    image_processing_auto_sharpen_cut = _safe_getboolean(
+        config,
+        sharp_sec,
+        "ApplyToCutouts",
         fallback=_safe_getboolean(
-            config, "ImageProcessing", "GlareApplyToCutImages", fallback=False
+            config, sharp_sec, "AutoSharpenCutImages", fallback=False
         ),
     )
 
     image_processing_gamma = _safe_getfloat(
         config, "ImageProcessing", "Gamma", fallback=1.0
-    )
-    image_processing_sharpness_mode = config.get(
-        "ImageProcessing", "SharpnessMode", fallback="standard"
-    ).lower()
-    image_processing_unsharp_radius = _safe_getfloat(
-        config, "ImageProcessing", "UnsharpRadius", fallback=1.0
-    )
-    image_processing_unsharp_amount = _safe_getfloat(
-        config, "ImageProcessing", "UnsharpAmount", fallback=1.5
-    )
-    image_processing_unsharp_threshold = _safe_getint(
-        config, "ImageProcessing", "UnsharpThreshold", fallback=3
-    )
-    image_processing_auto_sharpen_cut = _safe_getboolean(
-        config, "ImageProcessing", "AutoSharpenCutImages", fallback=False
-    )
-
-    denoise_full = _safe_getboolean(
-        config,
-        "ImageProcessing",
-        "DenoiseFullImage",
-        fallback=_safe_getboolean(
-            config, "ImageProcessing", "DenoiseEnabled", fallback=False
-        ),
-    )
-    denoise_method = config.get(
-        "ImageProcessing", "DenoiseMethod", fallback="bilateral"
-    ).lower()
-    denoise_diameter = _safe_getint(
-        config, "ImageProcessing", "DenoiseDiameter", fallback=5
-    )
-    denoise_sigma_color = _safe_getfloat(
-        config, "ImageProcessing", "DenoiseSigmaColor", fallback=50.0
-    )
-    denoise_sigma_space = _safe_getfloat(
-        config, "ImageProcessing", "DenoiseSigmaSpace", fallback=50.0
-    )
-    denoise_strength = _safe_getfloat(
-        config, "ImageProcessing", "DenoiseStrength", fallback=7.0
-    )
-    denoise_template_window = _safe_getint(
-        config, "ImageProcessing", "DenoiseTemplateWindow", fallback=7
-    )
-    denoise_search_window = _safe_getint(
-        config, "ImageProcessing", "DenoiseSearchWindow", fallback=15
-    )
-    denoise_cut = _safe_getboolean(
-        config,
-        "ImageProcessing",
-        "DenoiseCutImages",
-        fallback=_safe_getboolean(
-            config, "ImageProcessing", "DenoiseApplyToCutImages", fallback=False
-        ),
     )
 
     cfg.image_processing = ImageProcessing(
@@ -327,20 +510,19 @@ def load_config_from_parser(cfg: Config, config: configparser.ConfigParser) -> C
         unsharp_threshold=image_processing_unsharp_threshold,
         auto_sharpen_cut_images=image_processing_auto_sharpen_cut,
         autocontrast=AutoContrast(
-            enabled=image_processing_autocontrast,
+            scope=ac_scope,
             cutoff_low=image_processing_autocontrast_cutoff_low,
             cutoff_high=image_processing_autocontrast_cutoff_high,
             ignore=image_processing_autocontrast_ignore,
         ),
         autocontrast_cut_images=AutoContrast(
-            enabled=image_processing_autocontrast_cut_images,
+            scope=ac_scope if ac_scope in ("cutouts", "both") else "none",
             cutoff_low=image_processing_autocontrast_cut_images_cutoff_low,
             cutoff_high=image_processing_autocontrast_cut_images_cutoff_high,
             ignore=image_processing_autocontrast_cut_images_ignore,
         ),
         glare_suppression=GlareSuppression(
-            full_image=glare_full,
-            cut_images=glare_cut,
+            scope=glare_scope,
             mode=glare_mode,
             inpaint_threshold=glare_inpaint_threshold,
             inpaint_radius=glare_inpaint_radius,
@@ -348,8 +530,7 @@ def load_config_from_parser(cfg: Config, config: configparser.ConfigParser) -> C
             clahe_grid_size=glare_clahe_grid_size,
         ),
         denoise=Denoise(
-            full_image=denoise_full,
-            cut_images=denoise_cut,
+            scope=denoise_scope,
             method=denoise_method,
             diameter=denoise_diameter,
             sigma_color=denoise_sigma_color,
@@ -662,58 +843,61 @@ def save_config_to_io(cfg: Config, fp: TextIO) -> None:
         "Contrast": str(cfg.image_processing.contrast),
         "Brightness": str(cfg.image_processing.brightness),
         "Color": str(cfg.image_processing.color),
+        "Gamma": str(cfg.image_processing.gamma),
         "Sharpness": str(cfg.image_processing.sharpness),
         "GrayScale": str(cfg.image_processing.grayscale),
-        "Gamma": str(cfg.image_processing.gamma),
-        "AutoContrastFullImage": str(cfg.image_processing.autocontrast.enabled),
-        "AutoContrastCutoffLow": str(cfg.image_processing.autocontrast.cutoff_low),
-        "AutoContrastCutoffHigh": str(cfg.image_processing.autocontrast.cutoff_high),
-        "AutoContrastIgnore": str(cfg.image_processing.autocontrast.ignore),
-        "AutoContrastCutImages": str(
-            cfg.image_processing.autocontrast_cut_images.enabled
-        ),
-        "AutoContrastCutImagesCutoffLow": str(
-            cfg.image_processing.autocontrast_cut_images.cutoff_low
-        ),
-        "AutoContrastCutImagesCutoffHigh": str(
-            cfg.image_processing.autocontrast_cut_images.cutoff_high
-        ),
-        "AutoContrastCutImagesIgnore": str(
+    }
+
+    config["AutoContrast"] = {
+        "Scope": cfg.image_processing.autocontrast.scope,
+        "Cutoff": f"{cfg.image_processing.autocontrast.cutoff_low:g}, {cfg.image_processing.autocontrast.cutoff_high:g}",
+        "Ignore": str(cfg.image_processing.autocontrast.ignore),
+    }
+    if (
+        cfg.image_processing.autocontrast_cut_images.cutoff_low
+        != cfg.image_processing.autocontrast.cutoff_low
+        or cfg.image_processing.autocontrast_cut_images.cutoff_high
+        != cfg.image_processing.autocontrast.cutoff_high
+    ):
+        config["AutoContrast"][
+            "CutoffCutImages"
+        ] = f"{cfg.image_processing.autocontrast_cut_images.cutoff_low:g}, {cfg.image_processing.autocontrast_cut_images.cutoff_high:g}"
+    if (
+        cfg.image_processing.autocontrast_cut_images.ignore
+        != cfg.image_processing.autocontrast.ignore
+    ):
+        config["AutoContrast"]["IgnoreCutImages"] = str(
             cfg.image_processing.autocontrast_cut_images.ignore
-        ),
-        "DenoiseFullImage": str(cfg.image_processing.denoise.full_image),
-        "DenoiseCutImages": str(cfg.image_processing.denoise.cut_images),
-        "DenoiseMethod": cfg.image_processing.denoise.method,
-        "DenoiseDiameter": str(cfg.image_processing.denoise.diameter),
-        "DenoiseSigmaColor": str(cfg.image_processing.denoise.sigma_color),
-        "DenoiseSigmaSpace": str(cfg.image_processing.denoise.sigma_space),
-        "DenoiseStrength": str(cfg.image_processing.denoise.strength),
-        "DenoiseTemplateWindow": str(cfg.image_processing.denoise.template_window),
-        "DenoiseSearchWindow": str(cfg.image_processing.denoise.search_window),
-        "GlareSuppressionFullImage": str(
-            cfg.image_processing.glare_suppression.full_image
-        ),
-        "GlareSuppressionCutImages": str(
-            cfg.image_processing.glare_suppression.cut_images
-        ),
-        "GlareSuppressionMode": cfg.image_processing.glare_suppression.mode,
-        "GlareInpaintThreshold": str(
+        )
+
+    config["Denoise"] = {
+        "Scope": cfg.image_processing.denoise.scope,
+        "Method": cfg.image_processing.denoise.method,
+        "Strength": str(cfg.image_processing.denoise.strength),
+        "Diameter": str(cfg.image_processing.denoise.diameter),
+        "SigmaColor": str(cfg.image_processing.denoise.sigma_color),
+        "SigmaSpace": str(cfg.image_processing.denoise.sigma_space),
+        "TemplateWindow": str(cfg.image_processing.denoise.template_window),
+        "SearchWindow": str(cfg.image_processing.denoise.search_window),
+    }
+
+    config["GlareSuppression"] = {
+        "Scope": cfg.image_processing.glare_suppression.scope,
+        "Mode": cfg.image_processing.glare_suppression.mode,
+        "ClaheClipLimit": str(cfg.image_processing.glare_suppression.clahe_clip_limit),
+        "ClaheGridSize": str(cfg.image_processing.glare_suppression.clahe_grid_size),
+        "InpaintThreshold": str(
             cfg.image_processing.glare_suppression.inpaint_threshold
         ),
-        "GlareInpaintRadius": str(
-            cfg.image_processing.glare_suppression.inpaint_radius
-        ),
-        "GlareClaheClipLimit": str(
-            cfg.image_processing.glare_suppression.clahe_clip_limit
-        ),
-        "GlareClaheGridSize": str(
-            cfg.image_processing.glare_suppression.clahe_grid_size
-        ),
-        "SharpnessMode": cfg.image_processing.sharpness_mode,
-        "UnsharpRadius": str(cfg.image_processing.unsharp_radius),
-        "UnsharpAmount": str(cfg.image_processing.unsharp_amount),
-        "UnsharpThreshold": str(cfg.image_processing.unsharp_threshold),
-        "AutoSharpenCutImages": str(cfg.image_processing.auto_sharpen_cut_images),
+        "InpaintRadius": str(cfg.image_processing.glare_suppression.inpaint_radius),
+    }
+
+    config["Sharpness"] = {
+        "Mode": cfg.image_processing.sharpness_mode,
+        "Amount": str(cfg.image_processing.unsharp_amount),
+        "Radius": str(cfg.image_processing.unsharp_radius),
+        "Threshold": str(cfg.image_processing.unsharp_threshold),
+        "ApplyToCutouts": str(cfg.image_processing.auto_sharpen_cut_images),
     }
 
     config["Alignment"] = {

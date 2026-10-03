@@ -235,8 +235,8 @@ def test_config_save_preserves_title_case():
     assert "PreviousValueFile=" in saved_str
     assert "PostRotationAngle=" in saved_str
     assert "RotationAngle=" in saved_str
-    assert "AutoContrastCutoffLow=" in saved_str
-    assert "AutoContrastCutoffHigh=" in saved_str
+    assert "Cutoff=" in saved_str
+    assert "CutoffCutImages=" in saved_str
     assert "UsePreviousValue=" in saved_str
     assert "PreValueFromFileMaxAge=" in saved_str
     assert "HomeAssistantDiscovery=" in saved_str

@@ -289,10 +289,7 @@ def get_meter_data(
             gamma=config.image_processing.gamma,
         )
         .endif_()
-        .if_(
-            config.image_processing.enabled
-            and config.image_processing.denoise.full_image
-        )
+        .if_(config.image_processing.denoise.full_image)
         .denoise_image(
             method=config.image_processing.denoise.method,
             diameter=config.image_processing.denoise.diameter,
@@ -304,10 +301,7 @@ def get_meter_data(
         )
         .save_image("denoised")
         .endif_()
-        .if_(
-            config.image_processing.enabled
-            and config.image_processing.autocontrast.enabled
-        )
+        .if_(config.image_processing.autocontrast.full_image)
         .autocontrast_image(
             cutoff_low=config.image_processing.autocontrast.cutoff_low,
             cutoff_high=config.image_processing.autocontrast.cutoff_high,
@@ -315,10 +309,7 @@ def get_meter_data(
         )
         .save_image("processed")
         .endif_()
-        .if_(
-            config.image_processing.enabled
-            and config.image_processing.glare_suppression.full_image
-        )
+        .if_(config.image_processing.glare_suppression.full_image)
         .suppress_glare(
             mode=config.image_processing.glare_suppression.mode,
             inpaint_threshold=config.image_processing.glare_suppression.inpaint_threshold,
@@ -328,10 +319,7 @@ def get_meter_data(
         )
         .save_image("glare_suppressed")
         .endif_()
-        .if_(
-            config.image_processing.enabled
-            and config.image_processing.sharpness_mode in ("unsharp_mask", "auto")
-        )
+        .if_(config.image_processing.sharpness_mode in ("unsharp_mask", "auto"))
         .unsharp_mask(
             radius=config.image_processing.unsharp_radius,
             amount=config.image_processing.unsharp_amount,
@@ -341,21 +329,10 @@ def get_meter_data(
         .endif_()
         .save_image("final", True)
     )
-    autocontrast = (
-        config.image_processing.enabled
-        and config.image_processing.autocontrast_cut_images.enabled
-    )
-    denoise_cut = (
-        config.image_processing.enabled and config.image_processing.denoise.cut_images
-    )
-    glare_cut = (
-        config.image_processing.enabled
-        and config.image_processing.glare_suppression.cut_images
-    )
-    unsharp_cut = (
-        config.image_processing.enabled
-        and config.image_processing.auto_sharpen_cut_images
-    )
+    autocontrast = config.image_processing.autocontrast.cut_images
+    denoise_cut = config.image_processing.denoise.cut_images
+    glare_cut = config.image_processing.glare_suppression.cut_images
+    unsharp_cut = config.image_processing.auto_sharpen_cut_images
 
     cut_options = CutImageOptions(
         autocontrast=autocontrast,

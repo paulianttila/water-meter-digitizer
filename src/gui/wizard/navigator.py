@@ -191,8 +191,8 @@ class WizardNavigator:
                 adjust_step.autocontrast_cut_images_enabled.value,
                 adjust_step.autocontrast_cut_images_cutoff_low.value,
                 adjust_step.autocontrast_cut_images_cutoff_high.value,
-                glare_suppression=(
-                    adjust_step.glare_enabled.value
+                glare_suppression=bool(
+                    getattr(adjust_step, "glare_apply_to_cut_images", None)
                     and adjust_step.glare_apply_to_cut_images.value
                 ),
                 glare_mode=adjust_step.glare_mode.value or "clahe",
@@ -204,16 +204,15 @@ class WizardNavigator:
                     adjust_step.glare_clahe_clip_limit.value or 2.0
                 ),
                 glare_clahe_grid_size=int(adjust_step.glare_clahe_grid_size.value or 8),
-                unsharp=(
-                    adjust_step.adjust_enabled.value
+                unsharp=bool(
+                    getattr(adjust_step, "auto_sharpen_cut_images", None)
                     and adjust_step.auto_sharpen_cut_images.value
                 ),
                 unsharp_radius=float(adjust_step.unsharp_radius.value or 1.0),
                 unsharp_amount=float(adjust_step.unsharp_amount.value or 1.5),
                 unsharp_threshold=int(adjust_step.unsharp_threshold.value or 3),
-                denoise=(
-                    getattr(adjust_step, "denoise_enabled", None) is not None
-                    and adjust_step.denoise_enabled.value
+                denoise=bool(
+                    getattr(adjust_step, "denoise_apply_to_cut_images", None)
                     and adjust_step.denoise_apply_to_cut_images.value
                 ),
                 denoise_method=str(
@@ -272,8 +271,8 @@ class WizardNavigator:
                 adjust_step.autocontrast_cut_images_enabled.value,
                 adjust_step.autocontrast_cut_images_cutoff_low.value,
                 adjust_step.autocontrast_cut_images_cutoff_high.value,
-                glare_suppression=(
-                    adjust_step.glare_enabled.value
+                glare_suppression=bool(
+                    getattr(adjust_step, "glare_apply_to_cut_images", None)
                     and adjust_step.glare_apply_to_cut_images.value
                 ),
                 glare_mode=adjust_step.glare_mode.value or "clahe",
@@ -285,16 +284,15 @@ class WizardNavigator:
                     adjust_step.glare_clahe_clip_limit.value or 2.0
                 ),
                 glare_clahe_grid_size=int(adjust_step.glare_clahe_grid_size.value or 8),
-                unsharp=(
-                    adjust_step.adjust_enabled.value
+                unsharp=bool(
+                    getattr(adjust_step, "auto_sharpen_cut_images", None)
                     and adjust_step.auto_sharpen_cut_images.value
                 ),
                 unsharp_radius=float(adjust_step.unsharp_radius.value or 1.0),
                 unsharp_amount=float(adjust_step.unsharp_amount.value or 1.5),
                 unsharp_threshold=int(adjust_step.unsharp_threshold.value or 3),
-                denoise=(
-                    getattr(adjust_step, "denoise_enabled", None) is not None
-                    and adjust_step.denoise_enabled.value
+                denoise=bool(
+                    getattr(adjust_step, "denoise_apply_to_cut_images", None)
                     and adjust_step.denoise_apply_to_cut_images.value
                 ),
                 denoise_method=str(

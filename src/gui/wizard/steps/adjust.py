@@ -320,27 +320,20 @@ class AdjustStep(BaseStep):
                 )
 
             # 3. Check cutout filters
-            ip_enabled = bool(
-                getattr(self, "adjust_enabled", None) and self.adjust_enabled.value
-            )
             denoise_cut = bool(
-                ip_enabled
-                and getattr(self, "denoise_apply_to_cut_images", None)
+                getattr(self, "denoise_apply_to_cut_images", None)
                 and self.denoise_apply_to_cut_images.value
             )
             autocontrast_cut = bool(
-                ip_enabled
-                and getattr(self, "autocontrast_cut_images_enabled", None)
+                getattr(self, "autocontrast_cut_images_enabled", None)
                 and self.autocontrast_cut_images_enabled.value
             )
             glare_cut = bool(
-                ip_enabled
-                and getattr(self, "glare_apply_to_cut_images", None)
+                getattr(self, "glare_apply_to_cut_images", None)
                 and self.glare_apply_to_cut_images.value
             )
             unsharp_cut = bool(
-                ip_enabled
-                and getattr(self, "auto_sharpen_cut_images", None)
+                getattr(self, "auto_sharpen_cut_images", None)
                 and self.auto_sharpen_cut_images.value
             )
 
@@ -875,7 +868,7 @@ class AdjustStep(BaseStep):
         except Exception as e:
             logger.debug(f"Resize adjustment skipped: {e}")
 
-        # Image processing enhancements (gated by master ImageProcessing.enabled)
+        # Image processing enhancements (base tonal adjustments)
         if getattr(self, "adjust_enabled", None) and self.adjust_enabled.value:
             try:
                 if (
@@ -913,84 +906,77 @@ class AdjustStep(BaseStep):
             except Exception as e:
                 logger.debug(f"Filters adjustment skipped: {e}")
 
-            try:
-                if (
-                    getattr(self, "denoise_enabled", None)
-                    and self.denoise_enabled.value
-                ):
-                    proc.denoise_image(
-                        method=str(self.denoise_method.value or "bilateral"),
-                        diameter=int(self.denoise_diameter.value or 5),
-                        sigma_color=float(self.denoise_sigma_color.value or 50.0),
-                        sigma_space=float(self.denoise_sigma_space.value or 50.0),
-                        strength=float(self.denoise_strength.value or 7.0),
-                        template_window=int(self.denoise_template_window.value or 7),
-                        search_window=int(self.denoise_search_window.value or 15),
-                    )
-            except Exception as e:
-                logger.debug(f"Denoising adjustment skipped: {e}")
-
-            try:
-                if (
-                    getattr(self, "autocontrast_enabled", None)
-                    and self.autocontrast_enabled.value
-                ):
-                    proc.autocontrast_image(
-                        cutoff_low=float(self.autocontrast_cutoff_low.value or 0.0),
-                        cutoff_high=float(self.autocontrast_cutoff_high.value or 0.0),
-                    )
-            except Exception as e:
-                logger.debug(f"AutoContrast adjustment skipped: {e}")
-
-            try:
-                if getattr(self, "glare_enabled", None) and self.glare_enabled.value:
-                    proc.suppress_glare(
-                        mode=str(self.glare_mode.value or "clahe"),
-                        inpaint_threshold=int(
-                            self.glare_inpaint_threshold.value or 230
-                        ),
-                        inpaint_radius=int(self.glare_inpaint_radius.value or 3),
-                        clahe_clip_limit=float(
-                            self.glare_clahe_clip_limit.value or 2.0
-                        ),
-                        clahe_grid_size=int(self.glare_clahe_grid_size.value or 8),
-                    )
-            except Exception as e:
-                logger.debug(f"Glare suppression adjustment skipped: {e}")
-
-            try:
-                smode = (
-                    str(self.sharpness_mode.value or "standard")
-                    if hasattr(self, "sharpness_mode")
-                    and self.sharpness_mode is not None
-                    else "standard"
+        # Autonomous subsystems
+        try:
+            if getattr(self, "denoise_enabled", None) and self.denoise_enabled.value:
+                proc.denoise_image(
+                    method=str(self.denoise_method.value or "bilateral"),
+                    diameter=int(self.denoise_diameter.value or 5),
+                    sigma_color=float(self.denoise_sigma_color.value or 50.0),
+                    sigma_space=float(self.denoise_sigma_space.value or 50.0),
+                    strength=float(self.denoise_strength.value or 7.0),
+                    template_window=int(self.denoise_template_window.value or 7),
+                    search_window=int(self.denoise_search_window.value or 15),
                 )
-                if smode in ("unsharp_mask", "auto"):
-                    u_radius = (
-                        float(self.unsharp_radius.value or 1.0)
-                        if hasattr(self, "unsharp_radius")
-                        and self.unsharp_radius is not None
-                        else 1.0
-                    )
-                    u_amount = (
-                        float(self.unsharp_amount.value or 1.5)
-                        if hasattr(self, "unsharp_amount")
-                        and self.unsharp_amount is not None
-                        else 1.5
-                    )
-                    u_thresh = (
-                        int(self.unsharp_threshold.value or 3)
-                        if hasattr(self, "unsharp_threshold")
-                        and self.unsharp_threshold is not None
-                        else 3
-                    )
-                    proc.unsharp_mask(
-                        radius=u_radius,
-                        amount=u_amount,
-                        threshold=u_thresh,
-                    )
-            except Exception as e:
-                logger.debug(f"Unsharp mask adjustment skipped: {e}")
+        except Exception as e:
+            logger.debug(f"Denoising adjustment skipped: {e}")
+
+        try:
+            if (
+                getattr(self, "autocontrast_enabled", None)
+                and self.autocontrast_enabled.value
+            ):
+                proc.autocontrast_image(
+                    cutoff_low=float(self.autocontrast_cutoff_low.value or 0.0),
+                    cutoff_high=float(self.autocontrast_cutoff_high.value or 0.0),
+                )
+        except Exception as e:
+            logger.debug(f"AutoContrast adjustment skipped: {e}")
+
+        try:
+            if getattr(self, "glare_enabled", None) and self.glare_enabled.value:
+                proc.suppress_glare(
+                    mode=str(self.glare_mode.value or "clahe"),
+                    inpaint_threshold=int(self.glare_inpaint_threshold.value or 230),
+                    inpaint_radius=int(self.glare_inpaint_radius.value or 3),
+                    clahe_clip_limit=float(self.glare_clahe_clip_limit.value or 2.0),
+                    clahe_grid_size=int(self.glare_clahe_grid_size.value or 8),
+                )
+        except Exception as e:
+            logger.debug(f"Glare suppression adjustment skipped: {e}")
+
+        try:
+            smode = (
+                str(self.sharpness_mode.value or "standard")
+                if hasattr(self, "sharpness_mode") and self.sharpness_mode is not None
+                else "standard"
+            )
+            if smode in ("unsharp_mask", "auto"):
+                u_radius = (
+                    float(self.unsharp_radius.value or 1.0)
+                    if hasattr(self, "unsharp_radius")
+                    and self.unsharp_radius is not None
+                    else 1.0
+                )
+                u_amount = (
+                    float(self.unsharp_amount.value or 1.5)
+                    if hasattr(self, "unsharp_amount")
+                    and self.unsharp_amount is not None
+                    else 1.5
+                )
+                u_thresh = (
+                    int(self.unsharp_threshold.value or 3)
+                    if hasattr(self, "unsharp_threshold")
+                    and self.unsharp_threshold is not None
+                    else 3
+                )
+                proc.unsharp_mask(
+                    radius=u_radius,
+                    amount=u_amount,
+                    threshold=u_thresh,
+                )
+        except Exception as e:
+            logger.debug(f"Unsharp mask adjustment skipped: {e}")
 
         # Update real-time histogram & focus score metrics
         try:

@@ -15,6 +15,7 @@ from config.models import (
     AutoContrast,
     CNNParams,
     Crop,
+    Denoise,
     GlareSuppression,
     History,
     ImageProcessing,
@@ -64,6 +65,30 @@ class Config(BaseSettings):
     mqtt: MQTT = Field(default_factory=MQTT)
     zero_flow_monitor: ZeroFlowMonitor = Field(default_factory=ZeroFlowMonitor)
 
+    @property
+    def autocontrast(self) -> AutoContrast:
+        return self.image_processing.autocontrast
+
+    @autocontrast.setter
+    def autocontrast(self, val: AutoContrast) -> None:
+        self.image_processing.autocontrast = val
+
+    @property
+    def denoise(self) -> Denoise:
+        return self.image_processing.denoise
+
+    @denoise.setter
+    def denoise(self, val: Denoise) -> None:
+        self.image_processing.denoise = val
+
+    @property
+    def glare_suppression(self) -> GlareSuppression:
+        return self.image_processing.glare_suppression
+
+    @glare_suppression.setter
+    def glare_suppression(self, val: GlareSuppression) -> None:
+        self.image_processing.glare_suppression = val
+
     @classmethod
     def create_clean_default(
         cls,
@@ -89,26 +114,41 @@ class Config(BaseSettings):
                 color=1.0,
                 sharpness=1.0,
                 grayscale=False,
+                gamma=1.0,
+                sharpness_mode="standard",
+                unsharp_radius=1.0,
+                unsharp_amount=1.5,
+                unsharp_threshold=3,
+                auto_sharpen_cut_images=False,
                 autocontrast=AutoContrast(
-                    enabled=False,
+                    scope="none",
                     cutoff_low=2.0,
                     cutoff_high=45.0,
                     ignore=None,
                 ),
                 autocontrast_cut_images=AutoContrast(
-                    enabled=False,
+                    scope="none",
                     cutoff_low=2.0,
                     cutoff_high=45.0,
                     ignore=None,
                 ),
                 glare_suppression=GlareSuppression(
-                    enabled=False,
+                    scope="none",
                     mode="clahe",
                     inpaint_threshold=230,
                     inpaint_radius=3,
                     clahe_clip_limit=2.0,
                     clahe_grid_size=8,
-                    apply_to_cut_images=False,
+                ),
+                denoise=Denoise(
+                    scope="none",
+                    method="bilateral",
+                    diameter=5,
+                    sigma_color=50.0,
+                    sigma_space=50.0,
+                    strength=7.0,
+                    template_window=7,
+                    search_window=15,
                 ),
             ),
             alignment=Alignment(
