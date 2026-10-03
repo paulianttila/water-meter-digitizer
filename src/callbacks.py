@@ -154,3 +154,23 @@ class Callbacks(Protocol):
     ) -> str | None:
         """Get base64 data URI for visual diff heatmap image"""
         ...
+
+    def list_cnn_models(self, model_type: str) -> list[dict[str, Any]]:
+        """List available CNN model files for a given type ('digital' or 'analog')."""
+        ...
+
+    def evaluate_crop_model(
+        self, image_base64: str, model_file: str, is_digital: bool
+    ) -> dict[str, Any]:
+        """Evaluate a single ROI crop image with a specific CNN model."""
+        ...
+
+    def benchmark_crop_models(
+        self, image_base64: str, is_digital: bool
+    ) -> list[dict[str, Any]]:
+        """Run benchmark evaluation of all candidate models on a single crop image."""
+        ...
+
+    def apply_model_to_config(self, model_file: str, is_digital: bool) -> bool:
+        """Apply selected CNN model to configuration and reinitialize pipeline."""
+        ...

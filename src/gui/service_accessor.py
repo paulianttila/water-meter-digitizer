@@ -3,6 +3,11 @@
 from __future__ import annotations
 
 import logging
+import math
+import os
+import time
+from collections.abc import Callable
+from pathlib import Path
 from typing import TYPE_CHECKING, Any
 
 from api.routes_meter import get_meter_data
@@ -180,3 +185,194 @@ class ServiceAccessor:
             "value": cleaned_value,
             "error": "",
         }
+
+    def _resolve_models_dir(self, model_type: str) -> Path | None:
+        cfg = self.get_config()
+        configured_dir = (
+            cfg.digital_models_dir if model_type == "digital" else cfg.analog_models_dir
+        )
+        if configured_dir:
+            p = Path(configured_dir)
+            if p.is_dir():
+                return p.resolve()
+            p_strip = Path(configured_dir.lstrip("/"))
+            if p_strip.is_dir():
+                return p_strip.resolve()
+
+        # Only check project fallback paths if configured_dir was default /config or empty
+        if not configured_dir or configured_dir.startswith("/config"):
+            candidates = [
+                Path(__file__).resolve().parents[2]
+                / "config"
+                / "neuralnets"
+                / model_type,
+                Path("config") / "neuralnets" / model_type,
+                Path("/config") / "neuralnets" / model_type,
+            ]
+            cfg_env = os.environ.get("CONFIG_FILE")
+            if cfg_env:
+                cfg_parent = Path(cfg_env).resolve().parent
+                candidates.insert(0, cfg_parent / "neuralnets" / model_type)
+
+            for cand in candidates:
+                if cand.is_dir():
+                    return cand.resolve()
+        return None
+
+    def list_cnn_models(self, model_type: str) -> list[dict[str, Any]]:
+        models_dir = self._resolve_models_dir(model_type)
+        if not models_dir or not models_dir.is_dir():
+            logger.warning("Models directory not found for %s", model_type)
+            return []
+
+        models: list[dict[str, Any]] = []
+        for path in sorted(models_dir.rglob("*.tflite")):
+            try:
+                rel = path.relative_to(models_dir)
+                if len(rel.parts) > 1:
+                    display_name = f"{rel.parent} / {path.name}"
+                    category = str(rel.parts[0])
+                else:
+                    display_name = path.name
+                    category = "general"
+            except Exception:
+                display_name = path.name
+                category = "general"
+
+            name_lower = path.name.lower()
+            quantized = (
+                "_q." in name_lower
+                or "-q." in name_lower
+                or "_q_" in name_lower
+                or "-q_" in name_lower
+            )
+
+            try:
+                size_kb = round(path.stat().st_size / 1024, 1)
+            except Exception:
+                size_kb = 0.0
+
+            models.append(
+                {
+                    "file": str(path.resolve()),
+                    "name": display_name,
+                    "filename": path.name,
+                    "category": category,
+                    "quantized": quantized,
+                    "size_kb": size_kb,
+                }
+            )
+
+        models.sort(key=lambda m: (m["category"], m["quantized"], m["name"]))
+        return models
+
+    def evaluate_crop_model(
+        self, image_base64: str, model_file: str, is_digital: bool
+    ) -> dict[str, Any]:
+        from utils.image import convert_base64_str_to_image
+
+        start = time.perf_counter()
+        if not image_base64:
+            return {
+                "value": None,
+                "confidence": 0.0,
+                "latency_ms": 0.0,
+                "model_file": model_file,
+                "error": "No image data provided",
+            }
+
+        try:
+            pil_img = convert_base64_str_to_image(image_base64)
+            if is_digital:
+                from cnn.digital_counter_cnn import DigitalCounterCNN
+
+                cnn = DigitalCounterCNN(modelfile=model_file, dx=20, dy=32)
+            else:
+                from cnn.analog_needle_cnn import AnalogNeedleCNN
+
+                cnn = AnalogNeedleCNN(modelfile=model_file, dx=32, dy=32)
+
+            raw_val, conf = cnn.readout_with_confidence(pil_img)
+            latency_ms = round((time.perf_counter() - start) * 1000, 1)
+
+            val: float | int | str
+            if isinstance(raw_val, float):
+                val = "N" if math.isnan(raw_val) else round(raw_val, 2)
+            else:
+                val = raw_val
+
+            return {
+                "value": val,
+                "confidence": round(float(conf), 1),
+                "latency_ms": latency_ms,
+                "model_file": model_file,
+                "error": None,
+            }
+        except Exception as e:
+            latency_ms = round((time.perf_counter() - start) * 1000, 1)
+            logger.warning(
+                "Error evaluating crop with model %s: %s",
+                model_file,
+                e,
+                exc_info=True,
+            )
+            return {
+                "value": None,
+                "confidence": 0.0,
+                "latency_ms": latency_ms,
+                "model_file": model_file,
+                "error": str(e),
+            }
+
+    def benchmark_crop_models(
+        self, image_base64: str, is_digital: bool
+    ) -> list[dict[str, Any]]:
+        model_type = "digital" if is_digital else "analog"
+        candidate_models = self.list_cnn_models(model_type)
+        results: list[dict[str, Any]] = []
+
+        for cand in candidate_models:
+            res = self.evaluate_crop_model(image_base64, cand["file"], is_digital)
+            item = {
+                **cand,
+                "value": res["value"],
+                "confidence": res["confidence"],
+                "latency_ms": res["latency_ms"],
+                "error": res["error"],
+            }
+            results.append(item)
+
+        results.sort(
+            key=lambda x: (
+                x["error"] is None and x["value"] is not None and x["value"] != "N",
+                x["confidence"],
+                -x["latency_ms"],
+            ),
+            reverse=True,
+        )
+        return results
+
+    def apply_model_to_config(
+        self,
+        model_file: str,
+        is_digital: bool,
+        use_config_fn: Callable[[], None] | None = None,
+    ) -> bool:
+        cfg = self.get_config()
+        if is_digital:
+            cfg.digital_readout.model_file = model_file
+            cfg.digital_readout.model = "auto"
+        else:
+            cfg.analog_readout.model_file = model_file
+            cfg.analog_readout.model = "auto"
+
+        saved_str = cfg.save_to_string()
+        if self._config_file_service:
+            self._config_file_service.save(saved_str)
+
+        if hasattr(self._app, "state"):
+            self._app.state.config = cfg
+
+        if use_config_fn:
+            use_config_fn()
+        return True

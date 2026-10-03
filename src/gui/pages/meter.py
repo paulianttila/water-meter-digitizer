@@ -5,6 +5,7 @@ import contextlib
 import logging
 import time
 from datetime import datetime
+from pathlib import Path
 from typing import Any
 
 from nicegui import ui
@@ -35,12 +36,14 @@ from gui.theme import (
     DIALOG_HEADER_ROW,
     FONT_MONO_VALUE,
     HEADING_SECTION,
+    HEADING_SUBSECTION,
     PANEL_STAGE_IMAGE,
     ROW_HEADER,
     ROW_ITEMS_CENTER,
     STAT_VALUE_LARGE,
     TABS_BAR_HORIZONTAL,
     TABS_PROPS_HORIZONTAL,
+    TEXT_MONO_MUTED,
     copy_to_clipboard,
 )
 
@@ -165,9 +168,29 @@ class MeterPage(BasePage):
                 logger.debug("Failed to load crop image for %s", name, exc_info=True)
                 crop_base64 = ""
 
+            model_type = "digital" if is_digital else "analog"
+            active_cfg = self.callbacks.get_config()
+            current_model_file = ""
+            if active_cfg:
+                current_model_file = (
+                    getattr(active_cfg.digital_readout, "model_file", "")
+                    if is_digital
+                    else getattr(active_cfg.analog_readout, "model_file", "")
+                )
+
+            candidate_models = []
+            try:
+                candidate_models = self.callbacks.list_cnn_models(model_type)
+            except Exception:
+                logger.debug(
+                    "Failed to list CNN models for %s", model_type, exc_info=True
+                )
+
             with (
                 ui.dialog() as crop_modal,
-                ui.card().classes(f"{DIALOG_CARD} min-w-[320px] max-w-md p-6"),
+                ui.card().classes(
+                    f"{DIALOG_CARD} min-w-[340px] max-w-xl max-h-[90vh] overflow-y-auto p-5"
+                ),
             ):
                 with card_header(
                     title=f"{'Digital Counter' if is_digital else 'Analog Dial'} - {name}",
@@ -180,83 +203,332 @@ class MeterPage(BasePage):
                         "flat round dense size=sm aria-label='Close dialog'"
                     )
 
-                with ui.column().classes("w-full items-center gap-3"):
+                # Upper preview section: ROI image and current readout info
+                with ui.row().classes(
+                    "w-full items-center gap-4 bg-slate-950/60 p-3 rounded-xl border border-white/5"
+                ):
                     with ui.element("div").classes(
-                        "w-48 h-48 rounded-2xl bg-black/60 p-2 border border-white/10 flex items-center justify-center overflow-hidden"
+                        "w-24 h-24 sm:w-28 sm:h-28 rounded-xl bg-black/70 p-1.5 border border-white/10 flex items-center justify-center overflow-hidden shrink-0"
                     ):
                         if crop_base64:
                             ui.image(f"data:image/jpeg;base64,{crop_base64}").props(
                                 "fit=contain no-spinner"
-                            ).classes("max-w-full max-h-full rounded-xl")
+                            ).classes("max-w-full max-h-full rounded-lg")
                         else:
                             ui.icon("image_not_supported", color="gray").classes(
-                                "text-4xl"
+                                "text-3xl"
                             )
 
-                    with ui.row().classes("items-baseline gap-2 mt-1"):
-                        ui.label(str(value)).classes(
-                            "font-['Outfit'] text-4xl font-extrabold text-cyan-300"
-                        )
-                        ui.label(f"#{name}").classes("text-xs font-mono text-slate-400")
+                    with ui.column().classes("flex-1 min-w-0 gap-1"):
+                        with ui.row().classes("items-baseline gap-2"):
+                            ui.label("Current Readout:").classes(
+                                "text-xs text-slate-400 font-mono"
+                            )
+                            ui.label(str(value)).classes(
+                                "font-['Outfit'] text-2xl font-bold text-cyan-300"
+                            )
+                            ui.label(f"#{name}").classes(
+                                "text-[11px] font-mono text-slate-500"
+                            )
 
-                    conf_color = (
-                        "text-emerald-400"
-                        if conf >= 85.0
-                        else ("text-amber-400" if conf >= 70.0 else "text-rose-400")
+                        conf_color = (
+                            "text-emerald-400"
+                            if conf >= 85.0
+                            else ("text-amber-400" if conf >= 70.0 else "text-rose-400")
+                        )
+                        with ui.row().classes(f"{ROW_ITEMS_CENTER} text-xs font-mono"):
+                            ui.label("Confidence:").classes("text-slate-400")
+                            ui.label(f"{conf:.1f}%").classes(f"font-bold {conf_color}")
+
+                        active_name = (
+                            Path(current_model_file).name
+                            if current_model_file
+                            else "None"
+                        )
+                        with ui.row().classes(
+                            f"{ROW_ITEMS_CENTER} text-xs font-mono text-slate-400 truncate"
+                        ):
+                            ui.label("Active Model:").classes("text-slate-500")
+                            ui.label(active_name).classes(
+                                "text-cyan-400/80 truncate text-[11px]"
+                            ).tooltip(current_model_file)
+
+                # Middle section: Single Model Tester & Apply to Config
+                with ui.column().classes("w-full gap-2 mt-2"):
+                    with ui.row().classes(f"{ROW_HEADER} items-center"):
+                        with ui.row().classes(ROW_ITEMS_CENTER):
+                            ui.icon("science", color="cyan").classes("text-base")
+                            ui.label("Model Tester").classes(
+                                f"{HEADING_SUBSECTION} text-xs text-slate-300"
+                            )
+                        if candidate_models:
+                            ui.label(f"{len(candidate_models)} models found").classes(
+                                f"{TEXT_MONO_MUTED} text-[10px]"
+                            )
+
+                    model_options = {m["file"]: m["name"] for m in candidate_models}
+                    selected_model_file = (
+                        current_model_file
+                        if current_model_file in model_options
+                        else (next(iter(model_options.keys())) if model_options else "")
                     )
-                    with ui.row().classes(f"{ROW_ITEMS_CENTER} text-xs font-mono"):
-                        ui.label("Neural Confidence:").classes("text-slate-400")
-                        ui.label(f"{conf:.1f}%").classes(f"font-bold {conf_color}")
 
-                    # Baseline override control
-                    with (
-                        ui.row().classes(
-                            "w-full items-center justify-between pt-2 border-t border-white/10 gap-2"
-                        ),
-                        ui.row().classes("items-center gap-1.5 flex-1"),
-                    ):
-                        baseline_input = (
-                            ui.input(
-                                placeholder="New baseline",
-                                value=str(value),
+                    model_select = (
+                        ui.select(
+                            options=model_options,
+                            value=selected_model_file,
+                            label="Select CNN Model to Test",
+                        )
+                        .props("dense outlined options-dense dark")
+                        .classes("w-full text-xs font-mono")
+                    )
+                    model_select.value = selected_model_file
+
+                    test_result_container = ui.column().classes(
+                        "w-full p-3 rounded-xl bg-slate-950/80 border border-white/10 gap-2 min-h-[60px] justify-center"
+                    )
+
+                    def update_test_result(chosen_model: str | None = None) -> None:
+                        target_model = (
+                            chosen_model
+                            if chosen_model is not None
+                            else model_select.value
+                        )
+                        test_result_container.clear()
+                        with test_result_container:
+                            if not target_model:
+                                ui.label("Select a model above to evaluate").classes(
+                                    "text-xs text-slate-400 font-mono italic"
+                                )
+                                return
+                            if not crop_base64:
+                                ui.label("No crop image available to evaluate").classes(
+                                    "text-xs text-slate-400 font-mono italic"
+                                )
+                                return
+                            res = self.callbacks.evaluate_crop_model(
+                                crop_base64, target_model, is_digital
                             )
-                            .props("dense outlined")
-                            .classes("w-28 text-xs font-mono bg-slate-950 rounded-lg")
+                            if res.get("error"):
+                                with ui.row().classes(
+                                    "items-center gap-2 text-rose-400 text-xs font-mono"
+                                ):
+                                    ui.icon("error_outline", color="rose").classes(
+                                        "text-sm"
+                                    )
+                                    ui.label(f"Error: {res['error']}")
+                                return
+
+                            pred_val = res.get("value")
+                            res_conf = float(res.get("confidence", 0.0))
+                            latency = float(res.get("latency_ms", 0.0))
+                            res_badge = (
+                                BADGE_SUCCESS
+                                if res_conf >= 85.0
+                                else (
+                                    BADGE_WARNING if res_conf >= 70.0 else BADGE_ERROR
+                                )
+                            )
+
+                            with ui.row().classes(
+                                f"{ROW_HEADER} items-center flex-wrap gap-2"
+                            ):
+                                with ui.row().classes("items-center gap-3"):
+                                    with ui.column().classes("gap-0"):
+                                        ui.label("Prediction").classes(
+                                            "text-[10px] text-slate-400 uppercase font-mono"
+                                        )
+                                        ui.label(
+                                            str(
+                                                pred_val
+                                                if pred_val is not None
+                                                else "-"
+                                            )
+                                        ).classes(
+                                            "font-['Outfit'] text-2xl font-bold text-cyan-300"
+                                        )
+                                    with ui.column().classes("gap-0.5"):
+                                        ui.label("Confidence").classes(
+                                            "text-[10px] text-slate-400 uppercase font-mono"
+                                        )
+                                        ui.label(f"{res_conf:.1f}%").classes(
+                                            f"{res_badge} text-xs font-bold"
+                                        )
+                                    with ui.column().classes("gap-0.5"):
+                                        ui.label("Latency").classes(
+                                            "text-[10px] text-slate-400 uppercase font-mono"
+                                        )
+                                        ui.label(f"⚡ {latency:.1f}ms").classes(
+                                            "text-xs font-mono text-slate-300 font-bold"
+                                        )
+
+                                def apply_current() -> None:
+                                    try:
+                                        self.callbacks.apply_model_to_config(
+                                            target_model, is_digital
+                                        )
+                                        ui.notify(
+                                            f"Applied {Path(target_model).name} to config",
+                                            type="positive",
+                                        )
+                                    except Exception as ex:
+                                        ui.notify(
+                                            f"Failed to apply model: {ex}",
+                                            type="negative",
+                                        )
+
+                                ui.button(
+                                    "Apply to Config",
+                                    icon="save_as",
+                                    on_click=apply_current,
+                                ).props("unelevated color=primary size=sm").classes(
+                                    "rounded-xl px-3 font-semibold text-xs ml-auto"
+                                )
+
+                    model_select.on_value_change(
+                        lambda e: update_test_result(getattr(e, "value", None))
+                    )
+                    if selected_model_file and crop_base64:
+                        update_test_result()
+
+                # Expandable Leaderboard / Benchmark All Models
+                with ui.expansion("Benchmark All Models", icon="leaderboard").classes(
+                    "w-full bg-slate-950/40 border border-white/10 rounded-xl overflow-hidden mt-1 text-xs p-2.5 gap-2"
+                ):
+                    with ui.row().classes("w-full items-center justify-between"):
+                        ui.label("Compare all candidate models on this crop").classes(
+                            "text-[11px] text-slate-400 font-mono"
                         )
-
-                        def save_baseline_override() -> None:
-                            new_val = (baseline_input.value or "").strip()
-                            if new_val:
-                                try:
-                                    self.callbacks.set_previous_value(name, new_val)
-                                    ui.notify(
-                                        f"Baseline for {name} updated to {new_val}",
-                                        type="positive",
-                                    )
-                                except Exception as err:
-                                    ui.notify(
-                                        f"Failed to update baseline: {err}",
-                                        type="negative",
-                                    )
-
                         ui.button(
-                            "Set Baseline",
-                            icon="save",
-                            on_click=save_baseline_override,
-                        ).props("flat dense color=cyan size=sm").classes(
-                            "text-xs font-semibold"
-                        ).tooltip(
-                            "Save new baseline override value for this digit"
+                            "Run Benchmark",
+                            icon="play_arrow",
+                            on_click=lambda: run_benchmark(),
+                        ).props("unelevated dense color=cyan size=xs").classes(
+                            "rounded-lg px-2"
                         )
+
+                    bench_container = ui.column().classes("w-full gap-1")
+
+                    async def run_benchmark() -> None:
+                        if not crop_base64:
+                            ui.notify(
+                                "No crop image available for benchmarking",
+                                type="warning",
+                            )
+                            return
+                        bench_container.clear()
+                        with (
+                            bench_container,
+                            ui.row().classes(
+                                "w-full justify-center items-center py-4 gap-2"
+                            ),
+                        ):
+                            ui.spinner("dots", size="sm", color="cyan")
+                            ui.label("Benchmarking candidate models...").classes(
+                                "text-xs text-slate-400 font-mono"
+                            )
+
+                        benchmark_results = await asyncio.to_thread(
+                            self.callbacks.benchmark_crop_models,
+                            crop_base64,
+                            is_digital,
+                        )
+                        bench_container.clear()
+                        if not benchmark_results:
+                            with bench_container:
+                                ui.label(
+                                    "No models found or benchmark returned empty results."
+                                ).classes("text-xs text-slate-500 font-mono italic p-2")
+                            return
+
+                        with bench_container:
+                            for idx, item in enumerate(benchmark_results, start=1):
+                                with ui.row().classes(
+                                    "w-full items-center justify-between p-2 rounded-lg bg-slate-900/60 border border-white/5 hover:border-white/20 transition-all text-xs"
+                                ):
+                                    with ui.column().classes("gap-0.5 min-w-0 flex-1"):
+                                        with ui.row().classes(
+                                            "items-center gap-1.5 flex-wrap"
+                                        ):
+                                            ui.label(f"#{idx}").classes(
+                                                "font-mono text-cyan-400 font-bold text-[11px]"
+                                            )
+                                            ui.label(item["name"]).classes(
+                                                "font-mono font-semibold text-gray-200 text-xs truncate max-w-[200px]"
+                                            ).tooltip(item["file"])
+                                            if item.get("quantized"):
+                                                ui.label("INT8").classes(
+                                                    "bg-cyan-950/80 text-cyan-300 text-[10px] px-1 py-0.2 rounded border border-cyan-500/30 font-mono"
+                                                )
+                                        with ui.row().classes(
+                                            "items-center gap-2 text-[10px] text-slate-400 font-mono"
+                                        ):
+                                            ui.label(
+                                                f"⚡ {item.get('latency_ms', 0):.1f}ms"
+                                            )
+                                            if item.get("size_kb"):
+                                                ui.label(f"💾 {item['size_kb']} KB")
+
+                                    with ui.row().classes(
+                                        "items-center gap-2 shrink-0"
+                                    ):
+                                        if item.get("error"):
+                                            ui.label("ERR").classes(
+                                                "text-rose-400 font-mono text-xs font-bold"
+                                            ).tooltip(str(item["error"]))
+                                        else:
+                                            b_val = item.get("value")
+                                            ui.label(
+                                                str(b_val if b_val is not None else "-")
+                                            ).classes(
+                                                "font-mono text-sm font-bold text-cyan-300 min-w-[28px] text-right"
+                                            )
+                                            b_conf = float(item.get("confidence", 0.0))
+                                            b_badge = (
+                                                BADGE_SUCCESS
+                                                if b_conf >= 85.0
+                                                else (
+                                                    BADGE_WARNING
+                                                    if b_conf >= 70.0
+                                                    else BADGE_ERROR
+                                                )
+                                            )
+                                            ui.label(f"{b_conf:.1f}%").classes(
+                                                f"{b_badge} text-[10px] px-1.5 py-0.5 font-mono"
+                                            )
+
+                                        def make_apply(m_file: str, m_name: str):
+                                            def _do_apply() -> None:
+                                                try:
+                                                    self.callbacks.apply_model_to_config(
+                                                        m_file, is_digital
+                                                    )
+                                                    ui.notify(
+                                                        f"Applied model {m_name} to config",
+                                                        type="positive",
+                                                    )
+                                                except Exception as ex:
+                                                    ui.notify(
+                                                        f"Failed to apply model: {ex}",
+                                                        type="negative",
+                                                    )
+
+                                            return _do_apply
+
+                                        ui.button(
+                                            "Apply",
+                                            icon="check",
+                                            on_click=make_apply(
+                                                item["file"],
+                                                item["filename"],
+                                            ),
+                                        ).props(
+                                            "flat dense color=cyan size=xs"
+                                        ).classes(
+                                            "text-xs font-semibold rounded-lg"
+                                        )
 
                 with ui.row().classes(f"{DIALOG_FOOTER_ROW}"):
-                    ui.button(
-                        "Calibrate in Wizard",
-                        icon="tune",
-                        on_click=lambda: ui.navigate.to("/#setup"),
-                    ).props("flat dense color=cyan text-xs").tooltip(
-                        "Open Setup Wizard to adjust ROI calibration"
-                    )
                     ui.button("Close", on_click=crop_modal.close).props(
                         "unelevated color=primary size=sm"
                     ).classes("rounded-xl px-4")

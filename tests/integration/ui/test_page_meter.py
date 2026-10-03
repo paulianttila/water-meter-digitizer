@@ -105,3 +105,47 @@ def test_meter_refresh_readout(page: Page, live_server_url: str):
     # Verify that metrics and capture reload successfully
     expect(page.get_by_text("Processed Capture")).to_be_visible(timeout=10000)
     expect(page.get_by_text("PRIMARY", exact=True)).to_be_visible()
+
+
+@pytest.mark.ui
+def test_meter_crop_modal_cnn_testing(page: Page, live_server_url: str):
+    """Test clicking a digital crop opens the zoom dialog with CNN model tester and benchmark."""
+    page.goto(f"{live_server_url}/gui", wait_until="domcontentloaded")
+    page.get_by_role("tab", name="Dashboard").click()
+
+    # Click digit1 crop card to open dialog
+    digit1_card = page.get_by_text("digit1", exact=True)
+    expect(digit1_card).to_be_visible(timeout=10000)
+    digit1_card.click()
+
+    # Verify modal header and sections
+    expect(page.get_by_text("Digital Counter - digit1")).to_be_visible(timeout=5000)
+    expect(page.get_by_text("Model Tester")).to_be_visible()
+    expect(page.get_by_role("button", name="Apply to Config")).to_be_visible()
+
+    # Test selecting a model from the dropdown
+    model_select_input = page.get_by_label("Select CNN Model to Test")
+    expect(model_select_input).to_be_visible()
+    model_select_input.click()
+    first_opt = page.locator(".q-menu .q-item").first
+    if first_opt.is_visible(timeout=2000):
+        first_opt.click()
+
+    # Verify Benchmark All expansion
+    benchmark_exp = page.get_by_text("Benchmark All Models")
+    expect(benchmark_exp).to_be_visible()
+    benchmark_exp.click()
+
+    run_bench_btn = page.get_by_role("button", name="Run Benchmark")
+    expect(run_bench_btn).to_be_visible(timeout=3000)
+    run_bench_btn.click()
+
+    # Wait for benchmark rows to populate
+    expect(page.get_by_text("#1").first).to_be_visible(timeout=10000)
+    expect(page.get_by_role("button", name="Apply").first).to_be_visible()
+
+    # Close modal
+    close_btn = page.get_by_role("button", name="Close", exact=True)
+    expect(close_btn).to_be_visible()
+    close_btn.click()
+    expect(page.get_by_text("Digital Counter - digit1")).not_to_be_visible()

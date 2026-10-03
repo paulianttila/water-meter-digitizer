@@ -59,6 +59,14 @@ class CallbacksImpl(Callbacks):
         get_target_config_file_fn: Callable[[], str] | None = None,
         copy_default_config_fn: Callable[[], bool] | None = None,
         init_profile_for_wizard_fn: Callable[[], bool] | None = None,
+        list_cnn_models_fn: Callable[[str], list[dict[str, Any]]] | None = None,
+        evaluate_crop_model_fn: (
+            Callable[[str, str, bool], dict[str, Any]] | None
+        ) = None,
+        benchmark_crop_models_fn: (
+            Callable[[str, bool], list[dict[str, Any]]] | None
+        ) = None,
+        apply_model_to_config_fn: Callable[[str, bool], bool] | None = None,
         frame_service: FrameService | None = None,
     ) -> None:
         self._get_meter_data = get_meter_data_fn
@@ -88,6 +96,10 @@ class CallbacksImpl(Callbacks):
         self._get_mqtt_status = get_mqtt_status_fn
         self._get_previous_values = get_previous_values_fn
         self._set_previous_value = set_previous_value_fn
+        self._list_cnn_models = list_cnn_models_fn
+        self._evaluate_crop_model = evaluate_crop_model_fn
+        self._benchmark_crop_models = benchmark_crop_models_fn
+        self._apply_model_to_config = apply_model_to_config_fn
         self._frame_service = frame_service or FrameService(storage=self.get_storage)
 
     @classmethod
@@ -129,6 +141,14 @@ class CallbacksImpl(Callbacks):
             get_target_config_file_fn=accessor.get_target_config_file,
             copy_default_config_fn=accessor.copy_default_config,
             init_profile_for_wizard_fn=accessor.init_profile_for_wizard,
+            list_cnn_models_fn=accessor.list_cnn_models,
+            evaluate_crop_model_fn=accessor.evaluate_crop_model,
+            benchmark_crop_models_fn=accessor.benchmark_crop_models,
+            apply_model_to_config_fn=(
+                lambda m, d: accessor.apply_model_to_config(
+                    m, d, use_config_fn=use_config_fn
+                )
+            ),
             frame_service=frame_service or FrameService(storage=accessor.get_storage),
         )
 
@@ -308,3 +328,50 @@ class CallbacksImpl(Callbacks):
         self, reading_id: int, compare_id: int | None = None
     ) -> str | None:
         return self._frame_service.get_frame_diff_data_uri(reading_id, compare_id)
+
+    def list_cnn_models(self, model_type: str) -> list[dict[str, Any]]:
+        if self._list_cnn_models is not None:
+            return self._list_cnn_models(model_type)
+        return []
+
+    def evaluate_crop_model(
+        self, image_base64: str, model_file: str, is_digital: bool
+    ) -> dict[str, Any]:
+        if self._evaluate_crop_model is not None:
+            return self._evaluate_crop_model(image_base64, model_file, is_digital)
+        return {
+            "value": None,
+            "confidence": 0.0,
+            "latency_ms": 0.0,
+            "model_file": model_file,
+            "error": "Model evaluation not configured",
+        }
+
+    def benchmark_crop_models(
+        self, image_base64: str, is_digital: bool
+    ) -> list[dict[str, Any]]:
+        if self._benchmark_crop_models is not None:
+            return self._benchmark_crop_models(image_base64, is_digital)
+        models = self.list_cnn_models("digital" if is_digital else "analog")
+        results: list[dict[str, Any]] = []
+        for m in models:
+            res = self.evaluate_crop_model(image_base64, m["file"], is_digital)
+            results.append({**m, **res})
+        return results
+
+    def apply_model_to_config(self, model_file: str, is_digital: bool) -> bool:
+        if self._apply_model_to_config is not None:
+            res = self._apply_model_to_config(model_file, is_digital)
+            self.use_config()
+            return res
+        cfg = self.get_config()
+        if is_digital:
+            cfg.digital_readout.model_file = model_file
+            cfg.digital_readout.model = "auto"
+        else:
+            cfg.analog_readout.model_file = model_file
+            cfg.analog_readout.model = "auto"
+        saved = cfg.save_to_string()
+        self.save_config_file(saved)
+        self.use_config()
+        return True

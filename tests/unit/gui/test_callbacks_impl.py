@@ -243,3 +243,71 @@ def test_callbacks_impl_timeline_and_diffs(
     callbacks_no_store = callbacks_empty_storage
     assert callbacks_no_store.get_timeline() == []
     assert callbacks_no_store.get_frame_diff(1).error != ""
+
+
+def test_callbacks_impl_cnn_methods(base_callbacks_kwargs):
+    mock_list = MagicMock(return_value=[{"name": "m1", "file": "/p/m1.tflite"}])
+    mock_eval = MagicMock(
+        return_value={
+            "value": 4.5,
+            "confidence": 98.0,
+            "latency_ms": 3.0,
+            "error": None,
+        }
+    )
+    mock_bench = MagicMock(
+        return_value=[
+            {
+                "name": "m1",
+                "file": "/p/m1.tflite",
+                "value": 4.5,
+                "confidence": 98.0,
+                "latency_ms": 3.0,
+            }
+        ]
+    )
+    mock_apply = MagicMock(return_value=True)
+
+    callbacks = CallbacksImpl(
+        **base_callbacks_kwargs,
+        list_cnn_models_fn=mock_list,
+        evaluate_crop_model_fn=mock_eval,
+        benchmark_crop_models_fn=mock_bench,
+        apply_model_to_config_fn=mock_apply,
+    )
+
+    assert callbacks.list_cnn_models("digital") == [
+        {"name": "m1", "file": "/p/m1.tflite"}
+    ]
+    mock_list.assert_called_once_with("digital")
+
+    assert callbacks.evaluate_crop_model("b64", "/p/m1.tflite", True)["value"] == 4.5
+    mock_eval.assert_called_once_with("b64", "/p/m1.tflite", True)
+
+    assert len(callbacks.benchmark_crop_models("b64", True)) == 1
+    mock_bench.assert_called_once_with("b64", True)
+
+    assert callbacks.apply_model_to_config("/p/m1.tflite", True) is True
+    mock_apply.assert_called_once_with("/p/m1.tflite", True)
+
+
+def test_callbacks_impl_cnn_defaults(base_callbacks_kwargs):
+    callbacks = CallbacksImpl(**base_callbacks_kwargs)
+    assert callbacks.list_cnn_models("digital") == []
+    assert (
+        callbacks.evaluate_crop_model("b64", "m1", True)["error"]
+        == "Model evaluation not configured"
+    )
+    assert callbacks.benchmark_crop_models("b64", True) == []
+
+    # apply_model_to_config fallback with config
+    mock_cfg = MagicMock()
+    mock_cfg.digital_readout = MagicMock()
+    mock_cfg.save_to_string.return_value = "[CFG]"
+    callbacks._get_config = lambda: mock_cfg
+    mock_save = MagicMock()
+    callbacks._save_config_file = mock_save
+
+    assert callbacks.apply_model_to_config("new_m1.tflite", is_digital=True) is True
+    assert mock_cfg.digital_readout.model_file == "new_m1.tflite"
+    mock_save.assert_called_once_with("[CFG]")

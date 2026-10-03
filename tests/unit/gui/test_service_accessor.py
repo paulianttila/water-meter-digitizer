@@ -133,3 +133,98 @@ def test_callbacks_from_service_accessor():
     assert callbacks.list_config_backups() == []
     callbacks.use_config()
     mock_use_cfg.assert_called_once()
+
+
+def test_service_accessor_cnn_models_and_evaluation(tmp_path):
+    mock_app = FastAPI()
+    cfg = MagicMock()
+    dig_dir = tmp_path / "digital" / "class100"
+    dig_dir.mkdir(parents=True)
+    m1 = dig_dir / "test_model_q.tflite"
+    m1.write_bytes(b"dummy")
+    m2 = dig_dir / "test_model2.tflite"
+    m2.write_bytes(b"dummy2")
+
+    cfg.digital_models_dir = str(tmp_path / "digital")
+    cfg.analog_models_dir = str(tmp_path / "analog")
+    mock_app.state.config = cfg
+
+    accessor = ServiceAccessor(mock_app)
+
+    # 1. list_cnn_models
+    models = accessor.list_cnn_models("digital")
+    assert len(models) == 2
+    assert any(m["quantized"] is True for m in models)
+    assert any(m["quantized"] is False for m in models)
+
+    # empty dir
+    assert accessor.list_cnn_models("analog") == []
+
+    # 2. evaluate_crop_model empty
+    empty_res = accessor.evaluate_crop_model("", str(m1), is_digital=True)
+    assert empty_res["error"] == "No image data provided"
+    assert empty_res["value"] is None
+
+    # 3. evaluate_crop_model mock
+    with (
+        patch("utils.image.convert_base64_str_to_image", return_value=MagicMock()),
+        patch("cnn.digital_counter_cnn.DigitalCounterCNN") as mock_cnn_cls,
+    ):
+        mock_instance = mock_cnn_cls.return_value
+        mock_instance.readout_with_confidence.return_value = (3.5, 92.4)
+
+        res = accessor.evaluate_crop_model("dGVzdA==", str(m1), is_digital=True)
+        assert res["value"] == 3.5
+        assert res["confidence"] == 92.4
+        assert res["error"] is None
+        assert res["latency_ms"] >= 0.0
+
+    # 4. benchmark_crop_models
+    with (
+        patch.object(
+            accessor,
+            "evaluate_crop_model",
+            side_effect=[
+                {
+                    "value": 1.0,
+                    "confidence": 75.0,
+                    "latency_ms": 5.0,
+                    "error": None,
+                },
+                {
+                    "value": 2.0,
+                    "confidence": 95.0,
+                    "latency_ms": 2.0,
+                    "error": None,
+                },
+            ],
+        ),
+    ):
+        bench = accessor.benchmark_crop_models("dGVzdA==", is_digital=True)
+        assert len(bench) == 2
+        # Ranked by confidence desc: 95.0 first
+        assert bench[0]["confidence"] == 95.0
+        assert bench[1]["confidence"] == 75.0
+
+
+def test_service_accessor_apply_model_to_config():
+    mock_app = FastAPI()
+    cfg = MagicMock()
+    mock_cfg_svc = MagicMock()
+    use_cfg_mock = MagicMock()
+
+    cfg.digital_readout = MagicMock()
+    cfg.analog_readout = MagicMock()
+    cfg.save_to_string.return_value = "[SAVED]"
+    mock_app.state.config = cfg
+
+    accessor = ServiceAccessor(mock_app, config_file_service=mock_cfg_svc)
+
+    res = accessor.apply_model_to_config(
+        "/path/to/model.tflite", is_digital=True, use_config_fn=use_cfg_mock
+    )
+    assert res is True
+    assert cfg.digital_readout.model_file == "/path/to/model.tflite"
+    assert cfg.digital_readout.model == "auto"
+    mock_cfg_svc.save.assert_called_once_with("[SAVED]")
+    use_cfg_mock.assert_called_once()

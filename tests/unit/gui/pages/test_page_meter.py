@@ -375,7 +375,7 @@ def test_page_meter_leak_disabled_badge(mock_meter_result, mock_meter_ui):
 
 
 def test_page_meter_crop_modal_actions(mock_meter_result, mock_meter_ui):
-    """Verify crop modal renders Set Baseline and Calibrate in Wizard buttons."""
+    """Verify crop modal renders Close button and excludes obsolete baseline/wizard actions."""
     callbacks = MagicMock()
     callbacks.get_meter_data.return_value = mock_meter_result
     callbacks.get_image_as_base64_str.return_value = "dGVzdA=="
@@ -399,5 +399,140 @@ def test_page_meter_crop_modal_actions(mock_meter_result, mock_meter_ui):
     btn_labels = [
         call.args[0] for call in mock_meter_ui.button.call_args_list if call.args
     ]
-    assert "Set Baseline" in btn_labels
-    assert "Calibrate in Wizard" in btn_labels
+    assert "Close" in btn_labels
+    assert "Set Baseline" not in btn_labels
+    assert "Calibrate in Wizard" not in btn_labels
+
+
+def test_page_meter_crop_modal_cnn_testing(mock_meter_result, mock_meter_ui):
+    """Verify crop modal renders model tester, evaluates crop, and supports apply and benchmark."""
+    callbacks = MagicMock()
+    callbacks.get_meter_data.return_value = mock_meter_result
+    callbacks.get_image_as_base64_str.return_value = "dGVzdA=="
+    mock_cfg = Config()
+    mock_cfg.digital_readout.model_file = "/path/to/m1.tflite"
+    callbacks.get_config.return_value = mock_cfg
+
+    callbacks.list_cnn_models.return_value = [
+        {
+            "file": "/path/to/m1.tflite",
+            "name": "class100 / m1",
+            "filename": "m1.tflite",
+            "category": "class100",
+            "quantized": True,
+            "size_kb": 125.0,
+        }
+    ]
+    callbacks.evaluate_crop_model.return_value = {
+        "value": 5,
+        "confidence": 99.2,
+        "latency_ms": 2.5,
+        "error": None,
+    }
+    callbacks.benchmark_crop_models.return_value = [
+        {
+            "file": "/path/to/m1.tflite",
+            "name": "class100 / m1",
+            "filename": "m1.tflite",
+            "category": "class100",
+            "quantized": True,
+            "size_kb": 125.0,
+            "value": 5,
+            "confidence": 99.2,
+            "latency_ms": 2.5,
+            "error": None,
+        }
+    ]
+
+    page = MeterPage(callbacks)
+    asyncio.run(page.show())
+
+    on_mock = mock_meter_ui.element.return_value.classes.return_value.on
+    click_calls = [
+        call.args[1]
+        for call in on_mock.call_args_list
+        if call.args and call.args[0] == "click"
+    ]
+    assert click_calls, "Should register click handlers for digit cards"
+
+    # Click first digital crop card
+    click_calls[0](None)
+
+    callbacks.list_cnn_models.assert_called_with("digital")
+    callbacks.evaluate_crop_model.assert_called_with(
+        "dGVzdA==", "/path/to/m1.tflite", True
+    )
+
+    btn_labels = [
+        call.args[0] for call in mock_meter_ui.button.call_args_list if call.args
+    ]
+    assert "Apply to Config" in btn_labels
+    assert "Run Benchmark" in btn_labels
+
+    # Test "Apply to Config" on-click callback
+    apply_call = next(
+        call
+        for call in mock_meter_ui.button.call_args_list
+        if call.args and call.args[0] == "Apply to Config"
+    )
+    apply_callback = apply_call.kwargs.get("on_click")
+    assert apply_callback is not None
+    apply_callback()
+    callbacks.apply_model_to_config.assert_called_once_with("/path/to/m1.tflite", True)
+
+    # Test "Run Benchmark" on-click callback
+    bench_call = next(
+        call
+        for call in mock_meter_ui.button.call_args_list
+        if call.args and call.args[0] == "Run Benchmark"
+    )
+    bench_callback = bench_call.kwargs.get("on_click")
+    assert bench_callback is not None
+    asyncio.run(bench_callback())
+    callbacks.benchmark_crop_models.assert_called_once_with("dGVzdA==", True)
+
+
+def test_page_meter_crop_modal_analog_testing(mock_meter_result, mock_meter_ui):
+    """Verify crop modal for analog dial lists and tests analog models."""
+    callbacks = MagicMock()
+    callbacks.get_meter_data.return_value = mock_meter_result
+    callbacks.get_image_as_base64_str.return_value = "YW5hbG9n"
+    mock_cfg = Config()
+    mock_cfg.analog_readout.model_file = "/path/to/ana.tflite"
+    callbacks.get_config.return_value = mock_cfg
+
+    callbacks.list_cnn_models.return_value = [
+        {
+            "file": "/path/to/ana.tflite",
+            "name": "continuous / ana",
+            "filename": "ana.tflite",
+            "category": "continuous",
+            "quantized": False,
+            "size_kb": 250.0,
+        }
+    ]
+    callbacks.evaluate_crop_model.return_value = {
+        "value": 3.7,
+        "confidence": 88.5,
+        "latency_ms": 3.1,
+        "error": None,
+    }
+
+    page = MeterPage(callbacks)
+    asyncio.run(page.show())
+
+    on_mock = mock_meter_ui.element.return_value.classes.return_value.on
+    click_calls = [
+        call.args[1]
+        for call in on_mock.call_args_list
+        if call.args and call.args[0] == "click"
+    ]
+    # Analog dial is after digital digits (digit1, digit2, then analog1)
+    assert len(click_calls) >= 3
+    # Click analog1
+    click_calls[2](None)
+
+    callbacks.list_cnn_models.assert_called_with("analog")
+    callbacks.evaluate_crop_model.assert_called_with(
+        "YW5hbG9n", "/path/to/ana.tflite", False
+    )
