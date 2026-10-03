@@ -4,13 +4,18 @@ import pytest
 from playwright.sync_api import Page, expect
 
 
+def _navigate_to_setup(page: Page, live_server_url: str) -> None:
+    page.goto(f"{live_server_url}/gui", wait_until="domcontentloaded")
+    page.get_by_role("tab", name="Settings").click()
+    page.get_by_role("tab", name="Setup").click()
+
+
 @pytest.mark.ui
 def test_full_10_step_wizard_traversal(page: Page, live_server_url: str):
     """Verify complete step-by-step traversal through the 10-step calibration
     pipeline.
     """
-    page.goto(f"{live_server_url}/gui", wait_until="domcontentloaded")
-    page.get_by_role("tab", name="Setup").click()
+    _navigate_to_setup(page, live_server_url)
 
     continue_btn = page.get_by_role("button", name="Continue")
     back_btn = page.get_by_role("button", name="Back", exact=True)
@@ -77,8 +82,7 @@ def test_full_10_step_wizard_traversal(page: Page, live_server_url: str):
 @pytest.mark.ui
 def test_setup_wizard_reset_dialog(page: Page, live_server_url: str):
     """Verify reset confirmation dialog."""
-    page.goto(f"{live_server_url}/gui", wait_until="domcontentloaded")
-    page.get_by_role("tab", name="Setup").click()
+    _navigate_to_setup(page, live_server_url)
     expect(page.get_by_text("Step 1 of 10: Meter type")).to_be_visible(timeout=10000)
 
     reset_btn = page.get_by_role("button", name="Reset to File")
@@ -95,8 +99,7 @@ def test_setup_wizard_reset_dialog(page: Page, live_server_url: str):
 @pytest.mark.ui
 def test_setup_wizard_restore_backup_dialog(page: Page, live_server_url: str):
     """Verify restore from backup modal dialog."""
-    page.goto(f"{live_server_url}/gui", wait_until="domcontentloaded")
-    page.get_by_role("tab", name="Setup").click()
+    _navigate_to_setup(page, live_server_url)
     expect(page.get_by_text("Step 1 of 10: Meter type")).to_be_visible(timeout=10000)
 
     restore_btn = page.get_by_role("button", name="Restore Backup")
@@ -120,8 +123,7 @@ def test_setup_wizard_adjust_step_side_by_side_preview(
     page: Page, live_server_url: str
 ):
     """Test Step 4 Adjust image dual-card side-by-side comparison mode toggle."""
-    page.goto(f"{live_server_url}/gui", wait_until="domcontentloaded")
-    page.get_by_role("tab", name="Setup").click()
+    _navigate_to_setup(page, live_server_url)
     expect(page.get_by_text("Step 1 of 10: Meter type")).to_be_visible(timeout=10000)
 
     continue_btn = page.get_by_role("button", name="Continue")
@@ -155,8 +157,7 @@ def test_setup_wizard_adjust_step_side_by_side_preview(
 @pytest.mark.ui
 def test_setup_wizard_start_clean_dialog(page: Page, live_server_url: str):
     """Verify start clean configuration dialog and action."""
-    page.goto(f"{live_server_url}/gui", wait_until="domcontentloaded")
-    page.get_by_role("tab", name="Setup").click()
+    _navigate_to_setup(page, live_server_url)
     expect(page.get_by_text("Step 1 of 10: Meter type")).to_be_visible(timeout=10000)
 
     clean_btn = page.get_by_role("button", name="Start Clean")
@@ -179,8 +180,7 @@ def test_setup_wizard_tall_step_scrollability(page: Page, live_server_url: str):
     - Docked navigation buttons (Back/Continue) remain visible and functional.
     """
     page.set_viewport_size({"width": 1024, "height": 600})
-    page.goto(f"{live_server_url}/gui", wait_until="domcontentloaded")
-    page.get_by_role("tab", name="Setup").click()
+    _navigate_to_setup(page, live_server_url)
     expect(page.get_by_text("Step 1 of 10: Meter type")).to_be_visible(timeout=10000)
 
     continue_btn = page.get_by_role("button", name="Continue")
@@ -242,8 +242,7 @@ def test_setup_wizard_roi_shift_move(page: Page, live_server_url: str):
     """Verify that Shift+dragging on the image canvas translates the selected ROI
     without changing its dimensions and syncs X/Y number fields.
     """
-    page.goto(f"{live_server_url}/gui", wait_until="domcontentloaded")
-    page.get_by_role("tab", name="Setup").click()
+    _navigate_to_setup(page, live_server_url)
     expect(page.get_by_text("Step 1 of 10: Meter type")).to_be_visible(timeout=10000)
 
     continue_btn = page.get_by_role("button", name="Continue")
@@ -314,8 +313,7 @@ def test_setup_wizard_shift_move_cursor_and_hud_indicator(
     page: Page, live_server_url: str
 ):
     """Verify that holding Shift activates move cursor and displays the MOVE MODE HUD badge."""
-    page.goto(f"{live_server_url}/gui", wait_until="domcontentloaded")
-    page.get_by_role("tab", name="Setup").click()
+    _navigate_to_setup(page, live_server_url)
     expect(page.get_by_text("Step 1 of 10: Meter type")).to_be_visible(timeout=10000)
 
     # Initial state: shift-move-active class absent, indicator hidden
@@ -356,8 +354,7 @@ def test_setup_wizard_shift_move_cursor_and_hud_indicator(
 @pytest.mark.ui
 def test_setup_wizard_canvas_shortcuts_bar(page: Page, live_server_url: str):
     """Verify that the quick canvas shortcuts bar displays in drawing steps and reacts to Shift."""
-    page.goto(f"{live_server_url}/gui", wait_until="domcontentloaded")
-    page.get_by_role("tab", name="Setup").click()
+    _navigate_to_setup(page, live_server_url)
     expect(page.get_by_text("Step 1 of 10: Meter type")).to_be_visible(timeout=10000)
 
     continue_btn = page.get_by_role("button", name="Continue")
@@ -403,8 +400,7 @@ def test_setup_wizard_canvas_shortcuts_bar(page: Page, live_server_url: str):
 
 @pytest.mark.ui
 def test_setup_wizard_axioma_preset_selection(page: Page, live_server_url: str):
-    page.goto(f"{live_server_url}/gui", wait_until="domcontentloaded")
-    page.get_by_role("tab", name="Setup").click()
+    _navigate_to_setup(page, live_server_url)
     expect(page.get_by_text("Step 1 of 10: Meter type")).to_be_visible(timeout=10000)
 
     # Click Meter Model dropdown
@@ -472,8 +468,7 @@ def test_setup_wizard_axioma_preset_selection(page: Page, live_server_url: str):
 @pytest.mark.ui
 def test_setup_wizard_align_to_model_dialog(page: Page, live_server_url: str):
     """Verify Align to Model Template dialog opens from Step 2 and applies calculated ROIs."""
-    page.goto(f"{live_server_url}/gui", wait_until="domcontentloaded")
-    page.get_by_role("tab", name="Setup").click()
+    _navigate_to_setup(page, live_server_url)
     expect(page.get_by_text("Step 1 of 10: Meter type")).to_be_visible(timeout=10000)
 
     # Select a model preset in Step 1

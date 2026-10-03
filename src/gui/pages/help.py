@@ -188,20 +188,15 @@ class HelpPage(BasePage):
 
             # 3 Navigation Tabs
             with (
-                ui.tabs().classes(
-                    "w-full bg-slate-900/90 border border-white/10 rounded-xl p-1 shrink-0 min-w-0"
-                ) as tabs,
-                ui.row().classes("w-full gap-2"),
+                ui.tabs()
+                .props(theme.TABS_PROPS_HORIZONTAL)
+                .classes(theme.TABS_BAR_HORIZONTAL) as tabs
             ):
-                tab_workflow = ui.tab(
-                    "Setup Workflow & Pipeline", icon="checklist"
-                ).classes("font-semibold text-sm")
+                tab_workflow = ui.tab("Setup Workflow & Pipeline", icon="checklist")
                 tab_canvas = ui.tab(
                     "Calibration & Canvas Tools", icon="center_focus_strong"
-                ).classes("font-semibold text-sm")
-                tab_integrations = ui.tab(
-                    "Integrations & API Specs", icon="hub"
-                ).classes("font-semibold text-sm")
+                )
+                tab_integrations = ui.tab("Integrations & API Specs", icon="hub")
 
             with (
                 ui.tab_panels(tabs, value=tab_workflow)

@@ -24,6 +24,8 @@ from gui.theme import (
     DIALOG_HEADER_ROW,
     ROW_ACTIONS,
     ROW_HEADER,
+    TABS_BAR_HORIZONTAL,
+    TABS_PROPS_HORIZONTAL,
 )
 from processor.image import ImageProcessor
 from services.simulator.meter_generator import MeterImageGenerator
@@ -163,9 +165,11 @@ class MockConfigDialog:
                     )
 
             # Dialog Tab Bar
-            with ui.tabs().classes(
-                "w-full text-slate-300 border-b border-white/10"
-            ) as tabs:
+            with (
+                ui.tabs()
+                .props(TABS_PROPS_HORIZONTAL)
+                .classes(TABS_BAR_HORIZONTAL) as tabs
+            ):
                 tab_struct = ui.tab("Structured Settings", icon="tune")
                 tab_ini = ui.tab("Raw INI Editor", icon="code")
                 tab_rois = ui.tab("ROI Coordinates", icon="crop")

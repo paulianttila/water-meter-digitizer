@@ -8,7 +8,7 @@ from playwright.sync_api import Page, expect
 def test_meter_dashboard_metrics_and_images(page: Page, live_server_url: str):
     """Verify Meter Dashboard values, primary metrics, and cropped dial displays."""
     page.goto(f"{live_server_url}/gui", wait_until="domcontentloaded")
-    page.get_by_role("tab", name="Meter").click()
+    page.get_by_role("tab", name="Dashboard").click()
 
     # 1. Assert header & metric cards
     expect(page.get_by_text("Meter Dashboard")).to_be_visible(timeout=10000)
@@ -42,7 +42,7 @@ def test_meter_dashboard_metrics_and_images(page: Page, live_server_url: str):
 def test_meter_tabs_values_statistics_and_history(page: Page, live_server_url: str):
     """Verify switching between Live Readout, Consumption, and Readings Log tabs on Meter page."""
     page.goto(f"{live_server_url}/gui", wait_until="domcontentloaded")
-    page.get_by_role("tab", name="Meter").click()
+    page.get_by_role("tab", name="Dashboard").click()
 
     # 1. Live Readout tab is selected by default
     expect(page.get_by_role("tab", name="Live Readout")).to_be_visible(timeout=10000)
@@ -96,7 +96,7 @@ def test_meter_tabs_values_statistics_and_history(page: Page, live_server_url: s
 def test_meter_refresh_readout(page: Page, live_server_url: str):
     """Test manual readout trigger via Refresh button."""
     page.goto(f"{live_server_url}/gui", wait_until="domcontentloaded")
-    page.get_by_role("tab", name="Meter").click()
+    page.get_by_role("tab", name="Dashboard").click()
 
     refresh_btn = page.get_by_role("button", name="Refresh")
     expect(refresh_btn).to_be_visible(timeout=10000)

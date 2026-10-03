@@ -4,11 +4,16 @@ import pytest
 from playwright.sync_api import Page, expect
 
 
+def _navigate_to_config(page: Page, live_server_url: str) -> None:
+    page.goto(f"{live_server_url}/gui", wait_until="domcontentloaded")
+    page.get_by_role("tab", name="Settings").click()
+    page.get_by_role("tab", name="Config").click()
+
+
 @pytest.mark.ui
 def test_config_editor_display_and_validate(page: Page, live_server_url: str):
     """Verify configuration text editor loading and syntax validation."""
-    page.goto(f"{live_server_url}/gui", wait_until="domcontentloaded")
-    page.get_by_role("tab", name="Config").click()
+    _navigate_to_config(page, live_server_url)
 
     # 1. Assert header and actions
     expect(page.get_by_text("Configuration Editor")).to_be_visible(timeout=10000)
@@ -26,8 +31,7 @@ def test_config_editor_display_and_validate(page: Page, live_server_url: str):
 @pytest.mark.ui
 def test_config_inspect_json_dialog(page: Page, live_server_url: str):
     """Verify Inspect JSON dialog opening and content inspection."""
-    page.goto(f"{live_server_url}/gui", wait_until="domcontentloaded")
-    page.get_by_role("tab", name="Config").click()
+    _navigate_to_config(page, live_server_url)
 
     # 1. Click Inspect JSON button
     inspect_btn = page.get_by_role("button", name="Inspect JSON")
@@ -45,8 +49,7 @@ def test_config_inspect_json_dialog(page: Page, live_server_url: str):
 @pytest.mark.ui
 def test_config_history_dialog(page: Page, live_server_url: str):
     """Verify opening and closing the configuration history modal."""
-    page.goto(f"{live_server_url}/gui", wait_until="domcontentloaded")
-    page.get_by_role("tab", name="Config").click()
+    _navigate_to_config(page, live_server_url)
     expect(page.get_by_text("Configuration Editor")).to_be_visible(timeout=10000)
 
     # 1. Open Snapshots dialog
@@ -67,8 +70,7 @@ def test_config_history_dialog(page: Page, live_server_url: str):
 @pytest.mark.ui
 def test_config_hot_reload_shows_refresh_warning(page: Page, live_server_url: str):
     """Verify hot-reload triggers warning banner with Refresh Page action."""
-    page.goto(f"{live_server_url}/gui", wait_until="domcontentloaded")
-    page.get_by_role("tab", name="Config").click()
+    _navigate_to_config(page, live_server_url)
     expect(page.get_by_text("Configuration Editor")).to_be_visible(timeout=10000)
 
     # 1. Trigger hot-reload from toolbar
@@ -88,8 +90,7 @@ def test_config_hot_reload_shows_refresh_warning(page: Page, live_server_url: st
 @pytest.mark.ui
 def test_config_test_config_button(page: Page, live_server_url: str):
     """Verify Test Config button in Configuration Editor is visible and clickable."""
-    page.goto(f"{live_server_url}/gui", wait_until="domcontentloaded")
-    page.get_by_role("tab", name="Config").click()
+    _navigate_to_config(page, live_server_url)
     expect(page.get_by_text("Configuration Editor")).to_be_visible(timeout=10000)
 
     test_cfg_btn = page.get_by_role("button", name="Test Config")
@@ -106,8 +107,7 @@ def test_config_test_config_button(page: Page, live_server_url: str):
 @pytest.mark.ui
 def test_config_history_test_backup(page: Page, live_server_url: str):
     """Verify testing a backup snapshot from the history dialog."""
-    page.goto(f"{live_server_url}/gui", wait_until="domcontentloaded")
-    page.get_by_role("tab", name="Config").click()
+    _navigate_to_config(page, live_server_url)
     expect(page.get_by_text("Configuration Editor")).to_be_visible(timeout=10000)
 
     # Open history dialog
@@ -148,8 +148,7 @@ def test_config_history_test_backup(page: Page, live_server_url: str):
 @pytest.mark.ui
 def test_config_visual_editor_mode_and_edit(page: Page, live_server_url: str):
     """Verify switching to Visual Editor, modifying a select dropdown, and sync to Raw INI."""
-    page.goto(f"{live_server_url}/gui", wait_until="domcontentloaded")
-    page.get_by_role("tab", name="Config").click()
+    _navigate_to_config(page, live_server_url)
     expect(page.get_by_text("Configuration Editor")).to_be_visible(timeout=10000)
 
     # 1. Switch to Visual Editor
@@ -183,8 +182,7 @@ def test_config_visual_editor_mode_and_edit(page: Page, live_server_url: str):
 @pytest.mark.ui
 def test_config_syntax_error_decorations(page: Page, live_server_url: str):
     """Verify syntax error in CodeMirror highlights error line and displays error badge widget."""
-    page.goto(f"{live_server_url}/gui", wait_until="domcontentloaded")
-    page.get_by_role("tab", name="Config").click()
+    _navigate_to_config(page, live_server_url)
     expect(page.get_by_text("Configuration Editor")).to_be_visible(timeout=10000)
 
     # Focus CodeMirror editor and enter invalid INI syntax

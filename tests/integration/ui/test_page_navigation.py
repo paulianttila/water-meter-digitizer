@@ -17,26 +17,18 @@ def test_app_shell_header_and_tabs_navigation(page: Page, live_server_url: str):
     expect(page.get_by_text("Interactive Web UI & Setup Wizard")).to_be_visible()
     expect(page.locator("#gui-status-badge")).to_be_visible()
 
-    # 3. Check tabs exist in sidebar
-    meter_tab = page.get_by_role("tab", name="Meter")
-    services_tab = page.get_by_role("tab", name="Services")
-    setup_tab = page.get_by_role("tab", name="Setup")
-    config_tab = page.get_by_role("tab", name="Config")
-    baselines_tab = page.get_by_role("tab", name="Baselines")
-    api_tab = page.get_by_role("tab", name="API Console")
-    help_tab = page.get_by_role("tab", name="Help")
-    about_tab = page.get_by_role("tab", name="About")
+    # 3. Check 4 main pillar tabs exist in sidebar
+    dashboard_tab = page.get_by_role("tab", name="Dashboard")
+    settings_tab = page.get_by_role("tab", name="Settings")
+    studio_tab = page.get_by_role("tab", name="Studio")
+    system_tab = page.get_by_role("tab", name="System")
 
-    expect(meter_tab).to_be_visible()
-    expect(services_tab).to_be_visible()
-    expect(setup_tab).to_be_visible()
-    expect(config_tab).to_be_visible()
-    expect(baselines_tab).to_be_visible()
-    expect(api_tab).to_be_visible()
-    expect(help_tab).to_be_visible()
-    expect(about_tab).to_be_visible()
+    expect(dashboard_tab).to_be_visible()
+    expect(settings_tab).to_be_visible()
+    expect(studio_tab).to_be_visible()
+    expect(system_tab).to_be_visible()
 
-    # 4. Test clicking status badge to navigate to Services tab
+    # 4. Test clicking status badge to navigate to System -> Services
     page.locator("#gui-status-badge").click()
     expect(page.get_by_text("Services & System Diagnostics")).to_be_visible(
         timeout=5000
@@ -45,33 +37,43 @@ def test_app_shell_header_and_tabs_navigation(page: Page, live_server_url: str):
     expect(page.get_by_text("Leak & Zero-Flow Monitor")).to_be_visible(timeout=5000)
     expect(page.get_by_text("Services & Integrations")).to_be_visible(timeout=5000)
 
-    # 5. Navigate to Baselines tab
-    baselines_tab.click()
+    # 5. Navigate to Settings Pillar & Baselines subtab
+    settings_tab.click()
+    baselines_subtab = page.get_by_role("tab", name="Baselines")
+    expect(baselines_subtab).to_be_visible(timeout=5000)
+    baselines_subtab.click()
     expect(page.get_by_text("Baseline & Previous Values Manager")).to_be_visible(
         timeout=5000
     )
     expect(page.get_by_role("button", name="Save Baseline")).to_be_visible()
 
-    # 6. Navigate to API Console tab
-    api_tab.click()
+    # 6. Switch to Config subtab within Settings
+    config_subtab = page.get_by_role("tab", name="Config")
+    expect(config_subtab).to_be_visible()
+    config_subtab.click()
+    expect(page.get_by_text("Configuration Editor")).to_be_visible(timeout=5000)
+
+    # 7. Navigate to Studio Pillar
+    studio_tab.click()
     expect(page.get_by_text("REST API Console & Studio")).to_be_visible(timeout=5000)
     expect(page.get_by_role("button", name="Execute")).to_be_visible()
 
-    # 7. Navigate to About tab
-    about_tab.click()
+    # 8. Navigate to System Pillar & About subtab
+    system_tab.click()
+    about_subtab = page.get_by_role("tab", name="About")
+    expect(about_subtab).to_be_visible(timeout=5000)
+    about_subtab.click()
     expect(page.get_by_text("About Water Meter Digitizer")).to_be_visible(timeout=5000)
     expect(page.get_by_text("APPLICATION VERSION")).to_be_visible()
 
-    # 8. Navigate to Help tab
-    help_tab.click()
+    # 9. Navigate to Help subtab within System
+    help_subtab = page.get_by_role("tab", name="Help")
+    expect(help_subtab).to_be_visible()
+    help_subtab.click()
     expect(page.get_by_text("Help & Documentation")).to_be_visible(timeout=5000)
 
-    # 9. Navigate to Config tab
-    config_tab.click()
-    expect(page.get_by_text("Configuration Editor")).to_be_visible(timeout=5000)
-
-    # 10. Navigate back to Meter tab
-    meter_tab.click()
+    # 10. Navigate back to Dashboard Pillar
+    dashboard_tab.click()
     expect(page.get_by_text("Meter Dashboard")).to_be_visible(timeout=5000)
 
 
@@ -83,7 +85,8 @@ def test_help_page_card_expansion_and_scrollability(page: Page, live_server_url:
     page.set_viewport_size({"width": 1024, "height": 650})
     page.goto(f"{live_server_url}/gui", wait_until="domcontentloaded")
 
-    # Navigate to Help tab
+    # Navigate to System pillar -> Help subtab
+    page.get_by_role("tab", name="System").click()
     page.get_by_role("tab", name="Help").click()
     expect(page.get_by_text("Help & Documentation")).to_be_visible(timeout=5000)
 
@@ -146,9 +149,9 @@ def test_api_console_page_layout_left_aligned_tabs_and_execute(
     page.set_viewport_size({"width": 1024, "height": 520})
     page.goto(f"{live_server_url}/gui", wait_until="domcontentloaded")
 
-    # 1. Navigate to API Console tab
-    api_tab = page.get_by_role("tab", name="API Console")
-    api_tab.click()
+    # 1. Navigate to Studio pillar
+    studio_tab = page.get_by_role("tab", name="Studio")
+    studio_tab.click()
     expect(page.get_by_text("REST API Console & Studio")).to_be_visible(timeout=5000)
 
     # 2. Verify subtab buttons are present and left-aligned

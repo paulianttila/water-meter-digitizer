@@ -60,6 +60,10 @@ body, body.body--dark {
     border-radius: var(--radius-md) !important;
 }
 
+.q-tab {
+    text-transform: none !important;
+}
+
 .q-tab--active {
     color: #38bdf8 !important;
 }
@@ -125,17 +129,29 @@ body, body.body--dark {
 }
 
 .sidebar-tabs .q-tab {
-    padding: 8px 4px !important;
-    min-height: 48px !important;
-    transition: all 0.15s ease-in-out;
+    padding: 10px 4px !important;
+    min-height: 52px !important;
+    margin: 0 !important;
+    border-radius: 0 !important;
+    transition: all 0.2s ease-in-out;
+}
+
+.sidebar-tabs .q-tab:hover {
+    background: rgba(255, 255, 255, 0.04) !important;
+}
+
+.sidebar-tabs .q-tab--active {
+    background: transparent !important;
+    color: #38bdf8 !important;
 }
 
 .sidebar-tabs .q-tab__icon {
-    font-size: 1.5rem !important;
+    font-size: 1.6rem !important;
 }
 
 .sidebar-tabs .q-tab__label {
-    font-size: 0.7rem !important;
+    font-size: 0.75rem !important;
+    font-weight: 600 !important;
     letter-spacing: -0.01em;
     line-height: 1.1;
     white-space: nowrap;

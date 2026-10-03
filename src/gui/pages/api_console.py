@@ -19,6 +19,7 @@ from gui.api_console.registry import (
 from gui.api_console.rest_console_panel import RestConsolePanel
 from gui.components import render_page_header
 from gui.pages.base import BasePage
+from gui.theme import TABS_BAR_HORIZONTAL, TABS_PROPS_HORIZONTAL
 
 if TYPE_CHECKING:
     from callbacks import Callbacks
@@ -689,21 +690,12 @@ class ApiConsolePage(BasePage):
             # Left-aligned navigation sub-tabs
             with (
                 ui.tabs()
-                .props("align=left no-caps")
-                .classes(
-                    "w-full bg-slate-900/90 border border-white/10 rounded-xl p-1 shrink-0 min-w-0"
-                ) as tabs,
-                ui.row().classes("w-full justify-start gap-2"),
+                .props(TABS_PROPS_HORIZONTAL)
+                .classes(TABS_BAR_HORIZONTAL) as tabs
             ):
-                tab_rest = ui.tab("REST Endpoints", icon="terminal").classes(
-                    "font-semibold text-sm"
-                )
-                tab_mock = ui.tab("Mock Camera Studio", icon="videocam").classes(
-                    "font-semibold text-sm"
-                )
-                tab_swagger = ui.tab("Swagger UI", icon="auto_stories").classes(
-                    "font-semibold text-sm"
-                )
+                tab_rest = ui.tab("REST Endpoints", icon="terminal")
+                tab_mock = ui.tab("Mock Camera Studio", icon="videocam")
+                tab_swagger = ui.tab("Swagger UI", icon="auto_stories")
 
             with (
                 ui.tab_panels(tabs, value=tab_rest)

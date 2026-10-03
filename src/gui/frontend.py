@@ -21,6 +21,17 @@ from gui.pages import (
     ServicesPage,
     SetupPage,
 )
+from gui.theme import (
+    NAV_PILLAR_PANEL,
+    NAV_PILLAR_PANEL_FLUSH,
+    NAV_PILLAR_PANEL_SCROLL,
+    NAV_PILLAR_PANEL_SCROLL_FLUSH,
+    NAV_SUBTAB_PANELS,
+    TABS_BAR_HORIZONTAL,
+    TABS_BAR_VERTICAL,
+    TABS_PROPS_HORIZONTAL,
+    TABS_PROPS_VERTICAL,
+)
 from version import __version__ as VERSION
 
 logger = logging.getLogger(__name__)
@@ -70,7 +81,7 @@ def init(fastapi_app: FastAPI, callbacks: Callbacks) -> None:
         title="Water Meter Digitizer",
         favicon=f"/static/favicon.svg?v={VERSION}",
     )
-    async def show() -> None:
+    async def show(tab: str | None = None) -> None:
         ui.dark_mode(True)
         ui.add_head_html(GLOBAL_CSS)
         meter_page = MeterPage(callbacks=_callbacks)
@@ -103,11 +114,110 @@ def init(fastapi_app: FastAPI, callbacks: Callbacks) -> None:
                 ui.context.client.on_disconnect(_cleanup_client)
 
         tabs: ui.tabs | None = None
-        services: ui.tab | None = None
+        settings_subtabs: ui.tabs | None = None
+        system_subtabs: ui.tabs | None = None
 
-        def navigate_to_services() -> None:
-            if tabs is not None and services is not None:
-                tabs.set_value(services)
+        tab_dashboard: ui.tab | None = None
+        tab_settings: ui.tab | None = None
+        tab_studio: ui.tab | None = None
+        tab_system: ui.tab | None = None
+
+        subtab_wizard: ui.tab | None = None
+        subtab_config: ui.tab | None = None
+        subtab_baselines: ui.tab | None = None
+
+        subtab_services: ui.tab | None = None
+        subtab_help: ui.tab | None = None
+        subtab_about: ui.tab | None = None
+
+        loaded_views: set[str] = set()
+        view_mounts: dict[str, tuple[Any, Any]] = {}
+
+        async def load_view(view_id: str) -> None:
+            view_key = view_id.lower().replace(" ", "_")
+            alias_map = {
+                "meter": "dashboard",
+                "wizard": "setup",
+                "editor": "config",
+                "previous_values": "baselines",
+                "api_console": "studio",
+                "mock_camera": "studio",
+                "docs": "help",
+            }
+            view_key = alias_map.get(view_key, view_key)
+
+            if view_key in loaded_views:
+                return
+            loaded_views.add(view_key)
+
+            if view_key in view_mounts:
+                container, show_fn = view_mounts[view_key]
+                with container:
+                    res = show_fn()
+                    if asyncio.iscoroutine(res):
+                        await res
+
+        async def navigate_to(target: str, subtab_name: str | None = None) -> None:
+            if tabs is None:
+                return
+            target_key = target.lower().replace(" ", "_")
+
+            if "meter" in target_key or "dash" in target_key:
+                tabs.set_value(tab_dashboard)
+                await load_view("dashboard")
+            elif any(
+                k in target_key
+                for k in (
+                    "setting",
+                    "setup",
+                    "config",
+                    "baseline",
+                    "wizard",
+                    "editor",
+                )
+            ):
+                tabs.set_value(tab_settings)
+                sub_target = (subtab_name or target_key).lower()
+                if "config" in sub_target or "editor" in sub_target:
+                    if settings_subtabs and subtab_config:
+                        settings_subtabs.set_value(subtab_config)
+                    await load_view("config")
+                elif "baseline" in sub_target or "previous" in sub_target:
+                    if settings_subtabs and subtab_baselines:
+                        settings_subtabs.set_value(subtab_baselines)
+                    await load_view("baselines")
+                else:
+                    if settings_subtabs and subtab_wizard:
+                        settings_subtabs.set_value(subtab_wizard)
+                    await load_view("setup")
+            elif any(k in target_key for k in ("studio", "api", "mock", "rest")):
+                tabs.set_value(tab_studio)
+                await load_view("studio")
+            elif any(
+                k in target_key
+                for k in (
+                    "system",
+                    "service",
+                    "help",
+                    "about",
+                    "doc",
+                    "info",
+                )
+            ):
+                tabs.set_value(tab_system)
+                sub_target = (subtab_name or target_key).lower()
+                if "help" in sub_target or "doc" in sub_target:
+                    if system_subtabs and subtab_help:
+                        system_subtabs.set_value(subtab_help)
+                    await load_view("help")
+                elif "about" in sub_target or "info" in sub_target:
+                    if system_subtabs and subtab_about:
+                        system_subtabs.set_value(subtab_about)
+                    await load_view("about")
+                else:
+                    if system_subtabs and subtab_services:
+                        system_subtabs.set_value(subtab_services)
+                    await load_view("services")
 
         # Top Navigation Bar
         with ui.row().classes(
@@ -135,68 +245,58 @@ def init(fastapi_app: FastAPI, callbacks: Callbacks) -> None:
                     .classes("gui-badge-status")
                     .props('id="gui-status-badge"')
                     .tooltip("Click to view Services & Diagnostics")
-                    .on("click", navigate_to_services)
+                    .on(
+                        "click",
+                        lambda: asyncio.create_task(navigate_to("services")),
+                    )
                 ):
                     ui.element("span").classes("status-pulse")
                     ui.label("Online").props('id="gui-status-text"').classes(
                         "text-xs font-semibold"
                     )
 
-                with ui.element("div").classes(
-                    "px-2.5 py-1 rounded-full bg-white/5 border border-white/10 "
-                    "text-gray-400 text-xs font-semibold"
+                with (
+                    ui.element("div")
+                    .classes(
+                        "px-2.5 py-1 rounded-full bg-white/5 border border-white/10 "
+                        "text-gray-400 text-xs font-semibold hover:border-cyan-500/40 "
+                        "hover:text-cyan-300 transition-all cursor-pointer"
+                    )
+                    .tooltip("Click to view About & System info")
+                    .on("click", lambda: asyncio.create_task(navigate_to("about")))
                 ):
                     ui.label(f"v{VERSION}")
 
         client_config_version = _callbacks.get_config_version()
 
-        with ui.splitter(value=7, limits=(6, 8)).classes(
+        with ui.splitter(value=8, limits=(6, 12)).classes(
             "w-full flex-1 min-h-0 sidebar-splitter"
         ) as splitter:
             with (
                 splitter.before,
-                ui.tabs().props("vertical").classes("w-full sidebar-tabs") as tabs,
+                ui.tabs().props(TABS_PROPS_VERTICAL).classes(TABS_BAR_VERTICAL) as tabs,
             ):
-                main = (
-                    ui.tab("Meter", icon="speed")
-                    .props('aria-label="Meter"')
-                    .tooltip("Meter")
+                tab_dashboard = (
+                    ui.tab("dashboard", label="Dashboard", icon="speed")
+                    .props('aria-label="Dashboard"')
+                    .tooltip("Dashboard & Live Readouts")
                 )
-                services = (
-                    ui.tab("Services", icon="hub")
-                    .props('aria-label="Services"')
-                    .tooltip("Services")
+                tab_settings = (
+                    ui.tab("settings", label="Settings", icon="tune")
+                    .props('aria-label="Settings"')
+                    .tooltip("Calibration & Settings")
                 )
-                setup = (
-                    ui.tab("Setup", icon="settings")
-                    .props('aria-label="Setup"')
-                    .tooltip("Setup")
+                tab_studio = (
+                    ui.tab("studio", label="Studio", icon="science")
+                    .props('aria-label="Studio"')
+                    .tooltip("Studio & Simulation")
                 )
-                config = (
-                    ui.tab("Config", icon="build")
-                    .props('aria-label="Config"')
-                    .tooltip("Config")
+                tab_system = (
+                    ui.tab("system", label="System", icon="dns")
+                    .props('aria-label="System"')
+                    .tooltip("System Diagnostics & Services")
                 )
-                baselines = (
-                    ui.tab("Baselines", icon="tune")
-                    .props('aria-label="Baselines"')
-                    .tooltip("Baselines")
-                )
-                api_console = (
-                    ui.tab("API Console", icon="terminal")
-                    .props('aria-label="API Console"')
-                    .tooltip("API Console")
-                )
-                help_tab = (
-                    ui.tab("Help", icon="help_outline")
-                    .props('aria-label="Help"')
-                    .tooltip("Help")
-                )
-                about = (
-                    ui.tab("About", icon="info")
-                    .props('aria-label="About"')
-                    .tooltip("About")
-                )
+
             with (
                 splitter.after,
                 ui.column().classes(
@@ -245,107 +345,212 @@ def init(fastapi_app: FastAPI, callbacks: Callbacks) -> None:
 
                 ui.timer(0.5, check_config_reload)
 
-                tab_defs = [
-                    (
-                        "meter",
-                        main,
-                        meter_page.show,
-                        "w-full h-full p-0 overflow-y-auto",
-                    ),
-                    (
-                        "services",
-                        services,
-                        services_page.show,
-                        "w-full h-full p-0 overflow-y-auto",
-                    ),
-                    (
-                        "setup",
-                        setup,
-                        setup_page.show,
-                        "w-full h-full p-0 overflow-hidden flex flex-col min-h-0",
-                    ),
-                    (
-                        "config",
-                        config,
-                        config_page.show,
-                        "w-full h-full p-0 overflow-hidden flex flex-col min-h-0",
-                    ),
-                    (
-                        "baselines",
-                        baselines,
-                        previous_values_page.show,
-                        "w-full h-full p-0 overflow-y-auto",
-                    ),
-                    (
-                        "api_console",
-                        api_console,
-                        api_console_page.show,
-                        "w-full h-full p-0 overflow-hidden flex flex-col min-h-0",
-                    ),
-                    (
-                        "help",
-                        help_tab,
-                        help_page.show,
-                        "w-full h-full p-0 overflow-hidden flex flex-col min-h-0",
-                    ),
-                    (
-                        "about",
-                        about,
-                        about_page.show,
-                        "w-full h-full p-0 overflow-y-auto",
-                    ),
-                ]
-
-                panels: dict[str, tuple[ui.tab_panel, Any]] = {}
-                with ui.tab_panels(tabs, value=main).classes(
-                    "w-full flex-1 p-4 overflow-hidden min-h-0"
+                with ui.tab_panels(tabs, value=tab_dashboard).classes(
+                    "w-full flex-1 p-0 overflow-hidden min-h-0"
                 ):
-                    for tab_id, tab_obj, show_fn, css_cls in tab_defs:
-                        panel = ui.tab_panel(tab_obj).classes(css_cls)
-                        panels[tab_id] = (panel, show_fn)
+                    # 1. Dashboard Pillar
+                    with ui.tab_panel(tab_dashboard).classes(
+                        NAV_PILLAR_PANEL_SCROLL_FLUSH
+                    ):
+                        panel_dashboard = ui.element("div").classes(
+                            NAV_PILLAR_PANEL_SCROLL
+                        )
 
-                loaded_tabs: set[str] = set()
+                    # 2. Calibration & Settings Pillar
+                    with ui.tab_panel(tab_settings).classes(NAV_PILLAR_PANEL):
+                        with (
+                            ui.tabs()
+                            .props(TABS_PROPS_HORIZONTAL)
+                            .classes(TABS_BAR_HORIZONTAL) as settings_subtabs
+                        ):
+                            subtab_wizard = (
+                                ui.tab(
+                                    "setup",
+                                    label="Setup Wizard",
+                                    icon="auto_fix_high",
+                                )
+                                .props('aria-label="Setup"')
+                                .tooltip("10-Step Visual Calibration Wizard")
+                            )
+                            subtab_config = (
+                                ui.tab(
+                                    "config",
+                                    label="Config Editor",
+                                    icon="tune",
+                                )
+                                .props('aria-label="Config"')
+                                .tooltip("Visual Form & Raw INI Editor")
+                            )
+                            subtab_baselines = (
+                                ui.tab(
+                                    "baselines",
+                                    label="Baselines",
+                                    icon="history_edu",
+                                )
+                                .props('aria-label="Baselines"')
+                                .tooltip("Baseline & Previous Values Manager")
+                            )
 
-                async def load_tab(tab_ref: Any) -> None:
-                    target_id = None
-                    if isinstance(tab_ref, str):
-                        target_id = tab_ref.lower().replace(" ", "_")
-                    else:
-                        for tid, tobj, _, _ in tab_defs:
-                            if tab_ref is tobj:
-                                target_id = tid
-                                break
-                    if not target_id:
-                        target_id = "meter"
+                        with ui.tab_panels(
+                            settings_subtabs, value=subtab_wizard
+                        ).classes(NAV_SUBTAB_PANELS):
+                            with ui.tab_panel(subtab_wizard).classes(
+                                NAV_PILLAR_PANEL_FLUSH
+                            ):
+                                panel_wizard = ui.element("div").classes(
+                                    "w-full h-full p-0 overflow-hidden flex flex-col min-h-0"
+                                )
+                            with ui.tab_panel(subtab_config).classes(
+                                NAV_PILLAR_PANEL_FLUSH
+                            ):
+                                panel_config = ui.element("div").classes(
+                                    "w-full h-full p-0 overflow-hidden flex flex-col min-h-0"
+                                )
+                            with ui.tab_panel(subtab_baselines).classes(
+                                NAV_PILLAR_PANEL_SCROLL_FLUSH
+                            ):
+                                panel_baselines = ui.element("div").classes(
+                                    NAV_PILLAR_PANEL_SCROLL_FLUSH
+                                )
 
-                    if target_id in loaded_tabs:
-                        return
-                    loaded_tabs.add(target_id)
+                    # 3. Studio & Simulation Pillar
+                    with ui.tab_panel(tab_studio).classes(NAV_PILLAR_PANEL_FLUSH):
+                        panel_studio = ui.element("div").classes(
+                            "w-full h-full p-0 overflow-hidden flex flex-col min-h-0"
+                        )
 
-                    if target_id in panels:
-                        panel, show_fn = panels[target_id]
-                        with panel:
-                            res = show_fn()
-                            if asyncio.iscoroutine(res):
-                                await res
+                    # 4. System & Health Pillar
+                    with ui.tab_panel(tab_system).classes(NAV_PILLAR_PANEL):
+                        with (
+                            ui.tabs()
+                            .props(TABS_PROPS_HORIZONTAL)
+                            .classes(TABS_BAR_HORIZONTAL) as system_subtabs
+                        ):
+                            subtab_services = (
+                                ui.tab(
+                                    "services",
+                                    label="Services & Health",
+                                    icon="hub",
+                                )
+                                .props('aria-label="Services"')
+                                .tooltip("Services, Health & Diagnostics")
+                            )
+                            subtab_help = (
+                                ui.tab(
+                                    "help",
+                                    label="Help & Documentation",
+                                    icon="help_outline",
+                                )
+                                .props('aria-label="Help"')
+                                .tooltip("Wiki Guides & Keyboard Shortcuts")
+                            )
+                            subtab_about = (
+                                ui.tab(
+                                    "about",
+                                    label="About",
+                                    icon="info",
+                                )
+                                .props('aria-label="About"')
+                                .tooltip("Version, Build Info & License")
+                            )
 
-                # Initial render: load default active tab (Meter)
-                await load_tab(main)
+                        with ui.tab_panels(
+                            system_subtabs, value=subtab_services
+                        ).classes(NAV_SUBTAB_PANELS):
+                            with ui.tab_panel(subtab_services).classes(
+                                NAV_PILLAR_PANEL_SCROLL_FLUSH
+                            ):
+                                panel_services = ui.element("div").classes(
+                                    NAV_PILLAR_PANEL_SCROLL_FLUSH
+                                )
+                            with ui.tab_panel(subtab_help).classes(
+                                NAV_PILLAR_PANEL_FLUSH
+                            ):
+                                panel_help = ui.element("div").classes(
+                                    "w-full h-full p-0 overflow-hidden flex flex-col min-h-0"
+                                )
+                            with ui.tab_panel(subtab_about).classes(
+                                NAV_PILLAR_PANEL_SCROLL_FLUSH
+                            ):
+                                panel_about = ui.element("div").classes(
+                                    NAV_PILLAR_PANEL_SCROLL_FLUSH
+                                )
+
+                view_mounts = {
+                    "dashboard": (panel_dashboard, meter_page.show),
+                    "setup": (panel_wizard, setup_page.show),
+                    "config": (panel_config, config_page.show),
+                    "baselines": (panel_baselines, previous_values_page.show),
+                    "studio": (panel_studio, api_console_page.show),
+                    "services": (panel_services, services_page.show),
+                    "help": (panel_help, help_page.show),
+                    "about": (panel_about, about_page.show),
+                }
 
                 async def on_tab_change(e: Any) -> None:
                     val = getattr(e, "value", e)
-                    await load_tab(val)
+                    if isinstance(val, str):
+                        await navigate_to(val)
+                    elif val in (tab_dashboard, "dashboard"):
+                        await load_view("dashboard")
+                    elif val in (tab_settings, "settings"):
+                        cur = getattr(settings_subtabs, "value", None)
+                        if cur in (subtab_config, "config"):
+                            await load_view("config")
+                        elif cur in (subtab_baselines, "baselines"):
+                            await load_view("baselines")
+                        else:
+                            await load_view("setup")
+                    elif val in (tab_studio, "studio"):
+                        await load_view("studio")
+                    elif val in (tab_system, "system"):
+                        cur = getattr(system_subtabs, "value", None)
+                        if cur in (subtab_help, "help"):
+                            await load_view("help")
+                        elif cur in (subtab_about, "about"):
+                            await load_view("about")
+                        else:
+                            await load_view("services")
+                    elif val in (subtab_wizard, "setup"):
+                        await load_view("setup")
+                    elif val in (subtab_config, "config"):
+                        await load_view("config")
+                    elif val in (subtab_baselines, "baselines"):
+                        await load_view("baselines")
+                    elif val in (subtab_services, "services"):
+                        await load_view("services")
+                    elif val in (subtab_help, "help"):
+                        await load_view("help")
+                    elif val in (subtab_about, "about"):
+                        await load_view("about")
 
                 tabs.on_value_change(on_tab_change)
+                settings_subtabs.on_value_change(on_tab_change)
+                system_subtabs.on_value_change(on_tab_change)
+
+                if tab:
+                    await navigate_to(tab)
+                else:
+                    await load_view("dashboard")
 
                 if _callbacks.is_config_missing():
                     from gui.dialogs import show_config_onboarding_dialog
 
+                    class TabCoordinator:
+                        def set_value(self, val: Any) -> None:
+                            if tabs and tab_settings:
+                                tabs.set_value(tab_settings)
+                            if settings_subtabs and subtab_wizard:
+                                settings_subtabs.set_value(subtab_wizard)
+
+                    async def _onboarding_load_tab(tab_ref: Any) -> None:
+                        await navigate_to("setup")
+
                     show_config_onboarding_dialog(
                         _callbacks,
-                        tabs=tabs,
-                        setup_tab=setup,
-                        load_tab_fn=load_tab,
+                        tabs=TabCoordinator(),
+                        setup_tab=subtab_wizard,
+                        load_tab_fn=_onboarding_load_tab,
                     )
 
     # Nothing special is stored in the cookie, so it's fine to use random secret

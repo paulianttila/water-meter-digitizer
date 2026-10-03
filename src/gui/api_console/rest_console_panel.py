@@ -23,6 +23,8 @@ from gui.theme import (
     CARD_PANEL,
     ROW_ACTIONS,
     ROW_HEADER,
+    TABS_BAR_HORIZONTAL,
+    TABS_PROPS_HORIZONTAL,
 )
 
 if TYPE_CHECKING:
@@ -407,23 +409,14 @@ class RestConsolePanel(BaseComponent):
 
             # Multi-View Response Inspector Sub-Tabs
             with (
-                ui.tabs().classes(
-                    "w-full bg-slate-950/80 border border-white/5 rounded-lg p-0.5 shrink-0"
-                ) as self.resp_tabs,
-                ui.row().classes("w-full gap-1"),
+                ui.tabs()
+                .props(TABS_PROPS_HORIZONTAL)
+                .classes(TABS_BAR_HORIZONTAL) as self.resp_tabs
             ):
-                self.resp_tab_body = ui.tab(
-                    "Response Body", icon="data_object"
-                ).classes("text-xs")
-                self.resp_tab_headers = ui.tab(
-                    "Response Headers", icon="view_list"
-                ).classes("text-xs")
-                self.resp_tab_curl = ui.tab("cURL Command", icon="terminal").classes(
-                    "text-xs"
-                )
-                self.resp_tab_history = ui.tab(
-                    "Request History", icon="history"
-                ).classes("text-xs")
+                self.resp_tab_body = ui.tab("Response Body", icon="data_object")
+                self.resp_tab_headers = ui.tab("Response Headers", icon="view_list")
+                self.resp_tab_curl = ui.tab("cURL Command", icon="terminal")
+                self.resp_tab_history = ui.tab("Request History", icon="history")
 
             # Response Sub-Panels
             with ui.tab_panels(self.resp_tabs, value=self.resp_tab_body).classes(

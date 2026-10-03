@@ -10,6 +10,7 @@ def test_setup_wizard_step_inspection_with_mock_camera(
 ):
     """Verify setup wizard interaction, step traversal, and image display with mock camera."""
     page.goto(f"{live_server_url}/gui", wait_until="domcontentloaded")
+    page.get_by_role("tab", name="Settings").click()
     page.get_by_role("tab", name="Setup").click()
 
     expect(page.get_by_text("Step 1 of 10: Meter type")).to_be_visible(timeout=10000)

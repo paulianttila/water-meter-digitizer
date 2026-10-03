@@ -39,6 +39,8 @@ from gui.theme import (
     ROW_HEADER,
     ROW_ITEMS_CENTER,
     STAT_VALUE_LARGE,
+    TABS_BAR_HORIZONTAL,
+    TABS_PROPS_HORIZONTAL,
     copy_to_clipboard,
 )
 
@@ -873,9 +875,7 @@ class MeterPage(BasePage):
                 ).tooltip("Open /meter REST API")
 
         with (
-            ui.tabs()
-            .classes("w-full border-b border-white/10")
-            .props("align=left active-color=cyan") as tabs
+            ui.tabs().classes(TABS_BAR_HORIZONTAL).props(TABS_PROPS_HORIZONTAL) as tabs
         ):
             live_readout = ui.tab("Live Readout", icon="speed")
             time_machine = ui.tab("Time Machine", icon="history_toggle_off")

@@ -10,8 +10,8 @@ def test_api_console_and_mock_camera_studio_ui(page: Page, live_server_url: str)
     # 1. Open Web UI
     page.goto(f"{live_server_url}/", wait_until="domcontentloaded")
 
-    # 2. Navigate to API Console tab
-    api_tab = page.get_by_role("tab", name="API Console")
+    # 2. Navigate to Studio pillar tab
+    api_tab = page.get_by_role("tab", name="Studio")
     expect(api_tab).to_be_visible(timeout=10000)
     api_tab.click()
 

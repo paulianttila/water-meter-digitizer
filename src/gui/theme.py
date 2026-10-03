@@ -151,6 +151,26 @@ HEX_ROI_DIGITAL = "#3b82f6"
 HEX_ROI_ANALOG = "#f59e0b"
 
 
+# --- Tab & Navigation Styles (Meter Dashboard Consistent Underline Style) ---
+TABS_BAR_HORIZONTAL = "w-full border-b border-white/10 shrink-0"
+TABS_PROPS_HORIZONTAL = "align=left active-color=cyan no-caps"
+TABS_BAR_VERTICAL = "w-full border-r border-white/10 sidebar-tabs shrink-0"
+TABS_PROPS_VERTICAL = "vertical active-color=cyan no-caps"
+TAB_ITEM = "font-semibold text-xs md:text-sm transition-all duration-150"
+
+NAV_PILLAR_TAB = "font-semibold transition-all duration-200"
+NAV_SUBTAB_BAR = TABS_BAR_HORIZONTAL
+NAV_SUBTAB_ITEM = TAB_ITEM
+NAV_SUBTAB_HEADER_ROW = (
+    "w-full items-center justify-between pb-3 shrink-0 border-b border-white/5"
+)
+NAV_SUBTAB_PANELS = "w-full flex-1 min-h-0 min-w-0 bg-transparent p-0 overflow-hidden flex flex-col pt-3"
+NAV_PILLAR_PANEL = "w-full h-full p-4 overflow-hidden flex flex-col min-h-0"
+NAV_PILLAR_PANEL_FLUSH = "w-full h-full p-0 overflow-hidden flex flex-col min-h-0"
+NAV_PILLAR_PANEL_SCROLL = "w-full h-full p-4 overflow-y-auto"
+NAV_PILLAR_PANEL_SCROLL_FLUSH = "w-full h-full p-0 overflow-y-auto"
+
+
 def copy_to_clipboard(text: str, notify_message: str = "") -> None:
     """Copy text to clipboard using NiceGUI clipboard service."""
     ui.clipboard.write(text)
