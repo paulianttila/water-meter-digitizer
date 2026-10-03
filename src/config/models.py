@@ -1,8 +1,8 @@
 import os
-from typing import Any, Literal
+from typing import Literal
 
 import croniter
-from pydantic import BaseModel, Field, field_validator, model_validator
+from pydantic import BaseModel, Field, field_validator
 
 from data_classes import ImagePosition, RefImage
 from services.leak.models import ValueType
@@ -42,65 +42,29 @@ class Resize(BaseModel):
     h: int = 0
 
 
+ScopeType = Literal["none", "full", "cutouts", "both"]
+
+
 class AutoContrast(BaseModel):
-    scope: str = "none"  # "none", "full", "cutouts", "both"
+    scope: ScopeType = "none"
     cutoff_low: float = 2.0
     cutoff_high: float = 45.0
     ignore: int | None = None
-
-    @model_validator(mode="before")
-    @classmethod
-    def _map_legacy_fields(cls, data: Any) -> Any:
-        if isinstance(data, dict) and "scope" not in data:
-            full = data.pop("full_image", False)
-            cut = data.pop("cut_images", False)
-            if not full and "enabled" in data:
-                full = data.pop("enabled")
-            if not cut and "apply_to_cut_images" in data:
-                cut = data.pop("apply_to_cut_images")
-            if full and cut:
-                data["scope"] = "both"
-            elif full:
-                data["scope"] = "full"
-            elif cut:
-                data["scope"] = "cutouts"
-            else:
-                data["scope"] = "none"
-        return data
-
-    @property
-    def enabled(self) -> bool:
-        return self.scope != "none"
-
-    @enabled.setter
-    def enabled(self, val: bool) -> None:
-        if val:
-            if self.scope == "none":
-                self.scope = "full"
-        else:
-            self.scope = "none"
+    cutoff_cut_low: float | None = None
+    cutoff_cut_high: float | None = None
+    ignore_cut: int | None = None
 
     @property
     def full_image(self) -> bool:
         return self.scope in ("full", "both")
 
-    @full_image.setter
-    def full_image(self, val: bool) -> None:
-        if val:
-            self.scope = "both" if self.cut_images else "full"
-        else:
-            self.scope = "cutouts" if self.cut_images else "none"
-
     @property
     def cut_images(self) -> bool:
         return self.scope in ("cutouts", "both")
 
-    @cut_images.setter
-    def cut_images(self, val: bool) -> None:
-        if val:
-            self.scope = "both" if self.full_image else "cutouts"
-        else:
-            self.scope = "full" if self.full_image else "none"
+    @property
+    def enabled(self) -> bool:
+        return self.scope != "none"
 
     @property
     def apply_to_cut_images(self) -> bool:
@@ -108,70 +72,31 @@ class AutoContrast(BaseModel):
 
     @apply_to_cut_images.setter
     def apply_to_cut_images(self, val: bool) -> None:
-        self.cut_images = val
+        if val:
+            self.scope = "both" if self.full_image else "cutouts"
+        else:
+            self.scope = "full" if self.full_image else "none"
 
 
 class GlareSuppression(BaseModel):
-    scope: str = "none"  # "none", "full", "cutouts", "both"
-    mode: str = "clahe"  # "clahe", "inpaint", "illumination_normalize", "combined"
+    scope: ScopeType = "none"
+    mode: Literal["clahe", "inpaint", "illumination_normalize", "combined"] = "clahe"
     inpaint_threshold: int = 230
     inpaint_radius: int = 3
     clahe_clip_limit: float = 2.0
     clahe_grid_size: int = 8
 
-    @model_validator(mode="before")
-    @classmethod
-    def _map_legacy_fields(cls, data: Any) -> Any:
-        if isinstance(data, dict) and "scope" not in data:
-            full = data.pop("full_image", False)
-            cut = data.pop("cut_images", False)
-            if not full and "enabled" in data:
-                full = data.pop("enabled")
-            if not cut and "apply_to_cut_images" in data:
-                cut = data.pop("apply_to_cut_images")
-            if full and cut:
-                data["scope"] = "both"
-            elif full:
-                data["scope"] = "full"
-            elif cut:
-                data["scope"] = "cutouts"
-            else:
-                data["scope"] = "none"
-        return data
-
     @property
     def full_image(self) -> bool:
         return self.scope in ("full", "both")
-
-    @full_image.setter
-    def full_image(self, val: bool) -> None:
-        if val:
-            self.scope = "both" if self.cut_images else "full"
-        else:
-            self.scope = "cutouts" if self.cut_images else "none"
 
     @property
     def cut_images(self) -> bool:
         return self.scope in ("cutouts", "both")
 
-    @cut_images.setter
-    def cut_images(self, val: bool) -> None:
-        if val:
-            self.scope = "both" if self.full_image else "cutouts"
-        else:
-            self.scope = "full" if self.full_image else "none"
-
     @property
     def enabled(self) -> bool:
         return self.scope != "none"
-
-    @enabled.setter
-    def enabled(self, val: bool) -> None:
-        if val:
-            if self.scope == "none":
-                self.scope = "full"
-        else:
-            self.scope = "none"
 
     @property
     def apply_to_cut_images(self) -> bool:
@@ -179,12 +104,15 @@ class GlareSuppression(BaseModel):
 
     @apply_to_cut_images.setter
     def apply_to_cut_images(self, val: bool) -> None:
-        self.cut_images = val
+        if val:
+            self.scope = "both" if self.full_image else "cutouts"
+        else:
+            self.scope = "full" if self.full_image else "none"
 
 
 class Denoise(BaseModel):
-    scope: str = "none"  # "none", "full", "cutouts", "both"
-    method: str = "bilateral"  # "bilateral", "nlmeans", "median", "median_bilateral"
+    scope: ScopeType = "none"
+    method: Literal["bilateral", "nlmeans", "median", "median_bilateral"] = "bilateral"
     diameter: int = 5
     sigma_color: float = 50.0
     sigma_space: float = 50.0
@@ -192,59 +120,17 @@ class Denoise(BaseModel):
     template_window: int = 7
     search_window: int = 15
 
-    @model_validator(mode="before")
-    @classmethod
-    def _map_legacy_fields(cls, data: Any) -> Any:
-        if isinstance(data, dict) and "scope" not in data:
-            full = data.pop("full_image", False)
-            cut = data.pop("cut_images", False)
-            if not full and "enabled" in data:
-                full = data.pop("enabled")
-            if not cut and "apply_to_cut_images" in data:
-                cut = data.pop("apply_to_cut_images")
-            if full and cut:
-                data["scope"] = "both"
-            elif full:
-                data["scope"] = "full"
-            elif cut:
-                data["scope"] = "cutouts"
-            else:
-                data["scope"] = "none"
-        return data
-
     @property
     def full_image(self) -> bool:
         return self.scope in ("full", "both")
-
-    @full_image.setter
-    def full_image(self, val: bool) -> None:
-        if val:
-            self.scope = "both" if self.cut_images else "full"
-        else:
-            self.scope = "cutouts" if self.cut_images else "none"
 
     @property
     def cut_images(self) -> bool:
         return self.scope in ("cutouts", "both")
 
-    @cut_images.setter
-    def cut_images(self, val: bool) -> None:
-        if val:
-            self.scope = "both" if self.full_image else "cutouts"
-        else:
-            self.scope = "full" if self.full_image else "none"
-
     @property
     def enabled(self) -> bool:
         return self.scope != "none"
-
-    @enabled.setter
-    def enabled(self, val: bool) -> None:
-        if val:
-            if self.scope == "none":
-                self.scope = "full"
-        else:
-            self.scope = "none"
 
     @property
     def apply_to_cut_images(self) -> bool:
@@ -252,15 +138,22 @@ class Denoise(BaseModel):
 
     @apply_to_cut_images.setter
     def apply_to_cut_images(self, val: bool) -> None:
-        self.cut_images = val
+        if val:
+            self.scope = "both" if self.full_image else "cutouts"
+        else:
+            self.scope = "full" if self.full_image else "none"
 
 
 class Sharpness(BaseModel):
-    mode: str = "standard"  # "standard", "unsharp_mask", "auto", "none"
+    mode: Literal["standard", "unsharp_mask", "auto", "none"] = "standard"
     amount: float = 1.5
     radius: float = 1.0
     threshold: int = 3
     apply_to_cutouts: bool = False
+
+    @property
+    def enabled(self) -> bool:
+        return self.mode != "none"
 
 
 class ImageProcessing(BaseModel):
@@ -271,15 +164,6 @@ class ImageProcessing(BaseModel):
     sharpness: float = 1.0
     grayscale: bool = False
     gamma: float = 1.0
-    sharpness_mode: str = "standard"  # "standard", "unsharp_mask", "auto"
-    unsharp_radius: float = 1.0
-    unsharp_amount: float = 1.5
-    unsharp_threshold: int = 3
-    auto_sharpen_cut_images: bool = False
-    autocontrast: AutoContrast = Field(default_factory=AutoContrast)
-    autocontrast_cut_images: AutoContrast = Field(default_factory=AutoContrast)
-    glare_suppression: GlareSuppression = Field(default_factory=GlareSuppression)
-    denoise: Denoise = Field(default_factory=Denoise)
 
 
 class History(BaseModel):

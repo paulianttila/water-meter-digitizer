@@ -107,20 +107,19 @@ def test_cut_image_with_denoise(noisy_image: Image.Image):
     assert not np.array_equal(np.array(cut_raw), np.array(cut_denoised))
 
 
-def test_denoise_config_serialization_under_image_processing():
-    """Verify all Denoise* parameters serialize directly under [ImageProcessing]."""
+def test_denoise_config_serialization():
+    """Verify all Denoise parameters serialize directly under top-level [Denoise]."""
     config = Config().load_from_file("config/config.ini")
 
     # Modify denoise settings
-    config.image_processing.denoise.full_image = True
-    config.image_processing.denoise.method = "nlmeans"
-    config.image_processing.denoise.diameter = 7
-    config.image_processing.denoise.sigma_color = 65.0
-    config.image_processing.denoise.sigma_space = 70.0
-    config.image_processing.denoise.strength = 4.5
-    config.image_processing.denoise.template_window = 5
-    config.image_processing.denoise.search_window = 19
-    config.image_processing.denoise.cut_images = True
+    config.denoise.scope = "both"
+    config.denoise.method = "nlmeans"
+    config.denoise.diameter = 7
+    config.denoise.sigma_color = 65.0
+    config.denoise.sigma_space = 70.0
+    config.denoise.strength = 4.5
+    config.denoise.template_window = 5
+    config.denoise.search_window = 19
 
     # Serialize to INI string
     stream = io.StringIO()
@@ -146,14 +145,14 @@ def test_denoise_config_serialization_under_image_processing():
     # Deserialize back from INI string
     reloaded_config = Config()
     load_config_from_parser(reloaded_config, parser)
-    assert reloaded_config.image_processing.denoise.full_image is True
-    assert reloaded_config.image_processing.denoise.cut_images is True
-    assert reloaded_config.image_processing.denoise.enabled is True
-    assert reloaded_config.image_processing.denoise.method == "nlmeans"
-    assert reloaded_config.image_processing.denoise.diameter == 7
-    assert reloaded_config.image_processing.denoise.sigma_color == 65.0
-    assert reloaded_config.image_processing.denoise.sigma_space == 70.0
-    assert reloaded_config.image_processing.denoise.strength == 4.5
-    assert reloaded_config.image_processing.denoise.template_window == 5
-    assert reloaded_config.image_processing.denoise.search_window == 19
-    assert reloaded_config.image_processing.denoise.apply_to_cut_images is True
+    assert reloaded_config.denoise.scope == "both"
+    assert reloaded_config.denoise.full_image is True
+    assert reloaded_config.denoise.cut_images is True
+    assert reloaded_config.denoise.enabled is True
+    assert reloaded_config.denoise.method == "nlmeans"
+    assert reloaded_config.denoise.diameter == 7
+    assert reloaded_config.denoise.sigma_color == 65.0
+    assert reloaded_config.denoise.sigma_space == 70.0
+    assert reloaded_config.denoise.strength == 4.5
+    assert reloaded_config.denoise.template_window == 5
+    assert reloaded_config.denoise.search_window == 19

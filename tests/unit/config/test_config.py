@@ -68,35 +68,31 @@ def test_config():
     assert config.image_processing.sharpness == 1.0
     assert config.image_processing.color == 1.0
     assert config.image_processing.grayscale is False
-    assert config.image_processing.sharpness_mode == "standard"
-    assert config.image_processing.unsharp_radius == 1.0
-    assert config.image_processing.unsharp_amount == 1.5
-    assert config.image_processing.unsharp_threshold == 3
-    assert config.image_processing.auto_sharpen_cut_images is False
-    assert config.image_processing.autocontrast.enabled is False
-    assert config.image_processing.autocontrast.cutoff_low == 2.0
-    assert config.image_processing.autocontrast.cutoff_high == 45
-    assert config.image_processing.autocontrast.ignore is None
-    assert config.image_processing.autocontrast_cut_images.enabled is False
-    assert config.image_processing.autocontrast_cut_images.cutoff_low == 2.0
-    assert config.image_processing.autocontrast_cut_images.cutoff_high == 45
-    assert config.image_processing.autocontrast_cut_images.ignore is None
-    assert config.image_processing.glare_suppression.enabled is False
-    assert config.image_processing.glare_suppression.mode == "clahe"
-    assert config.image_processing.glare_suppression.inpaint_threshold == 230
-    assert config.image_processing.glare_suppression.inpaint_radius == 3
-    assert config.image_processing.glare_suppression.clahe_clip_limit == 2.0
-    assert config.image_processing.glare_suppression.clahe_grid_size == 8
-    assert config.image_processing.glare_suppression.apply_to_cut_images is False
-    assert config.image_processing.denoise.enabled is False
-    assert config.image_processing.denoise.method == "bilateral"
-    assert config.image_processing.denoise.diameter == 5
-    assert config.image_processing.denoise.sigma_color == 50.0
-    assert config.image_processing.denoise.sigma_space == 50.0
-    assert config.image_processing.denoise.strength == 7.0
-    assert config.image_processing.denoise.template_window == 7
-    assert config.image_processing.denoise.search_window == 15
-    assert config.image_processing.denoise.apply_to_cut_images is False
+    assert config.sharpness.mode == "standard"
+    assert config.sharpness.radius == 1.0
+    assert config.sharpness.amount == 1.5
+    assert config.sharpness.threshold == 3
+    assert config.sharpness.apply_to_cutouts is False
+    assert config.autocontrast.scope == "none"
+    assert config.autocontrast.cutoff_low == 2.0
+    assert config.autocontrast.cutoff_high == 45
+    assert config.autocontrast.ignore is None
+    assert config.glare_suppression.scope == "none"
+    assert config.glare_suppression.mode == "clahe"
+    assert config.glare_suppression.inpaint_threshold == 230
+    assert config.glare_suppression.inpaint_radius == 3
+    assert config.glare_suppression.clahe_clip_limit == 2.0
+    assert config.glare_suppression.clahe_grid_size == 8
+    assert config.glare_suppression.apply_to_cut_images is False
+    assert config.denoise.scope == "none"
+    assert config.denoise.method == "bilateral"
+    assert config.denoise.diameter == 5
+    assert config.denoise.sigma_color == 50.0
+    assert config.denoise.sigma_space == 50.0
+    assert config.denoise.strength == 7.0
+    assert config.denoise.template_window == 7
+    assert config.denoise.search_window == 15
+    assert config.denoise.apply_to_cut_images is False
 
     assert config.digital_readout.enabled is True
     assert (

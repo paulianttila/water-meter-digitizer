@@ -105,13 +105,13 @@ def test_adjust_step_load_from_config(sample_pil_image: Image.Image) -> None:
     config.image_processing.enabled = True
     config.image_processing.gamma = 0.8
     config.image_processing.contrast = 1.5
-    config.image_processing.sharpness_mode = "unsharp_mask"
-    config.image_processing.unsharp_amount = 2.0
-    config.image_processing.glare_suppression.enabled = True
-    config.image_processing.glare_suppression.clahe_clip_limit = 3.5
-    config.image_processing.denoise.enabled = True
-    config.image_processing.denoise.method = "nlmeans"
-    config.image_processing.denoise.strength = 5.0
+    config.sharpness.mode = "unsharp_mask"
+    config.sharpness.amount = 2.0
+    config.glare_suppression.scope = "full"
+    config.glare_suppression.clahe_clip_limit = 3.5
+    config.denoise.scope = "full"
+    config.denoise.method = "nlmeans"
+    config.denoise.strength = 5.0
 
     step.load_from_config(config)
 
@@ -508,17 +508,17 @@ def test_adjust_step_populate_config_denoise() -> None:
     cfg = Config()
     step.populate_config(cfg)
 
-    assert cfg.image_processing.denoise.enabled is True
-    assert cfg.image_processing.denoise.full_image is True
-    assert cfg.image_processing.denoise.cut_images is True
-    assert cfg.image_processing.denoise.apply_to_cut_images is True
-    assert cfg.image_processing.denoise.method == "nlmeans"
-    assert cfg.image_processing.denoise.diameter == 7
-    assert cfg.image_processing.denoise.sigma_color == 60.0
-    assert cfg.image_processing.denoise.sigma_space == 60.0
-    assert cfg.image_processing.denoise.strength == 4.5
-    assert cfg.image_processing.denoise.template_window == 5
-    assert cfg.image_processing.denoise.search_window == 19
+    assert cfg.denoise.full_image is True
+    assert cfg.denoise.cut_images is True
+    assert cfg.denoise.apply_to_cut_images is True
+    assert cfg.denoise.scope == "both"
+    assert cfg.denoise.method == "nlmeans"
+    assert cfg.denoise.diameter == 7
+    assert cfg.denoise.sigma_color == 60.0
+    assert cfg.denoise.sigma_space == 60.0
+    assert cfg.denoise.strength == 4.5
+    assert cfg.denoise.template_window == 5
+    assert cfg.denoise.search_window == 19
 
 
 def test_adjust_step_populate_config_glare_and_autocontrast() -> None:
@@ -538,14 +538,15 @@ def test_adjust_step_populate_config_glare_and_autocontrast() -> None:
     cfg = Config()
     step.populate_config(cfg)
 
-    assert cfg.image_processing.glare_suppression.full_image is True
-    assert cfg.image_processing.glare_suppression.cut_images is True
-    assert cfg.image_processing.glare_suppression.enabled is True
-    assert cfg.image_processing.glare_suppression.apply_to_cut_images is True
-    assert cfg.image_processing.glare_suppression.mode == "clahe"
-    assert cfg.image_processing.glare_suppression.clahe_clip_limit == 3.0
-    assert cfg.image_processing.autocontrast.enabled is True
-    assert cfg.image_processing.autocontrast_cut_images.enabled is True
+    assert cfg.glare_suppression.full_image is True
+    assert cfg.glare_suppression.cut_images is True
+    assert cfg.glare_suppression.scope == "both"
+    assert cfg.glare_suppression.apply_to_cut_images is True
+    assert cfg.glare_suppression.mode == "clahe"
+    assert cfg.glare_suppression.clahe_clip_limit == 3.0
+    assert cfg.autocontrast.full_image is True
+    assert cfg.autocontrast.cut_images is True
+    assert cfg.autocontrast.scope == "both"
 
 
 def test_adjust_step_pipeline_execution_order(sample_pil_image: Image.Image) -> None:

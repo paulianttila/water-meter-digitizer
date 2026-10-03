@@ -36,8 +36,11 @@ def test_create_clean_default_properties():
     assert clean_cfg.image_processing.enabled is False
     assert clean_cfg.image_processing.contrast == 1.0
     assert clean_cfg.image_processing.brightness == 1.0
-    assert clean_cfg.image_processing.autocontrast.enabled is False
-    assert clean_cfg.image_processing.glare_suppression.enabled is False
+    assert clean_cfg.autocontrast.enabled is False
+    assert clean_cfg.glare_suppression.enabled is False
+    assert clean_cfg.denoise.enabled is False
+    assert clean_cfg.sharpness.mode == "standard"
+    assert clean_cfg.sharpness.apply_to_cutouts is False
 
     # Alignment & references
     assert clean_cfg.alignment.rotate_angle == 0.0

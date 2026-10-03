@@ -15,7 +15,7 @@ logger = logging.getLogger(__name__)
 def _conditional_func(func) -> Callable[..., "ImageProcessor"]:
     @functools.wraps(func)
     def wrapper(self, *args, **kwargs):
-        if self.condition is not None and self.condition is False:
+        if self.condition is not None and not self.condition:
             return self
 
         func(self, *args, **kwargs)
@@ -45,7 +45,7 @@ class ImageProcessor:
         return self
 
     def else_(self) -> "ImageProcessor":
-        self.condition = self.condition is False
+        self.condition = not self.condition if self.condition is not None else False
         return self
 
     def endif_(self) -> "ImageProcessor":
@@ -60,11 +60,13 @@ class ImageProcessor:
     @_conditional_func
     def set_image(self, image: Image) -> "ImageProcessor":
         self.image = utils.image.convert_to_image(image)
+        self.pictures.clear()
         return self
 
     @_conditional_func
     def set_image_from_base64_str(self, image_as_str: str) -> "ImageProcessor":
         self.image = utils.image.convert_base64_str_to_image(image_as_str)
+        self.pictures.clear()
         return self
 
     def get_image(self) -> Image:
@@ -182,8 +184,8 @@ class ImageProcessor:
     @_conditional_func
     def autocontrast_image(
         self,
-        cutoff_low: int = 0,
-        cutoff_high: int = 0,
+        cutoff_low: float = 0.0,
+        cutoff_high: float = 0.0,
         ignore: int | None = None,
     ) -> "ImageProcessor":
         logger.debug(

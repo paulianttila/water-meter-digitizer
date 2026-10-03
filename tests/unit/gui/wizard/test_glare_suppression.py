@@ -148,9 +148,9 @@ def test_image_processing_pipeline_autocontrast_and_glare_flags():
 
     config = Config()
     config.image_processing.enabled = True
-    config.image_processing.autocontrast.enabled = False
-    config.image_processing.glare_suppression.enabled = True
-    config.image_processing.glare_suppression.mode = "clahe"
+    config.autocontrast.scope = "none"
+    config.glare_suppression.scope = "full"
+    config.glare_suppression.mode = "clahe"
 
     proc = (
         ImageProcessor()
@@ -164,27 +164,21 @@ def test_image_processing_pipeline_autocontrast_and_glare_flags():
             color=config.image_processing.color,
         )
         .endif_()
-        .if_(
-            config.image_processing.enabled
-            and config.image_processing.autocontrast.enabled
-        )
+        .if_(config.autocontrast.full_image)
         .autocontrast_image(
-            cutoff_low=config.image_processing.autocontrast.cutoff_low,
-            cutoff_high=config.image_processing.autocontrast.cutoff_high,
-            ignore=config.image_processing.autocontrast.ignore,
+            cutoff_low=config.autocontrast.cutoff_low,
+            cutoff_high=config.autocontrast.cutoff_high,
+            ignore=config.autocontrast.ignore,
         )
         .save_image("processed")
         .endif_()
-        .if_(
-            config.image_processing.enabled
-            and config.image_processing.glare_suppression.enabled
-        )
+        .if_(config.glare_suppression.full_image)
         .suppress_glare(
-            mode=config.image_processing.glare_suppression.mode,
-            inpaint_threshold=config.image_processing.glare_suppression.inpaint_threshold,
-            inpaint_radius=config.image_processing.glare_suppression.inpaint_radius,
-            clahe_clip_limit=config.image_processing.glare_suppression.clahe_clip_limit,
-            clahe_grid_size=config.image_processing.glare_suppression.clahe_grid_size,
+            mode=config.glare_suppression.mode,
+            inpaint_threshold=config.glare_suppression.inpaint_threshold,
+            inpaint_radius=config.glare_suppression.inpaint_radius,
+            clahe_clip_limit=config.glare_suppression.clahe_clip_limit,
+            clahe_grid_size=config.glare_suppression.clahe_grid_size,
         )
         .save_image("glare_suppressed")
         .endif_()
@@ -192,10 +186,10 @@ def test_image_processing_pipeline_autocontrast_and_glare_flags():
 
     pics = proc.get_pictures()
     # "processed" (autocontrast) should NOT be saved because
-    # autocontrast.enabled is False
+    # autocontrast scope is "none"
     assert "processed" not in pics
     # "glare_suppressed" MUST be saved because
-    # glare_suppression.enabled is True
+    # glare_suppression scope is "full"
     assert "glare_suppressed" in pics
 
 
@@ -229,20 +223,21 @@ def test_config_glare_serialization():
     temp_file = "temp_glare_test.ini"
     try:
         config = Config().load_from_file("config/config.ini")
-        config.image_processing.glare_suppression = GlareSuppression(
-            enabled=True,
+        config.glare_suppression = GlareSuppression(
+            scope="both",
             mode="combined",
             inpaint_threshold=220,
             inpaint_radius=5,
             clahe_clip_limit=3.5,
             clahe_grid_size=16,
-            apply_to_cut_images=True,
         )
         config.save_to_file(temp_file)
 
         reloaded = Config().load_from_file(temp_file)
-        glare = reloaded.image_processing.glare_suppression
-        assert glare.enabled is True
+        glare = reloaded.glare_suppression
+        assert glare.scope == "both"
+        assert glare.full_image is True
+        assert glare.cut_images is True
         assert glare.mode == "combined"
         assert glare.inpaint_threshold == 220
         assert glare.inpaint_radius == 5
@@ -291,11 +286,11 @@ def test_step_adjust_load_autocontrast_cut_images():
     step.rotate_enabled = MagicMock()
 
     config = Config()
-    config.image_processing.autocontrast_cut_images.enabled = True
-    config.image_processing.autocontrast_cut_images.cutoff_low = 3.5
-    config.image_processing.autocontrast_cut_images.cutoff_high = 40.0
-    config.image_processing.glare_suppression.enabled = True
-    config.image_processing.glare_suppression.mode = "inpaint"
+    config.autocontrast.scope = "cutouts"
+    config.autocontrast.cutoff_cut_low = 3.5
+    config.autocontrast.cutoff_cut_high = 40.0
+    config.glare_suppression.scope = "full"
+    config.glare_suppression.mode = "inpaint"
 
     step.load_from_config(config)
 

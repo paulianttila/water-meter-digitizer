@@ -7,7 +7,7 @@ import configparser
 import io
 import logging
 from collections.abc import Callable
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, Any
 
 import PIL.Image
 from nicegui import ui
@@ -15,10 +15,6 @@ from nicegui import ui
 from api.routes_mock_camera import render_mock_camera_frame
 from configuration import Config
 from data_classes import MeterConfig
-from gui.pages.config_field_registry import (
-    build_line_tooltips,
-    build_syntax_error_decorations,
-)
 from gui.theme import (
     DIALOG_CARD,
     DIALOG_HEADER_ROW,
@@ -34,6 +30,21 @@ if TYPE_CHECKING:
     from callbacks import Callbacks
 
 logger = logging.getLogger(__name__)
+
+
+def _build_line_tooltips(ini_str: str) -> dict[int, str]:
+    from gui.pages.config_field_registry import build_line_tooltips
+
+    return build_line_tooltips(ini_str)
+
+
+def _build_syntax_error_decorations(
+    raw_text: str, exc: Exception
+) -> tuple[list[dict[str, Any]], dict[int, str]]:
+    from gui.pages.config_field_registry import build_syntax_error_decorations
+
+    return build_syntax_error_decorations(raw_text, exc)
+
 
 DIGITAL_MODELS: dict[str, tuple[str, str]] = {
     "Class 11 (Standard Discrete 0-9 & Blank)": (
@@ -334,7 +345,7 @@ class MockConfigDialog:
                             self.autocontrast_switch = (
                                 ui.switch(
                                     "AutoContrast",
-                                    value=self.config.image_processing.autocontrast.enabled,
+                                    value=self.config.autocontrast.enabled,
                                     on_change=lambda _: self._on_structured_change(),
                                 )
                                 .props("dense size=sm color=cyan")
@@ -344,7 +355,7 @@ class MockConfigDialog:
                             self.glare_switch = (
                                 ui.switch(
                                     "Glare Suppression",
-                                    value=self.config.image_processing.glare_suppression.enabled,
+                                    value=self.config.glare_suppression.enabled,
                                     on_change=lambda _: self._on_structured_change(),
                                 )
                                 .props("dense size=sm color=indigo")
@@ -359,7 +370,7 @@ class MockConfigDialog:
                                         "illumination_normalize": "Illumination Normalization",
                                         "combined": "Combined Multi-Stage",
                                     },
-                                    value=self.config.image_processing.glare_suppression.mode,
+                                    value=self.config.glare_suppression.mode,
                                     label="Glare Mode",
                                     on_change=lambda _: self._on_structured_change(),
                                 )
@@ -371,8 +382,7 @@ class MockConfigDialog:
                                 ui.switch(
                                     "Unsharp Mask Sharpening",
                                     value=(
-                                        self.config.image_processing.sharpness_mode
-                                        == "unsharp_mask"
+                                        self.config.sharpness.mode == "unsharp_mask"
                                     ),
                                     on_change=lambda _: self._on_structured_change(),
                                 )
@@ -412,7 +422,7 @@ class MockConfigDialog:
                         .classes("w-full rounded-xl border border-white/5")
                         .style("min-height: 320px")
                     )
-                    self.raw_ini_editor.line_tooltips = build_line_tooltips(ini_val)
+                    self.raw_ini_editor.line_tooltips = _build_line_tooltips(ini_val)
 
                 # -------------------------------------------------------------
                 # Panel 3: ROI Layout Table & Visual Overlay Preview
@@ -598,26 +608,26 @@ class MockConfigDialog:
         if self.proc_enabled_switch:
             self.config.image_processing.enabled = self.proc_enabled_switch.value
         if self.autocontrast_switch:
-            self.config.image_processing.autocontrast.enabled = (
-                self.autocontrast_switch.value
+            self.config.autocontrast.scope = (
+                "full" if self.autocontrast_switch.value else "none"
             )
         if self.glare_switch and self.glare_mode_select:
-            self.config.image_processing.glare_suppression.enabled = (
-                self.glare_switch.value
+            self.config.glare_suppression.scope = (
+                "full" if self.glare_switch.value else "none"
             )
-            self.config.image_processing.glare_suppression.mode = (
+            self.config.glare_suppression.mode = (
                 self.glare_mode_select.value or "inpaint"
             )
         if self.sharpening_switch:
-            self.config.image_processing.sharpness_mode = (
-                "unsharp_mask" if self.sharpening_switch.value else "off"
+            self.config.sharpness.mode = (
+                "unsharp_mask" if self.sharpening_switch.value else "standard"
             )
 
         # Update raw INI editor text if initialized
         if self.raw_ini_editor:
             self.raw_ini_editor.decorations = []
             self.raw_ini_editor.value = self.config.to_ini_string()
-            self.raw_ini_editor.line_tooltips = build_line_tooltips(
+            self.raw_ini_editor.line_tooltips = _build_line_tooltips(
                 self.raw_ini_editor.value
             )
 
@@ -625,7 +635,7 @@ class MockConfigDialog:
         if self.raw_ini_editor:
             if self.raw_ini_editor.decorations:
                 self.raw_ini_editor.decorations = []
-            self.raw_ini_editor.line_tooltips = build_line_tooltips(value)
+            self.raw_ini_editor.line_tooltips = _build_line_tooltips(value)
 
     def _on_structured_change(self) -> None:
         self.is_custom = True
@@ -646,7 +656,7 @@ class MockConfigDialog:
             self.config = parsed_cfg
             self.is_custom = True
             self.raw_ini_editor.decorations = []
-            self.raw_ini_editor.line_tooltips = build_line_tooltips(
+            self.raw_ini_editor.line_tooltips = _build_line_tooltips(
                 self.raw_ini_editor.value
             )
 
@@ -662,7 +672,7 @@ class MockConfigDialog:
             return True
         except Exception as ex:
             if self.raw_ini_editor:
-                decorations, tooltips = build_syntax_error_decorations(
+                decorations, tooltips = _build_syntax_error_decorations(
                     self.raw_ini_editor.value, ex
                 )
                 self.raw_ini_editor.decorations = decorations
@@ -694,7 +704,7 @@ class MockConfigDialog:
         if self.raw_ini_editor:
             self.raw_ini_editor.decorations = []
             self.raw_ini_editor.value = self.config.to_ini_string()
-            self.raw_ini_editor.line_tooltips = build_line_tooltips(
+            self.raw_ini_editor.line_tooltips = _build_line_tooltips(
                 self.raw_ini_editor.value
             )
 

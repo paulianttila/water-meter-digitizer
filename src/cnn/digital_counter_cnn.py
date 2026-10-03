@@ -1,3 +1,4 @@
+import asyncio
 import logging
 
 import numpy as np
@@ -49,12 +50,8 @@ class DigitalCounterCNN(CNNBase):
         self, image: Image
     ) -> tuple[float | int, float]:
         """Asynchronously run inference and return (predicted_value, confidence)."""
-        import asyncio
-
         return await asyncio.to_thread(self.readout_with_confidence, image)
 
     async def readout_async(self, image: Image) -> float | int:
         """Asynchronously run inference and return predicted value."""
-        import asyncio
-
         return await asyncio.to_thread(self.readout, image)

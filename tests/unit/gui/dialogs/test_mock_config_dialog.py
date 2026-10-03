@@ -24,7 +24,7 @@ def test_config_to_ini_string_and_from_ini_string():
     cfg = MeterImageGenerator.create_mock_meter_config(width=640, height=480)
     cfg.meter_configs[0].name = "test_meter"
     cfg.meter_configs[0].unit = "gal"
-    cfg.image_processing.autocontrast.enabled = True
+    cfg.autocontrast.scope = "full"
 
     ini_text = cfg.to_ini_string()
     assert "[ImageSource]" in ini_text
@@ -35,7 +35,7 @@ def test_config_to_ini_string_and_from_ini_string():
     loaded = Config.from_ini_string(ini_text)
     assert loaded.meter_configs[0].name == "test_meter"
     assert loaded.meter_configs[0].unit == "gal"
-    assert loaded.image_processing.autocontrast.enabled is True
+    assert loaded.autocontrast.enabled is True
     assert len(loaded.digital_readout.cut_images) == 5
     assert len(loaded.analog_readout.cut_images) == 4
 
@@ -113,10 +113,9 @@ def test_mock_config_dialog_open_and_structured_changes():
         assert dialog.config.meter_configs[0].unit == "L"
         assert dialog.config.meter_configs[0].consistency_enabled is True
         assert dialog.config.meter_configs[0].allow_negative_rates is False
-        assert dialog.config.digital_readout.detect_negative_sign is True
-        assert dialog.config.image_processing.autocontrast.enabled is True
-        assert dialog.config.image_processing.glare_suppression.mode == "average"
-        assert dialog.config.image_processing.sharpness_mode == "unsharp_mask"
+        assert dialog.config.autocontrast.enabled is True
+        assert dialog.config.glare_suppression.mode == "average"
+        assert dialog.config.sharpness.mode == "unsharp_mask"
 
 
 def test_mock_config_dialog_ini_validation_and_apply():

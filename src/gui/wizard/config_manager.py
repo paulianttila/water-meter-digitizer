@@ -145,90 +145,105 @@ class WizardConfigManager:
             )
             config.image_processing.color = float(adjust_step.adjust_color.value or 1.0)
             config.image_processing.grayscale = adjust_step.grayscale_enabled.value
-            config.image_processing.sharpness_mode = str(
-                adjust_step.sharpness_mode.value or "standard"
+
+            # Sharpness
+            config.sharpness.mode = str(adjust_step.sharpness_mode.value or "standard")
+            config.sharpness.radius = float(adjust_step.unsharp_radius.value or 1.0)
+            config.sharpness.amount = float(adjust_step.unsharp_amount.value or 1.5)
+            config.sharpness.threshold = int(adjust_step.unsharp_threshold.value or 3)
+            config.sharpness.apply_to_cutouts = bool(
+                getattr(adjust_step.auto_sharpen_cut_images, "value", False)
             )
-            config.image_processing.unsharp_radius = float(
-                adjust_step.unsharp_radius.value or 1.0
+
+            # AutoContrast
+            ac_full = bool(getattr(adjust_step.autocontrast_enabled, "value", False))
+            ac_cut = bool(
+                getattr(adjust_step.autocontrast_cut_images_enabled, "value", False)
             )
-            config.image_processing.unsharp_amount = float(
-                adjust_step.unsharp_amount.value or 1.5
-            )
-            config.image_processing.unsharp_threshold = int(
-                adjust_step.unsharp_threshold.value or 3
-            )
-            config.image_processing.auto_sharpen_cut_images = (
-                adjust_step.auto_sharpen_cut_images.value
-            )
-            config.image_processing.autocontrast.enabled = (
-                adjust_step.autocontrast_enabled.value
-            )
-            config.image_processing.autocontrast.cutoff_low = float(
+            if ac_full and ac_cut:
+                config.autocontrast.scope = "both"
+            elif ac_full:
+                config.autocontrast.scope = "full"
+            elif ac_cut:
+                config.autocontrast.scope = "cutouts"
+            else:
+                config.autocontrast.scope = "none"
+
+            config.autocontrast.cutoff_low = float(
                 adjust_step.autocontrast_cutoff_low.value or 2.0
             )
-            config.image_processing.autocontrast.cutoff_high = float(
+            config.autocontrast.cutoff_high = float(
                 adjust_step.autocontrast_cutoff_high.value or 45.0
             )
-            config.image_processing.autocontrast_cut_images.enabled = (
-                adjust_step.autocontrast_cut_images_enabled.value
+            config.autocontrast.cutoff_cut_low = float(
+                getattr(adjust_step.autocontrast_cut_images_cutoff_low, "value", 2.0)
+                or 2.0
             )
-            config.image_processing.autocontrast_cut_images.cutoff_low = float(
-                adjust_step.autocontrast_cut_images_cutoff_low.value or 2.0
-            )
-            config.image_processing.autocontrast_cut_images.cutoff_high = float(
-                adjust_step.autocontrast_cut_images_cutoff_high.value or 45.0
+            config.autocontrast.cutoff_cut_high = float(
+                getattr(adjust_step.autocontrast_cut_images_cutoff_high, "value", 45.0)
+                or 45.0
             )
 
             # Glare suppression
-            config.image_processing.glare_suppression.enabled = (
-                adjust_step.glare_enabled.value
+            glare_full = bool(getattr(adjust_step.glare_enabled, "value", False))
+            glare_cut = bool(
+                getattr(adjust_step.glare_apply_to_cut_images, "value", False)
             )
-            config.image_processing.glare_suppression.mode = str(
-                adjust_step.glare_mode.value or "clahe"
-            )
-            config.image_processing.glare_suppression.inpaint_threshold = int(
+            if glare_full and glare_cut:
+                config.glare_suppression.scope = "both"
+            elif glare_full:
+                config.glare_suppression.scope = "full"
+            elif glare_cut:
+                config.glare_suppression.scope = "cutouts"
+            else:
+                config.glare_suppression.scope = "none"
+
+            config.glare_suppression.mode = str(adjust_step.glare_mode.value or "clahe")
+            config.glare_suppression.inpaint_threshold = int(
                 adjust_step.glare_inpaint_threshold.value or 230
             )
-            config.image_processing.glare_suppression.inpaint_radius = int(
+            config.glare_suppression.inpaint_radius = int(
                 adjust_step.glare_inpaint_radius.value or 3
             )
-            config.image_processing.glare_suppression.clahe_clip_limit = float(
+            config.glare_suppression.clahe_clip_limit = float(
                 adjust_step.glare_clahe_clip_limit.value or 2.0
             )
-            config.image_processing.glare_suppression.clahe_grid_size = int(
+            config.glare_suppression.clahe_grid_size = int(
                 adjust_step.glare_clahe_grid_size.value or 8
-            )
-            config.image_processing.glare_suppression.apply_to_cut_images = (
-                adjust_step.glare_apply_to_cut_images.value
             )
 
             # Denoising
             if hasattr(adjust_step, "denoise_enabled"):
-                config.image_processing.denoise.enabled = bool(
-                    adjust_step.denoise_enabled.value
+                d_full = bool(getattr(adjust_step.denoise_enabled, "value", False))
+                d_cut = bool(
+                    getattr(adjust_step.denoise_apply_to_cut_images, "value", False)
                 )
-                config.image_processing.denoise.apply_to_cut_images = bool(
-                    adjust_step.denoise_apply_to_cut_images.value
-                )
-                config.image_processing.denoise.method = str(
+                if d_full and d_cut:
+                    config.denoise.scope = "both"
+                elif d_full:
+                    config.denoise.scope = "full"
+                elif d_cut:
+                    config.denoise.scope = "cutouts"
+                else:
+                    config.denoise.scope = "none"
+
+                config.denoise.method = str(
                     adjust_step.denoise_method.value or "bilateral"
                 )
-                config.image_processing.denoise.diameter = int(
-                    adjust_step.denoise_diameter.value or 5
-                )
-                config.image_processing.denoise.sigma_color = float(
+                config.denoise.diameter = int(adjust_step.denoise_diameter.value or 5)
+                config.denoise.sigma_color = float(
                     adjust_step.denoise_sigma_color.value or 50.0
                 )
-                config.image_processing.denoise.sigma_space = float(
+                config.denoise.sigma_space = float(
                     adjust_step.denoise_sigma_space.value or 50.0
                 )
-                config.image_processing.denoise.strength = float(
+                config.denoise.strength = float(
                     adjust_step.denoise_strength.value or 3.0
                 )
-                config.image_processing.denoise.template_window = int(
+                config.denoise.template_window = int(
                     adjust_step.denoise_template_window.value or 7
                 )
-                config.image_processing.denoise.search_window = int(
+                config.denoise.search_window = int(
                     adjust_step.denoise_search_window.value or 21
                 )
 

@@ -574,150 +574,130 @@ class AdjustStep(BaseStep):
 
         # Advanced Unsharp Masking & Auto-Sharpness
         if hasattr(self, "sharpness_mode") and self.sharpness_mode is not None:
-            self.sharpness_mode.value = config.image_processing.sharpness_mode
+            self.sharpness_mode.value = config.sharpness.mode
         if hasattr(self, "unsharp_radius") and self.unsharp_radius is not None:
-            self.unsharp_radius.value = config.image_processing.unsharp_radius
+            self.unsharp_radius.value = config.sharpness.radius
         if hasattr(self, "unsharp_amount") and self.unsharp_amount is not None:
-            self.unsharp_amount.value = config.image_processing.unsharp_amount
+            self.unsharp_amount.value = config.sharpness.amount
         if hasattr(self, "unsharp_threshold") and self.unsharp_threshold is not None:
-            self.unsharp_threshold.value = config.image_processing.unsharp_threshold
+            self.unsharp_threshold.value = config.sharpness.threshold
         if (
             hasattr(self, "auto_sharpen_cut_images")
             and self.auto_sharpen_cut_images is not None
         ):
-            self.auto_sharpen_cut_images.value = (
-                config.image_processing.auto_sharpen_cut_images
-            )
+            self.auto_sharpen_cut_images.value = config.sharpness.apply_to_cutouts
 
         # AutoContrast
         if (
             hasattr(self, "autocontrast_enabled")
             and self.autocontrast_enabled is not None
         ):
-            self.autocontrast_enabled.value = (
-                config.image_processing.autocontrast.enabled
-            )
+            self.autocontrast_enabled.value = config.autocontrast.full_image
         if (
             hasattr(self, "autocontrast_cutoff_low")
             and self.autocontrast_cutoff_low is not None
         ):
-            self.autocontrast_cutoff_low.value = (
-                config.image_processing.autocontrast.cutoff_low
-            )
+            self.autocontrast_cutoff_low.value = config.autocontrast.cutoff_low
         if (
             hasattr(self, "autocontrast_cutoff_high")
             and self.autocontrast_cutoff_high is not None
         ):
-            self.autocontrast_cutoff_high.value = (
-                config.image_processing.autocontrast.cutoff_high
-            )
+            self.autocontrast_cutoff_high.value = config.autocontrast.cutoff_high
         if (
             hasattr(self, "autocontrast_cut_images_enabled")
             and self.autocontrast_cut_images_enabled is not None
         ):
-            self.autocontrast_cut_images_enabled.value = (
-                config.image_processing.autocontrast_cut_images.enabled
-            )
+            self.autocontrast_cut_images_enabled.value = config.autocontrast.cut_images
         if (
             hasattr(self, "autocontrast_cut_images_cutoff_low")
             and self.autocontrast_cut_images_cutoff_low is not None
         ):
             self.autocontrast_cut_images_cutoff_low.value = (
-                config.image_processing.autocontrast_cut_images.cutoff_low
+                config.autocontrast.cutoff_cut_low
+                if config.autocontrast.cutoff_cut_low is not None
+                else config.autocontrast.cutoff_low
             )
         if (
             hasattr(self, "autocontrast_cut_images_cutoff_high")
             and self.autocontrast_cut_images_cutoff_high is not None
         ):
             self.autocontrast_cut_images_cutoff_high.value = (
-                config.image_processing.autocontrast_cut_images.cutoff_high
+                config.autocontrast.cutoff_cut_high
+                if config.autocontrast.cutoff_cut_high is not None
+                else config.autocontrast.cutoff_high
             )
 
         self.config = config
 
         # Glare Suppression
         if hasattr(self, "glare_enabled") and self.glare_enabled is not None:
-            self.glare_enabled.value = (
-                config.image_processing.glare_suppression.full_image
-            )
+            self.glare_enabled.value = config.glare_suppression.full_image
         if hasattr(self, "glare_mode") and self.glare_mode is not None:
-            self.glare_mode.value = config.image_processing.glare_suppression.mode
+            self.glare_mode.value = config.glare_suppression.mode
         if (
             hasattr(self, "glare_inpaint_threshold")
             and self.glare_inpaint_threshold is not None
         ):
             self.glare_inpaint_threshold.value = (
-                config.image_processing.glare_suppression.inpaint_threshold
+                config.glare_suppression.inpaint_threshold
             )
         if (
             hasattr(self, "glare_inpaint_radius")
             and self.glare_inpaint_radius is not None
         ):
-            self.glare_inpaint_radius.value = (
-                config.image_processing.glare_suppression.inpaint_radius
-            )
+            self.glare_inpaint_radius.value = config.glare_suppression.inpaint_radius
         if (
             hasattr(self, "glare_clahe_clip_limit")
             and self.glare_clahe_clip_limit is not None
         ):
             self.glare_clahe_clip_limit.value = (
-                config.image_processing.glare_suppression.clahe_clip_limit
+                config.glare_suppression.clahe_clip_limit
             )
         if (
             hasattr(self, "glare_clahe_grid_size")
             and self.glare_clahe_grid_size is not None
         ):
-            self.glare_clahe_grid_size.value = (
-                config.image_processing.glare_suppression.clahe_grid_size
-            )
+            self.glare_clahe_grid_size.value = config.glare_suppression.clahe_grid_size
         if (
             hasattr(self, "glare_apply_to_cut_images")
             and self.glare_apply_to_cut_images is not None
         ):
-            self.glare_apply_to_cut_images.value = (
-                config.image_processing.glare_suppression.cut_images
-            )
+            self.glare_apply_to_cut_images.value = config.glare_suppression.cut_images
 
         # Denoising
         if hasattr(self, "denoise_enabled") and self.denoise_enabled is not None:
-            self.denoise_enabled.value = config.image_processing.denoise.full_image
+            self.denoise_enabled.value = config.denoise.full_image
         if (
             hasattr(self, "denoise_apply_to_cut_images")
             and self.denoise_apply_to_cut_images is not None
         ):
-            self.denoise_apply_to_cut_images.value = (
-                config.image_processing.denoise.cut_images
-            )
+            self.denoise_apply_to_cut_images.value = config.denoise.cut_images
         if hasattr(self, "denoise_method") and self.denoise_method is not None:
-            self.denoise_method.value = config.image_processing.denoise.method
+            self.denoise_method.value = config.denoise.method
         if hasattr(self, "denoise_diameter") and self.denoise_diameter is not None:
-            self.denoise_diameter.value = config.image_processing.denoise.diameter
+            self.denoise_diameter.value = config.denoise.diameter
         if (
             hasattr(self, "denoise_sigma_color")
             and self.denoise_sigma_color is not None
         ):
-            self.denoise_sigma_color.value = config.image_processing.denoise.sigma_color
+            self.denoise_sigma_color.value = config.denoise.sigma_color
         if (
             hasattr(self, "denoise_sigma_space")
             and self.denoise_sigma_space is not None
         ):
-            self.denoise_sigma_space.value = config.image_processing.denoise.sigma_space
+            self.denoise_sigma_space.value = config.denoise.sigma_space
         if hasattr(self, "denoise_strength") and self.denoise_strength is not None:
-            self.denoise_strength.value = config.image_processing.denoise.strength
+            self.denoise_strength.value = config.denoise.strength
         if (
             hasattr(self, "denoise_template_window")
             and self.denoise_template_window is not None
         ):
-            self.denoise_template_window.value = (
-                config.image_processing.denoise.template_window
-            )
+            self.denoise_template_window.value = config.denoise.template_window
         if (
             hasattr(self, "denoise_search_window")
             and self.denoise_search_window is not None
         ):
-            self.denoise_search_window.value = (
-                config.image_processing.denoise.search_window
-            )
+            self.denoise_search_window.value = config.denoise.search_window
 
         # Alignment
         self.ref_images = list(config.alignment.ref_images)
@@ -1247,89 +1227,108 @@ class AdjustStep(BaseStep):
         config.image_processing.grayscale = bool(
             getattr(self.grayscale_enabled, "value", False)
         )
-        config.image_processing.sharpness_mode = str(
+        # Sharpness
+        config.sharpness.mode = str(
             getattr(self.sharpness_mode, "value", "standard") or "standard"
         )
-        config.image_processing.unsharp_radius = float(
+        config.sharpness.radius = float(
             getattr(self.unsharp_radius, "value", 1.0) or 1.0
         )
-        config.image_processing.unsharp_amount = float(
+        config.sharpness.amount = float(
             getattr(self.unsharp_amount, "value", 1.5) or 1.5
         )
-        config.image_processing.unsharp_threshold = int(
+        config.sharpness.threshold = int(
             getattr(self.unsharp_threshold, "value", 3) or 3
         )
-        config.image_processing.auto_sharpen_cut_images = bool(
+        config.sharpness.apply_to_cutouts = bool(
             getattr(self.auto_sharpen_cut_images, "value", False)
         )
-        config.image_processing.autocontrast.enabled = bool(
-            getattr(self.autocontrast_enabled, "value", False)
-        )
-        config.image_processing.autocontrast.cutoff_low = float(
+
+        # AutoContrast scope calculation (H1, H2)
+        ac_full = bool(getattr(self.autocontrast_enabled, "value", False))
+        ac_cut = bool(getattr(self.autocontrast_cut_images_enabled, "value", False))
+        if ac_full and ac_cut:
+            ac_scope = "both"
+        elif ac_full:
+            ac_scope = "full"
+        elif ac_cut:
+            ac_scope = "cutouts"
+        else:
+            ac_scope = "none"
+
+        config.autocontrast.scope = ac_scope
+        config.autocontrast.cutoff_low = float(
             getattr(self.autocontrast_cutoff_low, "value", 2.0) or 2.0
         )
-        config.image_processing.autocontrast.cutoff_high = float(
+        config.autocontrast.cutoff_high = float(
             getattr(self.autocontrast_cutoff_high, "value", 45.0) or 45.0
         )
-        config.image_processing.autocontrast_cut_images.enabled = bool(
-            getattr(self.autocontrast_cut_images_enabled, "value", False)
-        )
-        config.image_processing.autocontrast_cut_images.cutoff_low = float(
+        config.autocontrast.cutoff_cut_low = float(
             getattr(self.autocontrast_cut_images_cutoff_low, "value", 2.0) or 2.0
         )
-        config.image_processing.autocontrast_cut_images.cutoff_high = float(
+        config.autocontrast.cutoff_cut_high = float(
             getattr(self.autocontrast_cut_images_cutoff_high, "value", 45.0) or 45.0
         )
 
-        # Glare suppression
-        config.image_processing.glare_suppression.full_image = bool(
-            getattr(self.glare_enabled, "value", False)
-        )
-        config.image_processing.glare_suppression.cut_images = bool(
-            getattr(self.glare_apply_to_cut_images, "value", False)
-        )
-        config.image_processing.glare_suppression.mode = str(
+        # Glare suppression scope calculation
+        glare_full = bool(getattr(self.glare_enabled, "value", False))
+        glare_cut = bool(getattr(self.glare_apply_to_cut_images, "value", False))
+        if glare_full and glare_cut:
+            glare_scope = "both"
+        elif glare_full:
+            glare_scope = "full"
+        elif glare_cut:
+            glare_scope = "cutouts"
+        else:
+            glare_scope = "none"
+
+        config.glare_suppression.scope = glare_scope
+        config.glare_suppression.mode = str(
             getattr(self.glare_mode, "value", "clahe") or "clahe"
         )
-        config.image_processing.glare_suppression.inpaint_threshold = int(
+        config.glare_suppression.inpaint_threshold = int(
             getattr(self.glare_inpaint_threshold, "value", 230) or 230
         )
-        config.image_processing.glare_suppression.inpaint_radius = int(
+        config.glare_suppression.inpaint_radius = int(
             getattr(self.glare_inpaint_radius, "value", 3) or 3
         )
-        config.image_processing.glare_suppression.clahe_clip_limit = float(
+        config.glare_suppression.clahe_clip_limit = float(
             getattr(self.glare_clahe_clip_limit, "value", 2.0) or 2.0
         )
-        config.image_processing.glare_suppression.clahe_grid_size = int(
+        config.glare_suppression.clahe_grid_size = int(
             getattr(self.glare_clahe_grid_size, "value", 8) or 8
         )
 
-        # Denoising
-        config.image_processing.denoise.full_image = bool(
-            getattr(self.denoise_enabled, "value", False)
-        )
-        config.image_processing.denoise.cut_images = bool(
-            getattr(self.denoise_apply_to_cut_images, "value", False)
-        )
-        config.image_processing.denoise.method = str(
+        # Denoising scope calculation
+        denoise_full = bool(getattr(self.denoise_enabled, "value", False))
+        denoise_cut = bool(getattr(self.denoise_apply_to_cut_images, "value", False))
+        if denoise_full and denoise_cut:
+            denoise_scope = "both"
+        elif denoise_full:
+            denoise_scope = "full"
+        elif denoise_cut:
+            denoise_scope = "cutouts"
+        else:
+            denoise_scope = "none"
+
+        config.denoise.scope = denoise_scope
+        config.denoise.method = str(
             getattr(self.denoise_method, "value", "bilateral") or "bilateral"
         )
-        config.image_processing.denoise.diameter = int(
-            getattr(self.denoise_diameter, "value", 5) or 5
-        )
-        config.image_processing.denoise.sigma_color = float(
+        config.denoise.diameter = int(getattr(self.denoise_diameter, "value", 5) or 5)
+        config.denoise.sigma_color = float(
             getattr(self.denoise_sigma_color, "value", 50.0) or 50.0
         )
-        config.image_processing.denoise.sigma_space = float(
+        config.denoise.sigma_space = float(
             getattr(self.denoise_sigma_space, "value", 50.0) or 50.0
         )
-        config.image_processing.denoise.strength = float(
+        config.denoise.strength = float(
             getattr(self.denoise_strength, "value", 3.0) or 3.0
         )
-        config.image_processing.denoise.template_window = int(
+        config.denoise.template_window = int(
             getattr(self.denoise_template_window, "value", 7) or 7
         )
-        config.image_processing.denoise.search_window = int(
+        config.denoise.search_window = int(
             getattr(self.denoise_search_window, "value", 21) or 21
         )
 

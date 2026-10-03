@@ -147,6 +147,8 @@ class CNNBase:
         if self.pool is None:
             raise RuntimeError(f"Model '{self.modelfile}' is not loaded")
 
+        if image.mode != "RGB":
+            image = image.convert("RGB")
         test_image = image.resize((self.dx, self.dy), self.resampling)
         img_array = np.array(test_image, dtype="float32")
         input_data = np.reshape(img_array, [1, self.dy, self.dx, 3])

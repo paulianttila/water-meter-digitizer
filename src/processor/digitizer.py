@@ -1,5 +1,6 @@
 """Digitizer processing pipeline orchestrator coordinating CNN inference, rollover corrections, and consistency validation."""
 
+import asyncio
 import logging
 import math
 
@@ -253,8 +254,6 @@ class DigitizerProcessor:
         alignment_error: str = "",
     ) -> MeterResult:
         """Asynchronously process meter images off the main event loop."""
-        import asyncio
-
         return await asyncio.to_thread(
             self.process,
             analog_images,
@@ -661,7 +660,11 @@ class DigitizerProcessor:
         meter: Meter,
         cnn_results: dict[str, ReadoutResult],
     ) -> list[ReadoutResult]:
-        return [cnn_results[name] for name in meter.config.value_names]
+        return [
+            cnn_results[name]
+            for name in meter.config.value_names
+            if name in cnn_results
+        ]
 
     def _append_extended_digit(
         self,

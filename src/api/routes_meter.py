@@ -282,81 +282,104 @@ def get_meter_data(
             contrast=config.image_processing.contrast,
             sharpness=(
                 config.image_processing.sharpness
-                if config.image_processing.sharpness_mode == "standard"
+                if config.sharpness.mode == "standard"
                 else 1.0
             ),
             color=config.image_processing.color,
             gamma=config.image_processing.gamma,
         )
         .endif_()
-        .if_(config.image_processing.denoise.full_image)
+        .if_(
+            not config.image_processing.enabled
+            and config.sharpness.mode == "standard"
+            and config.image_processing.sharpness != 1.0
+        )
+        .adjust_image(sharpness=config.image_processing.sharpness)
+        .endif_()
+        .if_(config.denoise.full_image)
         .denoise_image(
-            method=config.image_processing.denoise.method,
-            diameter=config.image_processing.denoise.diameter,
-            sigma_color=config.image_processing.denoise.sigma_color,
-            sigma_space=config.image_processing.denoise.sigma_space,
-            strength=config.image_processing.denoise.strength,
-            template_window=config.image_processing.denoise.template_window,
-            search_window=config.image_processing.denoise.search_window,
+            method=config.denoise.method,
+            diameter=config.denoise.diameter,
+            sigma_color=config.denoise.sigma_color,
+            sigma_space=config.denoise.sigma_space,
+            strength=config.denoise.strength,
+            template_window=config.denoise.template_window,
+            search_window=config.denoise.search_window,
         )
         .save_image("denoised")
         .endif_()
-        .if_(config.image_processing.autocontrast.full_image)
+        .if_(config.autocontrast.full_image)
         .autocontrast_image(
-            cutoff_low=config.image_processing.autocontrast.cutoff_low,
-            cutoff_high=config.image_processing.autocontrast.cutoff_high,
-            ignore=config.image_processing.autocontrast.ignore,
+            cutoff_low=config.autocontrast.cutoff_low,
+            cutoff_high=config.autocontrast.cutoff_high,
+            ignore=config.autocontrast.ignore,
         )
         .save_image("processed")
         .endif_()
-        .if_(config.image_processing.glare_suppression.full_image)
+        .if_(config.glare_suppression.full_image)
         .suppress_glare(
-            mode=config.image_processing.glare_suppression.mode,
-            inpaint_threshold=config.image_processing.glare_suppression.inpaint_threshold,
-            inpaint_radius=config.image_processing.glare_suppression.inpaint_radius,
-            clahe_clip_limit=config.image_processing.glare_suppression.clahe_clip_limit,
-            clahe_grid_size=config.image_processing.glare_suppression.clahe_grid_size,
+            mode=config.glare_suppression.mode,
+            inpaint_threshold=config.glare_suppression.inpaint_threshold,
+            inpaint_radius=config.glare_suppression.inpaint_radius,
+            clahe_clip_limit=config.glare_suppression.clahe_clip_limit,
+            clahe_grid_size=config.glare_suppression.clahe_grid_size,
         )
         .save_image("glare_suppressed")
         .endif_()
-        .if_(config.image_processing.sharpness_mode in ("unsharp_mask", "auto"))
+        .if_(config.sharpness.mode in ("unsharp_mask", "auto"))
         .unsharp_mask(
-            radius=config.image_processing.unsharp_radius,
-            amount=config.image_processing.unsharp_amount,
-            threshold=config.image_processing.unsharp_threshold,
+            radius=config.sharpness.radius,
+            amount=config.sharpness.amount,
+            threshold=config.sharpness.threshold,
         )
         .save_image("sharpened")
         .endif_()
         .save_image("final", True)
     )
-    autocontrast = config.image_processing.autocontrast.cut_images
-    denoise_cut = config.image_processing.denoise.cut_images
-    glare_cut = config.image_processing.glare_suppression.cut_images
-    unsharp_cut = config.image_processing.auto_sharpen_cut_images
+    autocontrast = config.autocontrast.cut_images
+    denoise_cut = config.denoise.cut_images
+    glare_cut = config.glare_suppression.cut_images
+    unsharp_cut = config.sharpness.apply_to_cutouts
+
+    cutoff_cut_low = (
+        config.autocontrast.cutoff_cut_low
+        if config.autocontrast.cutoff_cut_low is not None
+        else config.autocontrast.cutoff_low
+    )
+    cutoff_cut_high = (
+        config.autocontrast.cutoff_cut_high
+        if config.autocontrast.cutoff_cut_high is not None
+        else config.autocontrast.cutoff_high
+    )
+    ignore_cut = (
+        config.autocontrast.ignore_cut
+        if config.autocontrast.ignore_cut is not None
+        else config.autocontrast.ignore
+    )
 
     cut_options = CutImageOptions(
         autocontrast=autocontrast,
-        cutoff_low=config.image_processing.autocontrast_cut_images.cutoff_low,
-        cutoff_high=config.image_processing.autocontrast_cut_images.cutoff_high,
-        ignore=config.image_processing.autocontrast_cut_images.ignore,
+        cutoff_low=cutoff_cut_low,
+        cutoff_high=cutoff_cut_high,
+        ignore=ignore_cut,
         denoise=denoise_cut,
-        denoise_method=config.image_processing.denoise.method,
-        denoise_diameter=config.image_processing.denoise.diameter,
-        denoise_sigma_color=config.image_processing.denoise.sigma_color,
-        denoise_sigma_space=config.image_processing.denoise.sigma_space,
-        denoise_strength=config.image_processing.denoise.strength,
-        denoise_template_window=config.image_processing.denoise.template_window,
-        denoise_search_window=config.image_processing.denoise.search_window,
+        denoise_method=config.denoise.method,
+        denoise_diameter=config.denoise.diameter,
+        denoise_sigma_color=config.denoise.sigma_color,
+        denoise_sigma_space=config.denoise.sigma_space,
+        denoise_strength=config.denoise.strength,
+        denoise_template_window=config.denoise.template_window,
+        denoise_search_window=config.denoise.search_window,
         glare_suppression=glare_cut,
-        glare_mode=config.image_processing.glare_suppression.mode,
-        glare_inpaint_threshold=config.image_processing.glare_suppression.inpaint_threshold,
-        glare_inpaint_radius=config.image_processing.glare_suppression.inpaint_radius,
-        glare_clahe_clip_limit=config.image_processing.glare_suppression.clahe_clip_limit,
-        glare_clahe_grid_size=config.image_processing.glare_suppression.clahe_grid_size,
+        glare_mode=config.glare_suppression.mode,
+        glare_inpaint_threshold=config.glare_suppression.inpaint_threshold,
+        glare_inpaint_radius=config.glare_suppression.inpaint_radius,
+        glare_clahe_clip_limit=config.glare_suppression.clahe_clip_limit,
+        glare_clahe_grid_size=config.glare_suppression.clahe_grid_size,
         unsharp=unsharp_cut,
-        unsharp_radius=config.image_processing.unsharp_radius,
-        unsharp_amount=config.image_processing.unsharp_amount,
-        unsharp_threshold=config.image_processing.unsharp_threshold,
+        unsharp_radius=config.sharpness.radius,
+        unsharp_amount=config.sharpness.amount,
+        unsharp_threshold=config.sharpness.threshold,
     )
 
     def _extract_rois(positions):

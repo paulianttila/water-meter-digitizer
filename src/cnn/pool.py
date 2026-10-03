@@ -34,11 +34,12 @@ class ModelDetails:
 class InterpreterInstance:
     """Encapsulates a single pre-allocated TFLite/LiteRT interpreter instance."""
 
-    def __init__(self, modelfile: str) -> None:
+    def __init__(self, modelfile: str, generation: int = 0) -> None:
         if tflite is None:
             raise RuntimeError("No LiteRT or TFLite runtime found in environment")
 
         self.modelfile = modelfile
+        self.generation = generation
         self.interpreter = tflite.Interpreter(model_path=modelfile)  # type: ignore
         self.interpreter.allocate_tensors()
         self.input_details = self.interpreter.get_input_details()
@@ -75,6 +76,7 @@ class InterpreterPool:
         self._pool: queue.Queue[InterpreterInstance] = queue.Queue()
         self._created_count = 0
         self._active_inferences = 0
+        self._generation = 0
         self._lock = threading.RLock()
         self._model_details: ModelDetails | None = None
         self._input_shape: list[int] | None = None
@@ -107,7 +109,9 @@ class InterpreterPool:
                 )
 
     def _create_instance(self) -> InterpreterInstance:
-        inst = InterpreterInstance(self.modelfile)
+        with self._lock:
+            current_gen = self._generation
+        inst = InterpreterInstance(self.modelfile, generation=current_gen)
         with self._lock:
             self._created_count += 1
             if self._model_details is None:
@@ -136,13 +140,20 @@ class InterpreterPool:
         with self._lock:
             self._active_inferences += 1
 
+        failed = False
         try:
             yield instance
+        except Exception:
+            failed = True
+            raise
         finally:
             with self._lock:
                 self._active_inferences = max(0, self._active_inferences - 1)
-            if instance is not None:
-                self._pool.put(instance)
+                if failed:
+                    self._created_count = max(0, self._created_count - 1)
+                    instance = None
+                elif instance is not None and instance.generation == self._generation:
+                    self._pool.put(instance)
 
     def record_inference(self, duration_ms: float) -> None:
         """Record inference timing telemetry in a thread-safe manner."""
@@ -199,14 +210,19 @@ class InterpreterPool:
     def clear(self) -> None:
         """Drain and clear the pool."""
         with self._lock:
-            self._pool = queue.Queue(maxsize=self.max_size)
+            self._generation += 1
+            while not self._pool.empty():
+                try:
+                    self._pool.get_nowait()
+                except queue.Empty:
+                    break
             self._created_count = 0
             self._active_inferences = 0
             self._model_details = None
             self.reset_stats()
 
 
-_POOLS: dict[str, InterpreterPool] = {}
+_POOLS: dict[tuple[str, int | None], InterpreterPool] = {}
 _POOLS_LOCK = threading.Lock()
 
 
@@ -216,9 +232,14 @@ def get_interpreter_pool(
     """Retrieve or create a cached InterpreterPool for the given model file."""
     canonical = os.path.realpath(os.path.abspath(modelfile))
     with _POOLS_LOCK:
-        if canonical not in _POOLS:
-            _POOLS[canonical] = InterpreterPool(modelfile, max_size=max_size)
-        return _POOLS[canonical]
+        if max_size is None:
+            for (path, _), p in _POOLS.items():
+                if path == canonical:
+                    return p
+        key = (canonical, max_size)
+        if key not in _POOLS:
+            _POOLS[key] = InterpreterPool(modelfile, max_size=max_size)
+        return _POOLS[key]
 
 
 def clear_interpreter_pools() -> None:

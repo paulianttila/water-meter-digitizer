@@ -929,12 +929,12 @@ def _load_preset_from_ini(path: Path) -> MeterTypePreset | None:
             brightness=cfg.image_processing.brightness,
             gamma=cfg.image_processing.gamma,
             sharpness=cfg.image_processing.sharpness,
-            sharpness_mode=cfg.image_processing.sharpness_mode,
-            unsharp_amount=cfg.image_processing.unsharp_amount,
+            sharpness_mode=cfg.sharpness.mode,
+            unsharp_amount=cfg.sharpness.amount,
             glare_suppression=PresetGlareSuppression(
-                enabled=cfg.image_processing.glare_suppression.enabled,
-                mode=cfg.image_processing.glare_suppression.mode,
-                clahe_clip_limit=cfg.image_processing.glare_suppression.clahe_clip_limit,
+                enabled=cfg.glare_suppression.enabled,
+                mode=cfg.glare_suppression.mode,
+                clahe_clip_limit=cfg.glare_suppression.clahe_clip_limit,
             ),
         )
 

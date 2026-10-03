@@ -1,3 +1,4 @@
+import asyncio
 import logging
 import math
 
@@ -50,12 +51,8 @@ class AnalogNeedleCNN(CNNBase):
 
     async def readout_with_confidence_async(self, image: Image) -> tuple[float, float]:
         """Asynchronously run inference and return (predicted_value, confidence)."""
-        import asyncio
-
         return await asyncio.to_thread(self.readout_with_confidence, image)
 
     async def readout_async(self, image: Image) -> float:
         """Asynchronously run inference and return predicted value."""
-        import asyncio
-
         return await asyncio.to_thread(self.readout, image)
