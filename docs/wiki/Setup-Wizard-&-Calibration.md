@@ -87,8 +87,12 @@ The **Setup Wizard** (accessible via the **Setup** tab at `/setup`) is an intera
 ### Step 5: Image Adjustments & Focus Metric
 - **⚡ Auto Enhance**: One-click analysis calculating optimal gamma, contrast, brightness, and sharpness parameters.
 - **Environment Presets**: Fast presets (*Crisp Text*, *Basement / Dim*, *Reflective Glass*, *Reset Defaults*).
-- **Gamma & Contrast**: Non-linear gamma curve slider (`0.2`–`3.0`) for recovering shadow details without washing out bright highlights.
-- **Luminance Unsharp Masking**: Advanced spatial edge sharpening in CIELAB color space ($L$ channel only) with noise coring threshold.
+- **Basic Tone & Color Adjustments**: Non-linear gamma curve slider (`0.2`–`3.0`), contrast, brightness, color saturation, and grayscale toggle.
+- **AutoContrast Normalization**: Dynamic histogram stretching with flexible application scope (*Full Frame*, *Cutout ROIs*, or *Both*), configurable lower/upper percentile cutoffs, and ignored pixel intensity.
+- **Denoising Filter**: Edge-preserving noise reduction (*Bilateral*, *Fast Non-Local Means*, *Median*, or *Median + Bilateral* hybrid) with selectable scope (*Full Frame*, *Cutouts*, *Both*).
+- **Specular Glare Suppression**: Reflection mitigation across glass meter faces (*CLAHE*, *Fast Marching Inpainting*, *Illumination Normalization*, or *Combined*) with selective scope (*Full Frame*, *Cutouts*, *Both*).
+- **Luminance Unsharp Masking & Sharpening**: Standard or CIELAB luminance edge sharpening with blur radius ($\sigma$), amount, noise coring threshold, and optional cutout sub-image sharpening.
+- **Live ROI Cutouts Impact Preview**: Interactive Before vs. After comparison panel showcasing the visual impact of active filters directly on actual digital and analog dial cutouts.
 - **Live Rec.709 Histogram**: Real-time luminance area chart with shadow and highlight clipping indicators.
 - **Focus Metric**: Real-time clarity score derived from Laplacian variance.
 - **Test Alignment**: Verify that the 3-point affine transformation locks onto reference markers accurately.

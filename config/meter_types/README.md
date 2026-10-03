@@ -27,7 +27,11 @@ To add support for a new water, gas, or electricity meter model:
      - `[Alignment]`: Initial coarse rotation (`RotationAngle`) and 3 stationary reference marker anchor ROIs (`Refs = ref0, ref1, ref2`).
      - `[Digits]`: Pre-placed digital boxes (`Names = digit1, ...`, `[Digits.digit1] x=... y=... w=... h=...`).
      - `[Analog]`: Pre-placed analog dial boxes (`Names = analog1, ...`, `[Analog.analog1] x=... y=... w=... h=...`).
-     - `[ImageProcessing]`: Recommended camera preprocessing (contrast, gamma, unsharp masking, CLAHE glare suppression).
+     - `[ImageProcessing]`: Recommended base camera adjustments (Contrast, Brightness, Color, Gamma, GrayScale).
+     - `[Sharpness]`: Edge sharpening (Mode=`standard` or `unsharp_mask`, Amount, Radius, Threshold, ApplyToCutouts).
+     - `[GlareSuppression]`: Reflection mitigation across meter faceplate (Scope=`none`/`full`/`cutouts`/`both`, Mode=`clahe`/`inpaint`/`illumination_normalize`/`combined`, ClaheClipLimit).
+     - `[AutoContrast]`: Histogram normalization (Scope, CutoffLow, CutoffHigh, Ignore).
+     - `[Denoise]`: Noise reduction (Scope, Method=`bilateral`/`nlmeans`/`median`/`median_bilateral`, Diameter, SigmaColor, SigmaSpace).
      - `[Meters]`: Declarative virtual meter definitions using `{digits}`, `{decimals}`, `{analogs}`, `{flow_digits}`, `{flow_decimals}` tags.
 4. Verify your configuration with unit tests:
    ```bash

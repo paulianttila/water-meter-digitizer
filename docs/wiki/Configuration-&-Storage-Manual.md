@@ -107,37 +107,71 @@ Optional pre-processing stages to crop and resize the raw image before reference
 ---
 
 ### `[ImageProcessing]`
-Color, tone curve, spatial unsharp masking, autocontrast, and specular glare suppression adjustments.
+Basic tone, contrast, brightness, color saturation, and gamma curve adjustments.
 
 | Parameter | Type | Default | Description |
 | :--- | :--- | :--- | :--- |
-| `Enabled` | boolean | `False` | Enable image processing and enhancement filters. |
+| `Enabled` | boolean | `False` | Enable basic tone, gamma, and color adjustments. |
 | `Contrast` | float | `1.0` | Contrast adjustment factor (1.0 = unchanged). |
 | `Brightness` | float | `1.0` | Brightness adjustment factor (1.0 = unchanged). |
 | `Color` | float | `1.0` | Color saturation adjustment factor (1.0 = unchanged). |
-| `Sharpness` | float | `1.0` | Sharpness enhancement factor (1.0 = unchanged). |
-| `GrayScale` | boolean | `False` | Convert camera image to grayscale before processing. |
 | `Gamma` | float | `1.0` | Non-linear gamma curve tone adjustment (`0.2`–`3.0`). |
-| `SharpnessMode` | string | `standard` | Sharpening algorithm: `standard`, `unsharp_mask`, or `auto`. |
-| `UnsharpRadius` | float | `1.0` | Blur radius (sigma) for luminance unsharp masking. |
-| `UnsharpAmount` | float | `1.5` | Sharpening strength multiplier for unsharp mask. |
-| `UnsharpThreshold` | integer | `3` | Noise coring threshold (0–255) to avoid sharpening camera sensor noise. |
-| `AutoSharpenCutImages`| boolean | `False` | Apply spatial edge sharpening individually to cropped ROI sub-images. |
-| `AutoContrast` | boolean | `False` | Apply dynamic histogram auto-contrast stretching to full frame. |
-| `AutoContrastCutoffLow` | float | `2.0` | Lower histogram percentile cutoff percentage for auto-contrast. |
-| `AutoContrastCutoffHigh` | float | `45.0` | Upper histogram percentile cutoff percentage for auto-contrast. |
-| `AutoContrastIgnore` | int/None | `None` | Pixel intensity value to ignore during auto-contrast calculation. |
-| `AutoContrastCutImages`| boolean | `False` | Apply auto-contrast individually to cropped ROI sub-images. |
-| `AutoContrastCutImagesCutoffLow` | float | `2.0` | Lower percentile cutoff for cut ROI auto-contrast. |
-| `AutoContrastCutImagesCutoffHigh` | float | `45.0` | Upper percentile cutoff for cut ROI auto-contrast. |
-| `AutoContrastCutImagesIgnore` | int/None | `None` | Pixel intensity value to ignore in cut ROI auto-contrast. |
-| `GlareSuppressionEnabled` | boolean | `False` | Enable specular glare and reflection suppression. |
-| `GlareSuppressionMode` | string | `clahe` | Glare algorithm: `clahe`, `inpaint`, `illumination_normalize`, or `combined`. |
-| `GlareInpaintThreshold` | integer | `230` | Luminance threshold (0–255) to detect specular reflection hotspots. |
-| `GlareInpaintRadius` | integer | `3` | Inpainting neighborhood radius in pixels (Fast Marching method). |
-| `GlareClaheClipLimit` | float | `2.0` | Contrast limiting threshold factor for CLAHE equalization. |
-| `GlareClaheGridSize` | integer | `8` | Tile grid division size for CLAHE (e.g. 8 for 8×8 grid). |
-| `GlareApplyToCutImages`| boolean | `False` | Apply glare suppression individually to cropped ROI cutouts. |
+| `Sharpness` | float | `1.0` | Base standard sharpness factor (1.0 = unchanged). |
+| `GrayScale` | boolean | `False` | Convert camera image to grayscale before processing. |
+
+---
+
+### `[AutoContrast]`
+Dynamic histogram auto-contrast stretching executed autonomously according to its configured `Scope`.
+
+| Parameter | Type | Default | Description |
+| :--- | :--- | :--- | :--- |
+| `Scope` | string | `none` | Auto-contrast application scope: `none`, `full` (full frame only), `cutouts` (cutout ROIs only), or `both`. |
+| `Cutoff` | string / tuple | `2.0, 45.0` | Lower and upper histogram percentile cutoff percentages (comma-separated or `CutoffLow` / `CutoffHigh`). |
+| `Ignore` | int/None | `None` | Pixel intensity value (0–255) to ignore during histogram analysis (e.g. background mask or black padding). |
+
+---
+
+### `[Denoise]`
+Edge-preserving noise reduction filtering to eliminate camera sensor grain and quantization artifacts before CNN inference.
+
+| Parameter | Type | Default | Description |
+| :--- | :--- | :--- | :--- |
+| `Scope` | string | `none` | Denoising scope: `none`, `full` (full frame only), `cutouts` (cutout ROIs only), or `both`. |
+| `Method` | string | `bilateral` | Filtering algorithm: `bilateral`, `nlmeans` (Fast Non-Local Means), `median`, or `median_bilateral` (hybrid). |
+| `Strength` | float | `7.0` | Filter strength ($h$ parameter) for Non-Local Means luminance denoising. |
+| `Diameter` | integer | `5` | Pixel neighborhood diameter for bilateral filter. |
+| `SigmaColor` | float | `50.0` | Filter sigma in color/intensity space for bilateral filter. |
+| `SigmaSpace` | float | `50.0` | Filter sigma in coordinate/spatial space for bilateral filter. |
+| `TemplateWindow` | integer | `7` | Template patch size (odd number) for Fast NL-Means. |
+| `SearchWindow` | integer | `15` | Search window area size (odd number) for Fast NL-Means. |
+
+---
+
+### `[GlareSuppression]`
+Specular reflection and hotspot mitigation across glass meter covers.
+
+| Parameter | Type | Default | Description |
+| :--- | :--- | :--- | :--- |
+| `Scope` | string | `none` | Glare suppression scope: `none`, `full` (full frame only), `cutouts` (cutout ROIs only), or `both`. |
+| `Mode` | string | `clahe` | Algorithm: `clahe` (Contrast Limited Adaptive Histogram Equalization), `inpaint` (Fast Marching), `illumination_normalize`, or `combined`. |
+| `InpaintThreshold` | integer | `230` | Luminance threshold (0–255) to detect specular reflection hotspots for inpainting. |
+| `InpaintRadius` | integer | `3` | Inpainting neighborhood radius in pixels. |
+| `ClaheClipLimit` | float | `2.0` | Contrast limiting threshold factor for CLAHE equalization. |
+| `ClaheGridSize` | integer | `8` | Tile grid division size for CLAHE (e.g. `8` for 8×8 grid). |
+
+---
+
+### `[Sharpness]`
+Dedicated edge enhancement and luminance unsharp masking.
+
+| Parameter | Type | Default | Description |
+| :--- | :--- | :--- | :--- |
+| `Mode` | string | `standard` | Sharpening algorithm: `standard` (PIL ImageEnhance), `unsharp_mask` (CIELAB luminance unsharp), `auto`, or `none`. |
+| `Amount` | float | `1.5` | Sharpening strength multiplier for unsharp mask. |
+| `Radius` | float | `1.0` | Blur radius ($\sigma$) for luminance unsharp masking. |
+| `Threshold` | integer | `3` | Noise coring threshold (0–255) to avoid sharpening camera sensor noise. |
+| `ApplyToCutouts` | boolean | `False` | Apply spatial edge sharpening individually to cropped ROI sub-images. |
 
 ---
 

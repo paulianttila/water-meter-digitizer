@@ -50,7 +50,7 @@ This document details the internal system architecture, decoupled module design,
 
 1. **Capture**: `ImageProcessor.download_image` acquires frame bytes via HTTP/RTSP or local file with byte-size threshold validation.
 2. **Alignment**: 3-Point affine transformation locks onto reference marker centroids (`ref0`, `ref1`, `ref2`) to correct camera vibration or angle shifts.
-3. **Adjustment**: Spatial luminance unsharp masking in CIELAB space, LUT non-linear gamma curves, histogram contrast stretching, and CLAHE glare suppression.
+3. **Adjustment**: Multi-stage preprocessing with autonomous modular filters: base tonal & gamma adjustments, specular glare suppression (CLAHE, Fast Marching inpainting, illumination normalization), noise reduction (Bilateral, Fast NL-Means, Median filtering), spatial luminance unsharp masking, and dynamic histogram auto-contrast stretching (configurable per full-frame and/or cropped ROI cutouts).
 4. **ROI Extraction**: Cuts precise bounding boxes for digital number wheels and analog needle dials.
 5. **LiteRT Neural Inference**: Normalizes tensors and executes CNN inference via worker threads in `InterpreterPool`. Detects minus signs (`-`) when enabled.
 6. **Post-Processing & Validation**: Predecessor consistency engine resolves mid-roll digit transitions, calculates fractional decimal resolution, validates flow continuity and stale thresholds, protects baseline states in `prevalue.ini`, emits structured per-meter summary logs, records to SQLite, and broadcasts MQTT telemetry.
