@@ -1,6 +1,7 @@
 """Meter Dashboard Page for NiceGUI (Live Readouts, Cropped Dials, Analytics, and History Table)."""
 
 import asyncio
+import base64
 import contextlib
 import logging
 import time
@@ -10,6 +11,7 @@ from typing import Any
 
 from nicegui import ui
 
+import utils.image as ImageUtils
 from callbacks import Callbacks
 from gui.components import (
     ConsumptionCard,
@@ -37,6 +39,9 @@ from gui.theme import (
     FONT_MONO_VALUE,
     HEADING_SECTION,
     HEADING_SUBSECTION,
+    HEX_ROI_ANALOG,
+    HEX_ROI_DIGITAL,
+    HEX_ROI_REFS,
     PANEL_STAGE_IMAGE,
     ROW_HEADER,
     ROW_ITEMS_CENTER,
@@ -730,43 +735,154 @@ class MeterPage(BasePage):
 
                 # 2. Main Multi-Stage Image & Crop Grids
                 def open_roi_dialog() -> None:
-                    roi_img = ""
-                    try:
-                        roi_img = self.callbacks.get_image_as_base64_str("roi")
-                    except Exception:
-                        logger.debug(
-                            "Failed to get 'roi' image, falling back to 'final'",
-                            exc_info=True,
-                        )
+                    clean_img_b64 = ""
+                    for stage in ("final", "aligned", "processed", "original"):
+                        with contextlib.suppress(Exception):
+                            clean_img_b64 = self.callbacks.get_image_as_base64_str(
+                                stage
+                            )
+                        if clean_img_b64:
+                            break
+
+                    if not clean_img_b64:
                         try:
-                            roi_img = self.callbacks.get_image_as_base64_str("final")
+                            clean_img_b64 = self.callbacks.get_image_as_base64_str(
+                                "roi"
+                            )
                         except Exception:
                             logger.debug(
-                                "Failed to get 'final' fallback image for ROI dialog",
+                                "Failed to get fallback image for ROI dialog",
                                 exc_info=True,
                             )
-                            roi_img = ""
+                            clean_img_b64 = ""
 
                     cfg = self.callbacks.get_config()
-                    n_refs = (
-                        len(getattr(cfg.alignment, "ref_images", []))
+                    ref_pos = (
+                        getattr(cfg.alignment, "ref_images", [])
                         if cfg and getattr(cfg, "alignment", None)
-                        else 0
+                        else []
                     )
-                    n_dig = (
-                        len(getattr(cfg.digital_readout, "cut_images", []))
+                    dig_pos = (
+                        getattr(cfg.digital_readout, "cut_images", [])
                         if cfg and getattr(cfg, "digital_readout", None)
-                        else 0
+                        else []
                     )
-                    n_ana = (
-                        len(getattr(cfg.analog_readout, "cut_images", []))
+                    ana_pos = (
+                        getattr(cfg.analog_readout, "cut_images", [])
                         if cfg and getattr(cfg, "analog_readout", None)
-                        else 0
+                        else []
                     )
+
+                    cam_w = 640
+                    cam_h = 480
+                    if clean_img_b64:
+                        try:
+                            pil_img = ImageUtils.convert_base64_str_to_image(
+                                clean_img_b64
+                            )
+                            cam_w, cam_h = ImageUtils.image_size(pil_img)
+                        except Exception:
+                            if cfg and getattr(cfg, "alignment", None):
+                                cam_w = (
+                                    getattr(cfg.alignment, "target_width", 640) or 640
+                                )
+                                cam_h = (
+                                    getattr(cfg.alignment, "target_height", 480) or 480
+                                )
+
+                    hidden_rois: set[str] = set()
+
+                    def build_svg_content() -> str:
+                        svg_parts = [
+                            f'<svg width="{cam_w}" height="{cam_h}" viewBox="0 0 {cam_w} {cam_h}" '
+                            'xmlns="http://www.w3.org/2000/svg" style="display:block;user-select:none;">',
+                            '<rect width="100%" height="100%" fill="#020617"/>',
+                        ]
+                        if clean_img_b64:
+                            svg_parts.append(
+                                f'<image href="data:image/jpeg;base64,{clean_img_b64}" '
+                                f'x="0" y="0" width="{cam_w}" height="{cam_h}" '
+                                'preserveAspectRatio="none" style="pointer-events:none;"/>'
+                            )
+                        else:
+                            svg_parts.append(
+                                f'<text x="{cam_w/2}" y="{cam_h/2}" fill="#64748b" text-anchor="middle" '
+                                'font-family="monospace" font-size="14">No capture image available</text>'
+                            )
+
+                        svg_parts.append('<g opacity="0.9">')
+
+                        # Draw reference markers
+                        for r in ref_pos:
+                            if r.name in hidden_rois:
+                                continue
+                            rx, ry = r.x, r.y
+                            rw = r.w or 32
+                            rh = r.h or 32
+                            rcx = rx + rw / 2.0
+                            rcy = ry + rh / 2.0
+                            y_lbl = ry - 5 if ry >= 14 else ry + 13
+                            svg_parts.append(
+                                f'<text x="{rx}" y="{y_lbl}" fill="{HEX_ROI_REFS}" font-size="10" font-family="monospace" font-weight="bold" '
+                                f'paint-order="stroke fill" stroke="#020617" stroke-width="2.5">{r.name}</text>'
+                                f'<rect x="{rx}" y="{ry}" width="{rw}" height="{rh}" '
+                                f'stroke="{HEX_ROI_REFS}" stroke-width="2" stroke-dasharray="3 3" '
+                                f'fill="{HEX_ROI_REFS}" fill-opacity="0.18"/>'
+                                f'<line x1="{rx}" y1="{rcy:.1f}" x2="{rx + rw}" y2="{rcy:.1f}" stroke="{HEX_ROI_REFS}" stroke-width="1.5"/>'
+                                f'<line x1="{rcx:.1f}" y1="{ry}" x2="{rcx:.1f}" y2="{ry + rh}" stroke="{HEX_ROI_REFS}" stroke-width="1.5"/>'
+                            )
+
+                        # Draw digital ROIs: outer box, inner box (0.2 inset), and horizontal center dividing line
+                        for d in dig_pos:
+                            if d.name in hidden_rois:
+                                continue
+                            dx, dy, dw, dh = d.x, d.y, d.w, d.h
+                            y_lbl = dy - 5 if dy >= 14 else dy + 13
+                            inner_x = dx + dw * 0.2
+                            inner_y = dy + dh * 0.2
+                            inner_w = dw - dw * 0.4
+                            inner_h = dh - dh * 0.4
+                            line_y = dy + dh / 2.0
+                            svg_parts.append(
+                                f'<text x="{dx}" y="{y_lbl}" fill="{HEX_ROI_DIGITAL}" font-size="10" font-family="monospace" font-weight="bold" '
+                                f'paint-order="stroke fill" stroke="#020617" stroke-width="2.5">{d.name}</text>'
+                                f'<rect x="{dx}" y="{dy}" width="{dw}" height="{dh}" '
+                                f'stroke="{HEX_ROI_DIGITAL}" stroke-width="2" '
+                                f'fill="{HEX_ROI_DIGITAL}" fill-opacity="0.12" rx="1"/>'
+                                f'<rect x="{inner_x:.1f}" y="{inner_y:.1f}" width="{inner_w:.1f}" height="{inner_h:.1f}" '
+                                f'stroke="{HEX_ROI_DIGITAL}" stroke-width="1.2" fill-opacity="0"/>'
+                                f'<line x1="{inner_x:.1f}" y1="{line_y:.1f}" x2="{inner_x + inner_w:.1f}" y2="{line_y:.1f}" '
+                                f'stroke="{HEX_ROI_DIGITAL}" stroke-width="1.2"/>'
+                            )
+
+                        # Draw analog ROIs: outer box, inscribed ellipse/circle, and crosshairs
+                        for a in ana_pos:
+                            if a.name in hidden_rois:
+                                continue
+                            ax, ay, aw, ah = a.x, a.y, a.w, a.h
+                            acx = ax + aw / 2.0
+                            acy = ay + ah / 2.0
+                            y_lbl = ay - 5 if ay >= 14 else ay + 13
+                            svg_parts.append(
+                                f'<text x="{ax}" y="{y_lbl}" fill="{HEX_ROI_ANALOG}" font-size="10" font-family="monospace" font-weight="bold" '
+                                f'paint-order="stroke fill" stroke="#020617" stroke-width="2.5">{a.name}</text>'
+                                f'<rect x="{ax}" y="{ay}" width="{aw}" height="{ah}" '
+                                f'stroke="{HEX_ROI_ANALOG}" stroke-width="2" '
+                                f'fill="{HEX_ROI_ANALOG}" fill-opacity="0.10"/>'
+                                f'<rect x="{ax}" y="{ay}" width="{aw}" height="{ah}" rx="{aw/2.0:.1f}" ry="{ah/2.0:.1f}" '
+                                f'stroke="{HEX_ROI_ANALOG}" stroke-width="1.5" fill-opacity="0"/>'
+                                f'<line x1="{acx:.1f}" y1="{ay}" x2="{acx:.1f}" y2="{ay + ah}" stroke="{HEX_ROI_ANALOG}" stroke-width="1.2"/>'
+                                f'<line x1="{ax}" y1="{acy:.1f}" x2="{ax + aw}" y2="{acy:.1f}" stroke="{HEX_ROI_ANALOG}" stroke-width="1.2"/>'
+                            )
+
+                        svg_parts.append("</g></svg>")
+                        return "".join(svg_parts)
 
                     with (
                         ui.dialog() as roi_modal,
-                        ui.card().classes(f"{DIALOG_CARD} max-w-4xl"),
+                        ui.card().classes(
+                            f"{DIALOG_CARD} min-w-[340px] max-w-5xl max-h-[92vh] overflow-y-auto p-4 flex flex-col gap-3"
+                        ),
                     ):
                         with card_header(
                             title="ROI & Reference Marks Inspector",
@@ -779,65 +895,252 @@ class MeterPage(BasePage):
                                 "flat round dense text-xs aria-label='Close dialog'"
                             )
 
-                        # Color-Coded Legend Row
-                        with ui.row().classes(
-                            "w-full items-center justify-between gap-3 text-xs flex-wrap p-2 rounded-xl bg-slate-950/60 border border-white/5"
+                        # ROI Overlays Selection Panel
+                        with ui.column().classes(
+                            "w-full bg-slate-950/60 p-2.5 rounded-xl border border-white/5 gap-2"
                         ):
-                            with ui.row().classes("items-center gap-4 flex-wrap"):
+                            with ui.row().classes(
+                                "w-full justify-between items-center"
+                            ):
                                 with ui.row().classes("items-center gap-1.5"):
-                                    ui.element("span").classes(
-                                        "w-3 h-3 rounded bg-emerald-500 shadow-sm shadow-emerald-500/50"
+                                    ui.icon("layers", size="xs").classes(
+                                        "text-slate-300"
                                     )
-                                    ui.label("Alignment References").classes(
-                                        "font-medium text-emerald-300"
+                                    ui.label("ROI Overlays").classes(
+                                        "font-bold text-slate-200 text-xs"
                                     )
-                                    ui.label(f"({n_refs})").classes(
-                                        "text-xs text-gray-400 font-mono"
+                                with ui.row().classes("gap-1 items-center"):
+
+                                    def show_all_rois() -> None:
+                                        hidden_rois.clear()
+                                        render_visibility_chips()
+                                        update_canvas_view()
+
+                                    def hide_all_rois() -> None:
+                                        for d in dig_pos:
+                                            hidden_rois.add(d.name)
+                                        for a in ana_pos:
+                                            hidden_rois.add(a.name)
+                                        for r in ref_pos:
+                                            hidden_rois.add(r.name)
+                                        render_visibility_chips()
+                                        update_canvas_view()
+
+                                    ui.button("All", on_click=show_all_rois).props(
+                                        "flat dense"
+                                    ).classes(
+                                        "text-[10px] text-cyan-400 hover:text-cyan-300 px-1.5 py-0.5"
                                     )
-                                with ui.row().classes("items-center gap-1.5"):
-                                    ui.element("span").classes(
-                                        "w-3 h-3 rounded bg-blue-500 shadow-sm shadow-blue-500/50"
-                                    )
-                                    ui.label("Digital Counters").classes(
-                                        "font-medium text-blue-300"
-                                    )
-                                    ui.label(f"({n_dig})").classes(
-                                        "text-xs text-gray-400 font-mono"
-                                    )
-                                with ui.row().classes("items-center gap-1.5"):
-                                    ui.element("span").classes(
-                                        "w-3 h-3 rounded bg-amber-500 shadow-sm shadow-amber-500/50"
-                                    )
-                                    ui.label("Analog Dials").classes(
-                                        "font-medium text-amber-300"
-                                    )
-                                    ui.label(f"({n_ana})").classes(
-                                        "text-xs text-gray-400 font-mono"
+                                    ui.label("|").classes("text-slate-600 text-[10px]")
+                                    ui.button("None", on_click=hide_all_rois).props(
+                                        "flat dense"
+                                    ).classes(
+                                        "text-[10px] text-slate-400 hover:text-slate-300 px-1.5 py-0.5"
                                     )
 
-                            ui.label("Thickness: 2px | Pill Badges").classes(
-                                "text-[11px] text-gray-400 font-mono"
+                            visibility_container = ui.column().classes("w-full gap-2")
+
+                            def toggle_roi_visibility(name: str) -> None:
+                                if name in hidden_rois:
+                                    hidden_rois.remove(name)
+                                else:
+                                    hidden_rois.add(name)
+                                render_visibility_chips()
+                                update_canvas_view()
+
+                            def render_visibility_chips() -> None:
+                                visibility_container.clear()
+                                with visibility_container:
+                                    if not dig_pos and not ana_pos and not ref_pos:
+                                        ui.label("No ROIs configured").classes(
+                                            "text-xs text-slate-500 italic"
+                                        )
+                                        return
+
+                                    if dig_pos:
+                                        with ui.column().classes("w-full gap-1"):
+                                            n_vis_dig = len(dig_pos) - sum(
+                                                1
+                                                for d in dig_pos
+                                                if d.name in hidden_rois
+                                            )
+                                            with ui.row().classes(
+                                                "items-center gap-1.5"
+                                            ):
+                                                ui.element("span").classes(
+                                                    "w-2 h-2 rounded bg-blue-500 shadow-sm shadow-blue-500/50"
+                                                )
+                                                ui.label(
+                                                    f"Digital Counters ({n_vis_dig}/{len(dig_pos)})"
+                                                ).classes(
+                                                    "text-[10px] font-semibold text-blue-400 uppercase tracking-wider"
+                                                )
+                                            with ui.row().classes(
+                                                "w-full flex-wrap gap-1"
+                                            ):
+                                                for d in dig_pos:
+                                                    is_hidden = d.name in hidden_rois
+                                                    btn_classes = (
+                                                        "text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-800/40 "
+                                                        "text-slate-500 border border-slate-700/40 line-through opacity-70"
+                                                        if is_hidden
+                                                        else "text-[10px] font-mono px-1.5 py-0.5 rounded bg-blue-950/80 "
+                                                        "text-blue-300 border border-blue-500/40 hover:bg-blue-900/80"
+                                                    )
+                                                    icon_name = (
+                                                        "visibility_off"
+                                                        if is_hidden
+                                                        else "visibility"
+                                                    )
+                                                    ui.button(
+                                                        d.name,
+                                                        icon=icon_name,
+                                                        on_click=lambda name=d.name: toggle_roi_visibility(
+                                                            name
+                                                        ),
+                                                    ).props(
+                                                        "dense flat"
+                                                        if is_hidden
+                                                        else "dense unelevated"
+                                                    ).classes(
+                                                        btn_classes
+                                                    )
+
+                                    if ana_pos:
+                                        with ui.column().classes("w-full gap-1"):
+                                            n_vis_ana = len(ana_pos) - sum(
+                                                1
+                                                for a in ana_pos
+                                                if a.name in hidden_rois
+                                            )
+                                            with ui.row().classes(
+                                                "items-center gap-1.5"
+                                            ):
+                                                ui.element("span").classes(
+                                                    "w-2 h-2 rounded bg-amber-500 shadow-sm shadow-amber-500/50"
+                                                )
+                                                ui.label(
+                                                    f"Analog Dials ({n_vis_ana}/{len(ana_pos)})"
+                                                ).classes(
+                                                    "text-[10px] font-semibold text-amber-400 uppercase tracking-wider"
+                                                )
+                                            with ui.row().classes(
+                                                "w-full flex-wrap gap-1"
+                                            ):
+                                                for a in ana_pos:
+                                                    is_hidden = a.name in hidden_rois
+                                                    btn_classes = (
+                                                        "text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-800/40 "
+                                                        "text-slate-500 border border-slate-700/40 line-through opacity-70"
+                                                        if is_hidden
+                                                        else "text-[10px] font-mono px-1.5 py-0.5 rounded bg-amber-950/80 "
+                                                        "text-amber-300 border border-amber-500/40 hover:bg-amber-900/80"
+                                                    )
+                                                    icon_name = (
+                                                        "visibility_off"
+                                                        if is_hidden
+                                                        else "visibility"
+                                                    )
+                                                    ui.button(
+                                                        a.name,
+                                                        icon=icon_name,
+                                                        on_click=lambda name=a.name: toggle_roi_visibility(
+                                                            name
+                                                        ),
+                                                    ).props(
+                                                        "dense flat"
+                                                        if is_hidden
+                                                        else "dense unelevated"
+                                                    ).classes(
+                                                        btn_classes
+                                                    )
+
+                                    if ref_pos:
+                                        with ui.column().classes("w-full gap-1"):
+                                            n_vis_ref = len(ref_pos) - sum(
+                                                1
+                                                for r in ref_pos
+                                                if r.name in hidden_rois
+                                            )
+                                            with ui.row().classes(
+                                                "items-center gap-1.5"
+                                            ):
+                                                ui.element("span").classes(
+                                                    "w-2 h-2 rounded bg-emerald-500 shadow-sm shadow-emerald-500/50"
+                                                )
+                                                ui.label(
+                                                    f"Alignment References ({n_vis_ref}/{len(ref_pos)})"
+                                                ).classes(
+                                                    "text-[10px] font-semibold text-emerald-400 uppercase tracking-wider"
+                                                )
+                                            with ui.row().classes(
+                                                "w-full flex-wrap gap-1"
+                                            ):
+                                                for r in ref_pos:
+                                                    is_hidden = r.name in hidden_rois
+                                                    btn_classes = (
+                                                        "text-[10px] font-mono px-1.5 py-0.5 rounded bg-slate-800/40 "
+                                                        "text-slate-500 border border-slate-700/40 line-through opacity-70"
+                                                        if is_hidden
+                                                        else "text-[10px] font-mono px-1.5 py-0.5 rounded bg-emerald-950/80 "
+                                                        "text-emerald-300 border border-emerald-500/40 hover:bg-emerald-900/80"
+                                                    )
+                                                    icon_name = (
+                                                        "visibility_off"
+                                                        if is_hidden
+                                                        else "visibility"
+                                                    )
+                                                    ui.button(
+                                                        r.name,
+                                                        icon=icon_name,
+                                                        on_click=lambda name=r.name: toggle_roi_visibility(
+                                                            name
+                                                        ),
+                                                    ).props(
+                                                        "dense flat"
+                                                        if is_hidden
+                                                        else "dense unelevated"
+                                                    ).classes(
+                                                        btn_classes
+                                                    )
+
+                        # Image Container with SVG Overlay
+                        with ui.element("div").classes(
+                            "w-full rounded-xl bg-slate-950 p-2 border border-white/10 flex items-center justify-center overflow-hidden max-h-[65vh]"
+                        ):
+                            init_svg = build_svg_content()
+                            init_b64_svg = base64.b64encode(
+                                init_svg.encode("utf-8")
+                            ).decode("utf-8")
+                            viewport_image = (
+                                ui.interactive_image(
+                                    f"data:image/svg+xml;base64,{init_b64_svg}"
+                                )
+                                .props("no-spinner")
+                                .classes("max-h-[60vh] object-contain rounded-lg")
                             )
 
-                        # Image Container
-                        with ui.element("div").classes(
-                            "w-full rounded-xl bg-slate-950 p-2 border border-white/10 flex items-center justify-center overflow-hidden max-h-[70vh]"
-                        ):
-                            if roi_img:
-                                ui.image(f"data:image/jpeg;base64,{roi_img}").classes(
-                                    "max-h-[65vh] object-contain rounded-lg"
-                                )
-                            else:
-                                ui.label("No ROI overlay image available").classes(
-                                    "text-xs text-gray-400 p-4"
-                                )
+                        def update_canvas_view() -> None:
+                            svg_data = build_svg_content()
+                            b64_svg = base64.b64encode(svg_data.encode("utf-8")).decode(
+                                "utf-8"
+                            )
+                            viewport_image.set_source(
+                                f"data:image/svg+xml;base64,{b64_svg}"
+                            )
+
+                        render_visibility_chips()
 
                         with ui.row().classes(
                             "w-full justify-between items-center pt-2 border-t border-white/10"
                         ):
-                            ui.button("Open Raw /roi", icon="open_in_new").props(
-                                'flat dense color=cyan text-xs href="/roi" target="_blank"'
-                            )
+                            with ui.row().classes("items-center gap-2"):
+                                ui.button("Open Raw /roi", icon="open_in_new").props(
+                                    'flat dense color=cyan text-xs href="/roi" target="_blank"'
+                                )
+                                ui.label(f"{cam_w}x{cam_h} px").classes(
+                                    "text-[10px] text-slate-500 font-mono"
+                                )
                             ui.button("Close", on_click=roi_modal.close).props(
                                 "flat dense color=primary text-xs"
                             )

@@ -536,3 +536,47 @@ def test_page_meter_crop_modal_analog_testing(mock_meter_result, mock_meter_ui):
     callbacks.evaluate_crop_model.assert_called_with(
         "YW5hbG9n", "/path/to/ana.tflite", False
     )
+
+
+def test_page_meter_inspect_rois_dialog(mock_meter_result, mock_meter_ui):
+    """Verify Inspect ROIs dialog builds interactive overlay and handles visibility toggles."""
+    callbacks = MagicMock()
+    callbacks.get_meter_data.return_value = mock_meter_result
+    callbacks.get_image_as_base64_str.return_value = "dGVzdGZpbmFs"
+    config = Config()
+    callbacks.get_config.return_value = config
+
+    page = MeterPage(callbacks)
+    asyncio.run(page.show())
+
+    # Find and trigger Inspect ROIs button
+    inspect_btn_calls = [
+        call
+        for call in mock_meter_ui.button.call_args_list
+        if call.args and call.args[0] == "Inspect ROIs"
+    ]
+    assert len(inspect_btn_calls) == 1
+    on_click_func = inspect_btn_calls[0].kwargs.get("on_click")
+    assert on_click_func is not None
+
+    # Open dialog
+    on_click_func()
+    assert mock_meter_ui.interactive_image.called
+
+    # Find All and None buttons
+    all_btn_calls = [
+        call
+        for call in mock_meter_ui.button.call_args_list
+        if call.args and call.args[0] == "All"
+    ]
+    none_btn_calls = [
+        call
+        for call in mock_meter_ui.button.call_args_list
+        if call.args and call.args[0] == "None"
+    ]
+    assert len(all_btn_calls) >= 1
+    assert len(none_btn_calls) >= 1
+
+    # Test clicking None then All
+    none_btn_calls[-1].kwargs["on_click"]()
+    all_btn_calls[-1].kwargs["on_click"]()

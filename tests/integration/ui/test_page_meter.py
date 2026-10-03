@@ -30,12 +30,27 @@ def test_meter_dashboard_metrics_and_images(page: Page, live_server_url: str):
     expect(page.get_by_text("ROI & Reference Marks Inspector")).to_be_visible(
         timeout=5000
     )
+    expect(page.get_by_text("ROI Overlays")).to_be_visible()
     expect(page.get_by_text("Alignment References")).to_be_visible()
-    page.keyboard.press("Escape")
+
+    # Test None and All selection toggles
+    none_btn = page.get_by_role("button", name="None")
+    expect(none_btn).to_be_visible()
+    none_btn.click()
+
+    all_btn = page.get_by_role("button", name="All")
+    expect(all_btn).to_be_visible()
+    all_btn.click()
+
+    close_btn = page.get_by_role("button", name="Close", exact=True)
+    if close_btn.is_visible():
+        close_btn.click()
+    else:
+        page.keyboard.press("Escape")
 
     # 4. Assert individual ROIs
-    expect(page.get_by_text("digit1", exact=True)).to_be_visible()
-    expect(page.get_by_text("analog1", exact=True)).to_be_visible()
+    expect(page.get_by_text("digit1", exact=True).first).to_be_visible()
+    expect(page.get_by_text("analog1", exact=True).first).to_be_visible()
 
 
 @pytest.mark.ui
