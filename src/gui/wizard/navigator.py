@@ -211,6 +211,60 @@ class WizardNavigator:
                 unsharp_radius=float(adjust_step.unsharp_radius.value or 1.0),
                 unsharp_amount=float(adjust_step.unsharp_amount.value or 1.5),
                 unsharp_threshold=int(adjust_step.unsharp_threshold.value or 3),
+                denoise=(
+                    getattr(adjust_step, "denoise_enabled", None) is not None
+                    and adjust_step.denoise_enabled.value
+                    and adjust_step.denoise_apply_to_cut_images.value
+                ),
+                denoise_method=str(
+                    (
+                        getattr(adjust_step, "denoise_method", None)
+                        and adjust_step.denoise_method.value
+                    )
+                    or "bilateral"
+                ),
+                denoise_diameter=int(
+                    (
+                        getattr(adjust_step, "denoise_diameter", None)
+                        and adjust_step.denoise_diameter.value
+                    )
+                    or 5
+                ),
+                denoise_sigma_color=float(
+                    (
+                        getattr(adjust_step, "denoise_sigma_color", None)
+                        and adjust_step.denoise_sigma_color.value
+                    )
+                    or 50.0
+                ),
+                denoise_sigma_space=float(
+                    (
+                        getattr(adjust_step, "denoise_sigma_space", None)
+                        and adjust_step.denoise_sigma_space.value
+                    )
+                    or 50.0
+                ),
+                denoise_strength=float(
+                    (
+                        getattr(adjust_step, "denoise_strength", None)
+                        and adjust_step.denoise_strength.value
+                    )
+                    or 7.0
+                ),
+                denoise_template_window=int(
+                    (
+                        getattr(adjust_step, "denoise_template_window", None)
+                        and adjust_step.denoise_template_window.value
+                    )
+                    or 7
+                ),
+                denoise_search_window=int(
+                    (
+                        getattr(adjust_step, "denoise_search_window", None)
+                        and adjust_step.denoise_search_window.value
+                    )
+                    or 15
+                ),
             )
         elif name == NAME_DRAW_ANALOG_ROIS:
             draw_analog_rois_step.update_image(
@@ -238,6 +292,60 @@ class WizardNavigator:
                 unsharp_radius=float(adjust_step.unsharp_radius.value or 1.0),
                 unsharp_amount=float(adjust_step.unsharp_amount.value or 1.5),
                 unsharp_threshold=int(adjust_step.unsharp_threshold.value or 3),
+                denoise=(
+                    getattr(adjust_step, "denoise_enabled", None) is not None
+                    and adjust_step.denoise_enabled.value
+                    and adjust_step.denoise_apply_to_cut_images.value
+                ),
+                denoise_method=str(
+                    (
+                        getattr(adjust_step, "denoise_method", None)
+                        and adjust_step.denoise_method.value
+                    )
+                    or "bilateral"
+                ),
+                denoise_diameter=int(
+                    (
+                        getattr(adjust_step, "denoise_diameter", None)
+                        and adjust_step.denoise_diameter.value
+                    )
+                    or 5
+                ),
+                denoise_sigma_color=float(
+                    (
+                        getattr(adjust_step, "denoise_sigma_color", None)
+                        and adjust_step.denoise_sigma_color.value
+                    )
+                    or 50.0
+                ),
+                denoise_sigma_space=float(
+                    (
+                        getattr(adjust_step, "denoise_sigma_space", None)
+                        and adjust_step.denoise_sigma_space.value
+                    )
+                    or 50.0
+                ),
+                denoise_strength=float(
+                    (
+                        getattr(adjust_step, "denoise_strength", None)
+                        and adjust_step.denoise_strength.value
+                    )
+                    or 7.0
+                ),
+                denoise_template_window=int(
+                    (
+                        getattr(adjust_step, "denoise_template_window", None)
+                        and adjust_step.denoise_template_window.value
+                    )
+                    or 7
+                ),
+                denoise_search_window=int(
+                    (
+                        getattr(adjust_step, "denoise_search_window", None)
+                        and adjust_step.denoise_search_window.value
+                    )
+                    or 15
+                ),
             )
         elif name == NAME_METERS:
             meters_step.update_image(image)

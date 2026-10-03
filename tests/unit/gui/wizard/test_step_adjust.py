@@ -88,6 +88,15 @@ def test_adjust_step_load_from_config(sample_pil_image: Image.Image) -> None:
     step.glare_apply_to_cut_images = MagicMock()
     step.rotate_angle = MagicMock()
     step.rotate_enabled = MagicMock()
+    step.denoise_enabled = MagicMock()
+    step.denoise_method = MagicMock()
+    step.denoise_diameter = MagicMock()
+    step.denoise_sigma_color = MagicMock()
+    step.denoise_sigma_space = MagicMock()
+    step.denoise_strength = MagicMock()
+    step.denoise_template_window = MagicMock()
+    step.denoise_search_window = MagicMock()
+    step.denoise_apply_to_cut_images = MagicMock()
 
     config = Config()
     config.crop.enabled = True
@@ -100,6 +109,9 @@ def test_adjust_step_load_from_config(sample_pil_image: Image.Image) -> None:
     config.image_processing.unsharp_amount = 2.0
     config.image_processing.glare_suppression.enabled = True
     config.image_processing.glare_suppression.clahe_clip_limit = 3.5
+    config.image_processing.denoise.enabled = True
+    config.image_processing.denoise.method = "nlmeans"
+    config.image_processing.denoise.strength = 5.0
 
     step.load_from_config(config)
 
@@ -111,6 +123,9 @@ def test_adjust_step_load_from_config(sample_pil_image: Image.Image) -> None:
     assert step.sharpness_mode.value == "unsharp_mask"
     assert step.unsharp_amount.value == 2.0
     assert step.glare_clahe_clip_limit.value == 3.5
+    assert step.denoise_enabled.value is True
+    assert step.denoise_method.value == "nlmeans"
+    assert step.denoise_strength.value == 5.0
 
 
 def _mock_adjust_step_ui(
@@ -152,6 +167,20 @@ def _mock_adjust_step_ui(
         "glare_inpaint_radius": 3,
         "glare_clahe_clip_limit": 2.0,
         "glare_clahe_grid_size": 8,
+        "denoise_enabled": False,
+        "denoise_apply_to_cut_images": False,
+        "denoise_method": "bilateral",
+        "denoise_diameter": 5,
+        "denoise_sigma_color": 50.0,
+        "denoise_sigma_space": 50.0,
+        "denoise_strength": 7.0,
+        "denoise_template_window": 7,
+        "denoise_search_window": 15,
+        "auto_sharpen_cut_images": False,
+        "autocontrast_cut_images_enabled": False,
+        "autocontrast_cut_images_cutoff_low": 2.0,
+        "autocontrast_cut_images_cutoff_high": 45.0,
+        "glare_apply_to_cut_images": False,
     }
     defaults.update(overrides)
     for attr, val in defaults.items():
@@ -424,3 +453,67 @@ def test_adjust_step_async_auto_enhance_offload(
             assert step.sharpness_mode.value == "unsharp_mask"
 
     asyncio.run(run_test())
+
+
+def test_adjust_step_do_adjust_denoising(sample_pil_image: Image.Image) -> None:
+    """Verify _do_adjust executes denoise_image when denoise_enabled is True."""
+    cb = MagicMock()
+    step = AdjustStep(name="Adjust", set_image_callback=cb)
+    _mock_adjust_step_ui(
+        step,
+        sample_pil_image,
+        adjust_enabled=True,
+        denoise_enabled=True,
+        denoise_method="bilateral",
+        denoise_diameter=5,
+        denoise_sigma_color=50.0,
+        denoise_sigma_space=50.0,
+    )
+
+    b64_orig = img_utils.convert_image_base64str(sample_pil_image)
+    with (
+        patch.object(step, "_do_adjust", wraps=step._do_adjust),
+        patch("processor.image.ImageProcessor.denoise_image") as mock_denoise,
+    ):
+        mock_denoise.return_value = MagicMock()
+        step._do_adjust(b64_orig)
+        mock_denoise.assert_called_once_with(
+            method="bilateral",
+            diameter=5,
+            sigma_color=50.0,
+            sigma_space=50.0,
+            strength=7.0,
+            template_window=7,
+            search_window=15,
+        )
+
+
+def test_adjust_step_populate_config_denoise() -> None:
+    """Verify populate_config saves denoise parameters into Config."""
+    cb = MagicMock()
+    step = AdjustStep(name="Adjust", set_image_callback=cb)
+    _mock_adjust_step_ui(
+        step,
+        denoise_enabled=True,
+        denoise_apply_to_cut_images=True,
+        denoise_method="nlmeans",
+        denoise_diameter=7,
+        denoise_sigma_color=60.0,
+        denoise_sigma_space=60.0,
+        denoise_strength=4.5,
+        denoise_template_window=5,
+        denoise_search_window=19,
+    )
+
+    cfg = Config()
+    step.populate_config(cfg)
+
+    assert cfg.image_processing.denoise.enabled is True
+    assert cfg.image_processing.denoise.apply_to_cut_images is True
+    assert cfg.image_processing.denoise.method == "nlmeans"
+    assert cfg.image_processing.denoise.diameter == 7
+    assert cfg.image_processing.denoise.sigma_color == 60.0
+    assert cfg.image_processing.denoise.sigma_space == 60.0
+    assert cfg.image_processing.denoise.strength == 4.5
+    assert cfg.image_processing.denoise.template_window == 5
+    assert cfg.image_processing.denoise.search_window == 19

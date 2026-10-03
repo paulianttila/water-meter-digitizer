@@ -13,6 +13,7 @@ from config.models import (
     AutoContrast,
     CNNParams,
     Crop,
+    Denoise,
     GlareSuppression,
     History,
     ImageProcessing,
@@ -259,6 +260,34 @@ def load_config_from_parser(cfg: Config, config: configparser.ConfigParser) -> C
         config, "ImageProcessing", "AutoSharpenCutImages", fallback=False
     )
 
+    denoise_enabled = _safe_getboolean(
+        config, "ImageProcessing", "DenoiseEnabled", fallback=False
+    )
+    denoise_method = config.get(
+        "ImageProcessing", "DenoiseMethod", fallback="bilateral"
+    ).lower()
+    denoise_diameter = _safe_getint(
+        config, "ImageProcessing", "DenoiseDiameter", fallback=5
+    )
+    denoise_sigma_color = _safe_getfloat(
+        config, "ImageProcessing", "DenoiseSigmaColor", fallback=50.0
+    )
+    denoise_sigma_space = _safe_getfloat(
+        config, "ImageProcessing", "DenoiseSigmaSpace", fallback=50.0
+    )
+    denoise_strength = _safe_getfloat(
+        config, "ImageProcessing", "DenoiseStrength", fallback=7.0
+    )
+    denoise_template_window = _safe_getint(
+        config, "ImageProcessing", "DenoiseTemplateWindow", fallback=7
+    )
+    denoise_search_window = _safe_getint(
+        config, "ImageProcessing", "DenoiseSearchWindow", fallback=15
+    )
+    denoise_apply_to_cut_images = _safe_getboolean(
+        config, "ImageProcessing", "DenoiseApplyToCutImages", fallback=False
+    )
+
     cfg.image_processing = ImageProcessing(
         enabled=image_processing_enabled,
         contrast=image_processing_contrast,
@@ -292,6 +321,17 @@ def load_config_from_parser(cfg: Config, config: configparser.ConfigParser) -> C
             clahe_clip_limit=glare_clahe_clip_limit,
             clahe_grid_size=glare_clahe_grid_size,
             apply_to_cut_images=glare_apply_to_cut_images,
+        ),
+        denoise=Denoise(
+            enabled=denoise_enabled,
+            method=denoise_method,
+            diameter=denoise_diameter,
+            sigma_color=denoise_sigma_color,
+            sigma_space=denoise_sigma_space,
+            strength=denoise_strength,
+            template_window=denoise_template_window,
+            search_window=denoise_search_window,
+            apply_to_cut_images=denoise_apply_to_cut_images,
         ),
     )
 
@@ -637,6 +677,17 @@ def save_config_to_io(cfg: Config, fp: TextIO) -> None:
         ),
         "GlareApplyToCutImages": str(
             cfg.image_processing.glare_suppression.apply_to_cut_images
+        ),
+        "DenoiseEnabled": str(cfg.image_processing.denoise.enabled),
+        "DenoiseMethod": cfg.image_processing.denoise.method,
+        "DenoiseDiameter": str(cfg.image_processing.denoise.diameter),
+        "DenoiseSigmaColor": str(cfg.image_processing.denoise.sigma_color),
+        "DenoiseSigmaSpace": str(cfg.image_processing.denoise.sigma_space),
+        "DenoiseStrength": str(cfg.image_processing.denoise.strength),
+        "DenoiseTemplateWindow": str(cfg.image_processing.denoise.template_window),
+        "DenoiseSearchWindow": str(cfg.image_processing.denoise.search_window),
+        "DenoiseApplyToCutImages": str(
+            cfg.image_processing.denoise.apply_to_cut_images
         ),
     }
 

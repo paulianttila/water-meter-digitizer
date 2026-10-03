@@ -228,6 +228,39 @@ class ImageProcessor:
         return self
 
     @_conditional_func
+    def denoise_image(
+        self,
+        method: str = "bilateral",
+        diameter: int = 5,
+        sigma_color: float = 50.0,
+        sigma_space: float = 50.0,
+        strength: float = 7.0,
+        template_window: int = 7,
+        search_window: int = 15,
+        median_ksize: int = 3,
+    ) -> "ImageProcessor":
+        logger.debug(
+            "Denoise image method:%s, diameter:%s, sigma_color:%s, sigma_space:%s, strength:%s",
+            method,
+            diameter,
+            sigma_color,
+            sigma_space,
+            strength,
+        )
+        self.image = utils.image.denoise_image(
+            self.image,
+            method=method,
+            diameter=diameter,
+            sigma_color=sigma_color,
+            sigma_space=sigma_space,
+            strength=strength,
+            template_window=template_window,
+            search_window=search_window,
+            median_ksize=median_ksize,
+        )
+        return self
+
+    @_conditional_func
     def to_gray_scale(self) -> "ImageProcessor":
         logger.debug("Convert image to gray scale")
         self.image = utils.image.convert_to_gray_scale(self.image)
@@ -262,6 +295,17 @@ class ImageProcessor:
         if is_oob:
             self.out_of_bounds_rois.append(position.name)
         image = utils.image.cut_image(self.image, position)
+        if options.denoise:
+            image = utils.image.denoise_image(
+                image,
+                method=options.denoise_method,
+                diameter=options.denoise_diameter,
+                sigma_color=options.denoise_sigma_color,
+                sigma_space=options.denoise_sigma_space,
+                strength=options.denoise_strength,
+                template_window=options.denoise_template_window,
+                search_window=options.denoise_search_window,
+            )
         if options.autocontrast:
             image = utils.image.autocontrast_image(
                 image,

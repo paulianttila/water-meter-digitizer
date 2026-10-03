@@ -22,6 +22,14 @@ def test_cut_image_options_defaults():
     assert opts.unsharp_radius == 1.0
     assert opts.unsharp_amount == 1.5
     assert opts.unsharp_threshold == 3
+    assert opts.denoise is False
+    assert opts.denoise_method == "bilateral"
+    assert opts.denoise_diameter == 5
+    assert opts.denoise_sigma_color == 50.0
+    assert opts.denoise_sigma_space == 50.0
+    assert opts.denoise_strength == 7.0
+    assert opts.denoise_template_window == 7
+    assert opts.denoise_search_window == 15
 
 
 def test_cut_image_options_valid_custom():

@@ -1,6 +1,7 @@
 """Modular cards for image adjustments and enhancements."""
 
 from .constants import BADGE_CLASSES
+from .denoise_card import build_denoise_card
 from .filter_curves_card import build_filter_curves_card
 from .glare_suppression_card import build_glare_suppression_card
 from .histogram_card import build_histogram_card, generate_histogram_svg
@@ -9,6 +10,7 @@ from .unsharp_mask_card import build_unsharp_mask_card
 
 __all__ = [
     "BADGE_CLASSES",
+    "build_denoise_card",
     "build_filter_curves_card",
     "build_glare_suppression_card",
     "build_histogram_card",

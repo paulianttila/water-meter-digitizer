@@ -58,6 +58,14 @@ class CutImageOptions(BaseModel):
     unsharp_radius: float = Field(default=1.0, ge=0.1, le=20.0)
     unsharp_amount: float = Field(default=1.5, ge=0.0, le=10.0)
     unsharp_threshold: int = Field(default=3, ge=0, le=255)
+    denoise: bool = False
+    denoise_method: str = "bilateral"
+    denoise_diameter: int = Field(default=5, ge=1, le=15)
+    denoise_sigma_color: float = Field(default=50.0, ge=0.1, le=150.0)
+    denoise_sigma_space: float = Field(default=50.0, ge=0.1, le=150.0)
+    denoise_strength: float = Field(default=7.0, ge=0.5, le=50.0)
+    denoise_template_window: int = Field(default=7, ge=3, le=15)
+    denoise_search_window: int = Field(default=15, ge=5, le=35)
 
     @model_validator(mode="after")
     def validate_cutoffs(self) -> "CutImageOptions":

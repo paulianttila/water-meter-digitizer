@@ -1229,6 +1229,7 @@ class MeterPage(BasePage):
                                     "rotated": "Rotated",
                                     "aligned": "Aligned",
                                     "cropped": "Cropped",
+                                    "denoised": "Denoised",
                                     "roi": "ROIs",
                                     "final": "Final",
                                 },

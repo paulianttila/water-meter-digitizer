@@ -297,6 +297,20 @@ def get_meter_data(
         .save_image("processed")
         .endif_()
         .if_(
+            config.image_processing.enabled and config.image_processing.denoise.enabled
+        )
+        .denoise_image(
+            method=config.image_processing.denoise.method,
+            diameter=config.image_processing.denoise.diameter,
+            sigma_color=config.image_processing.denoise.sigma_color,
+            sigma_space=config.image_processing.denoise.sigma_space,
+            strength=config.image_processing.denoise.strength,
+            template_window=config.image_processing.denoise.template_window,
+            search_window=config.image_processing.denoise.search_window,
+        )
+        .save_image("denoised")
+        .endif_()
+        .if_(
             config.image_processing.enabled
             and config.image_processing.glare_suppression.enabled
         )
@@ -326,6 +340,11 @@ def get_meter_data(
         config.image_processing.enabled
         and config.image_processing.autocontrast_cut_images.enabled
     )
+    denoise_cut = (
+        config.image_processing.enabled
+        and config.image_processing.denoise.enabled
+        and config.image_processing.denoise.apply_to_cut_images
+    )
     glare_cut = (
         config.image_processing.enabled
         and config.image_processing.glare_suppression.enabled
@@ -341,6 +360,14 @@ def get_meter_data(
         cutoff_low=config.image_processing.autocontrast_cut_images.cutoff_low,
         cutoff_high=config.image_processing.autocontrast_cut_images.cutoff_high,
         ignore=config.image_processing.autocontrast_cut_images.ignore,
+        denoise=denoise_cut,
+        denoise_method=config.image_processing.denoise.method,
+        denoise_diameter=config.image_processing.denoise.diameter,
+        denoise_sigma_color=config.image_processing.denoise.sigma_color,
+        denoise_sigma_space=config.image_processing.denoise.sigma_space,
+        denoise_strength=config.image_processing.denoise.strength,
+        denoise_template_window=config.image_processing.denoise.template_window,
+        denoise_search_window=config.image_processing.denoise.search_window,
         glare_suppression=glare_cut,
         glare_mode=config.image_processing.glare_suppression.mode,
         glare_inpaint_threshold=config.image_processing.glare_suppression.inpaint_threshold,

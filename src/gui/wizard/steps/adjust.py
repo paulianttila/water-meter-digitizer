@@ -8,6 +8,7 @@ import utils.image
 from configuration import Config
 from data_classes import RefImage
 from gui.wizard.adjust import (
+    build_denoise_card,
     build_filter_curves_card,
     build_glare_suppression_card,
     build_histogram_card,
@@ -112,6 +113,16 @@ class AdjustStep(BaseStep):
         self.glare_inpaint_radius: ui.slider
         self.glare_clahe_clip_limit: ui.slider
         self.glare_clahe_grid_size: ui.slider
+
+        self.denoise_enabled: ui.checkbox
+        self.denoise_apply_to_cut_images: ui.checkbox
+        self.denoise_method: ui.select
+        self.denoise_diameter: ui.slider
+        self.denoise_sigma_color: ui.slider
+        self.denoise_sigma_space: ui.slider
+        self.denoise_strength: ui.slider
+        self.denoise_template_window: ui.slider
+        self.denoise_search_window: ui.slider
 
     @property
     def image_processing_enabled(self) -> ui.checkbox:
@@ -342,6 +353,47 @@ class AdjustStep(BaseStep):
                 config.image_processing.glare_suppression.apply_to_cut_images
             )
 
+        # Denoising
+        if hasattr(self, "denoise_enabled") and self.denoise_enabled is not None:
+            self.denoise_enabled.value = config.image_processing.denoise.enabled
+        if (
+            hasattr(self, "denoise_apply_to_cut_images")
+            and self.denoise_apply_to_cut_images is not None
+        ):
+            self.denoise_apply_to_cut_images.value = (
+                config.image_processing.denoise.apply_to_cut_images
+            )
+        if hasattr(self, "denoise_method") and self.denoise_method is not None:
+            self.denoise_method.value = config.image_processing.denoise.method
+        if hasattr(self, "denoise_diameter") and self.denoise_diameter is not None:
+            self.denoise_diameter.value = config.image_processing.denoise.diameter
+        if (
+            hasattr(self, "denoise_sigma_color")
+            and self.denoise_sigma_color is not None
+        ):
+            self.denoise_sigma_color.value = config.image_processing.denoise.sigma_color
+        if (
+            hasattr(self, "denoise_sigma_space")
+            and self.denoise_sigma_space is not None
+        ):
+            self.denoise_sigma_space.value = config.image_processing.denoise.sigma_space
+        if hasattr(self, "denoise_strength") and self.denoise_strength is not None:
+            self.denoise_strength.value = config.image_processing.denoise.strength
+        if (
+            hasattr(self, "denoise_template_window")
+            and self.denoise_template_window is not None
+        ):
+            self.denoise_template_window.value = (
+                config.image_processing.denoise.template_window
+            )
+        if (
+            hasattr(self, "denoise_search_window")
+            and self.denoise_search_window is not None
+        ):
+            self.denoise_search_window.value = (
+                config.image_processing.denoise.search_window
+            )
+
         # Alignment
         self.ref_images = list(config.alignment.ref_images)
 
@@ -425,6 +477,8 @@ class AdjustStep(BaseStep):
             self.unsharp_threshold.value = 3
             self.autocontrast_enabled.value = False
             self.glare_enabled.value = False
+            if hasattr(self, "denoise_enabled") and self.denoise_enabled is not None:
+                self.denoise_enabled.value = False
         elif preset_name == "crisp":
             self.adjust_enabled.value = True
             self.adjust_gamma.value = 1.0
@@ -527,6 +581,23 @@ class AdjustStep(BaseStep):
                     )
             except Exception as e:
                 logger.debug(f"AutoContrast adjustment skipped: {e}")
+
+            try:
+                if (
+                    getattr(self, "denoise_enabled", None)
+                    and self.denoise_enabled.value
+                ):
+                    proc.denoise_image(
+                        method=str(self.denoise_method.value or "bilateral"),
+                        diameter=int(self.denoise_diameter.value or 5),
+                        sigma_color=float(self.denoise_sigma_color.value or 50.0),
+                        sigma_space=float(self.denoise_sigma_space.value or 50.0),
+                        strength=float(self.denoise_strength.value or 3.0),
+                        template_window=int(self.denoise_template_window.value or 7),
+                        search_window=int(self.denoise_search_window.value or 21),
+                    )
+            except Exception as e:
+                logger.debug(f"Denoising adjustment skipped: {e}")
 
             try:
                 if getattr(self, "glare_enabled", None) and self.glare_enabled.value:
@@ -752,6 +823,7 @@ class AdjustStep(BaseStep):
                 build_unsharp_mask_card(self, ui)
                 build_histogram_card(self, ui)
                 build_glare_suppression_card(self, ui)
+                build_denoise_card(self, ui)
 
             # Action Toolbar
             with ui.row().classes(
@@ -875,6 +947,35 @@ class AdjustStep(BaseStep):
         )
         config.image_processing.glare_suppression.apply_to_cut_images = bool(
             getattr(self.glare_apply_to_cut_images, "value", False)
+        )
+
+        # Denoising
+        config.image_processing.denoise.enabled = bool(
+            getattr(self.denoise_enabled, "value", False)
+        )
+        config.image_processing.denoise.apply_to_cut_images = bool(
+            getattr(self.denoise_apply_to_cut_images, "value", False)
+        )
+        config.image_processing.denoise.method = str(
+            getattr(self.denoise_method, "value", "bilateral") or "bilateral"
+        )
+        config.image_processing.denoise.diameter = int(
+            getattr(self.denoise_diameter, "value", 5) or 5
+        )
+        config.image_processing.denoise.sigma_color = float(
+            getattr(self.denoise_sigma_color, "value", 50.0) or 50.0
+        )
+        config.image_processing.denoise.sigma_space = float(
+            getattr(self.denoise_sigma_space, "value", 50.0) or 50.0
+        )
+        config.image_processing.denoise.strength = float(
+            getattr(self.denoise_strength, "value", 3.0) or 3.0
+        )
+        config.image_processing.denoise.template_window = int(
+            getattr(self.denoise_template_window, "value", 7) or 7
+        )
+        config.image_processing.denoise.search_window = int(
+            getattr(self.denoise_search_window, "value", 21) or 21
         )
 
         config.alignment.post_rotate_angle = float(

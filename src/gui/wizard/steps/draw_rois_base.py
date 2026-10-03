@@ -562,6 +562,14 @@ class DrawRoisBaseStep(BaseStep):
         unsharp_radius: float = 1.0,
         unsharp_amount: float = 1.5,
         unsharp_threshold: int = 3,
+        denoise: bool = False,
+        denoise_method: str = "bilateral",
+        denoise_diameter: int = 5,
+        denoise_sigma_color: float = 50.0,
+        denoise_sigma_space: float = 50.0,
+        denoise_strength: float = 3.0,
+        denoise_template_window: int = 7,
+        denoise_search_window: int = 21,
     ) -> None:
         self.image = image
         self.autocontrast = autocontrast
@@ -577,6 +585,14 @@ class DrawRoisBaseStep(BaseStep):
         self.unsharp_radius = unsharp_radius
         self.unsharp_amount = unsharp_amount
         self.unsharp_threshold = unsharp_threshold
+        self.denoise = denoise
+        self.denoise_method = denoise_method
+        self.denoise_diameter = denoise_diameter
+        self.denoise_sigma_color = denoise_sigma_color
+        self.denoise_sigma_space = denoise_sigma_space
+        self.denoise_strength = denoise_strength
+        self.denoise_template_window = denoise_template_window
+        self.denoise_search_window = denoise_search_window
 
     def _cut_images(self) -> list[CutImage]:
         positions = [
@@ -608,6 +624,14 @@ class DrawRoisBaseStep(BaseStep):
                 unsharp_radius=getattr(self, "unsharp_radius", 1.0),
                 unsharp_amount=getattr(self, "unsharp_amount", 1.5),
                 unsharp_threshold=getattr(self, "unsharp_threshold", 3),
+                denoise=getattr(self, "denoise", False),
+                denoise_method=getattr(self, "denoise_method", "bilateral"),
+                denoise_diameter=getattr(self, "denoise_diameter", 5),
+                denoise_sigma_color=getattr(self, "denoise_sigma_color", 50.0),
+                denoise_sigma_space=getattr(self, "denoise_sigma_space", 50.0),
+                denoise_strength=getattr(self, "denoise_strength", 3.0),
+                denoise_template_window=getattr(self, "denoise_template_window", 7),
+                denoise_search_window=getattr(self, "denoise_search_window", 21),
             )
             .stop_image_cutting()
             .save_cut_images()

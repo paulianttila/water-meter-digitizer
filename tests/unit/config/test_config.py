@@ -88,6 +88,15 @@ def test_config():
     assert config.image_processing.glare_suppression.clahe_clip_limit == 2.0
     assert config.image_processing.glare_suppression.clahe_grid_size == 8
     assert config.image_processing.glare_suppression.apply_to_cut_images is False
+    assert config.image_processing.denoise.enabled is False
+    assert config.image_processing.denoise.method == "bilateral"
+    assert config.image_processing.denoise.diameter == 5
+    assert config.image_processing.denoise.sigma_color == 50.0
+    assert config.image_processing.denoise.sigma_space == 50.0
+    assert config.image_processing.denoise.strength == 7.0
+    assert config.image_processing.denoise.template_window == 7
+    assert config.image_processing.denoise.search_window == 15
+    assert config.image_processing.denoise.apply_to_cut_images is False
 
     assert config.digital_readout.enabled is True
     assert (

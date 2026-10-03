@@ -17,6 +17,7 @@ from config.models import (
     AutoContrast,
     CNNParams,
     Crop,
+    Denoise,
     GlareSuppression,
     History,
     ImageProcessing,
@@ -348,6 +349,61 @@ FIELD_OVERRIDES: dict[tuple[str, str], dict[str, Any]] = {
     ("imageprocessing", "glareapplytocutimages"): {
         "type": "boolean",
         "description": "Apply glare suppression individually to cropped ROI cutouts",
+    },
+    ("imageprocessing", "denoiseenabled"): {
+        "type": "boolean",
+        "description": "Flag to enable edge-preserving noise reduction filtering",
+    },
+    ("imageprocessing", "denoiseapplytocutimages"): {
+        "type": "boolean",
+        "description": "Apply noise reduction individually to cropped ROI cutouts",
+    },
+    ("imageprocessing", "denoisemethod"): {
+        "type": "select",
+        "options": ["bilateral", "nlmeans", "median", "median_bilateral"],
+        "description": "Algorithm for edge-preserving noise reduction",
+    },
+    ("imageprocessing", "denoisediameter"): {
+        "type": "int",
+        "min": 1,
+        "max": 15,
+        "step": 2,
+        "description": "Pixel neighborhood diameter for bilateral or median filter",
+    },
+    ("imageprocessing", "denoisesigmacolor"): {
+        "type": "float",
+        "min": 5.0,
+        "max": 150.0,
+        "step": 5.0,
+        "description": "Filter sigma in the color space for bilateral filtering",
+    },
+    ("imageprocessing", "denoisesigmaspace"): {
+        "type": "float",
+        "min": 5.0,
+        "max": 150.0,
+        "step": 5.0,
+        "description": "Filter sigma in the coordinate space for bilateral filtering",
+    },
+    ("imageprocessing", "denoisestrength"): {
+        "type": "float",
+        "min": 1.0,
+        "max": 30.0,
+        "step": 0.5,
+        "description": "Filter strength parameter (h) for Non-Local Means denoising",
+    },
+    ("imageprocessing", "denoisetemplatewindow"): {
+        "type": "int",
+        "min": 3,
+        "max": 15,
+        "step": 2,
+        "description": "Size in pixels of template patch for NL-Means",
+    },
+    ("imageprocessing", "denoisesearchwindow"): {
+        "type": "int",
+        "min": 7,
+        "max": 35,
+        "step": 2,
+        "description": "Size in pixels of search window for NL-Means",
     },
     ("imageprocessing", "autosharpencutimages"): {
         "type": "boolean",
@@ -824,6 +880,7 @@ def build_field_registry() -> dict[tuple[str, str], dict[str, Any]]:
                 "autocontrast",
                 "autocontrast_cut_images",
                 "glare_suppression",
+                "denoise",
                 "cut_images",
                 "ref_images",
             ):
@@ -838,6 +895,7 @@ def build_field_registry() -> dict[tuple[str, str], dict[str, Any]]:
     for sub_model, prefix in [
         (AutoContrast, "autocontrast"),
         (GlareSuppression, "glare"),
+        (Denoise, "denoise"),
     ]:
         for field_name, field_info in sub_model.model_fields.items():
             schema = _field_info_to_schema(field_info)

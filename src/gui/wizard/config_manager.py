@@ -202,6 +202,36 @@ class WizardConfigManager:
                 adjust_step.glare_apply_to_cut_images.value
             )
 
+            # Denoising
+            if hasattr(adjust_step, "denoise_enabled"):
+                config.image_processing.denoise.enabled = bool(
+                    adjust_step.denoise_enabled.value
+                )
+                config.image_processing.denoise.apply_to_cut_images = bool(
+                    adjust_step.denoise_apply_to_cut_images.value
+                )
+                config.image_processing.denoise.method = str(
+                    adjust_step.denoise_method.value or "bilateral"
+                )
+                config.image_processing.denoise.diameter = int(
+                    adjust_step.denoise_diameter.value or 5
+                )
+                config.image_processing.denoise.sigma_color = float(
+                    adjust_step.denoise_sigma_color.value or 50.0
+                )
+                config.image_processing.denoise.sigma_space = float(
+                    adjust_step.denoise_sigma_space.value or 50.0
+                )
+                config.image_processing.denoise.strength = float(
+                    adjust_step.denoise_strength.value or 3.0
+                )
+                config.image_processing.denoise.template_window = int(
+                    adjust_step.denoise_template_window.value or 7
+                )
+                config.image_processing.denoise.search_window = int(
+                    adjust_step.denoise_search_window.value or 21
+                )
+
             config.alignment.post_rotate_angle = float(
                 adjust_step.rotate_angle.value or 0.0
             )

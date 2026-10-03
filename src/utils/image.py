@@ -3,6 +3,13 @@
 from __future__ import annotations
 
 from data_classes import ImagePosition, RefImage
+from utils.image_denoise import (
+    apply_denoise_bilateral,
+    apply_denoise_median,
+    apply_denoise_median_bilateral,
+    apply_denoise_nlmeans,
+    denoise_image,
+)
 from utils.image_filters import (
     adjust_gamma,
     auto_tune_image,
@@ -57,6 +64,10 @@ __all__ = [
     "align",
     "align_with_status",
     "apply_clahe",
+    "apply_denoise_bilateral",
+    "apply_denoise_median",
+    "apply_denoise_median_bilateral",
+    "apply_denoise_nlmeans",
     "apply_illumination_normalize",
     "apply_inpaint_glare",
     "auto_tune_image",
@@ -74,6 +85,7 @@ __all__ = [
     "create_side_by_side_comparison",
     "crop_image",
     "cut_image",
+    "denoise_image",
     "detect_glare_mask",
     "draw_rectangle",
     "draw_text",

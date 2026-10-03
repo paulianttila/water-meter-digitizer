@@ -59,6 +59,18 @@ class GlareSuppression(BaseModel):
     apply_to_cut_images: bool = False
 
 
+class Denoise(BaseModel):
+    enabled: bool = False
+    method: str = "bilateral"  # "bilateral", "nlmeans", "median", "median_bilateral"
+    diameter: int = 5
+    sigma_color: float = 50.0
+    sigma_space: float = 50.0
+    strength: float = 7.0
+    template_window: int = 7
+    search_window: int = 15
+    apply_to_cut_images: bool = False
+
+
 class ImageProcessing(BaseModel):
     enabled: bool = False
     contrast: float = 1.0
@@ -75,6 +87,7 @@ class ImageProcessing(BaseModel):
     autocontrast: AutoContrast = Field(default_factory=AutoContrast)
     autocontrast_cut_images: AutoContrast = Field(default_factory=AutoContrast)
     glare_suppression: GlareSuppression = Field(default_factory=GlareSuppression)
+    denoise: Denoise = Field(default_factory=Denoise)
 
 
 class History(BaseModel):
