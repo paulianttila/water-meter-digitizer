@@ -29,14 +29,13 @@ HELP_TEXT = (
     "- **Compare Mode**: Switch between single adjusted preview and side-by-side "
     "before/after comparison.\n"
     "- **Auto Enhance & Presets**: One-click optimal parameter calculation and environment presets.\n"
-    "- **Fine Rotation**: Correct fractional angles (e.g. `0.5°`).\n"
-    "- **Crop & Resize**: Optionally crop and resize frame before alignment.\n"
+    "- **Fine Rotation & Crop/Resize**: Correct fractional angles and frame meter view.\n"
     "- **Image Processing**: Master toggle to enable/disable all image processing enhancements.\n"
     "- **Tonal & Gamma Curves**: Non-linear gamma adjustment and contrast/brightness/saturation.\n"
-    "- **Luminance Unsharp Masking**: Advanced spatial edge sharpening without chromatic noise.\n"
     "- **Histogram & AutoContrast**: Real-time luminance histogram with shadow/highlight clipping flags.\n"
-    "- **Glare Suppression**: Eliminate glass reflections using CLAHE, inpainting, "
-    "or combined mode."
+    "- **Noise Reduction & Denoising**: Edge-preserving bilateral, NL-Means, median, or hybrid filtering.\n"
+    "- **Glare Suppression**: Eliminate glass reflections using CLAHE, inpainting, or combined mode.\n"
+    "- **Luminance Unsharp Masking**: Advanced spatial edge sharpening without chromatic noise."
 )
 
 _generate_histogram_svg = generate_histogram_svg
@@ -546,6 +545,15 @@ class AdjustStep(BaseStep):
         # Image processing enhancements (gated by master ImageProcessing.enabled)
         if getattr(self, "adjust_enabled", None) and self.adjust_enabled.value:
             try:
+                if (
+                    getattr(self, "grayscale_enabled", None)
+                    and self.grayscale_enabled.value
+                ):
+                    proc.to_gray_scale()
+            except Exception as e:
+                logger.debug(f"Grayscale conversion skipped: {e}")
+
+            try:
                 gamma_val = (
                     float(self.adjust_gamma.value or 1.0)
                     if hasattr(self, "adjust_gamma") and self.adjust_gamma is not None
@@ -560,15 +568,6 @@ class AdjustStep(BaseStep):
                 )
             except Exception as e:
                 logger.debug(f"Filters adjustment skipped: {e}")
-
-            try:
-                if (
-                    getattr(self, "grayscale_enabled", None)
-                    and self.grayscale_enabled.value
-                ):
-                    proc.to_gray_scale()
-            except Exception as e:
-                logger.debug(f"Grayscale conversion skipped: {e}")
 
             try:
                 if (
@@ -592,9 +591,9 @@ class AdjustStep(BaseStep):
                         diameter=int(self.denoise_diameter.value or 5),
                         sigma_color=float(self.denoise_sigma_color.value or 50.0),
                         sigma_space=float(self.denoise_sigma_space.value or 50.0),
-                        strength=float(self.denoise_strength.value or 3.0),
+                        strength=float(self.denoise_strength.value or 7.0),
                         template_window=int(self.denoise_template_window.value or 7),
-                        search_window=int(self.denoise_search_window.value or 21),
+                        search_window=int(self.denoise_search_window.value or 15),
                     )
             except Exception as e:
                 logger.debug(f"Denoising adjustment skipped: {e}")
@@ -803,7 +802,7 @@ class AdjustStep(BaseStep):
                                 "text-sm font-bold text-white"
                             )
                             ui.label(
-                                "Master toggle for filters, gamma, sharpness, autocontrast, and glare suppression"
+                                "Master toggle for tonal filters, autocontrast, denoising, glare suppression, and sharpening"
                             ).classes("text-xs text-gray-400")
                     self.adjust_enabled = (
                         ui.checkbox(
@@ -817,13 +816,19 @@ class AdjustStep(BaseStep):
                         )
                     )
 
-                # Sub-cards
+                # Sub-cards in exact pipeline execution order:
+                # 1. Geometry (Rotate, Crop, Resize)
+                # 2. Tonal & Color (Grayscale, Gamma, Contrast, Brightness, Saturation)
+                # 3. Dynamic Range & Balance (Histogram & AutoContrast)
+                # 4. Noise Reduction (Bilateral, NL-Means, Median, Hybrid)
+                # 5. Reflection Suppression (CLAHE, Inpainting, Illumination)
+                # 6. Edge Definition (Luminance Unsharp Mask & Sharpness)
                 build_rotation_crop_card(self, ui)
                 build_filter_curves_card(self, ui)
-                build_unsharp_mask_card(self, ui)
                 build_histogram_card(self, ui)
-                build_glare_suppression_card(self, ui)
                 build_denoise_card(self, ui)
+                build_glare_suppression_card(self, ui)
+                build_unsharp_mask_card(self, ui)
 
             # Action Toolbar
             with ui.row().classes(

@@ -640,11 +640,6 @@ def save_config_to_io(cfg: Config, fp: TextIO) -> None:
         "Sharpness": str(cfg.image_processing.sharpness),
         "GrayScale": str(cfg.image_processing.grayscale),
         "Gamma": str(cfg.image_processing.gamma),
-        "SharpnessMode": cfg.image_processing.sharpness_mode,
-        "UnsharpRadius": str(cfg.image_processing.unsharp_radius),
-        "UnsharpAmount": str(cfg.image_processing.unsharp_amount),
-        "UnsharpThreshold": str(cfg.image_processing.unsharp_threshold),
-        "AutoSharpenCutImages": str(cfg.image_processing.auto_sharpen_cut_images),
         "AutoContrast": str(cfg.image_processing.autocontrast.enabled),
         "AutoContrastCutoffLow": str(cfg.image_processing.autocontrast.cutoff_low),
         "AutoContrastCutoffHigh": str(cfg.image_processing.autocontrast.cutoff_high),
@@ -660,6 +655,17 @@ def save_config_to_io(cfg: Config, fp: TextIO) -> None:
         ),
         "AutoContrastCutImagesIgnore": str(
             cfg.image_processing.autocontrast_cut_images.ignore
+        ),
+        "DenoiseEnabled": str(cfg.image_processing.denoise.enabled),
+        "DenoiseMethod": cfg.image_processing.denoise.method,
+        "DenoiseDiameter": str(cfg.image_processing.denoise.diameter),
+        "DenoiseSigmaColor": str(cfg.image_processing.denoise.sigma_color),
+        "DenoiseSigmaSpace": str(cfg.image_processing.denoise.sigma_space),
+        "DenoiseStrength": str(cfg.image_processing.denoise.strength),
+        "DenoiseTemplateWindow": str(cfg.image_processing.denoise.template_window),
+        "DenoiseSearchWindow": str(cfg.image_processing.denoise.search_window),
+        "DenoiseApplyToCutImages": str(
+            cfg.image_processing.denoise.apply_to_cut_images
         ),
         "GlareSuppressionEnabled": str(cfg.image_processing.glare_suppression.enabled),
         "GlareSuppressionMode": cfg.image_processing.glare_suppression.mode,
@@ -678,17 +684,11 @@ def save_config_to_io(cfg: Config, fp: TextIO) -> None:
         "GlareApplyToCutImages": str(
             cfg.image_processing.glare_suppression.apply_to_cut_images
         ),
-        "DenoiseEnabled": str(cfg.image_processing.denoise.enabled),
-        "DenoiseMethod": cfg.image_processing.denoise.method,
-        "DenoiseDiameter": str(cfg.image_processing.denoise.diameter),
-        "DenoiseSigmaColor": str(cfg.image_processing.denoise.sigma_color),
-        "DenoiseSigmaSpace": str(cfg.image_processing.denoise.sigma_space),
-        "DenoiseStrength": str(cfg.image_processing.denoise.strength),
-        "DenoiseTemplateWindow": str(cfg.image_processing.denoise.template_window),
-        "DenoiseSearchWindow": str(cfg.image_processing.denoise.search_window),
-        "DenoiseApplyToCutImages": str(
-            cfg.image_processing.denoise.apply_to_cut_images
-        ),
+        "SharpnessMode": cfg.image_processing.sharpness_mode,
+        "UnsharpRadius": str(cfg.image_processing.unsharp_radius),
+        "UnsharpAmount": str(cfg.image_processing.unsharp_amount),
+        "UnsharpThreshold": str(cfg.image_processing.unsharp_threshold),
+        "AutoSharpenCutImages": str(cfg.image_processing.auto_sharpen_cut_images),
     }
 
     config["Alignment"] = {
