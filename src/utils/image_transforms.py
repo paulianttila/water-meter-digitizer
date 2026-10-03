@@ -47,6 +47,7 @@ def align_with_status(
     w, h = image.size
 
     ref_image_coordinates = []
+    min_correlation_threshold = 0.60
     for ref in reference_images:
         template = cv2.imread(ref.file_name)
         if template is None:
@@ -56,7 +57,20 @@ def align_with_status(
             )
             logger.warning(msg)
             return image, False, msg
-        ref_image_coordinates.append(_get_ref_coordinate(data, template))
+
+        if len(template.shape) == 3 and template.shape[2] == 3:
+            template = cv2.cvtColor(template, cv2.COLOR_BGR2RGB)
+
+        coord, score = _get_ref_coordinate(data, template)
+        if score < min_correlation_threshold:
+            msg = (
+                f"Alignment marker '{ref.name}' match confidence score too low: "
+                f"{score:.2f} < {min_correlation_threshold:.2f}. "
+                f"Skipping alignment to prevent frame distortion."
+            )
+            logger.warning(msg)
+            return image, False, msg
+        ref_image_coordinates.append(coord)
 
     alignment_ref_pos = [
         (
@@ -82,15 +96,20 @@ def align(image: Image, reference_images: Sequence[RefImage]) -> Image:
     return aligned_img
 
 
-def _get_ref_coordinate(image: np.ndarray, template: np.ndarray) -> tuple[int, int]:
+def _get_ref_coordinate(
+    image: np.ndarray, template: np.ndarray
+) -> tuple[tuple[int, int], float]:
     if image is None or template is None:
         raise ValueError("Image and template must not be None")
 
+    if float(np.std(template)) < 1e-3:
+        return (0, 0), 0.0
+
     method = cv2.TM_CCOEFF_NORMED
     res = cv2.matchTemplate(image, template, method)
-    _min_val, _max_val, min_loc, max_loc = cv2.minMaxLoc(res)
+    _min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(res)
     point = min_loc if method in [cv2.TM_SQDIFF, cv2.TM_SQDIFF_NORMED] else max_loc
-    return (point[0], point[1])
+    return (int(point[0]), int(point[1])), float(max_val)
 
 
 def draw_rectangle(

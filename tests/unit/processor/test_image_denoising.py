@@ -112,7 +112,7 @@ def test_denoise_config_serialization_under_image_processing():
     config = Config().load_from_file("config/config.ini")
 
     # Modify denoise settings
-    config.image_processing.denoise.enabled = True
+    config.image_processing.denoise.full_image = True
     config.image_processing.denoise.method = "nlmeans"
     config.image_processing.denoise.diameter = 7
     config.image_processing.denoise.sigma_color = 65.0
@@ -120,7 +120,7 @@ def test_denoise_config_serialization_under_image_processing():
     config.image_processing.denoise.strength = 4.5
     config.image_processing.denoise.template_window = 5
     config.image_processing.denoise.search_window = 19
-    config.image_processing.denoise.apply_to_cut_images = True
+    config.image_processing.denoise.cut_images = True
 
     # Serialize to INI string
     stream = io.StringIO()
@@ -135,7 +135,8 @@ def test_denoise_config_serialization_under_image_processing():
 
     # Ensure all keys are directly in [ImageProcessing]
     assert parser.has_section("ImageProcessing")
-    assert parser.getboolean("ImageProcessing", "DenoiseEnabled") is True
+    assert parser.getboolean("ImageProcessing", "DenoiseFullImage") is True
+    assert parser.getboolean("ImageProcessing", "DenoiseCutImages") is True
     assert parser.get("ImageProcessing", "DenoiseMethod") == "nlmeans"
     assert parser.getint("ImageProcessing", "DenoiseDiameter") == 7
     assert parser.getfloat("ImageProcessing", "DenoiseSigmaColor") == 65.0
@@ -143,11 +144,12 @@ def test_denoise_config_serialization_under_image_processing():
     assert parser.getfloat("ImageProcessing", "DenoiseStrength") == 4.5
     assert parser.getint("ImageProcessing", "DenoiseTemplateWindow") == 5
     assert parser.getint("ImageProcessing", "DenoiseSearchWindow") == 19
-    assert parser.getboolean("ImageProcessing", "DenoiseApplyToCutImages") is True
 
     # Deserialize back from INI string
     reloaded_config = Config()
     load_config_from_parser(reloaded_config, parser)
+    assert reloaded_config.image_processing.denoise.full_image is True
+    assert reloaded_config.image_processing.denoise.cut_images is True
     assert reloaded_config.image_processing.denoise.enabled is True
     assert reloaded_config.image_processing.denoise.method == "nlmeans"
     assert reloaded_config.image_processing.denoise.diameter == 7

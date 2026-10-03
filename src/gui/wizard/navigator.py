@@ -444,6 +444,11 @@ class WizardNavigator:
                 )
             adjust_step.ref_images = ref_images
 
+            # Sync live digital and analog ROIs into adjust_step.config if available
+            if adjust_step.config is not None:
+                draw_digital_rois_step.populate_config(adjust_step.config)
+                draw_analog_rois_step.populate_config(adjust_step.config)
+
         # Update step's image from its pipeline predecessor
         src_img = self.get_source_image_for_step(
             step,

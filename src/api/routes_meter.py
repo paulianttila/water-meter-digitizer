@@ -280,24 +280,18 @@ def get_meter_data(
         .adjust_image(
             brightness=config.image_processing.brightness,
             contrast=config.image_processing.contrast,
-            sharpness=config.image_processing.sharpness,
+            sharpness=(
+                config.image_processing.sharpness
+                if config.image_processing.sharpness_mode == "standard"
+                else 1.0
+            ),
             color=config.image_processing.color,
             gamma=config.image_processing.gamma,
         )
         .endif_()
         .if_(
             config.image_processing.enabled
-            and config.image_processing.autocontrast.enabled
-        )
-        .autocontrast_image(
-            cutoff_low=config.image_processing.autocontrast.cutoff_low,
-            cutoff_high=config.image_processing.autocontrast.cutoff_high,
-            ignore=config.image_processing.autocontrast.ignore,
-        )
-        .save_image("processed")
-        .endif_()
-        .if_(
-            config.image_processing.enabled and config.image_processing.denoise.enabled
+            and config.image_processing.denoise.full_image
         )
         .denoise_image(
             method=config.image_processing.denoise.method,
@@ -312,7 +306,18 @@ def get_meter_data(
         .endif_()
         .if_(
             config.image_processing.enabled
-            and config.image_processing.glare_suppression.enabled
+            and config.image_processing.autocontrast.enabled
+        )
+        .autocontrast_image(
+            cutoff_low=config.image_processing.autocontrast.cutoff_low,
+            cutoff_high=config.image_processing.autocontrast.cutoff_high,
+            ignore=config.image_processing.autocontrast.ignore,
+        )
+        .save_image("processed")
+        .endif_()
+        .if_(
+            config.image_processing.enabled
+            and config.image_processing.glare_suppression.full_image
         )
         .suppress_glare(
             mode=config.image_processing.glare_suppression.mode,
@@ -341,14 +346,11 @@ def get_meter_data(
         and config.image_processing.autocontrast_cut_images.enabled
     )
     denoise_cut = (
-        config.image_processing.enabled
-        and config.image_processing.denoise.enabled
-        and config.image_processing.denoise.apply_to_cut_images
+        config.image_processing.enabled and config.image_processing.denoise.cut_images
     )
     glare_cut = (
         config.image_processing.enabled
-        and config.image_processing.glare_suppression.enabled
-        and config.image_processing.glare_suppression.apply_to_cut_images
+        and config.image_processing.glare_suppression.cut_images
     )
     unsharp_cut = (
         config.image_processing.enabled

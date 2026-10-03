@@ -1,8 +1,8 @@
 import os
-from typing import Literal
+from typing import Any, Literal
 
 import croniter
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, field_validator, model_validator
 
 from data_classes import ImagePosition, RefImage
 from services.leak.models import ValueType
@@ -50,17 +50,44 @@ class AutoContrast(BaseModel):
 
 
 class GlareSuppression(BaseModel):
-    enabled: bool = False
+    full_image: bool = False
+    cut_images: bool = False
     mode: str = "clahe"  # "clahe", "inpaint", "illumination_normalize", "combined"
     inpaint_threshold: int = 230
     inpaint_radius: int = 3
     clahe_clip_limit: float = 2.0
     clahe_grid_size: int = 8
-    apply_to_cut_images: bool = False
+
+    @model_validator(mode="before")
+    @classmethod
+    def _map_legacy_fields(cls, data: Any) -> Any:
+        if isinstance(data, dict):
+            if "enabled" in data and "full_image" not in data:
+                data["full_image"] = data.pop("enabled")
+            if "apply_to_cut_images" in data and "cut_images" not in data:
+                data["cut_images"] = data.pop("apply_to_cut_images")
+        return data
+
+    @property
+    def enabled(self) -> bool:
+        return self.full_image or self.cut_images
+
+    @enabled.setter
+    def enabled(self, val: bool) -> None:
+        self.full_image = val
+
+    @property
+    def apply_to_cut_images(self) -> bool:
+        return self.cut_images
+
+    @apply_to_cut_images.setter
+    def apply_to_cut_images(self, val: bool) -> None:
+        self.cut_images = val
 
 
 class Denoise(BaseModel):
-    enabled: bool = False
+    full_image: bool = False
+    cut_images: bool = False
     method: str = "bilateral"  # "bilateral", "nlmeans", "median", "median_bilateral"
     diameter: int = 5
     sigma_color: float = 50.0
@@ -68,7 +95,32 @@ class Denoise(BaseModel):
     strength: float = 7.0
     template_window: int = 7
     search_window: int = 15
-    apply_to_cut_images: bool = False
+
+    @model_validator(mode="before")
+    @classmethod
+    def _map_legacy_fields(cls, data: Any) -> Any:
+        if isinstance(data, dict):
+            if "enabled" in data and "full_image" not in data:
+                data["full_image"] = data.pop("enabled")
+            if "apply_to_cut_images" in data and "cut_images" not in data:
+                data["cut_images"] = data.pop("apply_to_cut_images")
+        return data
+
+    @property
+    def enabled(self) -> bool:
+        return self.full_image or self.cut_images
+
+    @enabled.setter
+    def enabled(self, val: bool) -> None:
+        self.full_image = val
+
+    @property
+    def apply_to_cut_images(self) -> bool:
+        return self.cut_images
+
+    @apply_to_cut_images.setter
+    def apply_to_cut_images(self, val: bool) -> None:
+        self.cut_images = val
 
 
 class ImageProcessing(BaseModel):

@@ -509,6 +509,8 @@ def test_adjust_step_populate_config_denoise() -> None:
     step.populate_config(cfg)
 
     assert cfg.image_processing.denoise.enabled is True
+    assert cfg.image_processing.denoise.full_image is True
+    assert cfg.image_processing.denoise.cut_images is True
     assert cfg.image_processing.denoise.apply_to_cut_images is True
     assert cfg.image_processing.denoise.method == "nlmeans"
     assert cfg.image_processing.denoise.diameter == 7
@@ -517,3 +519,155 @@ def test_adjust_step_populate_config_denoise() -> None:
     assert cfg.image_processing.denoise.strength == 4.5
     assert cfg.image_processing.denoise.template_window == 5
     assert cfg.image_processing.denoise.search_window == 19
+
+
+def test_adjust_step_populate_config_glare_and_autocontrast() -> None:
+    """Verify populate_config saves glare and autocontrast full_image and cut_images."""
+    cb = MagicMock()
+    step = AdjustStep(name="Adjust", set_image_callback=cb)
+    _mock_adjust_step_ui(
+        step,
+        glare_enabled=True,
+        glare_apply_to_cut_images=True,
+        glare_mode="clahe",
+        glare_clahe_clip_limit=3.0,
+        autocontrast_enabled=True,
+        autocontrast_cut_images_enabled=True,
+    )
+
+    cfg = Config()
+    step.populate_config(cfg)
+
+    assert cfg.image_processing.glare_suppression.full_image is True
+    assert cfg.image_processing.glare_suppression.cut_images is True
+    assert cfg.image_processing.glare_suppression.enabled is True
+    assert cfg.image_processing.glare_suppression.apply_to_cut_images is True
+    assert cfg.image_processing.glare_suppression.mode == "clahe"
+    assert cfg.image_processing.glare_suppression.clahe_clip_limit == 3.0
+    assert cfg.image_processing.autocontrast.enabled is True
+    assert cfg.image_processing.autocontrast_cut_images.enabled is True
+
+
+def test_adjust_step_pipeline_execution_order(sample_pil_image: Image.Image) -> None:
+    """Verify _do_adjust executes denoise BEFORE autocontrast in the pipeline."""
+    cb = MagicMock()
+    step = AdjustStep(name="Adjust", set_image_callback=cb)
+    _mock_adjust_step_ui(
+        step,
+        sample_pil_image,
+        adjust_enabled=True,
+        denoise_enabled=True,
+        autocontrast_enabled=True,
+    )
+
+    call_order: list[str] = []
+
+    def mock_denoise(*args, **kwargs):
+        call_order.append("denoise")
+        return MagicMock()
+
+    def mock_autocontrast(*args, **kwargs):
+        call_order.append("autocontrast")
+        return MagicMock()
+
+    b64_orig = img_utils.convert_image_base64str(sample_pil_image)
+    with (
+        patch("processor.image.ImageProcessor.denoise_image", side_effect=mock_denoise),
+        patch(
+            "processor.image.ImageProcessor.autocontrast_image",
+            side_effect=mock_autocontrast,
+        ),
+    ):
+        step._do_adjust(b64_orig)
+
+    assert call_order == ["denoise", "autocontrast"]
+
+
+def test_adjust_step_sharpness_isolation(sample_pil_image: Image.Image) -> None:
+    """Verify standard sharpness is kept at neutral 1.0 when sharpness_mode is unsharp_mask."""
+    cb = MagicMock()
+    step = AdjustStep(name="Adjust", set_image_callback=cb)
+    _mock_adjust_step_ui(
+        step,
+        sample_pil_image,
+        adjust_enabled=True,
+        adjust_sharpness=2.5,
+        sharpness_mode="unsharp_mask",
+        unsharp_radius=1.5,
+        unsharp_amount=1.8,
+        unsharp_threshold=4,
+    )
+
+    b64_orig = img_utils.convert_image_base64str(sample_pil_image)
+    with (
+        patch("processor.image.ImageProcessor.adjust_image") as mock_adjust,
+        patch("processor.image.ImageProcessor.unsharp_mask") as mock_unsharp,
+    ):
+        step._do_adjust(b64_orig)
+        assert mock_adjust.call_args is not None
+        assert mock_adjust.call_args.kwargs.get("sharpness") == 1.0
+        mock_unsharp.assert_called_once_with(radius=1.5, amount=1.8, threshold=4)
+
+
+def test_adjust_step_compute_roi_crops(sample_pil_image: Image.Image) -> None:
+    """Verify _compute_roi_crops generates before and after thumbnail data."""
+    cb = MagicMock()
+    step = AdjustStep(name="Adjust", set_image_callback=cb)
+    _mock_adjust_step_ui(step, sample_pil_image, adjust_enabled=True)
+
+    b64_orig = img_utils.convert_image_base64str(sample_pil_image)
+    crops = step._compute_roi_crops(b64_orig, b64_orig)
+    assert len(crops) >= 1
+    assert "name" in crops[0]
+    assert "raw_b64" in crops[0]
+    assert "adj_b64" in crops[0]
+    assert "tag" in crops[0]
+
+
+def test_adjust_step_compute_roi_crops_with_roi_provider(
+    sample_pil_image: Image.Image,
+) -> None:
+    """Verify _compute_roi_crops prioritizes dynamic roi_provider over synthetic pictures."""
+    from data_classes import ImagePosition
+
+    cb = MagicMock()
+    step = AdjustStep(name="Adjust", set_image_callback=cb)
+    _mock_adjust_step_ui(step, sample_pil_image, adjust_enabled=True)
+
+    # Provide real digital and analog ROIs dynamically
+    step.roi_provider = lambda: (
+        [ImagePosition(name="digit_real_0", x=10, y=10, w=20, h=30)],
+        [ImagePosition(name="dial_real_0", x=40, y=40, w=25, h=25)],
+    )
+
+    b64_orig = img_utils.convert_image_base64str(sample_pil_image)
+    crops = step._compute_roi_crops(b64_orig, b64_orig)
+
+    names = [c["name"] for c in crops]
+    assert "digit_real_0" in names
+    assert "dial_real_0" in names
+    assert "Sample Digit" not in names
+    assert "Sample Dial" not in names
+
+
+def test_adjust_step_compute_roi_crops_provider_empty_or_error_fallback(
+    sample_pil_image: Image.Image,
+) -> None:
+    """Verify _compute_roi_crops gracefully falls back when provider is empty or raises."""
+    cb = MagicMock()
+    step = AdjustStep(name="Adjust", set_image_callback=cb)
+    _mock_adjust_step_ui(step, sample_pil_image, adjust_enabled=True)
+
+    b64_orig = img_utils.convert_image_base64str(sample_pil_image)
+
+    # Empty provider returns
+    step.roi_provider = lambda: ([], [])
+    crops = step._compute_roi_crops(b64_orig, b64_orig)
+    names = [c["name"] for c in crops]
+    assert "Sample Digit" in names
+
+    # Exception in provider
+    step.roi_provider = MagicMock(side_effect=RuntimeError("Provider failed"))
+    crops_err = step._compute_roi_crops(b64_orig, b64_orig)
+    names_err = [c["name"] for c in crops_err]
+    assert "Sample Digit" in names_err

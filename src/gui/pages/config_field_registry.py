@@ -317,6 +317,10 @@ FIELD_OVERRIDES: dict[tuple[str, str], dict[str, Any]] = {
         "step": 1,
         "description": "Pixel intensity value to ignore in auto-contrast (or None)",
     },
+    ("imageprocessing", "autocontrastfullimage"): {
+        "type": "boolean",
+        "description": "Apply histogram auto-contrast balancing to full meter image",
+    },
     ("imageprocessing", "autocontrastcutimages"): {
         "type": "boolean",
         "description": "Apply auto-contrast individually to cropped ROI cutouts",
@@ -342,6 +346,14 @@ FIELD_OVERRIDES: dict[tuple[str, str], dict[str, Any]] = {
         "step": 1,
         "description": "Pixel intensity value to ignore in cut ROI auto-contrast (or None)",
     },
+    ("imageprocessing", "glaresuppressionfullimage"): {
+        "type": "boolean",
+        "description": "Flag to enable specular glare suppression on full image",
+    },
+    ("imageprocessing", "glaresuppressioncutimages"): {
+        "type": "boolean",
+        "description": "Apply glare suppression individually to cropped ROI cutouts",
+    },
     ("imageprocessing", "glaresuppressionenabled"): {
         "type": "boolean",
         "description": "Flag to enable specular glare and reflection suppression",
@@ -349,6 +361,14 @@ FIELD_OVERRIDES: dict[tuple[str, str], dict[str, Any]] = {
     ("imageprocessing", "glareapplytocutimages"): {
         "type": "boolean",
         "description": "Apply glare suppression individually to cropped ROI cutouts",
+    },
+    ("imageprocessing", "denoisefullimage"): {
+        "type": "boolean",
+        "description": "Flag to enable noise reduction filtering on full image",
+    },
+    ("imageprocessing", "denoisecutimages"): {
+        "type": "boolean",
+        "description": "Apply noise reduction individually to cropped ROI cutouts",
     },
     ("imageprocessing", "denoiseenabled"): {
         "type": "boolean",

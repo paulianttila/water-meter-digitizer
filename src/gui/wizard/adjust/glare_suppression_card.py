@@ -21,21 +21,25 @@ def build_glare_suppression_card(step: Any, ui: Any) -> None:
         with ui.row().classes("w-full items-center gap-4 flex-wrap"):
             step.glare_enabled = (
                 ui.checkbox(
-                    "Enable Glare Suppression",
+                    "Full Frame Glare Suppression",
                     value=False,
                     on_change=step._on_param_change,
                 )
                 .props("dense")
-                .tooltip("Suppress specular highlights on glossy meter glass")
+                .tooltip(
+                    "Suppress specular highlights on glossy meter glass across the full frame"
+                )
             )
             step.glare_apply_to_cut_images = (
                 ui.checkbox(
-                    "Apply to Cut Images (ROIs)",
+                    "Cut Images (ROIs) Glare Suppression",
                     value=False,
                     on_change=step._on_param_change,
                 )
                 .props("dense")
-                .tooltip("Apply glare suppression to cropped digit/pointer images")
+                .tooltip(
+                    "Apply glare suppression individually to cropped digit and pointer images"
+                )
             )
             step.glare_mode = (
                 ui.select(

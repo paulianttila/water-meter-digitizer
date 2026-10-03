@@ -10,6 +10,7 @@ import utils.image as ImageUtils
 from callbacks import Callbacks
 from config.meter_presets import MeterTypePreset
 from configuration import Config
+from data_classes import ImagePosition
 from gui.components import open_config_history_dialog, open_confirm_dialog
 from gui.dialogs import open_model_alignment_dialog
 from gui.pages.base import BasePage
@@ -1017,6 +1018,18 @@ class SetupPage(BasePage):
             analog_models_dir=self.callbacks.get_config().analog_models_dir,
             zoom_callback=self.apply_canvas_zoom,
             get_zoom_text=self._get_current_zoom_text,
+        )
+        self.adjust_step.roi_provider = lambda: (
+            [
+                ImagePosition(name=r.name, x=r.x, y=r.y, w=r.w, h=r.h)
+                for r in self.draw_digital_rois_step.rois
+                if getattr(r, "enabled", True)
+            ],
+            [
+                ImagePosition(name=r.name, x=r.x, y=r.y, w=r.w, h=r.h)
+                for r in self.draw_analog_rois_step.rois
+                if getattr(r, "enabled", True)
+            ],
         )
         self.initial_rotate_step.on_align_to_model = self.open_model_alignment
 

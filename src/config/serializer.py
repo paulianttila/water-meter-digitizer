@@ -189,7 +189,12 @@ def load_config_from_parser(cfg: Config, config: configparser.ConfigParser) -> C
         config, "ImageProcessing", "GrayScale", fallback=False
     )
     image_processing_autocontrast = _safe_getboolean(
-        config, "ImageProcessing", "AutoContrast", fallback=False
+        config,
+        "ImageProcessing",
+        "AutoContrastFullImage",
+        fallback=_safe_getboolean(
+            config, "ImageProcessing", "AutoContrast", fallback=False
+        ),
     )
     image_processing_autocontrast_cutoff_low = _safe_getfloat(
         config, "ImageProcessing", "AutoContrastCutoffLow", fallback=2
@@ -221,8 +226,13 @@ def load_config_from_parser(cfg: Config, config: configparser.ConfigParser) -> C
             config, "ImageProcessing", "AutoContrastCutImagesIgnore", fallback=0
         )
 
-    glare_enabled = _safe_getboolean(
-        config, "ImageProcessing", "GlareSuppressionEnabled", fallback=False
+    glare_full = _safe_getboolean(
+        config,
+        "ImageProcessing",
+        "GlareSuppressionFullImage",
+        fallback=_safe_getboolean(
+            config, "ImageProcessing", "GlareSuppressionEnabled", fallback=False
+        ),
     )
     glare_mode = config.get("ImageProcessing", "GlareSuppressionMode", fallback="clahe")
     glare_inpaint_threshold = _safe_getint(
@@ -237,8 +247,13 @@ def load_config_from_parser(cfg: Config, config: configparser.ConfigParser) -> C
     glare_clahe_grid_size = _safe_getint(
         config, "ImageProcessing", "GlareClaheGridSize", fallback=8
     )
-    glare_apply_to_cut_images = _safe_getboolean(
-        config, "ImageProcessing", "GlareApplyToCutImages", fallback=False
+    glare_cut = _safe_getboolean(
+        config,
+        "ImageProcessing",
+        "GlareSuppressionCutImages",
+        fallback=_safe_getboolean(
+            config, "ImageProcessing", "GlareApplyToCutImages", fallback=False
+        ),
     )
 
     image_processing_gamma = _safe_getfloat(
@@ -260,8 +275,13 @@ def load_config_from_parser(cfg: Config, config: configparser.ConfigParser) -> C
         config, "ImageProcessing", "AutoSharpenCutImages", fallback=False
     )
 
-    denoise_enabled = _safe_getboolean(
-        config, "ImageProcessing", "DenoiseEnabled", fallback=False
+    denoise_full = _safe_getboolean(
+        config,
+        "ImageProcessing",
+        "DenoiseFullImage",
+        fallback=_safe_getboolean(
+            config, "ImageProcessing", "DenoiseEnabled", fallback=False
+        ),
     )
     denoise_method = config.get(
         "ImageProcessing", "DenoiseMethod", fallback="bilateral"
@@ -284,8 +304,13 @@ def load_config_from_parser(cfg: Config, config: configparser.ConfigParser) -> C
     denoise_search_window = _safe_getint(
         config, "ImageProcessing", "DenoiseSearchWindow", fallback=15
     )
-    denoise_apply_to_cut_images = _safe_getboolean(
-        config, "ImageProcessing", "DenoiseApplyToCutImages", fallback=False
+    denoise_cut = _safe_getboolean(
+        config,
+        "ImageProcessing",
+        "DenoiseCutImages",
+        fallback=_safe_getboolean(
+            config, "ImageProcessing", "DenoiseApplyToCutImages", fallback=False
+        ),
     )
 
     cfg.image_processing = ImageProcessing(
@@ -314,16 +339,17 @@ def load_config_from_parser(cfg: Config, config: configparser.ConfigParser) -> C
             ignore=image_processing_autocontrast_cut_images_ignore,
         ),
         glare_suppression=GlareSuppression(
-            enabled=glare_enabled,
+            full_image=glare_full,
+            cut_images=glare_cut,
             mode=glare_mode,
             inpaint_threshold=glare_inpaint_threshold,
             inpaint_radius=glare_inpaint_radius,
             clahe_clip_limit=glare_clahe_clip_limit,
             clahe_grid_size=glare_clahe_grid_size,
-            apply_to_cut_images=glare_apply_to_cut_images,
         ),
         denoise=Denoise(
-            enabled=denoise_enabled,
+            full_image=denoise_full,
+            cut_images=denoise_cut,
             method=denoise_method,
             diameter=denoise_diameter,
             sigma_color=denoise_sigma_color,
@@ -331,7 +357,6 @@ def load_config_from_parser(cfg: Config, config: configparser.ConfigParser) -> C
             strength=denoise_strength,
             template_window=denoise_template_window,
             search_window=denoise_search_window,
-            apply_to_cut_images=denoise_apply_to_cut_images,
         ),
     )
 
@@ -640,7 +665,7 @@ def save_config_to_io(cfg: Config, fp: TextIO) -> None:
         "Sharpness": str(cfg.image_processing.sharpness),
         "GrayScale": str(cfg.image_processing.grayscale),
         "Gamma": str(cfg.image_processing.gamma),
-        "AutoContrast": str(cfg.image_processing.autocontrast.enabled),
+        "AutoContrastFullImage": str(cfg.image_processing.autocontrast.enabled),
         "AutoContrastCutoffLow": str(cfg.image_processing.autocontrast.cutoff_low),
         "AutoContrastCutoffHigh": str(cfg.image_processing.autocontrast.cutoff_high),
         "AutoContrastIgnore": str(cfg.image_processing.autocontrast.ignore),
@@ -656,7 +681,8 @@ def save_config_to_io(cfg: Config, fp: TextIO) -> None:
         "AutoContrastCutImagesIgnore": str(
             cfg.image_processing.autocontrast_cut_images.ignore
         ),
-        "DenoiseEnabled": str(cfg.image_processing.denoise.enabled),
+        "DenoiseFullImage": str(cfg.image_processing.denoise.full_image),
+        "DenoiseCutImages": str(cfg.image_processing.denoise.cut_images),
         "DenoiseMethod": cfg.image_processing.denoise.method,
         "DenoiseDiameter": str(cfg.image_processing.denoise.diameter),
         "DenoiseSigmaColor": str(cfg.image_processing.denoise.sigma_color),
@@ -664,10 +690,12 @@ def save_config_to_io(cfg: Config, fp: TextIO) -> None:
         "DenoiseStrength": str(cfg.image_processing.denoise.strength),
         "DenoiseTemplateWindow": str(cfg.image_processing.denoise.template_window),
         "DenoiseSearchWindow": str(cfg.image_processing.denoise.search_window),
-        "DenoiseApplyToCutImages": str(
-            cfg.image_processing.denoise.apply_to_cut_images
+        "GlareSuppressionFullImage": str(
+            cfg.image_processing.glare_suppression.full_image
         ),
-        "GlareSuppressionEnabled": str(cfg.image_processing.glare_suppression.enabled),
+        "GlareSuppressionCutImages": str(
+            cfg.image_processing.glare_suppression.cut_images
+        ),
         "GlareSuppressionMode": cfg.image_processing.glare_suppression.mode,
         "GlareInpaintThreshold": str(
             cfg.image_processing.glare_suppression.inpaint_threshold
@@ -680,9 +708,6 @@ def save_config_to_io(cfg: Config, fp: TextIO) -> None:
         ),
         "GlareClaheGridSize": str(
             cfg.image_processing.glare_suppression.clahe_grid_size
-        ),
-        "GlareApplyToCutImages": str(
-            cfg.image_processing.glare_suppression.apply_to_cut_images
         ),
         "SharpnessMode": cfg.image_processing.sharpness_mode,
         "UnsharpRadius": str(cfg.image_processing.unsharp_radius),

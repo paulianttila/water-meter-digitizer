@@ -21,21 +21,25 @@ def build_denoise_card(step: Any, ui: Any) -> None:
         with ui.row().classes("w-full items-center gap-4 flex-wrap"):
             step.denoise_enabled = (
                 ui.checkbox(
-                    "Enable Denoising",
+                    "Full Frame Denoising",
                     value=False,
                     on_change=step._on_param_change,
                 )
                 .props("dense")
-                .tooltip("Enable edge-preserving noise reduction filter")
+                .tooltip(
+                    "Apply edge-preserving noise reduction across the full camera image"
+                )
             )
             step.denoise_apply_to_cut_images = (
                 ui.checkbox(
-                    "Apply to Cut Images (ROIs)",
+                    "Cut Images (ROIs) Denoising",
                     value=False,
                     on_change=step._on_param_change,
                 )
                 .props("dense")
-                .tooltip("Apply denoising filter to cropped digit and dial images")
+                .tooltip(
+                    "Apply noise reduction individually to digit and dial cutouts (fast on edge devices)"
+                )
             )
             step.denoise_method = (
                 ui.select(

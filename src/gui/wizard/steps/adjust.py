@@ -1,12 +1,13 @@
 import asyncio
 import logging
 from collections.abc import Callable
+from typing import Any
 
 from nicegui import ui
 
 import utils.image
 from configuration import Config
-from data_classes import RefImage
+from data_classes import ImagePosition, RefImage
 from gui.wizard.adjust import (
     build_denoise_card,
     build_filter_curves_card,
@@ -60,6 +61,12 @@ class AdjustStep(BaseStep):
         self._debounce_task: asyncio.Task | None = None
         self._preview_task: asyncio.Task | None = None
         self._auto_enhance_task: asyncio.Task | None = None
+        self.config: Config | None = None
+        self.roi_provider: (
+            Callable[[], tuple[list[ImagePosition], list[ImagePosition]]] | None
+        ) = None
+        self.roi_previews_container: ui.row | None = None
+        self._roi_card_elements: dict[str, tuple[Any, Any, Any]] = {}
 
         # Control references
         self.live_preview: ui.checkbox
@@ -180,6 +187,16 @@ class AdjustStep(BaseStep):
             if self.set_comparison_callback is not None:
                 self.set_comparison_callback("")
 
+        # Update Live ROI Cutouts Impact Preview if container exists
+        if getattr(self, "roi_previews_container", None) is not None:
+            try:
+                roi_crops = await asyncio.to_thread(
+                    self._compute_roi_crops, self.org_image, adjusted_b64
+                )
+                self._render_roi_previews(roi_crops)
+            except Exception as e:
+                logger.debug(f"ROI previews update failed: {e}")
+
     def _update_preview_canvas(self) -> None:
         if not self.org_image:
             return
@@ -215,6 +232,318 @@ class AdjustStep(BaseStep):
                     self.set_image_callback(self.image)
                 if self.set_comparison_callback is not None:
                     self.set_comparison_callback("")
+
+            if getattr(self, "roi_previews_container", None) is not None:
+                try:
+                    roi_crops = self._compute_roi_crops(self.org_image, adjusted_b64)
+                    self._render_roi_previews(roi_crops)
+                except Exception as e:
+                    logger.debug(f"ROI previews update failed: {e}")
+
+    def _compute_roi_crops(
+        self, org_image_b64: str, adjusted_b64: str
+    ) -> list[dict[str, Any]]:
+        """Extract before vs. after crops for representative ROIs with cutout filters applied."""
+        if not org_image_b64 or not adjusted_b64:
+            return []
+
+        try:
+            # 1. Base image for initial state (with rotation/crop/resize applied)
+            raw_proc = ImageProcessor().set_image_from_base64_str(org_image_b64)
+            if getattr(self, "rotate_enabled", None) and self.rotate_enabled.value:
+                angle = float(self.rotate_angle.value or 0.0)
+                if angle != 0.0:
+                    raw_proc.rotate_image(angle)
+            if getattr(self, "crop_enabled", None) and self.crop_enabled.value:
+                cx = int(self.crop_x.value or 0)
+                cy = int(self.crop_y.value or 0)
+                cw = int(self.crop_w.value or 0)
+                ch = int(self.crop_h.value or 0)
+                if cw > 0 and ch > 0:
+                    raw_proc.crop_image(x=cx, y=cy, w=cw, h=ch)
+            if getattr(self, "resize_enabled", None) and self.resize_enabled.value:
+                rw = int(self.resize_w.value or 0)
+                rh = int(self.resize_h.value or 0)
+                if rw > 0 and rh > 0:
+                    raw_proc.resize_image(width=rw, height=rh)
+
+            base_raw_img = raw_proc.get_image()
+            adj_full_img = utils.image.convert_base64_str_to_image(adjusted_b64)
+            if base_raw_img is None or adj_full_img is None:
+                return []
+
+            img_w, img_h = base_raw_img.size
+
+            # 2. Determine ROIs to sample
+            rois: list[ImagePosition] = []
+            if self.roi_provider is not None:
+                try:
+                    dig_rois, ana_rois = self.roi_provider()
+                    if dig_rois:
+                        rois.extend(dig_rois[:4])
+                    if ana_rois:
+                        rois.extend(ana_rois[:2])
+                except Exception as e:
+                    logger.debug(f"ROI provider failed: {e}")
+
+            if not rois and self.config:
+                if self.config.digital_readout.cut_images:
+                    rois.extend(self.config.digital_readout.cut_images[:4])
+                if self.config.analog_readout.cut_images:
+                    rois.extend(self.config.analog_readout.cut_images[:2])
+
+            if not rois:
+                dw = min(60, max(20, img_w // 10))
+                dh = min(90, max(30, img_h // 5))
+                center_x = max(0, img_w // 2 - dw // 2)
+                center_y = max(0, img_h // 2 - dh // 2)
+                rois.append(
+                    ImagePosition(
+                        name="Sample Digit",
+                        x=center_x,
+                        y=center_y,
+                        w=dw,
+                        h=dh,
+                    )
+                )
+                dial_size = min(80, max(30, img_w // 8))
+                dial_x = max(0, min(img_w - dial_size, int(img_w * 0.7)))
+                dial_y = max(0, min(img_h - dial_size, int(img_h * 0.5)))
+                rois.append(
+                    ImagePosition(
+                        name="Sample Dial",
+                        x=dial_x,
+                        y=dial_y,
+                        w=dial_size,
+                        h=dial_size,
+                    )
+                )
+
+            # 3. Check cutout filters
+            ip_enabled = bool(
+                getattr(self, "adjust_enabled", None) and self.adjust_enabled.value
+            )
+            denoise_cut = bool(
+                ip_enabled
+                and getattr(self, "denoise_apply_to_cut_images", None)
+                and self.denoise_apply_to_cut_images.value
+            )
+            autocontrast_cut = bool(
+                ip_enabled
+                and getattr(self, "autocontrast_cut_images_enabled", None)
+                and self.autocontrast_cut_images_enabled.value
+            )
+            glare_cut = bool(
+                ip_enabled
+                and getattr(self, "glare_apply_to_cut_images", None)
+                and self.glare_apply_to_cut_images.value
+            )
+            unsharp_cut = bool(
+                ip_enabled
+                and getattr(self, "auto_sharpen_cut_images", None)
+                and self.auto_sharpen_cut_images.value
+            )
+
+            has_cut_filters = (
+                denoise_cut or autocontrast_cut or glare_cut or unsharp_cut
+            )
+
+            results: list[dict[str, Any]] = []
+            for roi in rois:
+                if (
+                    roi.x < 0
+                    or roi.y < 0
+                    or (roi.x + roi.w) > img_w
+                    or (roi.y + roi.h) > img_h
+                ):
+                    continue
+                raw_crop = utils.image.cut_image(base_raw_img, roi)
+                adj_crop = utils.image.cut_image(adj_full_img, roi)
+
+                if denoise_cut:
+                    adj_crop = utils.image.denoise_image(
+                        adj_crop,
+                        method=str(
+                            getattr(self.denoise_method, "value", "bilateral")
+                            or "bilateral"
+                        ),
+                        diameter=int(getattr(self.denoise_diameter, "value", 5) or 5),
+                        sigma_color=float(
+                            getattr(self.denoise_sigma_color, "value", 50.0) or 50.0
+                        ),
+                        sigma_space=float(
+                            getattr(self.denoise_sigma_space, "value", 50.0) or 50.0
+                        ),
+                        strength=float(
+                            getattr(self.denoise_strength, "value", 7.0) or 7.0
+                        ),
+                        template_window=int(
+                            getattr(self.denoise_template_window, "value", 7) or 7
+                        ),
+                        search_window=int(
+                            getattr(self.denoise_search_window, "value", 15) or 15
+                        ),
+                    )
+                if autocontrast_cut:
+                    adj_crop = utils.image.autocontrast_image(
+                        adj_crop,
+                        cutoff_low=float(
+                            getattr(
+                                self.autocontrast_cut_images_cutoff_low,
+                                "value",
+                                2.0,
+                            )
+                            or 2.0
+                        ),
+                        cutoff_high=float(
+                            getattr(
+                                self.autocontrast_cut_images_cutoff_high,
+                                "value",
+                                45.0,
+                            )
+                            or 45.0
+                        ),
+                    )
+                if glare_cut:
+                    adj_crop = utils.image.suppress_glare(
+                        adj_crop,
+                        mode=str(getattr(self.glare_mode, "value", "clahe") or "clahe"),
+                        inpaint_threshold=int(
+                            getattr(self.glare_inpaint_threshold, "value", 230) or 230
+                        ),
+                        inpaint_radius=int(
+                            getattr(self.glare_inpaint_radius, "value", 3) or 3
+                        ),
+                        clahe_clip_limit=float(
+                            getattr(self.glare_clahe_clip_limit, "value", 2.0) or 2.0
+                        ),
+                        clahe_grid_size=int(
+                            getattr(self.glare_clahe_grid_size, "value", 8) or 8
+                        ),
+                    )
+                if unsharp_cut:
+                    smode = str(
+                        getattr(self.sharpness_mode, "value", "standard") or "standard"
+                    )
+                    if smode in ("unsharp_mask", "auto"):
+                        adj_crop = utils.image.unsharp_mask(
+                            adj_crop,
+                            radius=float(
+                                getattr(self.unsharp_radius, "value", 1.0) or 1.0
+                            ),
+                            amount=float(
+                                getattr(self.unsharp_amount, "value", 1.5) or 1.5
+                            ),
+                            threshold=int(
+                                getattr(self.unsharp_threshold, "value", 3) or 3
+                            ),
+                        )
+
+                raw_b64 = utils.image.convert_image_base64str(raw_crop)
+                adj_b64 = utils.image.convert_image_base64str(adj_crop)
+
+                filter_tag = "Cutout Filters" if has_cut_filters else "Full-Frame"
+
+                results.append(
+                    {
+                        "name": roi.name,
+                        "raw_b64": raw_b64,
+                        "adj_b64": adj_b64,
+                        "tag": filter_tag,
+                        "has_cut_filters": has_cut_filters,
+                    }
+                )
+
+            return results
+        except Exception as e:
+            logger.debug(f"Failed to compute ROI previews: {e}")
+            return []
+
+    def _render_roi_previews(self, roi_crops: list[dict[str, Any]]) -> None:
+        if (
+            not hasattr(self, "roi_previews_container")
+            or self.roi_previews_container is None
+        ):
+            return
+
+        existing_names = list(self._roi_card_elements.keys())
+        current_names = [item["name"] for item in roi_crops]
+
+        if existing_names == current_names and len(existing_names) > 0:
+            for item in roi_crops:
+                elems = self._roi_card_elements[item["name"]]
+                raw_ui_img, adj_ui_img, tag_label = elems
+                raw_ui_img.source = f"data:image/jpeg;base64,{item['raw_b64']}"
+                adj_ui_img.source = f"data:image/jpeg;base64,{item['adj_b64']}"
+                tag_label.text = item["tag"]
+                tag_label.classes(
+                    replace="text-[10px] px-1.5 py-0.5 rounded "
+                    + (
+                        "bg-emerald-950/70 text-emerald-400 border border-emerald-800/40"
+                        if item["has_cut_filters"]
+                        else "bg-slate-800 text-slate-400"
+                    )
+                )
+            return
+
+        self.roi_previews_container.clear()
+        self._roi_card_elements.clear()
+
+        if not roi_crops:
+            with self.roi_previews_container:
+                ui.label("No meter image loaded").classes(
+                    "text-xs text-slate-500 italic"
+                )
+            return
+
+        with self.roi_previews_container:
+            for item in roi_crops:
+                with ui.card().classes(
+                    "bg-slate-950/70 border border-white/10 rounded-xl p-2.5 flex flex-col items-center gap-1.5 shrink-0"
+                ):
+                    with ui.row().classes("w-full items-center justify-between gap-2"):
+                        ui.label(item["name"]).classes(
+                            "text-xs font-bold text-slate-200 truncate max-w-[130px]"
+                        )
+                        tag_label = ui.label(item["tag"]).classes(
+                            "text-[10px] px-1.5 py-0.5 rounded "
+                            + (
+                                "bg-emerald-950/70 text-emerald-400 border border-emerald-800/40"
+                                if item["has_cut_filters"]
+                                else "bg-slate-800 text-slate-400"
+                            )
+                        )
+                    with ui.row().classes("items-center gap-2"):
+                        with ui.column().classes("items-center gap-0.5"):
+                            ui.label("Original").classes(
+                                "text-[10px] text-slate-400 font-medium"
+                            )
+                            raw_img = (
+                                ui.image(f"data:image/jpeg;base64,{item['raw_b64']}")
+                                .classes("rounded border border-white/10 shadow-sm")
+                                .style(
+                                    "image-rendering: pixelated; width: 75px; height: auto; max-height: 100px;"
+                                )
+                            )
+                        ui.icon("arrow_forward", size="14px").classes("text-slate-500")
+                        with ui.column().classes("items-center gap-0.5"):
+                            ui.label("Adjusted").classes(
+                                "text-[10px] text-indigo-300 font-medium"
+                            )
+                            adj_img = (
+                                ui.image(f"data:image/jpeg;base64,{item['adj_b64']}")
+                                .classes(
+                                    "rounded border border-indigo-400/50 shadow-md"
+                                )
+                                .style(
+                                    "image-rendering: pixelated; width: 75px; height: auto; max-height: 100px;"
+                                )
+                            )
+                    self._roi_card_elements[item["name"]] = (
+                        raw_img,
+                        adj_img,
+                        tag_label,
+                    )
 
     @BaseStep.decorator_spinner
     @BaseStep.decorator_catch_err
@@ -311,9 +640,13 @@ class AdjustStep(BaseStep):
                 config.image_processing.autocontrast_cut_images.cutoff_high
             )
 
+        self.config = config
+
         # Glare Suppression
         if hasattr(self, "glare_enabled") and self.glare_enabled is not None:
-            self.glare_enabled.value = config.image_processing.glare_suppression.enabled
+            self.glare_enabled.value = (
+                config.image_processing.glare_suppression.full_image
+            )
         if hasattr(self, "glare_mode") and self.glare_mode is not None:
             self.glare_mode.value = config.image_processing.glare_suppression.mode
         if (
@@ -349,18 +682,18 @@ class AdjustStep(BaseStep):
             and self.glare_apply_to_cut_images is not None
         ):
             self.glare_apply_to_cut_images.value = (
-                config.image_processing.glare_suppression.apply_to_cut_images
+                config.image_processing.glare_suppression.cut_images
             )
 
         # Denoising
         if hasattr(self, "denoise_enabled") and self.denoise_enabled is not None:
-            self.denoise_enabled.value = config.image_processing.denoise.enabled
+            self.denoise_enabled.value = config.image_processing.denoise.full_image
         if (
             hasattr(self, "denoise_apply_to_cut_images")
             and self.denoise_apply_to_cut_images is not None
         ):
             self.denoise_apply_to_cut_images.value = (
-                config.image_processing.denoise.apply_to_cut_images
+                config.image_processing.denoise.cut_images
             )
         if hasattr(self, "denoise_method") and self.denoise_method is not None:
             self.denoise_method.value = config.image_processing.denoise.method
@@ -559,27 +892,26 @@ class AdjustStep(BaseStep):
                     if hasattr(self, "adjust_gamma") and self.adjust_gamma is not None
                     else 1.0
                 )
+                smode = (
+                    str(self.sharpness_mode.value or "standard")
+                    if hasattr(self, "sharpness_mode")
+                    and self.sharpness_mode is not None
+                    else "standard"
+                )
+                sharpness_val = (
+                    float(self.adjust_sharpness.value or 1.0)
+                    if smode == "standard"
+                    else 1.0
+                )
                 proc.adjust_image(
                     contrast=float(self.adjust_contrast.value or 1.0),
                     brightness=float(self.adjust_brightness.value or 1.0),
-                    sharpness=float(self.adjust_sharpness.value or 1.0),
+                    sharpness=sharpness_val,
                     color=float(self.adjust_color.value or 1.0),
                     gamma=gamma_val,
                 )
             except Exception as e:
                 logger.debug(f"Filters adjustment skipped: {e}")
-
-            try:
-                if (
-                    getattr(self, "autocontrast_enabled", None)
-                    and self.autocontrast_enabled.value
-                ):
-                    proc.autocontrast_image(
-                        cutoff_low=float(self.autocontrast_cutoff_low.value or 0.0),
-                        cutoff_high=float(self.autocontrast_cutoff_high.value or 0.0),
-                    )
-            except Exception as e:
-                logger.debug(f"AutoContrast adjustment skipped: {e}")
 
             try:
                 if (
@@ -597,6 +929,18 @@ class AdjustStep(BaseStep):
                     )
             except Exception as e:
                 logger.debug(f"Denoising adjustment skipped: {e}")
+
+            try:
+                if (
+                    getattr(self, "autocontrast_enabled", None)
+                    and self.autocontrast_enabled.value
+                ):
+                    proc.autocontrast_image(
+                        cutoff_low=float(self.autocontrast_cutoff_low.value or 0.0),
+                        cutoff_high=float(self.autocontrast_cutoff_high.value or 0.0),
+                    )
+            except Exception as e:
+                logger.debug(f"AutoContrast adjustment skipped: {e}")
 
             try:
                 if getattr(self, "glare_enabled", None) and self.glare_enabled.value:
@@ -825,10 +1169,30 @@ class AdjustStep(BaseStep):
                 # 6. Edge Definition (Luminance Unsharp Mask & Sharpness)
                 build_rotation_crop_card(self, ui)
                 build_filter_curves_card(self, ui)
-                build_histogram_card(self, ui)
                 build_denoise_card(self, ui)
+                build_histogram_card(self, ui)
                 build_glare_suppression_card(self, ui)
                 build_unsharp_mask_card(self, ui)
+
+                # Live ROI Cutouts Impact Preview Card
+                with (
+                    ui.expansion(
+                        "Live ROI Cutouts Impact Preview (Before vs. After)",
+                        icon="crop",
+                        value=True,
+                    ).classes(
+                        "w-full bg-slate-900/60 border border-indigo-500/30 rounded-xl "
+                        "shadow-md overflow-hidden mt-1"
+                    ),
+                    ui.column().classes("w-full gap-2 p-2.5"),
+                ):
+                    with ui.row().classes("w-full items-center justify-between"):
+                        ui.label(
+                            "Real-time visual comparison of meter digit and dial cutouts with your current filter settings:"
+                        ).classes("text-xs text-slate-400")
+                    self.roi_previews_container = ui.row().classes(
+                        "w-full items-start gap-3 overflow-x-auto py-1"
+                    )
 
             # Action Toolbar
             with ui.row().classes(
@@ -932,8 +1296,11 @@ class AdjustStep(BaseStep):
         )
 
         # Glare suppression
-        config.image_processing.glare_suppression.enabled = bool(
+        config.image_processing.glare_suppression.full_image = bool(
             getattr(self.glare_enabled, "value", False)
+        )
+        config.image_processing.glare_suppression.cut_images = bool(
+            getattr(self.glare_apply_to_cut_images, "value", False)
         )
         config.image_processing.glare_suppression.mode = str(
             getattr(self.glare_mode, "value", "clahe") or "clahe"
@@ -950,15 +1317,12 @@ class AdjustStep(BaseStep):
         config.image_processing.glare_suppression.clahe_grid_size = int(
             getattr(self.glare_clahe_grid_size, "value", 8) or 8
         )
-        config.image_processing.glare_suppression.apply_to_cut_images = bool(
-            getattr(self.glare_apply_to_cut_images, "value", False)
-        )
 
         # Denoising
-        config.image_processing.denoise.enabled = bool(
+        config.image_processing.denoise.full_image = bool(
             getattr(self.denoise_enabled, "value", False)
         )
-        config.image_processing.denoise.apply_to_cut_images = bool(
+        config.image_processing.denoise.cut_images = bool(
             getattr(self.denoise_apply_to_cut_images, "value", False)
         )
         config.image_processing.denoise.method = str(

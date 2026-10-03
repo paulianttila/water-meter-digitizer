@@ -127,32 +127,44 @@ def test_align_with_status_empty_refs(sample_pil_image: Image.Image) -> None:
     assert err == ""
 
 
-def test_align_with_status_success(tmp_path, sample_pil_image: Image.Image) -> None:
+def test_align_with_status_success(tmp_path) -> None:
+    arr = np.zeros((100, 100, 3), dtype=np.uint8)
+    for i in range(15):
+        for j in range(15):
+            arr[10 + i, 10 + j] = [i * 15, j * 15, 120]
+            arr[10 + i, 80 + j] = [j * 15, 120, i * 15]
+            arr[80 + i, 50 + j] = [120, i * 15, j * 15]
+    img = Image.fromarray(arr)
     ref_files = []
     positions = [(10, 10), (80, 10), (50, 80)]
     for i, (rx, ry) in enumerate(positions):
-        ref_path = tmp_path / f"ref_status_{i}.jpg"
-        crop = sample_pil_image.crop((rx, ry, rx + 15, ry + 15))
+        ref_path = tmp_path / f"ref_status_{i}.png"
+        crop = img.crop((rx, ry, rx + 15, ry + 15))
         crop.save(str(ref_path))
         ref_files.append(
             RefImage(name=f"ref{i}", x=rx, y=ry, w=15, h=15, file_name=str(ref_path))
         )
 
-    aligned, success, err = img_utils.align_with_status(sample_pil_image, ref_files)
+    aligned, success, err = img_utils.align_with_status(img, ref_files)
     assert success is True
     assert err == ""
     assert isinstance(aligned, Image.Image)
-    assert aligned.size == sample_pil_image.size
+    assert aligned.size == img.size
 
 
-def test_align_with_status_affine_exception(
-    tmp_path, sample_pil_image: Image.Image
-) -> None:
+def test_align_with_status_affine_exception(tmp_path) -> None:
+    arr = np.zeros((100, 100, 3), dtype=np.uint8)
+    for i in range(15):
+        for j in range(15):
+            arr[10 + i, 10 + j] = [i * 15, j * 15, 120]
+            arr[10 + i, 80 + j] = [j * 15, 120, i * 15]
+            arr[80 + i, 50 + j] = [120, i * 15, j * 15]
+    img = Image.fromarray(arr)
     ref_files = []
     positions = [(10, 10), (80, 10), (50, 80)]
     for i, (rx, ry) in enumerate(positions):
-        ref_path = tmp_path / f"ref_exc_{i}.jpg"
-        crop = sample_pil_image.crop((rx, ry, rx + 15, ry + 15))
+        ref_path = tmp_path / f"ref_exc_{i}.png"
+        crop = img.crop((rx, ry, rx + 15, ry + 15))
         crop.save(str(ref_path))
         ref_files.append(
             RefImage(name=f"ref{i}", x=rx, y=ry, w=15, h=15, file_name=str(ref_path))
@@ -161,10 +173,36 @@ def test_align_with_status_affine_exception(
     with patch(
         "cv2.getAffineTransform", side_effect=RuntimeError("Affine matrix singular")
     ):
-        img, success, err = img_utils.align_with_status(sample_pil_image, ref_files)
-        assert img == sample_pil_image
+        result, success, err = img_utils.align_with_status(img, ref_files)
+        assert result == img
         assert success is False
         assert "Failed to perform affine alignment" in err
+
+
+def test_align_with_status_low_confidence_rejected(tmp_path) -> None:
+    """Verify that markers with low correlation score (<0.60) are rejected to prevent distortion."""
+    arr = np.zeros((100, 100, 3), dtype=np.uint8)
+    for i in range(15):
+        for j in range(15):
+            arr[10 + i, 10 + j] = [i * 15, j * 15, 120]
+            arr[10 + i, 80 + j] = [j * 15, 120, i * 15]
+            arr[80 + i, 50 + j] = [120, i * 15, j * 15]
+    img = Image.fromarray(arr)
+    ref_files = []
+    positions = [(10, 10), (80, 10), (50, 80)]
+    for i, (rx, ry) in enumerate(positions):
+        ref_path = tmp_path / f"ref_low_{i}.png"
+        noise = np.random.randint(0, 50, (15, 15, 3), dtype=np.uint8)
+        Image.fromarray(noise).save(str(ref_path))
+        ref_files.append(
+            RefImage(name=f"ref{i}", x=rx, y=ry, w=15, h=15, file_name=str(ref_path))
+        )
+
+    result, success, err = img_utils.align_with_status(img, ref_files)
+    assert result == img
+    assert success is False
+    assert "confidence score too low" in err
+    assert "Skipping alignment to prevent frame distortion" in err
 
 
 def test_get_ref_coordinate_none_inputs() -> None:
